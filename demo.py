@@ -108,14 +108,23 @@ def scene_boot() -> None:
     console.clear()
     pause(0.5)
 
-    sys.stdout.write("\n\n\n")
-    ansi_print("         C   O   G   N   I   T   H   O   R", "bright_cyan")
+    sys.stdout.write("\n\n")
+    logo = [
+        " @@@@@@   @@@@@@    @@@@@@  @@    @@  @@  @@@@@@@@  @@    @@   @@@@@@   @@@@@@@ ",
+        "@@        @@   @@  @@       @@@   @@  @@     @@     @@    @@  @@    @@  @@    @@ ",
+        "@@        @@   @@  @@  @@@  @@ @  @@  @@     @@     @@@@@@@@  @@    @@  @@@@@@@  ",
+        "@@        @@   @@  @@   @@  @@  @ @@  @@     @@     @@    @@  @@    @@  @@  @@   ",
+        " @@@@@@   @@@@@@    @@@@@@  @@    @@  @@     @@     @@    @@   @@@@@@   @@   @@@ ",
+    ]
+    # Center in 120-col terminal
+    pad = (120 - len(logo[0])) // 2
+    for line in logo:
+        ansi_print(" " * pad + line, "bright_cyan")
     sys.stdout.write("\n")
-    ansi_print("                    Agent  OS", "bold")
-    ansi_print("                     v" + VERSION, "dim")
+    ansi_print(" " * ((120 - 8) // 2) + "Agent OS", "bold")
+    ansi_print(" " * ((120 - len("v" + VERSION)) // 2) + "v" + VERSION, "dim")
     sys.stdout.write("\n")
-    ansi_print("       Cognition + Thor -- Intelligence with Power", "bright_cyan")
-    sys.stdout.write("\n")
+    ansi_print(" " * ((120 - 48) // 2) + "Cognition + Thor -- Intelligence with Power", "bright_cyan")
     sys.stdout.write("\n")
     pause(0.6)
 
