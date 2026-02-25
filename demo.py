@@ -111,28 +111,21 @@ def streaming(text: str, speed: float = 0.012, style: str = "bright_cyan") -> No
 #  SCENE 1 -- Boot Sequence
 # ====================================================================
 
-LOGO = """
-  ###   ###    ###  #   #  ###  #####  #  #   #   ###   ####
- #     #   #  #     ##  #    #    #    #  #   #  #   #  #   #
- #     #   #  # ##  # # #   #     #   ####   #  #   #  ####
- #     #   #  #  #  #  ##  #      #   #  #   #  #   #  #  #
-  ###   ###    ###  #   #  ###    #   #  #   #   ###   #   #
-"""
-
-
 def scene_boot() -> None:
-    """Boot sequence with ASCII art and system init steps."""
+    """Boot sequence with title and system init steps."""
     console.clear()
     pause(0.5)
 
-    # Logo -- line by line reveal using direct ANSI (no rich markup)
-    for line in LOGO.strip().splitlines():
-        ansi_print(line, "bright_cyan")
-        pause(0.07)
-
-    sys.stdout.write("\n")
-    ansi_print("                       - Agent OS -", "bold")
-    ansi_print("                        v" + VERSION, "dim")
+    # Clean title block (no ASCII art - renders perfectly in svg-term)
+    sys.stdout.write("\n\n")
+    ansi_print("    ========================================================", "bright_cyan")
+    ansi_print("    ||                                                    ||", "bright_cyan")
+    ansi_print("    ||             C O G N I T H O R                      ||", "bright_cyan")
+    ansi_print("    ||               Agent OS v" + VERSION + "                       ||", "bright_cyan")
+    ansi_print("    ||                                                    ||", "bright_cyan")
+    ansi_print("    ||      Cognition + Thor -- Intelligence with Power   ||", "bright_cyan")
+    ansi_print("    ||                                                    ||", "bright_cyan")
+    ansi_print("    ========================================================", "bright_cyan")
     sys.stdout.write("\n")
     pause(0.6)
 
