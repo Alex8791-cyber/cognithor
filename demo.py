@@ -44,7 +44,14 @@ from rich.tree import Tree
 # ── Globals ─────────────────────────────────────────────────────────
 VERSION = "0.22.0"
 FAST = "--fast" in sys.argv
-console = Console(highlight=False)
+_FORCE = bool(os.environ.get("FORCE_COLOR"))
+console = Console(
+    highlight=False,
+    force_terminal=_FORCE or None,
+    color_system="truecolor" if _FORCE else "auto",
+    width=int(os.environ.get("COLUMNS", 0)) or None,
+    legacy_windows=False,
+)
 
 
 def pause(seconds: float = 1.0) -> None:
@@ -758,7 +765,7 @@ def scene_stats() -> None:
                 "[bold bright_cyan]Cognithor  Agent OS[/bold bright_cyan]\n\n"
                 "Local-first  Privacy-first  Security-first\n"
                 "Open Source under Apache 2.0\n\n"
-                "[bold]https://github.com/cognithor/cognithor[/bold]",
+                "[bold]https://github.com/Alex8791-cyber/cognithor[/bold]",
                 border_style="bright_cyan",
                 expand=False,
                 padding=(1, 6),
