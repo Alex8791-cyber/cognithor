@@ -17,7 +17,7 @@ import time
 
 COLS = 120
 ROWS = 42
-TITLE = "Cognithor \u00b7 Agent OS \u2014 Demo"
+TITLE = "Cognithor - Agent OS - Demo"
 TARGET_DURATION = 50.0  # seconds for the final recording
 
 
@@ -84,7 +84,7 @@ def main() -> None:
         # Detect scene boundaries for longer pauses
         is_scene_break = (
             "\x1b[2J" in text        # clear screen (boot)
-            or "\u2550" * 4 in text   # ════ rule characters
+            or "====" in text          # ==== ASCII rule characters
             or "System Online" in text
             or "Live Session" in text
             or "PGE Trinity" in text

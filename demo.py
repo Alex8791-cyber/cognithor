@@ -28,17 +28,9 @@ from rich.columns import Columns
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TaskProgressColumn,
-    TextColumn,
-)
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
-from rich.tree import Tree
 
 # -- Globals ---------------------------------------------------------------
 VERSION = "0.22.0"
@@ -239,21 +231,17 @@ def scene_channels() -> None:
     )
     pause(0.3)
 
-    with Progress(
-        SpinnerColumn("line"),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(bar_width=40),
-        TaskProgressColumn(),
-        console=console,
-    ) as prog:
-        tid = prog.add_task("Connecting channels", total=len(CHANNELS))
-        for ch in CHANNELS:
-            prog.update(tid, description=f"[yellow]{ch}[/yellow]")
-            pause(0.1)
-            prog.advance(tid)
-        prog.update(
-            tid, description="[green]All channels connected[/green]"
-        )
+    for i, ch in enumerate(CHANNELS, 1):
+        pct = int(100 * i / len(CHANNELS))
+        bar_done = pct * 40 // 100
+        bar_left = 40 - bar_done
+        bar = "#" * bar_done + "-" * bar_left
+        line = f"\r  [{bar}] {pct:3d}% {ch}"
+        sys.stdout.write(line + " " * 10)
+        sys.stdout.flush()
+        pause(0.1)
+    sys.stdout.write(f"\r  [{'#' * 40}] 100% All channels connected" + " " * 10 + "\n")
+    sys.stdout.flush()
 
     # Channel chip grid
     chips = [
@@ -312,28 +300,20 @@ def scene_memory() -> None:
     )
     pause(0.4)
 
-    tree = Tree(
-        Text("Memory System", style="bold magenta"),
-        guide_style="magenta",
-    )
-
-    with Live(tree, console=console, refresh_per_second=10):
-        for tier_name, desc, stats in MEMORY_TIERS:
-            branch = tree.add(
-                Text.assemble(
-                    (tier_name, "bold"),
-                    " -- ",
-                    (desc, "dim"),
-                )
-            )
-            pause(0.25)
-            for stat in stats:
-                branch.add(Text.assemble(("* ", "green"), stat))
-                pause(0.08)
+    ansi_print("  Memory System", "bright_magenta")
+    for i, (tier_name, desc, stats) in enumerate(MEMORY_TIERS):
+        is_last = i == len(MEMORY_TIERS) - 1
+        prefix = "  +-- " if not is_last else "  +-- "
+        child_prefix = "  |     " if not is_last else "        "
+        ansi_print(f"{prefix}{tier_name} -- {desc}", "bold")
+        pause(0.25)
+        for stat in stats:
+            ansi_print(f"{child_prefix}* {stat}", "bright_green")
+            pause(0.08)
 
     # Hybrid search panel
     sys.stdout.write("\n")
-    search = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+    search = Table(box=TABLE_BOX, show_header=False, padding=(0, 2))
     search.add_column(style="bold cyan")
     search.add_column()
     search.add_row("BM25", "Full-text search (FTS5, compound words)")
@@ -342,8 +322,7 @@ def scene_memory() -> None:
     console.print(
         Panel(
             search,
-            title="3-Channel Hybrid Search",
-            title_style="bold",
+            title="[bold]3-Channel Hybrid Search[/bold]",
             border_style="magenta",
             expand=False,
             box=PANEL_BOX,
@@ -458,18 +437,16 @@ def scene_pge() -> None:
     console.print(
         Panel(
             Syntax(plan_code, "python", theme="monokai", line_numbers=False),
-            title=">> PLANNER << LLM-based Planning",
-            title_style="bold blue",
+            title="[bold blue]>> PLANNER << LLM-based Planning[/bold blue]",
             border_style="blue",
-            subtitle="Model: qwen3:32b  847ms",
-            subtitle_style="dim",
+            subtitle="[dim]Model: qwen3:32b  847ms[/dim]",
             box=PANEL_BOX,
         )
     )
     pause(1.0)
 
     # -- GATEKEEPER -----------------------------------------------------
-    gt = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+    gt = Table(box=TABLE_BOX, show_header=False, padding=(0, 2))
     gt.add_row(Text("Tool:", style="bold"), "memory_search")
     gt.add_row(
         Text("Risk Level:", style="bold"),
@@ -485,11 +462,9 @@ def scene_pge() -> None:
     console.print(
         Panel(
             gt,
-            title=">> GATEKEEPER << Deterministic Policy Engine",
-            title_style="bold green",
+            title="[bold green]>> GATEKEEPER << Deterministic Policy Engine[/bold green]",
             border_style="green",
-            subtitle="No LLM | No hallucinations | 0.2ms",
-            subtitle_style="dim",
+            subtitle="[dim]No LLM | No hallucinations | 0.2ms[/dim]",
             box=PANEL_BOX,
         )
     )
@@ -509,11 +484,9 @@ Top matches:
     console.print(
         Panel(
             Syntax(exec_result, "yaml", theme="monokai", line_numbers=False),
-            title=">> EXECUTOR << Sandboxed Execution",
-            title_style="bold yellow",
+            title="[bold yellow]>> EXECUTOR << Sandboxed Execution[/bold yellow]",
             border_style="yellow",
-            subtitle="Tool: memory_search | 23ms | SHA-256 audit logged",
-            subtitle_style="dim",
+            subtitle="[dim]Tool: memory_search | 23ms | SHA-256 audit logged[/dim]",
             box=PANEL_BOX,
         )
     )
@@ -539,7 +512,7 @@ def scene_security() -> None:
 
     # BLOCKED
     sys.stdout.write("\n")
-    bt = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+    bt = Table(box=TABLE_BOX, show_header=False, padding=(0, 2))
     bt.add_row(Text("Tool:", style="bold"), "shell.exec_command")
     bt.add_row(Text("Command:", style="bold"), Text("rm -rf /etc/*", style="red"))
     bt.add_row(
@@ -561,11 +534,9 @@ def scene_security() -> None:
     console.print(
         Panel(
             bt,
-            title="GATEKEEPER -- REQUEST DENIED",
-            title_style="bold red",
+            title="[bold red]GATEKEEPER -- REQUEST DENIED[/bold red]",
             border_style="red",
-            subtitle="Deterministic | No override possible | Logged to audit chain",
-            subtitle_style="dim",
+            subtitle="[dim]Deterministic | No override possible | Logged to audit chain[/dim]",
             box=PANEL_BOX,
         )
     )
@@ -688,8 +659,7 @@ def scene_reflection() -> None:
     console.print(
         Panel(
             pt,
-            title="New Skill Learned",
-            title_style="bold magenta",
+            title="[bold magenta]New Skill Learned[/bold magenta]",
             border_style="magenta",
             expand=False,
             box=PANEL_BOX,
