@@ -21,6 +21,10 @@
 
 > **Cognithor** is a fully local, Ollama-powered, optional API-dependant, autonomous agent operating system that acts as your personal AI assistant. All data stays on your machine — no cloud, no mandatory API keys, full GDPR compliance. It supports tasks ranging from research, project management, and knowledge organization to file management and automated workflows. Users can add custom skills and rules to tailor the agent to their needs.
 
+<p align="center">
+  <img src="demo.svg" alt="Cognithor Demo" width="100%">
+</p>
+
 ## Highlights
 
 - **15 LLM Providers** — Ollama (local), OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, Together AI, OpenRouter, xAI (Grok), Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot/Kimi
@@ -136,18 +140,10 @@ gemini_api_key: "AIza..."
 
 ## Demo
 
-<p align="center">
-  <img src="demo.svg" alt="Cognithor Demo" width="100%">
-</p>
-
-Run the cinematic terminal demo yourself:
-
 ```bash
 python demo.py           # Full experience (~3 minutes)
 python demo.py --fast    # Speed run (~15 seconds)
 ```
-
-The demo showcases all 10 core capabilities: boot sequence, 15-provider scan, 17-channel init, 5-tier memory, live conversation with streaming, PGE Trinity tool execution, Gatekeeper security block, multi-channel broadcast, reflection/learning cycle, and system stats.
 
 ## Modules
 
