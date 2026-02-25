@@ -1,0 +1,51 @@
+# ============================================================================
+# Jarvis · Systemd Service (User-Level)
+# ============================================================================
+# Installation:
+#   cp deploy/jarvis.service ~/.config/systemd/user/
+#   sed -i "s|__VENV__|$HOME/.jarvis/venv|g" ~/.config/systemd/user/jarvis.service
+#   sed -i "s|__JARVIS_HOME__|$HOME/.jarvis|g" ~/.config/systemd/user/jarvis.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now jarvis
+# ============================================================================
+
+[Unit]
+Description=Jarvis Agent OS – Lokales autonomes Agent-System
+Documentation=https://github.com/team-soellner/jarvis
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=__VENV__/bin/jarvis
+ExecReload=/bin/kill -HUP $MAINPID
+WorkingDirectory=__JARVIS_HOME__
+EnvironmentFile=-__JARVIS_HOME__/.env
+
+# Neustart bei Absturz
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Watchdog (erwartet dass Jarvis regelmäßig sd_notify sendet)
+WatchdogSec=300
+
+# Sicherheits-Härtung
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__JARVIS_HOME__ /tmp/jarvis
+PrivateTmp=true
+
+# Resource-Limits
+MemoryMax=4G
+TasksMax=64
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis
+
+[Install]
+WantedBy=default.target

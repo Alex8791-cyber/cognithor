@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarvis · Admin Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg-primary: #0c0e14;
+    --bg-secondary: #13161f;
+    --bg-card: #181c28;
+    --bg-hover: #1e2333;
+    --border: #252a3a;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8b90a0;
+    --text-muted: #555b70;
+    --accent: #4f8cff;
+    --accent-dim: #2a4a8a;
+    --green: #3dd68c;
+    --red: #ff5c5c;
+    --orange: #ffb347;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+    --yellow: #fbbf24;
+    --radius: 10px;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Outfit', -apple-system, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--sans); background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; }
+  button { font-family: var(--sans); cursor: pointer; border: none; }
+  input, select, textarea { font-family: var(--sans); }
+
+  /* ========== SIDEBAR ========== */
+  .sidebar {
+    width: 240px; min-height: 100vh; background: var(--bg-secondary);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 24px 20px; display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo .icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .sidebar-logo h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .sidebar-logo small { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+  .sidebar-nav { flex: 1; padding: 12px 8px; overflow-y: auto; }
+  .nav-group { margin-bottom: 20px; }
+  .nav-group-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--text-muted); padding: 0 12px; margin-bottom: 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 400; color: var(--text-secondary); transition: all 0.15s;
+    text-decoration: none; cursor: pointer;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-item.active { background: var(--accent-dim); color: #fff; font-weight: 500; }
+  .nav-item .emoji { width: 20px; text-align: center; font-size: 15px; }
+  .nav-item .badge { margin-left: auto; background: var(--accent); color: #fff; font-size: 10px;
+    padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+
+  .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+  .sidebar-footer .status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+  .sidebar-footer .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+  /* ========== MAIN ========== */
+  .main { margin-left: 240px; flex: 1; min-height: 100vh; }
+  .topbar {
+    height: 56px; border-bottom: 1px solid var(--border); display: flex;
+    align-items: center; justify-content: space-between; padding: 0 28px;
+    background: var(--bg-secondary); position: sticky; top: 0; z-index: 50;
+  }
+  .topbar h2 { font-size: 15px; font-weight: 500; }
+  .topbar .actions { display: flex; gap: 8px; }
+  .btn { padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 500; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #6a9fff; }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .btn-sm { padding: 5px 10px; font-size: 11.5px; }
+
+  .content { padding: 24px 28px; }
+
+  /* ========== CARDS ========== */
+  .grid { display: grid; gap: 16px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-1 { grid-template-columns: 1fr; }
+
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent-dim); }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card-title { font-size: 12px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; }
+  .card-value { font-size: 28px; font-weight: 700; letter-spacing: -1px; font-family: var(--mono); }
+  .card-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
+  .card-value.green { color: var(--green); }
+  .card-value.red { color: var(--red); }
+  .card-value.orange { color: var(--orange); }
+  .card-value.accent { color: var(--accent); }
+
+  /* ========== TABLE ========== */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+  tr:hover td { background: var(--bg-hover); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .tag-green { background: rgba(61,214,140,.12); color: var(--green); }
+  .tag-red { background: rgba(255,92,92,.12); color: var(--red); }
+  .tag-orange { background: rgba(255,179,71,.12); color: var(--orange); }
+  .tag-blue { background: rgba(79,140,255,.12); color: var(--accent); }
+  .tag-purple { background: rgba(167,139,250,.12); color: var(--purple); }
+
+  /* ========== CHART ========== */
+  .chart-container { height: 160px; position: relative; }
+  .chart-bar { position: absolute; bottom: 0; background: var(--accent); border-radius: 3px 3px 0 0;
+    transition: height 0.4s ease; opacity: 0.7; }
+  .chart-bar:hover { opacity: 1; }
+  .sparkline { height: 40px; display: flex; align-items: flex-end; gap: 2px; }
+  .sparkline .bar { flex: 1; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 2px;
+    transition: height 0.3s; opacity: 0.6; }
+  .sparkline .bar:hover { opacity: 1; }
+
+  /* ========== WIZARD ========== */
+  .wizard-steps { display: flex; gap: 4px; margin-bottom: 24px; }
+  .wizard-step { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+  .wizard-step.done { background: var(--green); }
+  .wizard-step.current { background: var(--accent); }
+
+  .wizard-field { margin-bottom: 18px; }
+  .wizard-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .wizard-field .hint { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .wizard-field input, .wizard-field select {
+    width: 100%; padding: 9px 12px; background: var(--bg-primary); border: 1px solid var(--border);
+    border-radius: 7px; color: var(--text-primary); font-size: 13px; outline: none;
+  }
+  .wizard-field input:focus, .wizard-field select:focus { border-color: var(--accent); }
+  .wizard-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ========== LIVE INDICATOR ========== */
+  .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(61,214,140,.4); }
+    50% { box-shadow: 0 0 0 6px rgba(61,214,140,0); }
+  }
+
+  /* ========== SKELETON ========== */
+  .skeleton { background: linear-gradient(90deg, var(--bg-hover) 25%, var(--border) 50%, var(--bg-hover) 75%);
+    background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* ========== EVENT LOG ========== */
+  .event-log { max-height: 320px; overflow-y: auto; }
+  .event-item { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .event-time { color: var(--text-muted); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+  .event-text { color: var(--text-secondary); flex: 1; }
+  .event-severity { font-weight: 600; font-size: 11px; }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 1100px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    .sidebar { display: none; } .main { margin-left: 0; }
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ========== SECTION SPACING ========== */
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title .count { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+  /* ========== EMPTY STATE ========== */
+  .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .empty .icon { font-size: 32px; margin-bottom: 10px; }
+
+  /* Hide all pages except active */
+  .page { display: none; }
+  .page.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="icon">🤖</div>
+    <div>
+      <h1>Jarvis</h1>
+      <small>Agent OS v5.0</small>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">Übersicht</div>
+      <a class="nav-item active" data-page="dashboard">
+        <span class="emoji">📊</span> Dashboard
+      </a>
+      <a class="nav-item" data-page="monitoring">
+        <span class="emoji">📡</span> Monitoring
+        <span class="pulse" style="margin-left:auto"></span>
+      </a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Agenten</div>
+      <a class="nav-item" data-page="agents">
+        <span class="emoji">🧠</span> Agenten
+      </a>
+      <a class="nav-item" data-page="heartbeat">
+        <span class="emoji">💓</span> Heartbeat-Tasks
+      </a>
+      <a class="nav-item" data-page="auth">
+        <span class="emoji">🔐</span> Auth & Sessions
+      </a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Skills</div>
+      <a class="nav-item" data-page="marketplace">
+        <span class="emoji">🏪</span> Marktplatz
+      </a>
+      <a class="nav-item" data-page="updater">
+        <span class="emoji">🔄</span> Updates
+      </a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Konfiguration</div>
+      <a class="nav-item" data-page="config">
+        <span class="emoji">⚙️</span> Einstellungen
+      </a>
+      <a class="nav-item" data-page="wizards">
+        <span class="emoji">🧙</span> Assistenten
+      </a>
+      <a class="nav-item" data-page="bindings">
+        <span class="emoji">🔗</span> Bindings
+      </a>
+      <a class="nav-item" data-page="commands">
+        <span class="emoji">⌨️</span> Slash-Commands
+      </a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="status"><span class="dot"></span> System läuft</div>
+  </div>
+</aside>
+
+<!-- ============ MAIN ============ -->
+<div class="main">
+  <div class="topbar">
+    <h2 id="page-title">Dashboard</h2>
+    <div class="actions">
+      <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Aktualisieren</button>
+      <button class="btn btn-primary btn-sm" onclick="navigate('wizards')">+ Neuer Wizard</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ====== DASHBOARD ====== -->
+    <div id="page-dashboard" class="page active">
+      <div class="section">
+        <div class="grid grid-4" id="kpi-cards">
+          <div class="card"><div class="card-title">Agenten</div><div class="card-value accent" id="kpi-agents">—</div><div class="card-sub">Konfiguriert</div></div>
+          <div class="card"><div class="card-title">Aktive Sessions</div><div class="card-value green" id="kpi-sessions">—</div><div class="card-sub">Auth-Gateway</div></div>
+          <div class="card"><div class="card-title">Skills installiert</div><div class="card-value" id="kpi-skills">—</div><div class="card-sub">Marketplace</div></div>
+          <div class="card"><div class="card-title">Heartbeat-Tasks</div><div class="card-value orange" id="kpi-tasks">—</div><div class="card-sub">Alle Agenten</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">System-Metriken (24h)</div>
+              <span class="pulse"></span>
+            </div>
+            <div class="sparkline" id="metrics-spark"></div>
+            <div class="card-sub" style="margin-top:8px">CPU · RAM · Tokens pro Stunde</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Letzte Ereignisse</div></div>
+            <div class="event-log" id="recent-events">
+              <div class="empty"><div class="icon">📭</div>Noch keine Ereignisse</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Schnellzugriff</div>
+        <div class="grid grid-3">
+          <div class="card" style="cursor:pointer" onclick="navigate('wizards')">
+            <div style="font-size:24px;margin-bottom:8px">🧙</div>
+            <div style="font-weight:500;font-size:14px">Konfig-Assistent</div>
+            <div class="card-sub">Heartbeat, Agents oder Bindings per Wizard einrichten</div>
+          </div>
+          <div class="card" style="cursor:pointer" onclick="navigate('marketplace')">
+            <div style="font-size:24px;margin-bottom:8px">🏪</div>
+            <div style="font-weight:500;font-size:14px">Skill-Marktplatz</div>
+            <div class="card-sub">Skills durchsuchen, installieren und bewerten</div>
+          </div>
+          <div class="card" style="cursor:pointer" onclick="navigate('monitoring')">
+            <div style="font-size:24px;margin-bottom:8px">📡</div>
+            <div style="font-weight:500;font-size:14px">Live-Monitoring</div>
+            <div class="card-sub">CPU, RAM, Tokens und Events in Echtzeit</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== MONITORING ====== -->
+    <div id="page-monitoring" class="page">
+      <div class="section">
+        <div class="grid grid-4" id="mon-kpis">
+          <div class="card"><div class="card-title">CPU</div><div class="card-value" id="mon-cpu">—%</div></div>
+          <div class="card"><div class="card-title">RAM</div><div class="card-value" id="mon-ram">— MB</div></div>
+          <div class="card"><div class="card-title">Token/h</div><div class="card-value accent" id="mon-tokens">—</div></div>
+          <div class="card"><div class="card-title">Uptime</div><div class="card-value green" id="mon-uptime">—</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Metriken-Verlauf</div>
+        <div class="card">
+          <div class="chart-container" id="mon-chart"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">System-Events <span class="count" id="mon-event-count"></span></div>
+        <div class="card">
+          <div class="event-log" id="mon-events"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== AGENTS ====== -->
+    <div id="page-agents" class="page">
+      <div class="section">
+        <div class="section-title">Konfigurierte Agenten</div>
+        <div class="card table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Modell</th><th>Sandbox</th><th>Tools</th><th>Status</th></tr></thead>
+            <tbody id="agents-table"><tr><td colspan="5" class="empty">Lade Agenten...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== HEARTBEAT ====== -->
+    <div id="page-heartbeat" class="page">
+      <div class="section">
+        <div class="section-title">Per-Agent Heartbeat-Tasks</div>
+        <div class="grid grid-3" id="hb-agent-cards"></div>
+      </div>
+    </div>
+
+    <!-- ====== AUTH ====== -->
+    <div id="page-auth" class="page">
+      <div class="section">
+        <div class="grid grid-4" id="auth-kpis">
+          <div class="card"><div class="card-title">Tokens</div><div class="card-value" id="auth-tokens">—</div></div>
+          <div class="card"><div class="card-title">Aktive</div><div class="card-value green" id="auth-active">—</div></div>
+          <div class="card"><div class="card-title">Sessions</div><div class="card-value accent" id="auth-sess">—</div></div>
+          <div class="card"><div class="card-title">Benutzer</div><div class="card-value" id="auth-users">—</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Audit-Log</div>
+        <div class="card"><div class="event-log" id="auth-audit"></div></div>
+      </div>
+    </div>
+
+    <!-- ====== MARKETPLACE ====== -->
+    <div id="page-marketplace" class="page">
+      <div class="section">
+        <div class="grid grid-4" id="mp-kpis">
+          <div class="card"><div class="card-title">Skills</div><div class="card-value" id="mp-total">—</div></div>
+          <div class="card"><div class="card-title">Verifiziert</div><div class="card-value green" id="mp-verified">—</div></div>
+          <div class="card"><div class="card-title">Kategorien</div><div class="card-value accent" id="mp-cats">—</div></div>
+          <div class="card"><div class="card-title">∅ Bewertung</div><div class="card-value orange" id="mp-rating">—</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Featured Skills</div>
+        <div class="grid grid-3" id="mp-featured"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Trending (7 Tage)</div>
+        <div class="grid grid-3" id="mp-trending"></div>
+      </div>
+    </div>
+
+    <!-- ====== UPDATER ====== -->
+    <div id="page-updater" class="page">
+      <div class="section">
+        <div class="grid grid-4" id="upd-kpis">
+          <div class="card"><div class="card-title">Installiert</div><div class="card-value" id="upd-installed">—</div></div>
+          <div class="card"><div class="card-title">Updates</div><div class="card-value orange" id="upd-pending">—</div></div>
+          <div class="card"><div class="card-title">Recalls</div><div class="card-value red" id="upd-recalls">—</div></div>
+          <div class="card"><div class="card-title">Strategie</div><div class="card-value accent" id="upd-strategy">—</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Ausstehende Updates</div>
+        <div class="card table-wrap">
+          <table>
+            <thead><tr><th>Paket</th><th>Aktuell</th><th>Verfügbar</th><th>Dringlichkeit</th><th>Aktion</th></tr></thead>
+            <tbody id="upd-table"><tr><td colspan="5" class="empty">Keine ausstehenden Updates</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== CONFIG ====== -->
+    <div id="page-config" class="page">
+      <div class="section">
+        <div class="section-title">Konfiguration</div>
+        <div class="grid grid-2" id="config-sections"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="grid grid-3" id="config-presets"></div>
+      </div>
+    </div>
+
+    <!-- ====== WIZARDS ====== -->
+    <div id="page-wizards" class="page">
+      <div class="section">
+        <div class="section-title">Konfigurations-Assistenten</div>
+        <div class="grid grid-3" id="wizard-list"></div>
+      </div>
+      <div class="section" id="wizard-active" style="display:none">
+        <div class="card" style="max-width:600px">
+          <div class="wizard-steps" id="wizard-progress"></div>
+          <div id="wizard-content"></div>
+          <div class="wizard-actions">
+            <button class="btn btn-ghost" id="wiz-back" onclick="wizardBack()">← Zurück</button>
+            <button class="btn btn-primary" id="wiz-next" onclick="wizardNext()">Weiter →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== BINDINGS ====== -->
+    <div id="page-bindings" class="page">
+      <div class="section">
+        <div class="section-title">Routing-Regeln</div>
+        <div class="card table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Kanal</th><th>Agent</th><th>Muster</th><th>Priorität</th></tr></thead>
+            <tbody id="bindings-table"><tr><td colspan="5" class="empty">Lade Bindings...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== COMMANDS ====== -->
+    <div id="page-commands" class="page">
+      <div class="section">
+        <div class="section-title">Slash-Commands <span class="count" id="cmd-count"></span></div>
+        <div class="card table-wrap">
+          <table>
+            <thead><tr><th>Command</th><th>Beschreibung</th><th>Scope</th><th>Auth</th><th>Cooldown</th></tr></thead>
+            <tbody id="commands-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ============================================================
+// API Layer
+// ============================================================
+const BASE = window.location.origin;
+const api = {
+  get: async (path) => {
+    try {
+      const r = await fetch(`${BASE}${path}`);
+      return r.ok ? await r.json() : {};
+    } catch { return {}; }
+  },
+  post: async (path, data) => {
+    try {
+      const r = await fetch(`${BASE}${path}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+      });
+      return r.ok ? await r.json() : {};
+    } catch { return {}; }
+  }
+};
+
+// ============================================================
+// Navigation
+// ============================================================
+const pageTitles = {
+  dashboard: 'Dashboard', monitoring: 'Live-Monitoring', agents: 'Agenten',
+  heartbeat: 'Heartbeat-Tasks', auth: 'Auth & Sessions', marketplace: 'Skill-Marktplatz',
+  updater: 'Updates & Recalls', config: 'Einstellungen', wizards: 'Konfigurations-Assistenten',
+  bindings: 'Routing-Regeln', commands: 'Slash-Commands'
+};
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById(`page-${page}`);
+  if (el) el.classList.add('active');
+  const nav = document.querySelector(`[data-page="${page}"]`);
+  if (nav) nav.classList.add('active');
+  document.getElementById('page-title').textContent = pageTitles[page] || page;
+  loadPage(page);
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => navigate(item.dataset.page));
+});
+
+// ============================================================
+// Dashboard
+// ============================================================
+async function loadDashboard() {
+  const [overview, authStats, mpStats, hbDash] = await Promise.all([
+    api.get('/api/v1/overview'),
+    api.get('/api/v1/auth/stats'),
+    api.get('/api/v1/marketplace/stats'),
+    api.get('/api/v1/agent-heartbeat/dashboard'),
+  ]);
+  setText('kpi-agents', overview.agent_count ?? '—');
+  setText('kpi-sessions', authStats.active_sessions ?? '—');
+  setText('kpi-skills', mpStats.total_skills ?? overview.skill_count ?? '—');
+  setText('kpi-tasks', hbDash.total_tasks ?? '—');
+
+  // Sparkline
+  const spark = document.getElementById('metrics-spark');
+  spark.innerHTML = '';
+  const data = generateSparkData(24);
+  const max = Math.max(...data, 1);
+  data.forEach(v => {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = `${(v/max) * 36}px`;
+    spark.appendChild(bar);
+  });
+
+  // Events
+  const events = await api.get('/api/v1/monitoring/events?n=8');
+  renderEvents('recent-events', events.events || []);
+}
+
+// ============================================================
+// Monitoring
+// ============================================================
+async function loadMonitoring() {
+  const dash = await api.get('/api/v1/monitoring/dashboard');
+  const snapshot = dash.snapshot || dash;
+  setText('mon-cpu', `${snapshot.cpu_percent ?? '—'}%`);
+  setText('mon-ram', `${snapshot.ram_mb ?? '—'} MB`);
+  setText('mon-tokens', snapshot.tokens_per_hour ?? '—');
+  setText('mon-uptime', snapshot.uptime ?? '—');
+
+  // Chart
+  const chart = document.getElementById('mon-chart');
+  chart.innerHTML = '';
+  const data = generateSparkData(48);
+  const max = Math.max(...data, 1);
+  const w = chart.offsetWidth / data.length - 2;
+  data.forEach((v, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar';
+    bar.style.height = `${(v/max) * 150}px`;
+    bar.style.width = `${w}px`;
+    bar.style.left = `${i * (w + 2)}px`;
+    bar.title = `${v}`;
+    chart.appendChild(bar);
+  });
+
+  const events = await api.get('/api/v1/monitoring/events?n=30');
+  const evts = events.events || [];
+  setText('mon-event-count', `(${evts.length})`);
+  renderEvents('mon-events', evts);
+}
+
+// ============================================================
+// Agents
+// ============================================================
+async function loadAgents() {
+  const data = await api.get('/api/v1/agents');
+  const agents = data.agents || [];
+  const tbody = document.getElementById('agents-table');
+  if (!agents.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Keine Agenten konfiguriert</td></tr>'; return; }
+  tbody.innerHTML = agents.map(a => `
+    <tr>
+      <td style="color:var(--text-primary);font-weight:500">${a.name || a.agent_id || '—'}</td>
+      <td><span class="tag tag-blue">${a.preferred_model || a.model || 'Standard'}</span></td>
+      <td>${a.sandbox_profile || a.sandbox_network || '—'}</td>
+      <td>${(a.allowed_tools || []).length || '∞'}</td>
+      <td><span class="tag tag-green">Aktiv</span></td>
+    </tr>
+  `).join('');
+}
+
+// ============================================================
+// Heartbeat
+// ============================================================
+async function loadHeartbeat() {
+  const data = await api.get('/api/v1/agent-heartbeat/dashboard');
+  const container = document.getElementById('hb-agent-cards');
+  const agents = data.agents || [];
+  if (!agents.length) { container.innerHTML = '<div class="empty"><div class="icon">💓</div>Keine Agent-Heartbeats konfiguriert</div>'; return; }
+  container.innerHTML = agents.map(a => `
+    <div class="card">
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px">${a.agent_id}</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span class="card-sub">Tasks</span><span style="font-family:var(--mono)">${a.task_count}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span class="card-sub">Ausführungen</span><span style="font-family:var(--mono)">${a.total_runs}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span class="card-sub">Fehler</span><span style="font-family:var(--mono);color:${a.total_fails ? 'var(--red)' : 'var(--green)'}">${a.total_fails}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// Auth
+// ============================================================
+async function loadAuth() {
+  const data = await api.get('/api/v1/auth/stats');
+  setText('auth-tokens', data.total_tokens ?? '—');
+  setText('auth-active', data.active_tokens ?? '—');
+  setText('auth-sess', data.active_sessions ?? '—');
+  setText('auth-users', data.unique_users ?? '—');
+
+  const el = document.getElementById('auth-audit');
+  el.innerHTML = `<div class="event-item"><div class="event-text" style="color:var(--text-muted)">
+    ${data.audit_entries ?? 0} Audit-Einträge gesamt
+  </div></div>`;
+}
+
+// ============================================================
+// Marketplace
+// ============================================================
+async function loadMarketplace() {
+  const [stats, featured, trending] = await Promise.all([
+    api.get('/api/v1/marketplace/stats'),
+    api.get('/api/v1/marketplace/featured?n=3'),
+    api.get('/api/v1/marketplace/trending?n=3'),
+  ]);
+  setText('mp-total', stats.total_skills ?? '—');
+  setText('mp-verified', stats.verified_publishers ?? '—');
+  setText('mp-cats', stats.total_categories ?? '—');
+  setText('mp-rating', stats.avg_rating ? `${stats.avg_rating.toFixed(1)}★` : '—');
+
+  renderSkillCards('mp-featured', featured.featured || []);
+  renderSkillCards('mp-trending', trending.trending || []);
+}
+
+function renderSkillCards(id, skills) {
+  const el = document.getElementById(id);
+  if (!skills.length) { el.innerHTML = '<div class="empty">Keine Skills</div>'; return; }
+  el.innerHTML = skills.map(s => `
+    <div class="card">
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${s.name || s.package_id || '—'}</div>
+      <div class="card-sub" style="margin-bottom:8px">${s.description || ''}</div>
+      <div style="display:flex;gap:6px">
+        ${s.verified ? '<span class="tag tag-green">✓ Verifiziert</span>' : ''}
+        ${s.rating ? `<span class="tag tag-orange">${s.rating.toFixed(1)}★</span>` : ''}
+        ${s.installs ? `<span class="tag tag-blue">${s.installs} Downloads</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// Updater
+// ============================================================
+async function loadUpdater() {
+  const [stats, pending, recalls] = await Promise.all([
+    api.get('/api/v1/updater/stats'),
+    api.get('/api/v1/updater/pending'),
+    api.get('/api/v1/updater/recalls'),
+  ]);
+  setText('upd-installed', stats.installed_count ?? '—');
+  setText('upd-pending', stats.pending_updates ?? '—');
+  setText('upd-recalls', stats.active_recalls ?? '—');
+  setText('upd-strategy', stats.policy?.strategy ?? '—');
+
+  const updates = pending.updates || [];
+  const tbody = document.getElementById('upd-table');
+  if (!updates.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Alle Skills aktuell ✓</td></tr>'; return; }
+  tbody.innerHTML = updates.map(u => `
+    <tr>
+      <td style="font-weight:500">${u.package_id}</td>
+      <td><span class="tag tag-blue">${u.current_version}</span></td>
+      <td><span class="tag tag-green">${u.available_version}</span></td>
+      <td><span class="tag tag-${u.severity === 'critical' ? 'red' : u.severity === 'high' ? 'orange' : 'blue'}">${u.severity}</span></td>
+      <td>${u.auto_installable ? '<button class="btn btn-primary btn-sm">Installieren</button>' : '<span class="tag tag-purple">Manuell</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+// ============================================================
+// Config
+// ============================================================
+async function loadConfig() {
+  const [config, presets] = await Promise.all([
+    api.get('/api/v1/config'),
+    api.get('/api/v1/config/presets'),
+  ]);
+  const sections = document.getElementById('config-sections');
+  const keys = Object.keys(config).filter(k => typeof config[k] === 'object' && config[k] !== null);
+  sections.innerHTML = keys.map(k => `
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">${k}</div>
+      <pre style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);overflow:auto;max-height:140px">${JSON.stringify(config[k], null, 2)}</pre>
+    </div>
+  `).join('') || '<div class="empty">Keine Konfiguration geladen</div>';
+
+  const presetsEl = document.getElementById('config-presets');
+  const presetList = presets.presets || [];
+  presetsEl.innerHTML = presetList.map(p => `
+    <div class="card" style="cursor:pointer">
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${p.name || p}</div>
+      <div class="card-sub">${p.description || 'Preset anwenden'}</div>
+    </div>
+  `).join('') || '';
+}
+
+// ============================================================
+// Wizards
+// ============================================================
+let wizardState = { type: null, step: 0, steps: [], values: {}, templates: [] };
+
+async function loadWizards() {
+  const data = await api.get('/api/v1/wizards');
+  const wizards = data.wizards || [];
+  const icons = { heartbeat: '💓', binding: '🔗', agent: '🧠' };
+  const descs = {
+    heartbeat: 'Automatische Aufgaben konfigurieren',
+    binding: 'Routing-Regeln für Kanäle erstellen',
+    agent: 'Neuen Agenten mit Profil und Sandbox einrichten',
+  };
+  const el = document.getElementById('wizard-list');
+  el.innerHTML = wizards.map(w => `
+    <div class="card" style="cursor:pointer" onclick="startWizard('${w.wizard_type}')">
+      <div style="font-size:28px;margin-bottom:8px">${icons[w.wizard_type] || '🧙'}</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1)}-Wizard</div>
+      <div class="card-sub">${descs[w.wizard_type] || `${w.step_count} Schritte`}</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">${w.templates?.length || 0} Vorlagen verfügbar</div>
+    </div>
+  `).join('');
+}
+
+async function startWizard(type) {
+  const data = await api.get(`/api/v1/wizards/${type}`);
+  if (data.error) return;
+  wizardState = { type, step: 0, steps: data.steps || [], values: {}, templates: data.templates || [] };
+  document.getElementById('wizard-list').parentElement.style.display = 'none';
+  document.getElementById('wizard-active').style.display = 'block';
+  renderWizardStep();
+}
+
+function renderWizardStep() {
+  const { step, steps } = wizardState;
+  // Progress
+  const prog = document.getElementById('wizard-progress');
+  prog.innerHTML = steps.map((_, i) =>
+    `<div class="wizard-step ${i < step ? 'done' : i === step ? 'current' : ''}"></div>`
+  ).join('');
+
+  const s = steps[step];
+  if (!s) return;
+  const content = document.getElementById('wizard-content');
+  const val = wizardState.values[s.field_name] ?? s.default ?? '';
+  let html = `<div class="wizard-field"><label>${s.title}</label>
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${s.description}</div>`;
+
+  if (s.field_type === 'text') html += `<input type="text" id="wiz-input" value="${val}" placeholder="${s.tooltip || ''}">`;
+  else if (s.field_type === 'number') html += `<input type="number" id="wiz-input" value="${val}" placeholder="${s.validation_hint || ''}">`;
+  else if (s.field_type === 'boolean') html += `<select id="wiz-input"><option value="true" ${val === true ? 'selected' : ''}>Ja</option><option value="false" ${val === false ? 'selected' : ''}>Nein</option></select>`;
+  else if (s.field_type === 'select') html += `<select id="wiz-input">${(s.options||[]).map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label || o.value}</option>`).join('')}</select>`;
+  else if (s.field_type === 'confirm') html += `<pre style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);background:var(--bg-primary);padding:12px;border-radius:7px">${JSON.stringify(wizardState.values, null, 2)}</pre>`;
+
+  if (s.tooltip) html += `<div class="hint">💡 ${s.tooltip}</div>`;
+  html += '</div>';
+  content.innerHTML = html;
+
+  document.getElementById('wiz-back').style.display = step > 0 ? '' : 'none';
+  document.getElementById('wiz-next').textContent = step >= steps.length - 1 ? '✓ Erstellen' : 'Weiter →';
+}
+
+function wizardNext() {
+  const { step, steps } = wizardState;
+  const s = steps[step];
+  const input = document.getElementById('wiz-input');
+  if (input && s) {
+    let val = input.value;
+    if (s.field_type === 'boolean') val = val === 'true';
+    else if (s.field_type === 'number') val = Number(val);
+    wizardState.values[s.field_name] = val;
+  }
+  if (step >= steps.length - 1) { finishWizard(); return; }
+  wizardState.step++;
+  renderWizardStep();
+}
+
+function wizardBack() {
+  if (wizardState.step > 0) { wizardState.step--; renderWizardStep(); }
+}
+
+async function finishWizard() {
+  const result = await api.post(`/api/v1/wizards/${wizardState.type}/run`, wizardState.values);
+  document.getElementById('wizard-active').style.display = 'none';
+  document.getElementById('wizard-list').parentElement.style.display = '';
+  if (result.valid !== false) alert('✓ Konfiguration erstellt!');
+  else alert('Fehler: ' + JSON.stringify(result.warnings || result.errors || []));
+}
+
+// ============================================================
+// Bindings
+// ============================================================
+async function loadBindings() {
+  const data = await api.get('/api/v1/bindings');
+  const bindings = data.bindings || [];
+  const tbody = document.getElementById('bindings-table');
+  if (!bindings.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Keine Bindings konfiguriert</td></tr>'; return; }
+  tbody.innerHTML = bindings.map(b => `
+    <tr>
+      <td style="font-weight:500">${b.name || '—'}</td>
+      <td>${b.channel || b.channels?.join(', ') || 'Alle'}</td>
+      <td><span class="tag tag-blue">${b.agent || b.target_agent || '—'}</span></td>
+      <td style="font-family:var(--mono);font-size:11px">${b.pattern || b.regex_pattern || b.command_prefix || '—'}</td>
+      <td>${b.priority ?? '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ============================================================
+// Commands
+// ============================================================
+async function loadCommands() {
+  const data = await api.get('/api/v1/commands/list');
+  const cmds = data.commands || [];
+  setText('cmd-count', `(${cmds.length})`);
+  const tbody = document.getElementById('commands-table');
+  tbody.innerHTML = cmds.map(c => `
+    <tr>
+      <td style="font-family:var(--mono);font-weight:600;color:var(--accent)">/jarvis ${c.name}</td>
+      <td>${c.description}</td>
+      <td><span class="tag tag-${c.scope === 'all' ? 'green' : 'blue'}">${c.scope}</span></td>
+      <td>${c.requires_auth ? '<span class="tag tag-orange">Auth</span>' : c.admin_only ? '<span class="tag tag-red">Admin</span>' : '—'}</td>
+      <td style="font-family:var(--mono)">${c.cooldown_seconds ? c.cooldown_seconds + 's' : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+
+function generateSparkData(n) {
+  const data = [];
+  let v = 40 + Math.random() * 20;
+  for (let i = 0; i < n; i++) {
+    v += (Math.random() - 0.45) * 15;
+    v = Math.max(5, Math.min(100, v));
+    data.push(Math.round(v));
+  }
+  return data;
+}
+
+function renderEvents(id, events) {
+  const el = document.getElementById(id);
+  if (!events.length) { el.innerHTML = '<div class="empty" style="padding:16px">Keine Ereignisse</div>'; return; }
+  const severityColor = { info: 'var(--accent)', warning: 'var(--orange)', error: 'var(--red)', critical: 'var(--red)' };
+  el.innerHTML = events.slice(0, 20).map(e => `
+    <div class="event-item">
+      <div class="event-time">${formatTime(e.timestamp)}</div>
+      <div class="event-text">${e.event_type || e.message || e.action || '—'}</div>
+      <div class="event-severity" style="color:${severityColor[e.severity] || 'var(--text-muted)'}">${e.severity || ''}</div>
+    </div>
+  `).join('');
+}
+
+function formatTime(ts) {
+  if (!ts) return '—';
+  try { return new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+  catch { return ts; }
+}
+
+// ============================================================
+// Page Loader
+// ============================================================
+const loaders = {
+  dashboard: loadDashboard, monitoring: loadMonitoring, agents: loadAgents,
+  heartbeat: loadHeartbeat, auth: loadAuth, marketplace: loadMarketplace,
+  updater: loadUpdater, config: loadConfig, wizards: loadWizards,
+  bindings: loadBindings, commands: loadCommands,
+};
+
+function loadPage(page) { const fn = loaders[page]; if (fn) fn(); }
+function refreshAll() { const active = document.querySelector('.page.active'); if (active) loadPage(active.id.replace('page-', '')); }
+
+// Auto-refresh monitoring every 10s
+setInterval(() => {
+  if (document.getElementById('page-monitoring').classList.contains('active')) loadMonitoring();
+}, 10000);
+
+// Initial load
+loadDashboard();
+</script>
+</body>
+</html>

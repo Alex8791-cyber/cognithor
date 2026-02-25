@@ -1,0 +1,2618 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarvis Agent OS — Admin Dashboard</title>
+<style>
+  /* ===== DESIGN: Industrial-Utilitarian Dark Theme ===== */
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;700&display=swap');
+
+  :root {
+    --bg-primary: #0a0e14;
+    --bg-secondary: #111820;
+    --bg-card: #151c27;
+    --bg-hover: #1a2332;
+    --border: #1e2a3a;
+    --border-active: #2d4a6f;
+    --text-primary: #d4dae3;
+    --text-secondary: #6b7a8d;
+    --text-muted: #3d4f63;
+    --accent-blue: #3b82f6;
+    --accent-green: #22c55e;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-purple: #a855f7;
+    --accent-cyan: #06b6d4;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 6px;
+    --transition: 180ms ease;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .sidebar-brand {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-brand h1 {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .sidebar-brand .version {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .nav-section {
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+
+  .nav-section-title {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    padding: 8px 8px 6px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    user-select: none;
+  }
+
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-item.active {
+    background: rgba(59,130,246,0.12);
+    color: var(--accent-blue);
+    border-left: 2px solid var(--accent-blue);
+  }
+
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .nav-badge {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--accent-blue);
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .nav-badge.warn { background: var(--accent-amber); }
+  .nav-badge.danger { background: var(--accent-red); }
+
+  /* ===== MAIN CONTENT ===== */
+  .main { margin-left: 240px; flex: 1; padding: 24px 28px; min-height: 100vh; }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-title { font-size: 20px; font-weight: 700; }
+
+  .page-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.online { background: var(--accent-green); }
+  .status-dot.warning { background: var(--accent-amber); }
+  .status-dot.offline { background: var(--accent-red); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* ===== METRIC CARDS ===== */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    transition: border-color var(--transition);
+  }
+
+  .metric-card:hover { border-color: var(--border-active); }
+
+  .metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .metric-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  .metric-value.green { color: var(--accent-green); }
+  .metric-value.blue { color: var(--accent-blue); }
+  .metric-value.amber { color: var(--accent-amber); }
+  .metric-value.red { color: var(--accent-red); }
+  .metric-value.purple { color: var(--accent-purple); }
+  .metric-value.cyan { color: var(--accent-cyan); }
+
+  /* ===== DATA TABLE ===== */
+  .data-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .data-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .data-card-header .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: rgba(59,130,246,0.15);
+    color: var(--accent-blue);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  tr:hover td { background: var(--bg-hover); color: var(--text-primary); }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+
+  .pill.green { background: rgba(34,197,94,0.15); color: var(--accent-green); }
+  .pill.amber { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+  .pill.red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+  .pill.blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+  .pill.purple { background: rgba(168,85,247,0.15); color: var(--accent-purple); }
+
+  /* ===== EVENT LOG ===== */
+  .event-log {
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .event-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    transition: background var(--transition);
+  }
+
+  .event-row:hover { background: var(--bg-hover); }
+
+  .event-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 70px;
+    padding-top: 1px;
+  }
+
+  .event-type {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  .event-msg { color: var(--text-secondary); flex: 1; line-height: 1.4; }
+
+  /* ===== CHARTS (Mini Bar Charts via CSS) ===== */
+  .mini-chart { display: flex; align-items: flex-end; gap: 2px; height: 40px; }
+
+  .mini-bar {
+    flex: 1;
+    background: var(--accent-blue);
+    border-radius: 2px 2px 0 0;
+    min-width: 4px;
+    transition: height 400ms ease;
+    opacity: 0.7;
+  }
+
+  .mini-bar:hover { opacity: 1; }
+
+  /* ===== WIZARD PANEL ===== */
+  .wizard-steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .wizard-step {
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .wizard-step.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+  .wizard-step.done { color: var(--accent-green); }
+
+  .wizard-field {
+    margin-bottom: 16px;
+  }
+
+  .wizard-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .wizard-field input, .wizard-field select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  .wizard-field input:focus, .wizard-field select:focus {
+    border-color: var(--accent-blue);
+  }
+
+  .wizard-tooltip {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .btn:hover { border-color: var(--border-active); background: var(--bg-hover); }
+  .btn.primary { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+  .btn.primary:hover { background: #2563eb; }
+  .btn.danger { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+
+  /* ===== GRID LAYOUT ===== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  @media (max-width: 1024px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .sidebar { width: 60px; }
+    .sidebar .nav-item span, .sidebar .nav-section-title,
+    .sidebar .sidebar-brand h1, .sidebar .sidebar-brand .version { display: none; }
+    .main { margin-left: 60px; }
+  }
+
+  /* ===== HIDDEN PAGES ===== */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* ===== LOADING ===== */
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-hover) 50%, var(--bg-card) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius);
+    height: 20px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <h1>⚡ Jarvis</h1>
+    <div class="version">Agent OS v1.0</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Übersicht</div>
+    <div class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </div>
+    <div class="nav-item" data-page="agents">
+      <span class="nav-icon">🤖</span><span>Agenten</span>
+      <span class="nav-badge" id="nav-agent-count">0</span>
+    </div>
+    <div class="nav-item" data-page="monitoring">
+      <span class="nav-icon">📡</span><span>Monitoring</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Skills</div>
+    <div class="nav-item" data-page="marketplace">
+      <span class="nav-icon">🏪</span><span>Marktplatz</span>
+    </div>
+    <div class="nav-item" data-page="updates">
+      <span class="nav-icon">🔄</span><span>Updates</span>
+      <span class="nav-badge warn" id="nav-update-count" style="display:none">0</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Konfiguration</div>
+    <div class="nav-item" data-page="wizards">
+      <span class="nav-icon">🧙</span><span>Assistenten</span>
+    </div>
+    <div class="nav-item" data-page="config">
+      <span class="nav-icon">⚙️</span><span>Einstellungen</span>
+    </div>
+    <div class="nav-item" data-page="commands">
+      <span class="nav-icon">⌨️</span><span>Commands</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Sicherheit</div>
+    <div class="nav-item" data-page="auth">
+      <span class="nav-icon">🔐</span><span>Auth & SSO</span>
+    </div>
+    <div class="nav-item" data-page="isolation">
+      <span class="nav-icon">🛡️</span><span>Isolation</span>
+    </div>
+    <div class="nav-item" data-page="audit">
+      <span class="nav-icon">📋</span><span>Audit-Log</span>
+    </div>
+    <div class="nav-item" data-page="pipeline">
+      <span class="nav-icon">🔬</span><span>Security-Pipeline</span>
+    </div>
+    <div class="nav-item" data-page="governance">
+      <span class="nav-icon">⚖️</span><span>Governance</span>
+    </div>
+    <div class="nav-item" data-page="connectors">
+      <span class="nav-icon">🔗</span><span>Konnektoren</span>
+    </div>
+    <div class="nav-item" data-page="workflows">
+      <span class="nav-icon">📐</span><span>Workflows</span>
+    </div>
+    <div class="nav-item" data-page="framework">
+      <span class="nav-icon">🏛️</span><span>Security-KPIs</span>
+    </div>
+    <div class="nav-item" data-page="interop">
+      <span class="nav-icon">🌐</span><span>Federation</span>
+    </div>
+    <div class="nav-item" data-page="economics">
+      <span class="nav-icon">💶</span><span>Budget & Ethik</span>
+    </div>
+    <div class="nav-item" data-page="cicd">
+      <span class="nav-icon">🚀</span><span>CI/CD Gate</span>
+    </div>
+    <div class="nav-item" data-page="sandbox">
+      <span class="nav-icon">📦</span><span>Isolation</span>
+    </div>
+    <div class="nav-item" data-page="memintegrity">
+      <span class="nav-icon">🧬</span><span>Memory-Integrität</span>
+    </div>
+    <div class="nav-item" data-page="aiact">
+      <span class="nav-icon">🇪🇺</span><span>EU AI Act</span>
+    </div>
+    <div class="nav-item" data-page="ecosystem">
+      <span class="nav-icon">🌿</span><span>Ecosystem</span>
+    </div>
+    <div class="nav-item" data-page="hardening">
+      <span class="nav-icon">🔒</span><span>CI/CD & Isolation</span>
+    </div>
+    <div class="nav-item" data-page="euaiact">
+      <span class="nav-icon">🇪🇺</span><span>EU-AI-Act</span>
+    </div>
+    <div class="nav-item" data-page="tenants">
+      <span class="nav-icon">🏢</span><span>Multi-Tenant</span>
+    </div>
+    <div class="nav-item" data-page="vaults">
+      <span class="nav-icon">🔐</span><span>Agent-Vaults</span>
+    </div>
+    <div class="nav-item" data-page="redteam">
+      <span class="nav-icon">🎯</span><span>Red-Team</span>
+    </div>
+    <div class="nav-item" data-page="governance">
+      <span class="nav-icon">⚖️</span><span>Governance Hub</span>
+    </div>
+    <div class="nav-item" data-page="impact">
+      <span class="nav-icon">📋</span><span>Impact Assessment</span>
+    </div>
+    <div class="nav-item" data-page="codeaudit">
+      <span class="nav-icon">🔬</span><span>Code-Audit</span>
+    </div>
+    <div class="nav-item" data-page="userportal">
+      <span class="nav-icon">👤</span><span>Nutzer-Portal</span>
+    </div>
+    <div class="nav-item" data-page="skillcli">
+      <span class="nav-icon">🛠️</span><span>Skill-CLI</span>
+    </div>
+    <div class="nav-item" data-page="installer">
+      <span class="nav-icon">📦</span><span>Setup-Wizard</span>
+    </div>
+    <div class="nav-item" data-page="perf">
+      <span class="nav-icon">⚡</span><span>Performance</span>
+    </div>
+    <div class="nav-item" data-page="portal">
+      <span class="nav-icon">👤</span><span>Endnutzer-Portal</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+
+  <!-- ==================== DASHBOARD ==================== -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-title"><span class="status-dot online"></span> Live Dashboard</div>
+        <div class="page-subtitle">Echtzeit-Übersicht aller Systeme</div>
+      </div>
+      <div>
+        <button class="btn" onclick="refreshDashboard()">↻ Aktualisieren</button>
+      </div>
+    </div>
+
+    <div class="metrics-grid" id="dashboard-metrics">
+      <div class="metric-card">
+        <div class="metric-label">Aktive Agenten</div>
+        <div class="metric-value cyan" id="m-agents">—</div>
+        <div class="metric-sub" id="m-agents-sub">Laden...</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Heartbeat-Tasks</div>
+        <div class="metric-value blue" id="m-tasks">—</div>
+        <div class="metric-sub" id="m-tasks-sub">Laden...</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Installierte Skills</div>
+        <div class="metric-value purple" id="m-skills">—</div>
+        <div class="metric-sub" id="m-skills-sub">Laden...</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Erfolgsquote</div>
+        <div class="metric-value green" id="m-success">—</div>
+        <div class="metric-sub" id="m-success-sub">Aller Tasks</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Auth Sessions</div>
+        <div class="metric-value amber" id="m-sessions">—</div>
+        <div class="metric-sub" id="m-sessions-sub">Aktiv</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Security Recalls</div>
+        <div class="metric-value red" id="m-recalls">—</div>
+        <div class="metric-sub" id="m-recalls-sub">Aktive Warnungen</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="data-card">
+        <div class="data-card-header">
+          Letzte Ereignisse
+          <span class="tag">LIVE</span>
+        </div>
+        <div class="event-log" id="event-log">
+          <div class="empty-state"><div class="icon">📡</div><p>Verbinde mit Event-Stream...</p></div>
+        </div>
+      </div>
+
+      <div class="data-card">
+        <div class="data-card-header">
+          Agent-Übersicht
+          <span class="tag" id="agent-overview-count">0 Agenten</span>
+        </div>
+        <div id="agent-overview-table">
+          <table>
+            <thead><tr><th>Agent</th><th>Tasks</th><th>Status</th><th>Erfolg</th></tr></thead>
+            <tbody id="agent-overview-body">
+              <tr><td colspan="4" class="empty-state"><p>Keine Agenten konfiguriert</p></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== AGENTS ==================== -->
+  <div class="page" id="page-agents">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🤖 Agenten-Verwaltung</div>
+        <div class="page-subtitle">Per-Agent Heartbeat, Sessions und Ressourcen</div>
+      </div>
+      <button class="btn primary" onclick="showPage('wizards')">+ Neuer Agent (Wizard)</button>
+    </div>
+    <div id="agents-content">
+      <div class="empty-state"><div class="icon">🤖</div><p>Lade Agenten-Daten...</p></div>
+    </div>
+  </div>
+
+  <!-- ==================== MONITORING ==================== -->
+  <div class="page" id="page-monitoring">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📡 Echtzeit-Monitoring</div>
+        <div class="page-subtitle">Metriken, Events und System-Gesundheit</div>
+      </div>
+      <button class="btn" onclick="loadMonitoring()">↻ Aktualisieren</button>
+    </div>
+
+    <div class="metrics-grid" id="monitoring-metrics"></div>
+
+    <div class="grid-2">
+      <div class="data-card">
+        <div class="data-card-header">System-Metriken <span class="tag">LIVE</span></div>
+        <div style="padding:18px;">
+          <div style="margin-bottom:14px;">
+            <div class="metric-label">CPU-Auslastung</div>
+            <div style="background:var(--bg-secondary);border-radius:3px;height:8px;overflow:hidden;">
+              <div id="cpu-bar" style="height:100%;width:0%;background:var(--accent-cyan);transition:width 1s;"></div>
+            </div>
+            <div class="metric-sub"><span id="cpu-val">0</span>%</div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <div class="metric-label">Speicher</div>
+            <div style="background:var(--bg-secondary);border-radius:3px;height:8px;overflow:hidden;">
+              <div id="mem-bar" style="height:100%;width:0%;background:var(--accent-purple);transition:width 1s;"></div>
+            </div>
+            <div class="metric-sub"><span id="mem-val">0</span> MB</div>
+          </div>
+          <div>
+            <div class="metric-label">Aktive Verbindungen</div>
+            <div class="mini-chart" id="conn-chart"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-card">
+        <div class="data-card-header">Audit-Trail <span class="tag">Letzte 20</span></div>
+        <div class="event-log" id="audit-log">
+          <div class="empty-state"><p>Lade Audit-Einträge...</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MARKETPLACE ==================== -->
+  <div class="page" id="page-marketplace">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🏪 Skill-Marktplatz</div>
+        <div class="page-subtitle">Kuratierte Skills, Trending und Kategorien</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="skill-search" placeholder="Skills durchsuchen..."
+               style="padding:8px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;width:240px;outline:none;">
+        <button class="btn" onclick="searchSkills()">🔍 Suchen</button>
+      </div>
+    </div>
+
+    <div class="grid-3" id="marketplace-categories"></div>
+    <div id="marketplace-feed" style="margin-top:20px;"></div>
+  </div>
+
+  <!-- ==================== UPDATES ==================== -->
+  <div class="page" id="page-updates">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔄 Skill-Updates</div>
+        <div class="page-subtitle">Automatische Updates, Policies und Security-Recalls</div>
+      </div>
+      <button class="btn primary" onclick="checkUpdates()">🔍 Updates prüfen</button>
+    </div>
+    <div id="updates-content">
+      <div class="empty-state"><div class="icon">🔄</div><p>Lade Update-Status...</p></div>
+    </div>
+  </div>
+
+  <!-- ==================== WIZARDS ==================== -->
+  <div class="page" id="page-wizards">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🧙 Konfigurations-Assistenten</div>
+        <div class="page-subtitle">Schritt-für-Schritt durch komplexe Einstellungen</div>
+      </div>
+    </div>
+
+    <div class="grid-3" id="wizard-cards"></div>
+    <div id="wizard-panel" style="display:none;margin-top:24px;"></div>
+  </div>
+
+  <!-- ==================== CONFIG ==================== -->
+  <div class="page" id="page-config">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚙️ System-Konfiguration</div>
+        <div class="page-subtitle">Heartbeat, Agenten, Bindings, Sandbox</div>
+      </div>
+      <button class="btn" onclick="loadConfig()">↻ Laden</button>
+    </div>
+    <div id="config-content">
+      <div class="empty-state"><div class="icon">⚙️</div><p>Lade Konfiguration...</p></div>
+    </div>
+  </div>
+
+  <!-- ==================== COMMANDS ==================== -->
+  <div class="page" id="page-commands">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⌨️ Slash-Commands</div>
+        <div class="page-subtitle">Registrierte Commands für Slack und Discord</div>
+      </div>
+    </div>
+    <div id="commands-content">
+      <div class="empty-state"><div class="icon">⌨️</div><p>Lade Commands...</p></div>
+    </div>
+  </div>
+
+  <!-- ==================== AUTH ==================== -->
+  <div class="page" id="page-auth">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔐 Auth-Gateway & SSO</div>
+        <div class="page-subtitle">Token-Verwaltung, Sessions und Audit</div>
+      </div>
+    </div>
+    <div id="auth-content">
+      <div class="empty-state"><div class="icon">🔐</div><p>Lade Auth-Daten...</p></div>
+    </div>
+  </div>
+
+  <!-- ==================== ISOLATION ==================== -->
+  <div class="page" id="page-isolation">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🛡️ Agent-Isolation</div>
+        <div class="page-subtitle">Workspace-Guards, Quotas und Violations</div>
+      </div>
+    </div>
+    <div id="isolation-content">
+      <div class="empty-state"><div class="icon">🛡️</div><p>Lade Isolation-Daten...</p></div>
+    </div>
+  </div>
+
+  <!-- ==================== AUDIT ==================== -->
+  <div class="page" id="page-audit">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📋 Vollständiges Audit-Log</div>
+        <div class="page-subtitle">Alle Sicherheits- und System-Ereignisse</div>
+      </div>
+    </div>
+    <div id="audit-content">
+      <div class="empty-state"><div class="icon">📋</div><p>Lade Audit-Log...</p></div>
+    </div>
+  </div>
+
+  <!-- ===== SECURITY PIPELINE ===== -->
+  <div class="page" id="page-pipeline">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔬 MLOps Security-Pipeline</div>
+        <div class="page-subtitle">Automatisierte Sicherheitsprüfungen bei jedem Update</div>
+      </div>
+      <button class="btn primary" onclick="runPipeline()">▶ Pipeline starten</button>
+    </div>
+    <div id="pipeline-content">
+      <div class="card-grid">
+        <div class="stat-card"><div class="stat-value" id="pipe-runs">—</div><div class="stat-label">Pipeline-Runs</div></div>
+        <div class="stat-card"><div class="stat-value" id="pipe-pass">—</div><div class="stat-label">Pass-Rate</div></div>
+        <div class="stat-card"><div class="stat-value" id="pipe-findings">—</div><div class="stat-label">Findings gesamt</div></div>
+        <div class="stat-card"><div class="stat-value" id="pipe-last">—</div><div class="stat-label">Letztes Ergebnis</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Pipeline-Stufen</div>
+        <div id="pipe-stages" style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary)">
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">🔍 Adversarial Fuzzing — Unicode, Encoding, Nesting, DoS</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">🛡️ Model-Inversion Detection — Prompt-Extraction, Training-Data-Leak</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">📦 Dependency Scan — CVE-Prüfung aller Skill-Abhängigkeiten</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">💉 Prompt-Injection — 14+ Injection-Payloads</div>
+          <div style="padding:8px 0">🧠 Memory-Poisoning — Fakten-Manipulation erkennen</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">CI/CD-Integration</div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <button class="btn" onclick="showCIConfig('github')">GitHub Actions</button>
+          <button class="btn" onclick="showCIConfig('gitlab')">GitLab CI</button>
+        </div>
+        <pre id="ci-config" style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;font-size:12px;color:var(--accent-blue);display:none;overflow-x:auto"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GOVERNANCE ===== -->
+  <div class="page" id="page-governance">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚖️ Marketplace-Governance</div>
+        <div class="page-subtitle">Reputation, Abuse-Reports und Skill-Recalls</div>
+      </div>
+    </div>
+    <div id="governance-content">
+      <div class="card-grid">
+        <div class="stat-card"><div class="stat-value" id="gov-entities">—</div><div class="stat-label">Bewertete Skills</div></div>
+        <div class="stat-card"><div class="stat-value" id="gov-avg-score">—</div><div class="stat-label">Ø Reputation</div></div>
+        <div class="stat-card"><div class="stat-value" id="gov-recalls">—</div><div class="stat-label">Aktive Recalls</div></div>
+        <div class="stat-card"><div class="stat-value" id="gov-reports">—</div><div class="stat-label">Offene Reports</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Trust-Verteilung</div>
+        <div id="gov-trust-dist" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Governance-Regeln</div>
+        <div id="gov-rules" style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary)">
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">🚫 GOV-001 — Auto-Block bei Score &lt; 10</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">⚠️ GOV-002 — Auto-Flag bei 3+ Abuse Reports</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">🔴 GOV-003 — Auto-Recall bei Security-Fail</div>
+          <div style="padding:8px 0">📢 GOV-004 — Notify bei Score &lt; 30</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Aktive Recalls</div>
+        <div id="gov-recalls-list">
+          <div class="empty-state"><div class="icon">✅</div><p>Keine aktiven Recalls</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CONNECTORS ===== -->
+  <div class="page" id="page-connectors">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔗 Enterprise-Konnektoren</div>
+        <div class="page-subtitle">Teams, Jira, ServiceNow und weitere Integrationen</div>
+      </div>
+    </div>
+    <div id="connectors-content">
+      <div class="card-grid">
+        <div class="stat-card"><div class="stat-value" id="conn-total">—</div><div class="stat-label">Konnektoren</div></div>
+        <div class="stat-card"><div class="stat-value" id="conn-connected">—</div><div class="stat-label">Verbunden</div></div>
+        <div class="stat-card"><div class="stat-value" id="conn-policies">—</div><div class="stat-label">Scope-Policies</div></div>
+        <div class="stat-card"><div class="stat-value" id="conn-violations">—</div><div class="stat-label">Violations</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Verfügbare Konnektoren</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:12px" id="conn-cards">
+          <div class="stat-card" style="text-align:left">
+            <div style="font-size:24px;margin-bottom:8px">💬</div>
+            <div style="font-weight:600;color:var(--text-primary)">Microsoft Teams</div>
+            <div style="font-size:12px;margin-top:4px">Bot Framework · Adaptive Cards</div>
+            <div style="margin-top:8px"><span class="badge info">Konfiguriert</span></div>
+          </div>
+          <div class="stat-card" style="text-align:left">
+            <div style="font-size:24px;margin-bottom:8px">🎯</div>
+            <div style="font-weight:600;color:var(--text-primary)">Atlassian Jira</div>
+            <div style="font-size:12px;margin-top:4px">REST API v3 · Issues · Transitions</div>
+            <div style="margin-top:8px"><span class="badge info">Konfiguriert</span></div>
+          </div>
+          <div class="stat-card" style="text-align:left">
+            <div style="font-size:24px;margin-bottom:8px">🎫</div>
+            <div style="font-weight:600;color:var(--text-primary)">ServiceNow</div>
+            <div style="font-size:12px;margin-top:4px">Table API · Incidents · Knowledge</div>
+            <div style="margin-top:8px"><span class="badge info">Konfiguriert</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Scope-Guard — Least Privilege</div>
+        <div id="conn-scope-info" style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+          Jeder Agent erhält nur die minimal notwendigen Berechtigungen pro Konnektor. Cross-Agent-Zugriffe werden strikt blockiert und geloggt.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WORKFLOWS ===== -->
+  <div class="page" id="page-workflows">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📐 Workflow-Templates</div>
+        <div class="page-subtitle">Vordefinierte Abläufe für Team-Onboarding, Sales, Incidents und mehr</div>
+      </div>
+    </div>
+    <div id="workflows-content">
+      <div class="card-grid">
+        <div class="stat-card"><div class="stat-value" id="wf-templates">—</div><div class="stat-label">Templates</div></div>
+        <div class="stat-card"><div class="stat-value" id="wf-running">—</div><div class="stat-label">Laufend</div></div>
+        <div class="stat-card"><div class="stat-value" id="wf-completed">—</div><div class="stat-label">Abgeschlossen</div></div>
+        <div class="stat-card"><div class="stat-value" id="wf-categories">—</div><div class="stat-label">Kategorien</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Verfügbare Templates</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:12px" id="wf-template-cards">
+          <div class="stat-card" style="text-align:left">
+            <div style="font-size:24px;margin-bottom:8px">👋</div>
+            <div style="font-weight:600;color:var(--text-primary)">Team-Onboarding</div>
+            <div style="font-size:12px;margin-top:4px">5 Schritte · ~120 Min · HR, Accounts, Einarbeitung</div>
+            <button class="btn primary" style="margin-top:8px;font-size:11px">Starten</button>
+          </div>
+          <div class="stat-card" style="text-align:left">
+            <div style="font-size:24px;margin-bottom:8px">💰</div>
+            <div style="font-weight:600;color:var(--text-primary)">Sales-Pipeline Follow-up</div>
+            <div style="font-size:12px;margin-top:4px">5 Schritte · ~30 Min · CRM, E-Mail, Reminder</div>
+            <button class="btn primary" style="margin-top:8px;font-size:11px">Starten</button>
+          </div>
+          <div class="stat-card" style="text-align:left">
+            <div style="font-size:24px;margin-bottom:8px">🚨</div>
+            <div style="font-weight:600;color:var(--text-primary)">Incident-Response</div>
+            <div style="font-size:12px;margin-top:4px">6 Schritte · ~60 Min · ServiceNow, Diagnose, Post-Mortem</div>
+            <button class="btn primary" style="margin-top:8px;font-size:11px">Starten</button>
+          </div>
+          <div class="stat-card" style="text-align:left">
+            <div style="font-size:24px;margin-bottom:8px">🔍</div>
+            <div style="font-weight:600;color:var(--text-primary)">Automatischer Code-Review</div>
+            <div style="font-size:12px;margin-top:4px">4 Schritte · ~15 Min · Security-Check, Style, Jira</div>
+            <button class="btn primary" style="margin-top:8px;font-size:11px">Starten</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECURITY FRAMEWORK KPIs ===== -->
+  <div class="page" id="page-framework">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🏛️ Security-KPIs & Incident-Management</div>
+        <div class="page-subtitle">MTTD, MTTR, Posture-Score, Team-Rollen</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="fw-mttd">—</div><div class="stat-label">MTTD (Sek.)</div></div>
+      <div class="stat-card"><div class="stat-value" id="fw-mttr">—</div><div class="stat-label">MTTR (Sek.)</div></div>
+      <div class="stat-card"><div class="stat-value" id="fw-resolution">—</div><div class="stat-label">Resolution-Rate</div></div>
+      <div class="stat-card"><div class="stat-value" id="fw-posture">—</div><div class="stat-label">Posture-Score</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Team-Rollen (RACI)</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="fw-roles">
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px">🔬 <b>ML Engineer</b> — Model-Inversion, Memory-Poisoning</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px">💻 <b>Developer</b> — Privilege-Escalation, Code-Bugs</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px">🛡️ <b>Security Analyst</b> — Prompt-Injection, Data-Exfil</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px">📋 <b>Compliance Officer</b> — Bias, Policy-Violations</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px">🚨 <b>Incident Responder</b> — DoS, Emergencies</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px">🔒 <b>Data Protection</b> — DSGVO, PII</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Offene Incidents</div>
+      <div id="fw-incidents"><div class="empty-state"><div class="icon">✅</div><p>Keine offenen Incidents</p></div></div>
+    </div>
+  </div>
+
+  <!-- ===== FEDERATION / INTEROP ===== -->
+  <div class="page" id="page-interop">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🌐 Cross-Agent Federation</div>
+        <div class="page-subtitle">Multi-Instanz-Kommunikation, Capability-Discovery, Message-Routing</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="io-agents">—</div><div class="stat-label">Agenten registriert</div></div>
+      <div class="stat-card"><div class="stat-value" id="io-online">—</div><div class="stat-label">Online</div></div>
+      <div class="stat-card"><div class="stat-value" id="io-links">—</div><div class="stat-label">Federation-Links</div></div>
+      <div class="stat-card"><div class="stat-value" id="io-messages">—</div><div class="stat-label">Nachrichten</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Protokoll-Features</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔑 Signierte Nachrichten mit Public-Key-Verifizierung</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔍 Capability-Discovery — automatische Agent-Auswahl</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">📡 Broadcast + Point-to-Point Routing</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">⏱️ Rate-Limiting pro Federation-Link</div>
+        <div style="padding:6px 0">🔐 Scope-basierte Capability-Delegation</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BUDGET & ETHIK ===== -->
+  <div class="page" id="page-economics">
+    <div class="page-header">
+      <div>
+        <div class="page-title">💶 Budget & Ethik-Governance</div>
+        <div class="page-subtitle">Kosten-Tracking, Bias-Detection, Fairness-Audits</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="ec-spent">—</div><div class="stat-label">Kosten heute (€)</div></div>
+      <div class="stat-card"><div class="stat-value" id="ec-budget">—</div><div class="stat-label">Budget-Entitäten</div></div>
+      <div class="stat-card"><div class="stat-value" id="ec-bias">—</div><div class="stat-label">Bias-Findings</div></div>
+      <div class="stat-card"><div class="stat-value" id="ec-fairness">—</div><div class="stat-label">Fairness-Rate</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Kosten nach Modell</div>
+      <div id="ec-model-costs" style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div class="empty-state"><div class="icon">📊</div><p>Noch keine API-Calls erfasst</p></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Ethik-Regeln</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🎯 Max. Bias-Findings pro Tag: 5</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">⚖️ Min. Fairness-Score: 80%</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔍 Transparenz-Pflicht: aktiviert</div>
+        <div style="padding:6px 0">👤 Human-Oversight bei kritischen Entscheidungen: aktiviert</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CI/CD & ISOLATION ===== -->
+  <div class="page" id="page-hardening">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔒 CI/CD Security-Gate & Container-Isolation</div>
+        <div class="page-subtitle">Pre-Deploy-Prüfungen, Credential-Scans, Zeitgesteuerte Scans</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="hd-evals">—</div><div class="stat-label">Gate-Prüfungen</div></div>
+      <div class="stat-card"><div class="stat-value" id="hd-blocked">—</div><div class="stat-label">Blockiert</div></div>
+      <div class="stat-card"><div class="stat-value" id="hd-containers">—</div><div class="stat-label">Container</div></div>
+      <div class="stat-card"><div class="stat-value" id="hd-schedules">—</div><div class="stat-label">Geplante Scans</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Scan-Zeitplan</div>
+      <div id="hd-schedule-list" style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🌙 <b>Täglich 02:00</b> — Quick-Scan (Prompt-Injection, Model-Inversion)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">📅 <b>Montags 03:00</b> — Full-Scan (5 Stages inkl. Dependencies)</div>
+        <div style="padding:6px 0">🔴 <b>1. des Monats 04:00</b> — Penetration-Test (7 Stages)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EU-AI-ACT ===== -->
+  <div class="page" id="page-euaiact">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🇪🇺 EU-AI-Act Compliance</div>
+        <div class="page-subtitle">Risikoklassifizierung, Pflichtdokumente, Schulungskatalog</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="eu-score">—</div><div class="stat-label">Compliance-Score</div></div>
+      <div class="stat-card"><div class="stat-value" id="eu-risk">—</div><div class="stat-label">High-Risk Systeme</div></div>
+      <div class="stat-card"><div class="stat-value" id="eu-docs">—</div><div class="stat-label">Dokumente</div></div>
+      <div class="stat-card"><div class="stat-value" id="eu-training">—</div><div class="stat-label">Schulungsmodule</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Pflichten für Jarvis (High-Risk: Versicherungsberatung)</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:5px 0;border-bottom:1px solid var(--border)">📋 Art. 9: Risikomanagement-System</div>
+        <div style="padding:5px 0;border-bottom:1px solid var(--border)">📊 Art. 10: Daten-Governance</div>
+        <div style="padding:5px 0;border-bottom:1px solid var(--border)">📝 Art. 11: Technische Dokumentation</div>
+        <div style="padding:5px 0;border-bottom:1px solid var(--border)">🗃️ Art. 12: Record-Keeping / Logging</div>
+        <div style="padding:5px 0;border-bottom:1px solid var(--border)">👁️ Art. 13: Transparenz</div>
+        <div style="padding:5px 0;border-bottom:1px solid var(--border)">👤 Art. 14: Menschliche Aufsicht</div>
+        <div style="padding:5px 0;border-bottom:1px solid var(--border)">🛡️ Art. 15: Genauigkeit, Robustheit, Cybersecurity</div>
+        <div style="padding:5px 0">🚨 Art. 62: Meldepflicht bei schweren Vorfällen</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MULTI-TENANT ===== -->
+  <div class="page" id="page-tenants">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🏢 Multi-Tenant & Emergency</div>
+        <div class="page-subtitle">Mandanten, Trust-Negotiation, Notfall-Steuerung</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="mt-tenants">—</div><div class="stat-label">Mandanten</div></div>
+      <div class="stat-card"><div class="stat-value" id="mt-trust">—</div><div class="stat-label">Trust-Relations</div></div>
+      <div class="stat-card"><div class="stat-value" id="mt-emergency">—</div><div class="stat-label">Notfall-Events</div></div>
+      <div class="stat-card"><div class="stat-value" id="mt-lockdown" style="color:var(--accent-green)">—</div><div class="stat-label">Lockdown-Status</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Plan-Übersicht</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px;text-align:center"><b>Free</b><br>1 Agent · 10 Skills · 5€/Tag</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px;text-align:center"><b>Starter</b><br>3 Agents · 50 Skills · 25€/Tag</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px;text-align:center"><b>Professional</b><br>10 Agents · 200 Skills · Federation</div>
+        <div style="padding:8px;background:var(--bg-primary);border-radius:6px;text-align:center"><b>Enterprise</b><br>∞ Agents · ∞ Skills · Priority</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Notfall-Aktionen</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🛑 <b>Kill-Switch</b> — Alles sofort stoppen</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔒 <b>Lockdown</b> — Nur Admin-Zugriff</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🏥 <b>Quarantäne</b> — Agent oder Skill isolieren</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔗 <b>Federation revoking</b> — Link sofort kappen</div>
+        <div style="padding:6px 0">⏪ <b>Rollback</b> — Auf letzte sichere Version zurück</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AGENT-VAULTS ===== -->
+  <div class="page" id="page-vaults">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔐 Agent-Vaults & Session-Isolation</div>
+        <div class="page-subtitle">Per-Agent-Tresor, Credential-Rotation, Session-Firewall</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="vt-vaults">—</div><div class="stat-label">Agent-Vaults</div></div>
+      <div class="stat-card"><div class="stat-value" id="vt-secrets">—</div><div class="stat-label">Gespeicherte Secrets</div></div>
+      <div class="stat-card"><div class="stat-value" id="vt-sessions">—</div><div class="stat-label">Active Sessions</div></div>
+      <div class="stat-card"><div class="stat-value" id="vt-violations">—</div><div class="stat-label">Firewall-Violations</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Isolationsarchitektur</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🏦 <b>Pro-Agent-Tresor</b> — Eigener Vault mit AES-256-GCM Verschlüsselung</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔄 <b>Auto-Rotation</b> — API-Keys (30d), Tokens (24h), Passwörter (90d), Zertifikate (365d)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🧱 <b>Session-Firewall</b> — Cross-Agent-Zugriff blockiert + geloggt</div>
+        <div style="padding:6px 0">💀 <b>Vault-Destroy</b> — Revoke aller Secrets + Session-Purge bei Kompromittierung</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RED-TEAM ===== -->
+  <div class="page" id="page-redteam">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🎯 Kontinuierliches Red-Team</div>
+        <div class="page-subtitle">Jailbreak-Simulation, Prompt-Injection-Tests, CI/CD-Integration</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="rt-runs">—</div><div class="stat-label">Test-Runs</div></div>
+      <div class="stat-card"><div class="stat-value" id="rt-rate">—</div><div class="stat-label">Pass-Rate</div></div>
+      <div class="stat-card"><div class="stat-value" id="rt-coverage">—</div><div class="stat-label">Abdeckung</div></div>
+      <div class="stat-card"><div class="stat-value" id="rt-gate">—</div><div class="stat-label">Gate-Status</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Angriffsvektoren (13 Built-In)</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+        <div style="padding:4px 0">🔴 DAN-Prompt (Critical)</div>
+        <div style="padding:4px 0">🔴 Tool-Call-Injection (Critical)</div>
+        <div style="padding:4px 0">🔴 Multi-Turn-Escalation (Critical)</div>
+        <div style="padding:4px 0">🟠 RolePlay-Escape (High)</div>
+        <div style="padding:4px 0">🟠 Base64-Encoding (High)</div>
+        <div style="padding:4px 0">🟠 System-Prompt-Leak (High)</div>
+        <div style="padding:4px 0">🟠 Direct-Injection (Critical)</div>
+        <div style="padding:4px 0">🟠 Indirect-via-Document (High)</div>
+        <div style="padding:4px 0">🟠 Delimiter-Escape (High)</div>
+        <div style="padding:4px 0">🟠 Context-Window-Pollution (High)</div>
+        <div style="padding:4px 0">🟡 Token-Smuggling (Medium)</div>
+        <div style="padding:4px 0">🟡 Instruction-Confusion (Medium)</div>
+        <div style="padding:4px 0">🟡 Multilingual-Injection (Medium)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GOVERNANCE HUB ===== -->
+  <div class="page" id="page-governance">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚖️ Governance Hub</div>
+        <div class="page-subtitle">Skill-Kuration, Diversity-Audits, Cross-Agent-Budget, Entscheidungstransparenz</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="gv-reviews">—</div><div class="stat-label">Skill-Reviews</div></div>
+      <div class="stat-card"><div class="stat-value" id="gv-diversity">—</div><div class="stat-label">Diversity-Score</div></div>
+      <div class="stat-card"><div class="stat-value" id="gv-budget">—</div><div class="stat-label">Budget-Volume €</div></div>
+      <div class="stat-card"><div class="stat-value" id="gv-decisions">—</div><div class="stat-label">Erklärungen</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Skill-Review-Workflow</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">1️⃣ <b>Einreichung</b> → Auto-Security-Scan</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">2️⃣ <b>Review</b> → Board-Mitglied prüft + kommentiert</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">3️⃣ <b>Entscheidung</b> → Approve / Reject / Quarantäne</div>
+        <div style="padding:6px 0">⚠️ <b>Blocking-Comments</b> verhindern Freigabe bis zur Klärung</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== IMPACT ASSESSMENT ===== -->
+  <div class="page" id="page-impact">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📋 AI Impact Assessment</div>
+        <div class="page-subtitle">Folgenabschätzung, Ethik-Board, Stakeholder-Einbindung, Maßnahmen-Tracking</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="ia-assessments">—</div><div class="stat-label">Assessments</div></div>
+      <div class="stat-card"><div class="stat-value" id="ia-highrisk">—</div><div class="stat-label">High-Risk</div></div>
+      <div class="stat-card"><div class="stat-value" id="ia-board">—</div><div class="stat-label">Board-Entscheidungen</div></div>
+      <div class="stat-card"><div class="stat-value" id="ia-mitigations">—</div><div class="stat-label">Maßnahmen</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Risiko-Matrix (Severity × Likelihood)</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔴 <b>Kritisch (20-25)</b> — Sofortige Maßnahmen erforderlich, Board-Veto möglich</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🟠 <b>Hoch (12-19)</b> — Mitigationsplan + Stakeholder-Konsultation Pflicht</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🟡 <b>Moderat (6-11)</b> — Maßnahmen empfohlen, Monitoring einrichten</div>
+        <div style="padding:6px 0">🟢 <b>Niedrig (1-5)</b> — Dokumentation ausreichend</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Ethik-Board Governance</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🗳️ <b>Abstimmung</b> — Approve / Reject / Conditional / Abstain</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">⛔ <b>Veto</b> — 2+ Reject-Stimmen blockieren Freigabe</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">📜 <b>Quorum</b> — Mindestens 3 Board-Mitglieder müssen abstimmen</div>
+        <div style="padding:6px 0">🤝 <b>Bedingungen</b> — Conditional-Votes erzwingen Auflagen vor Einsatz</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">10 Impact-Dimensionen</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+        <div style="padding:4px 0">⚖️ Grundrechte</div>
+        <div style="padding:4px 0">🔒 Datenschutz</div>
+        <div style="padding:4px 0">🛡️ Sicherheit</div>
+        <div style="padding:4px 0">👁️ Transparenz</div>
+        <div style="padding:4px 0">🚫 Diskriminierung</div>
+        <div style="padding:4px 0">🧠 Autonomie</div>
+        <div style="padding:4px 0">🌍 Umwelt</div>
+        <div style="padding:4px 0">💼 Arbeitsmarkt</div>
+        <div style="padding:4px 0">🏛️ Demokratie</div>
+        <div style="padding:4px 0">👶 Kinderschutz</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CODE-AUDIT ===== -->
+  <div class="page" id="page-codeaudit">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔬 Automatisierte Code-Analyse</div>
+        <div class="page-subtitle">AST-basierte Mustererkennung, Berechtigungsanalyse, Security-Reports</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="ca-audits">—</div><div class="stat-label">Audits</div></div>
+      <div class="stat-card"><div class="stat-value" id="ca-rate">—</div><div class="stat-label">Pass-Rate</div></div>
+      <div class="stat-card"><div class="stat-value" id="ca-findings">—</div><div class="stat-label">Findings</div></div>
+      <div class="stat-card"><div class="stat-value" id="ca-patterns">—</div><div class="stat-label">Muster geladen</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">12 Built-In Security-Patterns</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+        <div style="padding:4px 0">🔴 eval() Aufruf (Critical)</div>
+        <div style="padding:4px 0">🔴 exec() Aufruf (Critical)</div>
+        <div style="padding:4px 0">🔴 subprocess shell=True (Critical)</div>
+        <div style="padding:4px 0">🔴 DNS-Exfiltration (Critical)</div>
+        <div style="padding:4px 0">🟠 os.system() (High)</div>
+        <div style="padding:4px 0">🟠 HTTP-Requests extern (High)</div>
+        <div style="padding:4px 0">🟠 Socket-Nutzung (High)</div>
+        <div style="padding:4px 0">🟠 compile/marshal/pickle (High)</div>
+        <div style="padding:4px 0">🟠 SQL-Injection-Risiko (High)</div>
+        <div style="padding:4px 0">🟡 Sensible Pfade (Medium)</div>
+        <div style="padding:4px 0">🟡 Secrets in tempfile (Medium)</div>
+        <div style="padding:4px 0">🔵 Base64-Dekodierung (Low)</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Berechtigungsanalyse</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        Automatische Erkennung benötigter Berechtigungen:
+        <b>File Read/Write</b>, <b>Network</b>, <b>Shell Exec</b>, <b>Database</b>, <b>Secrets</b>, <b>External API</b>, <b>System Info</b>.
+        Risikobewertung: Shell+Network+Secrets = High Risk.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ENDNUTZER-PORTAL ===== -->
+  <div class="page" id="page-portal">
+    <div class="page-header">
+      <div>
+        <div class="page-title">👤 Endnutzer-Portal</div>
+        <div class="page-subtitle">DSGVO-Einwilligungen, Entscheidungstransparenz, Benachrichtigungen, Datenportabilität</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="up-users">—</div><div class="stat-label">Nutzer</div></div>
+      <div class="stat-card"><div class="stat-value" id="up-consents">—</div><div class="stat-label">Einwilligungen</div></div>
+      <div class="stat-card"><div class="stat-value" id="up-notifications">—</div><div class="stat-label">Benachrichtigungen</div></div>
+      <div class="stat-card"><div class="stat-value" id="up-activities">—</div><div class="stat-label">Aktivitäten</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">DSGVO-Rechte des Endnutzers</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">✅ <b>Art. 7</b> — Einwilligungsmanagement (8 Zwecke, Widerruf jederzeit)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">📖 <b>Art. 13/14</b> — Informationspflichten (KI-Offenlegung nach Art. 52 EU-AI-Act)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔍 <b>Art. 15</b> — Auskunftsrecht (Daten-Zugriffsprotokoll einsehbar)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🗑️ <b>Art. 17</b> — Recht auf Löschung (Komplett-Löschung mit einem Klick)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">📦 <b>Art. 20</b> — Datenportabilität (JSON-Export aller Nutzerdaten)</div>
+        <div style="padding:6px 0">🤖 <b>Art. 22</b> — Automatisierte Entscheidungen (Verständliche Erklärungen + Alternativen)</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">8 Einwilligungszwecke</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+        <div style="padding:4px 0">🤖 KI-Verarbeitung</div>
+        <div style="padding:4px 0">📊 Datenanalyse</div>
+        <div style="padding:4px 0">👤 Profilbildung</div>
+        <div style="padding:4px 0">🔗 Weitergabe an Dritte</div>
+        <div style="padding:4px 0">📢 Marketing</div>
+        <div style="padding:4px 0">🏦 Versicherungsberatung</div>
+        <div style="padding:4px 0">❤️ Gesundheitsdaten (BU)</div>
+        <div style="padding:4px 0">⚡ Automatisierte Entscheidungen</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== IMPACT ASSESSMENT ===== -->
+  <div class="page" id="page-impact">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📋 AI Impact Assessment</div>
+        <div class="page-subtitle">DPIA für KI-Systeme, Stakeholder-Einbindung, Ethik-Gremium</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="ia-assessments">—</div><div class="stat-label">Folgenabschätzungen</div></div>
+      <div class="stat-card"><div class="stat-value" id="ia-stakeholders">—</div><div class="stat-label">Stakeholder</div></div>
+      <div class="stat-card"><div class="stat-value" id="ia-board">—</div><div class="stat-label">Board-Entscheidungen</div></div>
+      <div class="stat-card"><div class="stat-value" id="ia-mitigations">—</div><div class="stat-label">Maßnahmen</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Impact-Dimensionen (EU AI Act Art. 9)</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+        <div style="padding:4px 0">⚖️ Grundrechte</div>
+        <div style="padding:4px 0">🔒 Datenschutz</div>
+        <div style="padding:4px 0">🛡️ Sicherheit</div>
+        <div style="padding:4px 0">👁️ Transparenz</div>
+        <div style="padding:4px 0">🚫 Diskriminierung</div>
+        <div style="padding:4px 0">🧠 Autonomie</div>
+        <div style="padding:4px 0">🌍 Umwelt</div>
+        <div style="padding:4px 0">💼 Arbeitsmarkt</div>
+        <div style="padding:4px 0">🗳️ Demokratie</div>
+        <div style="padding:4px 0">👶 Kinderschutz</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Ethik-Gremium</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🗳️ <b>Abstimmung</b> — Approve / Reject / Bedingt / Enthaltung</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🚫 <b>Veto</b> — 2+ Reject-Stimmen blockieren Freigabe</div>
+        <div style="padding:6px 0">📊 <b>Quorum</b> — Mindestens 3 Mitglieder müssen abstimmen</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CODE-AUDIT ===== -->
+  <div class="page" id="page-codeaudit">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔬 Automatisierte Code-Analyse</div>
+        <div class="page-subtitle">AST-basierte Mustererkennung, Berechtigungs-Analyse, Skill-Sicherheitsbericht</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="ca-audits">—</div><div class="stat-label">Skill-Audits</div></div>
+      <div class="stat-card"><div class="stat-value" id="ca-passrate">—</div><div class="stat-label">Pass-Rate</div></div>
+      <div class="stat-card"><div class="stat-value" id="ca-findings">—</div><div class="stat-label">Findings gesamt</div></div>
+      <div class="stat-card"><div class="stat-value" id="ca-patterns">—</div><div class="stat-label">Scan-Patterns</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Erkennungsmuster (12 Built-In)</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+        <div style="padding:4px 0">🔴 eval() / exec() Aufrufe</div>
+        <div style="padding:4px 0">🔴 subprocess shell=True</div>
+        <div style="padding:4px 0">🔴 DNS-Exfiltration</div>
+        <div style="padding:4px 0">🟠 os.system() Aufruf</div>
+        <div style="padding:4px 0">🟠 HTTP-Requests extern</div>
+        <div style="padding:4px 0">🟠 Socket-Nutzung</div>
+        <div style="padding:4px 0">🟠 SQL-Injection-Risiko</div>
+        <div style="padding:4px 0">🟠 Compile/Marshal/Pickle</div>
+        <div style="padding:4px 0">🟡 Sensible Pfade lesen</div>
+        <div style="padding:4px 0">🟡 Temp-Dateien mit Secrets</div>
+        <div style="padding:4px 0">🔵 Base64-Dekodierung</div>
+        <div style="padding:4px 0">🔵 Berechtigungs-Analyse</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== USER-PORTAL ===== -->
+  <div class="page" id="page-userportal">
+    <div class="page-header">
+      <div>
+        <div class="page-title">👤 Endnutzer-Portal</div>
+        <div class="page-subtitle">Verständliche Entscheidungsdarstellung, Feedback, persönliche Einstellungen</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="up-users">—</div><div class="stat-label">Registrierte Nutzer</div></div>
+      <div class="stat-card"><div class="stat-value" id="up-decisions">—</div><div class="stat-label">Erklärte Entscheidungen</div></div>
+      <div class="stat-card"><div class="stat-value" id="up-feedback">—</div><div class="stat-label">Feedback-Einträge</div></div>
+      <div class="stat-card"><div class="stat-value" id="up-satisfaction">—</div><div class="stat-label">Zufriedenheit</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Portal-Funktionen</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">💡 <b>Entscheidungs-Timeline</b> — Chronologische Darstellung aller KI-Empfehlungen</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🔍 <b>Warum-Erklärung</b> — Einfache Sprache: Warum wurde X empfohlen?</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">↔️ <b>Alternativen</b> — Was wäre noch möglich gewesen? Pro/Contra + Risiken</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">📝 <b>Feedback</b> — Nutzer können Entscheidungen bewerten (👍👎 + Kommentar)</div>
+        <div style="padding:6px 0">⚙️ <b>Einstellungen</b> — Risikobereitschaft, Sprache, Detailtiefe</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SKILL-CLI ===== -->
+  <div class="page" id="page-skillcli">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🛠️ Skill Developer CLI</div>
+        <div class="page-subtitle">Skills erstellen, testen, veröffentlichen — mit Belohnungssystem</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="cli-templates">3</div><div class="stat-label">Templates</div></div>
+      <div class="stat-card"><div class="stat-value" id="cli-published">—</div><div class="stat-label">Veröffentlicht</div></div>
+      <div class="stat-card"><div class="stat-value" id="cli-passrate">—</div><div class="stat-label">Test Pass-Rate</div></div>
+      <div class="stat-card"><div class="stat-value" id="cli-contributors">—</div><div class="stat-label">Contributors</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">CLI-Befehle</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;font-family:monospace">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">$ jarvis skill new &lt;name&gt; --template=basic|api|automation</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">$ jarvis skill lint ./my-skill/</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">$ jarvis skill test ./my-skill/</div>
+        <div style="padding:6px 0">$ jarvis skill publish ./my-skill/</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Reward-System</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+        <div>🌱 Erster Skill: +200 Punkte</div>
+        <div>⭐ 5 Skills: Badge</div>
+        <div>📦 Skill veröffentlicht: +100</div>
+        <div>🔍 Review gegeben: +20</div>
+        <div>🐛 Bug gemeldet: +30</div>
+        <div>🎓 1000+ Punkte: Experte</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SETUP-WIZARD ===== -->
+  <div class="page" id="page-installer">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📦 Setup-Wizard</div>
+        <div class="page-subtitle">Hardware-Erkennung, Modell-Empfehlung, One-Click-Setup</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="wiz-step">—</div><div class="stat-label">Aktueller Schritt</div></div>
+      <div class="stat-card"><div class="stat-value" id="wiz-hardware">—</div><div class="stat-label">Hardware-Tier</div></div>
+      <div class="stat-card"><div class="stat-value" id="wiz-model">—</div><div class="stat-label">Empfohlenes Modell</div></div>
+      <div class="stat-card"><div class="stat-value" id="wiz-channels">—</div><div class="stat-label">Kanäle</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Presets</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">💡 <b>Minimal</b> — gemma2:2b, 1 Agent, Telegram (4-8 GB RAM)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🖥️ <b>Standard</b> — llama3.1:8b, 3 Agenten, RAG + Cron (16 GB RAM, 8 GB VRAM)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🚀 <b>Power</b> — qwen2.5:32b, 10 Agenten, Federation (32+ GB RAM, 16+ VRAM)</div>
+        <div style="padding:6px 0">🏢 <b>Enterprise</b> — llama3.1:70b, 50 Agenten, Multi-GPU (64+ GB RAM)</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Unterstützte Kanäle</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 16px">
+        <div>📱 Telegram</div><div>💬 Slack</div><div>🌐 Web</div>
+        <div>🔷 Matrix</div><div>Ⓜ️ Teams</div><div>📧 Email</div>
+        <div>🔌 REST-API</div><div>💬 iMessage</div><div>📱 WhatsApp</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PERFORMANCE ===== -->
+  <div class="page" id="page-perf">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚡ Performance & Skalierbarkeit</div>
+        <div class="page-subtitle">Vector-Store, Load-Balancer, Cloud-Fallback, Ressourcen-Monitoring</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-value" id="perf-vectors">—</div><div class="stat-label">Vector-Einträge</div></div>
+      <div class="stat-card"><div class="stat-value" id="perf-backends">—</div><div class="stat-label">Backends</div></div>
+      <div class="stat-card"><div class="stat-value" id="perf-latency">—</div><div class="stat-label">Avg Latenz (ms)</div></div>
+      <div class="stat-card"><div class="stat-value" id="perf-fallbacks">—</div><div class="stat-label">Cloud-Fallbacks</div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Architektur</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">🗄️ <b>Vector-Store</b> — In-Memory + ChromaDB/FAISS/Qdrant Backend, Cosine-Similarity</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">⚖️ <b>Load-Balancer</b> — 4 Strategien: Round-Robin, Least-Connections, Weighted, Latency-Based</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">☁️ <b>Cloud-Fallback</b> — Anthropic/OpenAI/Groq bei Überlast (Budget-Limits pro Tag)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)">📊 <b>Ressourcen-Monitor</b> — CPU/RAM/GPU Alerts + Optimierungs-Empfehlungen</div>
+        <div style="padding:6px 0">🔍 <b>Query-Dekomposition</b> — Zerlegt komplexe Anfragen für paralleles RAG</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ===== API LAYER =====
+const BASE = '/api/v1';
+const api = {
+  get: async (path) => {
+    try {
+      const r = await fetch(`${BASE}${path}`);
+      return await r.json();
+    } catch (e) {
+      console.warn(`API ${path}:`, e);
+      return { error: e.message };
+    }
+  },
+  post: async (path, data) => {
+    try {
+      const r = await fetch(`${BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return await r.json();
+    } catch (e) { return { error: e.message }; }
+  },
+};
+
+// ===== NAVIGATION =====
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById(`page-${pageId}`);
+  if (page) page.classList.add('active');
+  const nav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+  if (nav) nav.classList.add('active');
+
+  // Load data for page
+  const loaders = {
+    dashboard: refreshDashboard,
+    agents: loadAgents,
+    monitoring: loadMonitoring,
+    marketplace: loadMarketplace,
+    updates: loadUpdates,
+    wizards: loadWizards,
+    config: loadConfig,
+    commands: loadCommands,
+    auth: loadAuth,
+    isolation: loadIsolation,
+    audit: loadAuditLog,
+  };
+  if (loaders[pageId]) loaders[pageId]();
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+// ===== HELPERS =====
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s/60)}m`;
+  if (s < 86400) return `${Math.floor(s/3600)}h`;
+  return `${Math.floor(s/86400)}d`;
+}
+
+function statusPill(status) {
+  const map = {
+    completed: 'green', running: 'blue', pending: 'amber',
+    failed: 'red', active: 'green', revoked: 'red',
+    online: 'green', offline: 'red',
+  };
+  const cls = map[status] || 'blue';
+  return `<span class="pill ${cls}">${status}</span>`;
+}
+
+function eventTypeColor(type) {
+  const map = {
+    agent_selected: 'background:rgba(6,182,212,0.15);color:var(--accent-cyan);',
+    tool_called: 'background:rgba(168,85,247,0.15);color:var(--accent-purple);',
+    heartbeat: 'background:rgba(59,130,246,0.15);color:var(--accent-blue);',
+    security: 'background:rgba(239,68,68,0.15);color:var(--accent-red);',
+    approval: 'background:rgba(34,197,94,0.15);color:var(--accent-green);',
+  };
+  return map[type] || 'background:rgba(107,122,141,0.15);color:var(--text-secondary);';
+}
+
+// ===== DASHBOARD =====
+async function refreshDashboard() {
+  // Parallel-Load
+  const [hbData, updData, authData, isoData] = await Promise.all([
+    api.get('/agent-heartbeat/dashboard'),
+    api.get('/updater/stats'),
+    api.get('/auth/stats'),
+    api.get('/isolation/stats'),
+  ]);
+
+  // Metrics
+  const ac = hbData.agent_count || 0;
+  const tt = hbData.total_tasks || 0;
+  const sr = hbData.success_rate || 0;
+  document.getElementById('m-agents').textContent = ac;
+  document.getElementById('m-agents-sub').textContent = `${hbData.enabled_tasks || 0} aktive Tasks`;
+  document.getElementById('m-tasks').textContent = tt;
+  document.getElementById('m-tasks-sub').textContent = `${hbData.total_runs || 0} Ausführungen`;
+  document.getElementById('m-skills').textContent = updData.installed_count || 0;
+  document.getElementById('m-skills-sub').textContent = `${updData.pending_updates || 0} Updates verfügbar`;
+  document.getElementById('m-success').textContent = sr + '%';
+  document.getElementById('m-sessions').textContent = authData.active_sessions || 0;
+  document.getElementById('m-sessions-sub').textContent = `${authData.total_tokens || 0} Tokens`;
+  document.getElementById('m-recalls').textContent = updData.active_recalls || 0;
+
+  // Nav badges
+  document.getElementById('nav-agent-count').textContent = ac;
+  const upd = updData.pending_updates || 0;
+  const updBadge = document.getElementById('nav-update-count');
+  if (upd > 0) { updBadge.textContent = upd; updBadge.style.display = ''; }
+  else { updBadge.style.display = 'none'; }
+
+  // Agent overview table
+  const agents = hbData.agents || [];
+  document.getElementById('agent-overview-count').textContent = `${agents.length} Agenten`;
+  const tbody = document.getElementById('agent-overview-body');
+  if (agents.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px;">Keine Agenten konfiguriert</td></tr>';
+  } else {
+    tbody.innerHTML = agents.map(a => `
+      <tr>
+        <td style="font-weight:600;color:var(--text-primary);">${a.agent_id}</td>
+        <td><span class="pill blue">${a.task_count}</span></td>
+        <td>${a.config ? statusPill('active') : statusPill('pending')}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${
+          a.total_runs > 0
+            ? Math.round(((a.total_runs - a.total_fails) / a.total_runs) * 100) + '%'
+            : '—'
+        }</td>
+      </tr>
+    `).join('');
+  }
+
+  // Simulated events
+  const events = [
+    { time: new Date().toISOString(), type: 'heartbeat', msg: 'Dashboard aktualisiert' },
+    { time: new Date(Date.now()-30000).toISOString(), type: 'agent_selected', msg: `${ac} Agenten aktiv, ${tt} Tasks registriert` },
+    { time: new Date(Date.now()-120000).toISOString(), type: 'security', msg: `${updData.active_recalls || 0} Security-Recalls aktiv` },
+  ];
+  const el = document.getElementById('event-log');
+  el.innerHTML = events.map(e => `
+    <div class="event-row">
+      <span class="event-time">${timeAgo(e.time)}</span>
+      <span class="event-type" style="${eventTypeColor(e.type)}">${e.type}</span>
+      <span class="event-msg">${e.msg}</span>
+    </div>
+  `).join('');
+}
+
+// ===== AGENTS PAGE =====
+async function loadAgents() {
+  const data = await api.get('/agent-heartbeat/dashboard');
+  const agents = data.agents || [];
+  const el = document.getElementById('agents-content');
+
+  if (agents.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">🤖</div>
+      <p>Noch keine Agenten konfiguriert.</p>
+      <button class="btn primary" style="margin-top:12px" onclick="showPage('wizards')">Agent erstellen</button></div>`;
+    return;
+  }
+
+  el.innerHTML = agents.map(a => `
+    <div class="data-card" style="margin-bottom:16px;">
+      <div class="data-card-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">🤖</span>
+          <span style="font-weight:700;">${a.agent_id}</span>
+          ${a.config ? statusPill('active') : statusPill('pending')}
+        </div>
+        <div style="display:flex;gap:12px;">
+          ${a.config ? `<span class="metric-sub">Intervall: ${a.config.interval_minutes}min</span>
+          <span class="metric-sub">Kanal: ${a.config.channel}</span>` : ''}
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Task</th><th>Status</th><th>Ausführungen</th><th>Fehler</th><th>Erfolgsrate</th><th>Letzte Ausführung</th></tr></thead>
+        <tbody>
+          ${a.tasks.length === 0 ? '<tr><td colspan="6" style="color:var(--text-muted);text-align:center;">Keine Tasks</td></tr>' :
+            a.tasks.map(t => `
+              <tr>
+                <td style="font-weight:600;color:var(--text-primary);">${t.name}</td>
+                <td>${statusPill(t.last_status)}</td>
+                <td style="font-family:var(--mono);">${t.run_count}</td>
+                <td style="font-family:var(--mono);color:${t.fail_count > 0 ? 'var(--accent-red)' : 'var(--text-muted)'};">${t.fail_count}</td>
+                <td style="font-family:var(--mono);">${t.success_rate}%</td>
+                <td style="font-family:var(--mono);font-size:11px;">${t.last_run ? timeAgo(t.last_run) : '—'}</td>
+              </tr>
+            `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+}
+
+// ===== MONITORING =====
+async function loadMonitoring() {
+  const [dashData, metricsData] = await Promise.all([
+    api.get('/monitoring/dashboard'),
+    api.get('/monitoring/metrics'),
+  ]);
+
+  // CPU/Mem bars
+  const cpu = Math.random() * 40 + 10; // Simulated
+  const mem = Math.random() * 300 + 100;
+  document.getElementById('cpu-bar').style.width = cpu + '%';
+  document.getElementById('cpu-val').textContent = Math.round(cpu);
+  document.getElementById('mem-bar').style.width = Math.min((mem/512)*100, 100) + '%';
+  document.getElementById('mem-val').textContent = Math.round(mem);
+
+  // Mini chart
+  const chart = document.getElementById('conn-chart');
+  const bars = Array.from({length: 20}, () => Math.random() * 100);
+  chart.innerHTML = bars.map(h =>
+    `<div class="mini-bar" style="height:${Math.max(h, 5)}%"></div>`
+  ).join('');
+}
+
+// ===== MARKETPLACE =====
+async function loadMarketplace() {
+  const [cats, feed, stats] = await Promise.all([
+    api.get('/marketplace/categories'),
+    api.get('/marketplace/feed'),
+    api.get('/marketplace/stats'),
+  ]);
+
+  const catEl = document.getElementById('marketplace-categories');
+  const categories = cats.categories || [];
+  catEl.innerHTML = categories.map(c => `
+    <div class="metric-card" style="cursor:pointer;">
+      <div class="metric-label">${c.icon || '📦'} ${c.name || c.category || 'Kategorie'}</div>
+      <div class="metric-value blue" style="font-size:20px;">${c.count || 0}</div>
+      <div class="metric-sub">Skills</div>
+    </div>
+  `).join('') || '<div class="empty-state"><p>Keine Kategorien geladen</p></div>';
+}
+
+async function searchSkills() {
+  const q = document.getElementById('skill-search').value;
+  if (!q) return;
+  const results = await api.get(`/marketplace/search?q=${encodeURIComponent(q)}`);
+  const el = document.getElementById('marketplace-feed');
+  const skills = results.results || [];
+  el.innerHTML = skills.length === 0
+    ? '<div class="empty-state"><p>Keine Skills gefunden</p></div>'
+    : `<div class="data-card"><div class="data-card-header">Suchergebnisse <span class="tag">${skills.length}</span></div>
+      <table><thead><tr><th>Name</th><th>Version</th><th>Rating</th><th>Downloads</th></tr></thead>
+      <tbody>${skills.map(s => `<tr>
+        <td style="font-weight:600;color:var(--text-primary);">${s.name || s.package_id}</td>
+        <td style="font-family:var(--mono);">${s.version || '—'}</td>
+        <td>${s.avg_rating ? '⭐ ' + s.avg_rating.toFixed(1) : '—'}</td>
+        <td style="font-family:var(--mono);">${s.install_count || 0}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+}
+
+// ===== UPDATES =====
+async function loadUpdates() {
+  const [stats, pending, recalls, history] = await Promise.all([
+    api.get('/updater/stats'),
+    api.get('/updater/pending'),
+    api.get('/updater/recalls'),
+    api.get('/updater/history'),
+  ]);
+
+  const el = document.getElementById('updates-content');
+  const updates = pending.updates || [];
+  const recs = recalls.recalls || [];
+  const hist = history.history || [];
+
+  el.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Installierte Pakete</div>
+        <div class="metric-value purple">${stats.installed_count || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Ausstehende Updates</div>
+        <div class="metric-value amber">${stats.pending_updates || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Auto-installierbar</div>
+        <div class="metric-value green">${stats.auto_installable || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Security Recalls</div>
+        <div class="metric-value red">${stats.active_recalls || 0}</div>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="data-card-header">Update-Policy <span class="tag">${(stats.policy || {}).strategy || 'notify'}</span></div>
+      <div style="padding:14px 18px;font-size:12px;color:var(--text-secondary);">
+        Strategie: <strong>${(stats.policy || {}).strategy || '—'}</strong> ·
+        Security-Auto: <strong>${(stats.policy || {}).auto_security_updates ? 'Ja' : 'Nein'}</strong> ·
+        Signatur erforderlich: <strong>${(stats.policy || {}).require_signature ? 'Ja' : 'Nein'}</strong> ·
+        Check-Intervall: <strong>${(stats.policy || {}).check_interval_hours || 24}h</strong>
+      </div>
+    </div>
+
+    ${recs.length > 0 ? `<div class="data-card" style="border-color:var(--accent-red);">
+      <div class="data-card-header" style="color:var(--accent-red);">⚠️ Security Recalls</div>
+      <table><thead><tr><th>Paket</th><th>Grund</th><th>Schwere</th><th>Aktion</th></tr></thead>
+      <tbody>${recs.map(r => `<tr>
+        <td style="font-weight:600;">${r.package_id}</td>
+        <td>${r.reason}</td>
+        <td>${statusPill(r.severity)}</td>
+        <td>${r.force_uninstall ? statusPill('deinstalliert') : '—'}</td>
+      </tr>`).join('')}</tbody></table></div>` : ''}
+
+    ${hist.length > 0 ? `<div class="data-card">
+      <div class="data-card-header">Update-Historie <span class="tag">${hist.length}</span></div>
+      <table><thead><tr><th>Paket</th><th>Von</th><th>Nach</th><th>Status</th><th>Datum</th></tr></thead>
+      <tbody>${hist.map(h => `<tr>
+        <td style="font-weight:600;">${h.package_id}</td>
+        <td style="font-family:var(--mono);">${h.from}</td>
+        <td style="font-family:var(--mono);">${h.to}</td>
+        <td>${h.success ? statusPill('completed') : statusPill('failed')}</td>
+        <td style="font-family:var(--mono);font-size:11px;">${timeAgo(h.installed_at)}</td>
+      </tr>`).join('')}</tbody></table></div>` : ''}
+  `;
+}
+
+function checkUpdates() { loadUpdates(); }
+
+// ===== WIZARDS =====
+async function loadWizards() {
+  const data = await api.get('/config/wizards');
+  const wizards = data.wizards || [];
+  const el = document.getElementById('wizard-cards');
+
+  const icons = { heartbeat: '💓', binding: '🔗', agent: '🤖', sandbox: '📦' };
+  el.innerHTML = wizards.map(w => `
+    <div class="data-card" style="cursor:pointer;" onclick="openWizard('${w.wizard_type}')">
+      <div style="padding:24px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:12px;">${icons[w.wizard_type] || '🧙'}</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1)}-Wizard</div>
+        <div style="font-size:12px;color:var(--text-secondary);">${w.step_count} Schritte · ${w.templates.length} Vorlagen</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openWizard(type) {
+  const data = await api.get(`/config/wizards/${type}`);
+  const wizard = data.wizard;
+  if (!wizard) return;
+
+  const panel = document.getElementById('wizard-panel');
+  panel.style.display = 'block';
+
+  const templates = wizard.templates || [];
+  const steps = wizard.steps || [];
+
+  panel.innerHTML = `
+    <div class="data-card">
+      <div class="data-card-header">
+        🧙 ${type.charAt(0).toUpperCase() + type.slice(1)}-Assistent
+        <button class="btn" onclick="document.getElementById('wizard-panel').style.display='none'">✕ Schließen</button>
+      </div>
+      <div style="padding:20px;">
+        ${templates.length > 0 ? `
+          <div class="metric-label" style="margin-bottom:10px;">Vorlagen — schneller Start</div>
+          <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;">
+            ${templates.map(t => `
+              <button class="btn" onclick="applyTemplate('${type}','${t.template_id}')">
+                ${t.icon || '📋'} ${t.name}
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        <div class="wizard-steps" id="wiz-steps">
+          ${steps.map((s, i) => `
+            <div class="wizard-step ${i === 0 ? 'active' : ''}" data-idx="${i}">${i+1}. ${s.title}</div>
+          `).join('')}
+        </div>
+
+        <div id="wiz-fields">
+          ${steps.map((s, i) => `
+            <div class="wizard-field" data-step="${i}" style="${i > 0 ? 'display:none' : ''}">
+              <label>${s.title} ${s.required ? '<span style="color:var(--accent-red);">*</span>' : ''}</label>
+              ${s.field_type === 'boolean' ? `
+                <select id="wf-${s.field_name}"><option value="true">Ja</option><option value="false">Nein</option></select>
+              ` : s.field_type === 'select' ? `
+                <select id="wf-${s.field_name}">${(s.options||[]).map(o =>
+                  `<option value="${o.value}">${o.label || o.value}</option>`
+                ).join('')}</select>
+              ` : s.field_type === 'number' ? `
+                <input type="number" id="wf-${s.field_name}" value="${s.default || ''}" placeholder="${s.validation_hint}">
+              ` : s.field_type === 'confirm' ? `
+                <div style="color:var(--accent-green);font-size:13px;">✓ Konfiguration bereit</div>
+              ` : `
+                <input type="text" id="wf-${s.field_name}" value="${s.default || ''}" placeholder="${s.description}">
+              `}
+              ${s.tooltip ? `<div class="wizard-tooltip">💡 ${s.tooltip}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn" id="wiz-prev" onclick="wizStep(-1)" disabled>← Zurück</button>
+          <button class="btn primary" id="wiz-next" onclick="wizStep(1)">Weiter →</button>
+          <button class="btn primary" id="wiz-save" onclick="wizSave('${type}')" style="display:none;">💾 Konfiguration erstellen</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  window._wizCurrentStep = 0;
+  window._wizStepCount = steps.length;
+}
+
+function wizStep(dir) {
+  const cur = window._wizCurrentStep;
+  const next = cur + dir;
+  const max = window._wizStepCount - 1;
+  if (next < 0 || next > max) return;
+
+  document.querySelector(`.wizard-field[data-step="${cur}"]`).style.display = 'none';
+  document.querySelector(`.wizard-field[data-step="${next}"]`).style.display = '';
+  document.querySelectorAll('.wizard-step').forEach((s, i) => {
+    s.classList.toggle('active', i === next);
+    s.classList.toggle('done', i < next);
+  });
+
+  window._wizCurrentStep = next;
+  document.getElementById('wiz-prev').disabled = next === 0;
+  document.getElementById('wiz-next').style.display = next === max ? 'none' : '';
+  document.getElementById('wiz-save').style.display = next === max ? '' : 'none';
+}
+
+async function wizSave(type) {
+  const values = {};
+  document.querySelectorAll('[id^="wf-"]').forEach(el => {
+    const key = el.id.replace('wf-', '');
+    let val = el.value;
+    if (val === 'true') val = true;
+    if (val === 'false') val = false;
+    if (el.type === 'number' && val) val = Number(val);
+    values[key] = val;
+  });
+
+  const result = await api.post(`/config/wizards/${type}/run`, values);
+  if (result.config_patch) {
+    alert('✅ Konfiguration erfolgreich erstellt!\n\n' + JSON.stringify(result.config_patch, null, 2));
+  }
+}
+
+async function applyTemplate(type, templateId) {
+  const data = await api.get(`/config/wizards/${type}/templates`);
+  const templates = data.templates || [];
+  const tpl = templates.find(t => t.template_id === templateId);
+  if (!tpl) return;
+
+  // Fill fields
+  Object.entries(tpl.preset_values || {}).forEach(([k, v]) => {
+    const el = document.getElementById(`wf-${k}`);
+    if (el) el.value = String(v);
+  });
+}
+
+// ===== CONFIG =====
+async function loadConfig() {
+  const data = await api.get('/config');
+  const el = document.getElementById('config-content');
+  if (data.error) { el.innerHTML = `<div class="empty-state"><p>${data.error}</p></div>`; return; }
+
+  const sections = Object.keys(data.config || data || {}).filter(k => k !== 'error');
+  el.innerHTML = sections.map(section => `
+    <div class="data-card">
+      <div class="data-card-header">${section}</div>
+      <div style="padding:14px 18px;">
+        <pre style="font-family:var(--mono);font-size:12px;color:var(--text-secondary);white-space:pre-wrap;">${
+          JSON.stringify((data.config || data)[section], null, 2)
+        }</pre>
+      </div>
+    </div>
+  `).join('') || '<div class="empty-state"><p>Konfiguration leer</p></div>';
+}
+
+// ===== COMMANDS =====
+async function loadCommands() {
+  const [cmds, slack, discord] = await Promise.all([
+    api.get('/commands/list'),
+    api.get('/commands/slack'),
+    api.get('/commands/discord'),
+  ]);
+
+  const commands = cmds.commands || [];
+  const el = document.getElementById('commands-content');
+
+  el.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Registrierte Commands</div>
+        <div class="metric-value cyan">${cmds.count || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Slack-Definitionen</div>
+        <div class="metric-value blue">${(slack.definitions || []).length}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Discord-Definitionen</div>
+        <div class="metric-value purple">${(discord.definitions || []).length}</div>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="data-card-header">Slash-Commands</div>
+      <table>
+        <thead><tr><th>Command</th><th>Beschreibung</th><th>Scope</th><th>Auth</th><th>Admin</th></tr></thead>
+        <tbody>${commands.map(c => `<tr>
+          <td style="font-family:var(--mono);font-weight:600;color:var(--accent-cyan);">/jarvis ${c.name}</td>
+          <td>${c.description}</td>
+          <td>${statusPill(c.scope)}</td>
+          <td>${c.requires_auth ? '🔐' : '—'}</td>
+          <td>${c.admin_only ? '👑' : '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ===== AUTH =====
+async function loadAuth() {
+  const stats = await api.get('/auth/stats');
+  const el = document.getElementById('auth-content');
+
+  el.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Aktive Tokens</div>
+        <div class="metric-value green">${stats.active_tokens || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Widerrufene Tokens</div>
+        <div class="metric-value red">${stats.revoked_tokens || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Aktive Sessions</div>
+        <div class="metric-value blue">${stats.active_sessions || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Eindeutige Nutzer</div>
+        <div class="metric-value cyan">${stats.unique_users || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Audit-Einträge</div>
+        <div class="metric-value purple">${stats.audit_entries || 0}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ===== ISOLATION =====
+async function loadIsolation() {
+  const [stats, quotas, violations] = await Promise.all([
+    api.get('/isolation/stats'),
+    api.get('/isolation/quotas'),
+    api.get('/isolation/violations'),
+  ]);
+
+  const el = document.getElementById('isolation-content');
+  el.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Isolierte Scopes</div>
+        <div class="metric-value cyan">${stats.scope_count || 0}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Violations</div>
+        <div class="metric-value red">${(violations.violations || []).length}</div>
+      </div>
+    </div>
+
+    ${(violations.violations || []).length > 0 ? `
+    <div class="data-card" style="border-color:var(--accent-red);">
+      <div class="data-card-header" style="color:var(--accent-red);">⚠️ Zugriffs-Verletzungen</div>
+      <div class="event-log">${(violations.violations || []).map(v => `
+        <div class="event-row">
+          <span class="event-time">${timeAgo(v.timestamp)}</span>
+          <span class="event-type" style="background:rgba(239,68,68,0.15);color:var(--accent-red);">violation</span>
+          <span class="event-msg">${v.agent_id || '?'}: ${v.path || v.message || '?'}</span>
+        </div>
+      `).join('')}</div>
+    </div>` : ''}
+  `;
+}
+
+// ===== AUDIT LOG =====
+async function loadAuditLog() {
+  const data = await api.get('/monitoring/audit');
+  const el = document.getElementById('audit-content');
+  const entries = data.entries || [];
+
+  if (entries.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>Keine Audit-Einträge</p></div>';
+    return;
+  }
+
+  el.innerHTML = `<div class="data-card">
+    <div class="data-card-header">Audit-Log <span class="tag">${entries.length} Einträge</span></div>
+    <div class="event-log">${entries.map(e => `
+      <div class="event-row">
+        <span class="event-time">${timeAgo(e.timestamp)}</span>
+        <span class="event-type" style="${eventTypeColor(e.event_type || e.type)}">${e.event_type || e.type || '?'}</span>
+        <span class="event-msg">${e.description || e.message || JSON.stringify(e).slice(0, 100)}</span>
+      </div>
+    `).join('')}</div>
+  </div>`;
+}
+
+// ===== SSE: Live Event Stream =====
+function connectSSE() {
+  try {
+    const source = new EventSource(`${BASE}/monitoring/events/stream`);
+    source.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const el = document.getElementById('event-log');
+        const row = document.createElement('div');
+        row.className = 'event-row';
+        row.innerHTML = `
+          <span class="event-time">${timeAgo(data.timestamp)}</span>
+          <span class="event-type" style="${eventTypeColor(data.event_type)}">${data.event_type}</span>
+          <span class="event-msg">${data.description || ''}</span>
+        `;
+        el.prepend(row);
+        if (el.children.length > 50) el.removeChild(el.lastChild);
+      } catch (e) {}
+    };
+    source.onerror = () => { source.close(); setTimeout(connectSSE, 5000); };
+  } catch (e) {}
+}
+
+// ===== SECURITY PIPELINE =====
+async function loadPipeline() {
+  try {
+    const stats = await api.get('/security/pipeline/stats');
+    setText('pipe-runs', stats.total_runs || 0);
+    setText('pipe-pass', (stats.pass_rate || 0).toFixed(0) + '%');
+    setText('pipe-findings', stats.total_findings || 0);
+    const last = stats.last_result || 'none';
+    const el = document.getElementById('pipe-last');
+    if (el) {
+      el.textContent = last === 'passed' ? '✅ Passed' : last === 'failed' ? '❌ Failed' : last === 'warning' ? '⚠️ Warning' : '—';
+      el.style.color = last === 'passed' ? 'var(--accent-green)' : last === 'failed' ? 'var(--accent-red)' : 'var(--accent-yellow)';
+    }
+  } catch(e) { console.log('Pipeline stats:', e); }
+}
+async function runPipeline() {
+  try {
+    setText('pipe-last', '⏳ Läuft...');
+    const result = await api.post('/security/pipeline/run', {trigger: 'manual'});
+    await loadPipeline();
+  } catch(e) { console.log('Pipeline run:', e); }
+}
+function showCIConfig(type) {
+  const pre = document.getElementById('ci-config');
+  if (!pre) return;
+  pre.style.display = 'block';
+  if (type === 'github') {
+    pre.textContent = `# Jarvis Security Pipeline — GitHub Actions
+name: jarvis-security-scan
+on:
+  push:
+    paths: ['src/jarvis/skills/**']
+  schedule:
+    - cron: '0 3 * * 1'
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m jarvis.security.mlops_pipeline --trigger ci`;
+  } else {
+    pre.textContent = `# Jarvis Security Pipeline — GitLab CI
+security-scan:
+  stage: test
+  script:
+    - python -m jarvis.security.mlops_pipeline --trigger ci
+  rules:
+    - changes: [src/jarvis/skills/**]`;
+  }
+}
+
+// ===== GOVERNANCE =====
+async function loadGovernance() {
+  try {
+    const [rep, recalls, reports] = await Promise.allSettled([
+      api.get('/governance/reputation/stats'),
+      api.get('/governance/recalls/stats'),
+      api.get('/governance/abuse/stats'),
+    ]);
+    const r = rep.status === 'fulfilled' ? rep.value : {};
+    const rc = recalls.status === 'fulfilled' ? recalls.value : {};
+    const rp = reports.status === 'fulfilled' ? reports.value : {};
+    setText('gov-entities', r.total_entities || 0);
+    setText('gov-avg-score', (r.avg_score || 0).toFixed(0));
+    setText('gov-recalls', rc.active_blocks || 0);
+    setText('gov-reports', rp.open || 0);
+    const dist = r.trust_distribution || {};
+    const distEl = document.getElementById('gov-trust-dist');
+    if (distEl) {
+      const colors = {verified:'var(--accent-green)',high:'var(--accent-blue)',moderate:'var(--accent-yellow)',low:'var(--accent-orange, #f97316)',untrusted:'var(--accent-red)'};
+      distEl.innerHTML = Object.entries(dist).map(([k,v]) =>
+        `<div style="padding:8px 16px;background:var(--bg-primary);border-radius:8px;border-left:3px solid ${colors[k]||'var(--border)'}">
+          <div style="font-size:18px;font-weight:700;color:var(--text-primary)">${v}</div>
+          <div style="font-size:11px;text-transform:uppercase">${k}</div>
+        </div>`
+      ).join('');
+    }
+  } catch(e) { console.log('Governance:', e); }
+}
+
+// ===== CONNECTORS =====
+async function loadConnectors() {
+  try {
+    const data = await api.get('/connectors/stats');
+    setText('conn-total', data.total_connectors || 0);
+    const connected = (data.connectors || []).filter(c => c.status === 'connected').length;
+    setText('conn-connected', connected);
+    const sg = data.scope_guard || {};
+    setText('conn-policies', sg.policies || 0);
+    setText('conn-violations', sg.violations || 0);
+  } catch(e) { console.log('Connectors:', e); }
+}
+
+// ===== WORKFLOWS =====
+async function loadWorkflows() {
+  try {
+    const [tmpl, stats] = await Promise.allSettled([
+      api.get('/workflows/templates'),
+      api.get('/workflows/stats'),
+    ]);
+    const templates = tmpl.status === 'fulfilled' ? tmpl.value : {};
+    const st = stats.status === 'fulfilled' ? stats.value : {};
+    setText('wf-templates', (templates.templates || []).length || 4);
+    setText('wf-running', st.running || 0);
+    setText('wf-completed', st.completed || 0);
+    setText('wf-categories', (templates.categories || []).length || 4);
+  } catch(e) { console.log('Workflows:', e); }
+}
+
+// Helper
+function setText(id, val) { const e = document.getElementById(id); if(e) e.textContent = val; }
+
+// Extend showPage to load new pages
+const _origShowPage = typeof showPage === 'function' ? showPage : null;
+// ===== SECURITY FRAMEWORK =====
+async function loadFramework() {
+  try {
+    const [metrics, posture] = await Promise.allSettled([
+      api.get('/framework/metrics'),
+      api.get('/framework/posture'),
+    ]);
+    const m = metrics.status === 'fulfilled' ? metrics.value : {};
+    const p = posture.status === 'fulfilled' ? posture.value : {};
+    setText('fw-mttd', (m.mttd_seconds || 0).toFixed(0));
+    setText('fw-mttr', (m.mttr_seconds || 0).toFixed(0));
+    setText('fw-resolution', (m.resolution_rate || 100).toFixed(0) + '%');
+    const score = p.posture_score || 0;
+    const el = document.getElementById('fw-posture');
+    if (el) {
+      el.textContent = score.toFixed(0);
+      el.style.color = score >= 80 ? 'var(--accent-green)' : score >= 50 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+    }
+  } catch(e) { console.log('Framework:', e); }
+}
+
+// ===== INTEROP =====
+async function loadInterop() {
+  try {
+    const data = await api.get('/interop/stats');
+    setText('io-agents', data.registered_agents || 0);
+    setText('io-online', data.online || 0);
+    const fed = data.federation || {};
+    setText('io-links', fed.active || 0);
+    const router = data.router || {};
+    setText('io-messages', router.total_messages || 0);
+  } catch(e) { console.log('Interop:', e); }
+}
+
+// ===== ECONOMICS =====
+async function loadEconomics() {
+  try {
+    const data = await api.get('/economics/stats');
+    const budget = data.budget || {};
+    const costs = data.costs || {};
+    const bias = data.bias || {};
+    const fairness = data.fairness || {};
+    setText('ec-spent', (budget.total_spent_today || 0).toFixed(2));
+    setText('ec-budget', budget.total_entities || 0);
+    setText('ec-bias', bias.total_findings || 0);
+    setText('ec-fairness', (fairness.pass_rate || 100).toFixed(0) + '%');
+    const models = costs.cost_by_model || {};
+    const modelEl = document.getElementById('ec-model-costs');
+    if (modelEl && Object.keys(models).length) {
+      modelEl.innerHTML = Object.entries(models).map(([m,c]) =>
+        `<div style="padding:4px 0;border-bottom:1px solid var(--border)">${m}: <b>${c.toFixed(4)}€</b></div>`
+      ).join('');
+    }
+  } catch(e) { console.log('Economics:', e); }
+}
+
+// ===== HARDENING =====
+async function loadHardening() {
+  try {
+    const [gate, containers, schedules] = await Promise.allSettled([
+      api.get('/hardening/gate'),
+      api.get('/hardening/containers'),
+      api.get('/hardening/schedules'),
+    ]);
+    const g = gate.status === 'fulfilled' ? gate.value : {};
+    const c = containers.status === 'fulfilled' ? containers.value : {};
+    const s = schedules.status === 'fulfilled' ? schedules.value : {};
+    setText('hd-evals', g.total_evaluations || 0);
+    setText('hd-blocked', g.blocked || 0);
+    setText('hd-containers', c.total_containers || 0);
+    setText('hd-schedules', s.total || 0);
+  } catch(e) { console.log('Hardening:', e); }
+}
+
+// ===== EU-AI-ACT =====
+async function loadEuAiAct() {
+  try {
+    const data = await api.get('/eu-ai-act/status');
+    setText('eu-score', (data.compliance_score || 0).toFixed(0) + '%');
+    setText('eu-risk', data.high_risk_systems || 0);
+    setText('eu-docs', data.total_documents || 0);
+    setText('eu-training', data.training_modules || 0);
+  } catch(e) { console.log('EU-AI-Act:', e); }
+}
+
+// ===== MULTI-TENANT =====
+async function loadTenants() {
+  try {
+    const [tenants, trust, emergency] = await Promise.allSettled([
+      api.get('/tenants/stats'),
+      api.get('/trust/stats'),
+      api.get('/emergency/status'),
+    ]);
+    const t = tenants.status === 'fulfilled' ? tenants.value : {};
+    const tr = trust.status === 'fulfilled' ? trust.value : {};
+    const e = emergency.status === 'fulfilled' ? emergency.value : {};
+    setText('mt-tenants', t.total_tenants || 0);
+    setText('mt-trust', tr.total_relations || 0);
+    setText('mt-emergency', 0);
+    const lockEl = document.getElementById('mt-lockdown');
+    if (lockEl) {
+      lockEl.textContent = e.lockdown ? '🔴 AKTIV' : '🟢 Normal';
+      lockEl.style.color = e.lockdown ? 'var(--accent-red)' : 'var(--accent-green)';
+    }
+  } catch(e) { console.log('Tenants:', e); }
+}
+
+// ===== AGENT-VAULTS =====
+async function loadVaults() {
+  try {
+    const data = await api.get('/vaults/stats');
+    setText('vt-vaults', data.total_vaults || 0);
+    setText('vt-secrets', data.total_secrets || 0);
+    const sess = data.sessions || {};
+    setText('vt-sessions', sess.active_sessions || 0);
+    const fw = data.firewall || {};
+    setText('vt-violations', fw.total_violations || 0);
+  } catch(e) { console.log('Vaults:', e); }
+}
+
+// ===== RED-TEAM =====
+async function loadRedTeam() {
+  try {
+    const [stats, coverage] = await Promise.allSettled([
+      api.get('/red-team/stats'),
+      api.get('/red-team/coverage'),
+    ]);
+    const s = stats.status === 'fulfilled' ? stats.value : {};
+    const c = coverage.status === 'fulfilled' ? coverage.value : {};
+    setText('rt-runs', s.total_runs || 0);
+    setText('rt-rate', (s.latest_pass_rate || 0).toFixed(0) + '%');
+    setText('rt-coverage', (c.coverage_rate || 0).toFixed(0) + '%');
+    const gateEl = document.getElementById('rt-gate');
+    if (gateEl && s.total_runs > 0) {
+      gateEl.textContent = s.latest_gate ? '✅ PASSED' : '❌ FAILED';
+      gateEl.style.color = s.latest_gate ? 'var(--accent-green)' : 'var(--accent-red)';
+    }
+  } catch(e) { console.log('RedTeam:', e); }
+}
+
+// ===== GOVERNANCE HUB =====
+async function loadGovernance() {
+  try {
+    const data = await api.get('/governance/health');
+    setText('gv-reviews', data.skill_reviews || 0);
+    setText('gv-diversity', (data.diversity_score || 0).toFixed(0));
+    setText('gv-budget', (data.budget_volume || 0).toFixed(2));
+    setText('gv-decisions', 0);
+  } catch(e) { console.log('Governance:', e); }
+}
+
+// ===== IMPACT ASSESSMENT =====
+async function loadImpact() {
+  try {
+    const [stats, board, miti] = await Promise.allSettled([
+      api.get('/impact/stats'),
+      api.get('/impact/board'),
+      api.get('/impact/mitigations'),
+    ]);
+    const s = stats.status === 'fulfilled' ? stats.value : {};
+    const b = board.status === 'fulfilled' ? board.value : {};
+    const m = miti.status === 'fulfilled' ? miti.value : {};
+    setText('ia-assessments', s.total_assessments || 0);
+    setText('ia-highrisk', s.high_risk || 0);
+    setText('ia-board', b.total_decisions || 0);
+    setText('ia-mitigations', m.total || 0);
+  } catch(e) { console.log('Impact:', e); }
+}
+
+// ===== CODE-AUDIT =====
+async function loadCodeAudit() {
+  try {
+    const data = await api.get('/code-audit/stats');
+    setText('ca-audits', data.total_audits || 0);
+    setText('ca-rate', (data.pass_rate || 0).toFixed(0) + '%');
+    setText('ca-findings', data.total_findings || 0);
+    const sc = data.scanner || {};
+    setText('ca-patterns', sc.patterns_loaded || 12);
+  } catch(e) { console.log('CodeAudit:', e); }
+}
+
+// ===== ENDNUTZER-PORTAL =====
+async function loadPortal() {
+  try {
+    const data = await api.get('/portal/stats');
+    const c = data.consents || {};
+    const n = data.notifications || {};
+    const a = data.activities || {};
+    setText('up-users', c.total_users || 0);
+    setText('up-consents', c.total_consents || 0);
+    setText('up-notifications', n.total_notifications || 0);
+    setText('up-activities', a.total_activities || 0);
+  } catch(e) { console.log('Portal:', e); }
+}
+
+async function loadSkillCLI() {
+  try {
+    const [stats, rewards] = await Promise.all([
+      fetchAPI('/api/v1/skill-cli/stats'),
+      fetchAPI('/api/v1/skill-cli/rewards'),
+    ]);
+    setText('cli-published', stats.publisher?.published || 0);
+    setText('cli-passrate', (stats.tester?.pass_rate || 0) + '%');
+    setText('cli-contributors', rewards.contributors || 0);
+  } catch(e) { console.log('SkillCLI:', e); }
+}
+
+async function loadInstaller() {
+  try {
+    const state = await fetchAPI('/api/v1/setup/state');
+    setText('wiz-step', state.step || '—');
+    setText('wiz-hardware', state.hardware_tier || '—');
+    setText('wiz-model', state.model || '—');
+    setText('wiz-channels', (state.channels || []).length);
+  } catch(e) { console.log('Installer:', e); }
+}
+
+async function loadPerf() {
+  try {
+    const health = await fetchAPI('/api/v1/performance/health');
+    setText('perf-vectors', health.vector_store?.entries || 0);
+    setText('perf-backends', health.balancer?.backends || 0);
+    setText('perf-latency', health.latency?.avg_ms || 0);
+    setText('perf-fallbacks', health.fallback?.total_fallbacks || 0);
+  } catch(e) { console.log('Perf:', e); }
+}
+
+const _newPageLoaders = {
+  pipeline: loadPipeline,
+  governance: loadGovernance,
+  connectors: loadConnectors,
+  workflows: loadWorkflows,
+  framework: loadFramework,
+  interop: loadInterop,
+  economics: loadEconomics,
+  hardening: loadHardening,
+  euaiact: loadEuAiAct,
+  tenants: loadTenants,
+  vaults: loadVaults,
+  redteam: loadRedTeam,
+  governance: loadGovernance,
+  impact: loadImpact,
+  codeaudit: loadCodeAudit,
+  portal: loadPortal,
+  userportal: loadPortal,
+  skillcli: loadSkillCLI,
+  installer: loadInstaller,
+  perf: loadPerf,
+};
+
+// Patch showPage
+if (typeof showPage === 'function') {
+  const _base = showPage;
+  showPage = function(pageId) {
+    _base(pageId);
+    if (_newPageLoaders[pageId]) _newPageLoaders[pageId]();
+  };
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  refreshDashboard();
+  connectSSE();
+  // Auto-refresh every 30s
+  setInterval(refreshDashboard, 30000);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+Cognithor · Agent OS
+Copyright 2026 Alexander Soellner
+
+Licensed under the Apache License, Version 2.0.
+See LICENSE for the full license text.
+
+================================================================================
+                          THIRD-PARTY COMPONENTS
+================================================================================
+
+Cognithor includes or depends on the following third-party components:
+
+CORE DEPENDENCIES (always installed)
+-------------------------------------
+pydantic             MIT License          https://github.com/pydantic/pydantic
+pydantic-settings    MIT License          https://github.com/pydantic/pydantic-settings
+httpx                BSD-3-Clause         https://github.com/encode/httpx
+PyYAML               MIT License          https://github.com/yaml/pyyaml
+structlog            MIT / Apache-2.0     https://github.com/hynek/structlog
+rich                 MIT License          https://github.com/Textualize/rich
+prompt-toolkit       BSD-3-Clause         https://github.com/prompt-toolkit/python-prompt-toolkit
+anyio                MIT License          https://github.com/agronholm/anyio
+cryptography         Apache-2.0 / BSD     https://github.com/pyca/cryptography
+
+OPTIONAL DEPENDENCIES (installed via extras)
+---------------------------------------------
+numpy                BSD-3-Clause         [memory]
+sqlite-vec           MIT / Apache-2.0     [memory]
+faiss-cpu            MIT License          [vector]
+mcp                  MIT License          [mcp]
+fastapi              MIT License          [web]
+uvicorn              BSD-3-Clause         [web]
+websockets           BSD-3-Clause         [web]
+trafilatura          Apache-2.0 (>=2.0)   [search]
+apscheduler          MIT License          [cron]
+croniter             MIT License          [cron]
+elevenlabs           MIT License          [elevenlabs]
+google-auth          Apache-2.0           [google-chat]
+google-api-core      Apache-2.0           [google-chat]
+irc                  MIT License          [irc]
+twitchio             MIT License          [twitch]
+faster-whisper       MIT License          [voice]
+sounddevice          MIT License          [voice]
+webrtcvad            MIT License          [voice]
+
+LGPL-LICENSED OPTIONAL DEPENDENCIES
+-------------------------------------
+The following optional dependencies are licensed under the GNU Lesser General
+Public License v3 (LGPLv3). They are dynamically imported as Python libraries,
+which is permitted under LGPL terms. They are NOT distributed as part of
+Cognithor — users install them separately via pip extras.
+
+python-telegram-bot  LGPLv3               [telegram]  https://github.com/python-telegram-bot/python-telegram-bot
+psycopg              LGPLv3               [postgresql] https://github.com/psycopg/psycopg
+psycopg-pool         LGPLv3               [postgresql] https://github.com/psycopg/psycopg
+
+GPL-LICENSED OPTIONAL DEPENDENCIES
+-------------------------------------
+The following optional dependency is licensed under GPL-3.0-or-later.
+It is ONLY installed when the user explicitly requests the [voice] extra.
+Installing the [voice] extra subjects that component to GPL-3.0 terms.
+It is NOT included in the default installation or in the [all] extra.
+
+piper-tts            GPL-3.0-or-later     [voice]     https://github.com/rhasspy/piper
+
+Users who do not install the [voice] extra are not affected by piper-tts
+licensing. The ElevenLabs cloud TTS backend ([elevenlabs] extra, MIT-licensed)
+is available as an alternative.
+
+================================================================================
+                          NO AGPL OR PROPRIETARY COMPONENTS
+================================================================================
+
+This project contains NO AGPL-licensed dependencies.
+This project contains NO proprietary SDKs with restrictive clauses.
+All cloud provider SDKs (elevenlabs, google-auth, etc.) are MIT or Apache-2.0.
+The cloud *services* themselves have their own Terms of Service, but the
+client libraries used by Cognithor are permissively licensed.

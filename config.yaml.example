@@ -1,0 +1,129 @@
+# ============================================================================
+# Jarvis · Agent OS – Konfiguration
+# ============================================================================
+#
+# Speicherort: ~/.jarvis/config.yaml
+# Erstellt automatisch beim ersten Start von `jarvis --init-only`
+#
+# Werte können über Umgebungsvariablen überschrieben werden:
+#   JARVIS_OLLAMA_BASE_URL=http://192.168.1.50:11434
+#   JARVIS_LOGGING_LEVEL=DEBUG
+#
+# Alle Felder haben sinnvolle Defaults – nur ändern was nötig ist.
+# ============================================================================
+
+# --- Besitzer/Benutzer ---
+# Wird in Prompts, CORE.md und Begrüßungen verwendet.
+# Kann auch per Env-Variable gesetzt werden: JARVIS_OWNER_NAME=Max
+owner_name: "User"
+
+# --- LLM-Backend ---
+# Welches Backend für LLM-Anfragen?
+#   "ollama"    → Lokale Modelle über Ollama (Default, kein API-Key nötig)
+#   "openai"    → OpenAI-kompatible API (OpenAI, Together, Groq, vLLM, LM Studio)
+#   "anthropic" → Anthropic Claude API
+llm_backend_type: "ollama"
+
+# Nur nötig bei llm_backend_type: "openai"
+# openai_api_key: "sk-..."
+# openai_base_url: "https://api.openai.com/v1"  # Oder z.B. https://api.together.xyz/v1
+
+# Nur nötig bei llm_backend_type: "anthropic"
+# anthropic_api_key: "sk-ant-..."
+# anthropic_max_tokens: 4096
+
+# --- Ollama LLM-Server ---
+ollama:
+  base_url: "http://localhost:11434"      # Ollama API-Endpunkt
+  timeout_seconds: 120                     # Timeout für LLM-Aufrufe (10–600)
+  keep_alive: "30m"                        # Wie lange Modelle im VRAM bleiben
+
+# --- Modell-Zuordnung ---
+# Welches Modell für welche Aufgabe? Anpassen an dein VRAM-Budget.
+#
+# RTX 5090 (32GB): Alles auf 32B-Modelle → beste Qualität
+# RTX 4090 (24GB): Planner 32B, Executor 8B
+# RTX 3090 (24GB): Planner 32B (Q4), Executor 8B
+# 16GB VRAM:       Planner 14B, Executor 8B
+models:
+  planner:
+    name: "qwen3:32b"                      # Denker: Planung, Reflexion, Analyse
+    context_window: 32768
+    vram_gb: 20.0
+    strengths: ["reasoning", "planning", "reflection", "german"]
+    speed: "medium"
+  executor:
+    name: "qwen3:8b"                       # Macher: Tool-Calls, einfache Aufgaben
+    context_window: 32768
+    vram_gb: 6.0
+    strengths: ["tool-calling", "simple-tasks"]
+    speed: "fast"
+  coder:
+    name: "qwen3-coder:32b"               # Programmierer: Code-Generierung
+    context_window: 32768
+    vram_gb: 20.0
+    strengths: ["code-generation", "debugging", "testing"]
+    speed: "medium"
+  embedding:
+    name: "nomic-embed-text"               # Embedding-Modell für Semantic Search
+    context_window: 8192
+    vram_gb: 0.5
+    strengths: ["semantic-search"]
+    speed: "fast"
+
+# --- Planner (Denker) ---
+planner:
+  max_iterations: 10                       # Max Agent-Loop-Zyklen pro Anfrage
+  escalation_after: 3                      # Nach X Blocks → User informieren
+  temperature: 0.7                         # Kreativität (0.0=deterministisch, 2.0=wild)
+  response_token_budget: 3000              # Max Tokens für die Antwort
+
+# --- Gatekeeper (Wächter) ---
+gatekeeper:
+  policies_dir: "policies"                 # Relativ zu jarvis_home
+  default_risk_level: "yellow"
+  max_blocked_retries: 3
+
+# --- Memory-System (5-Tier) ---
+memory:
+  chunk_size_tokens: 400                   # Chunk-Größe für Indexierung
+  chunk_overlap_tokens: 80                 # Überlappung zwischen Chunks
+  search_top_k: 6                          # Anzahl Suchergebnisse
+  # Hybrid-Suche Gewichtung (muss zusammen 1.0 ergeben)
+  weight_vector: 0.50                      # Embedding-Ähnlichkeit
+  weight_bm25: 0.30                        # Keyword-Matching
+  weight_graph: 0.20                       # Wissens-Graph
+  # Recency Decay
+  recency_half_life_days: 30               # Halbwertszeit für Aktualität
+  # Working Memory
+  compaction_threshold: 0.80               # Ab wann Pre-Compaction Flush
+  compaction_keep_last_n: 4                # Letzte N Nachrichten behalten
+
+# --- Channels ---
+channels:
+  cli_enabled: true                        # Terminal-Chat
+  telegram_enabled: false                  # Telegram-Bot
+  telegram_whitelist: []                   # Erlaubte Telegram-User-IDs
+  webui_enabled: false                     # Web-Interface (FastAPI)
+  webui_port: 8080                         # Port für Web-UI
+  voice_enabled: false                     # Spracheingabe/-ausgabe
+
+# --- Sicherheit ---
+security:
+  max_iterations: 10                       # Max Agent-Iterationen (Endlosschleifen-Schutz)
+  allowed_paths:                           # Dateisystem-Zugriff einschränken
+    - "~/.jarvis/"
+    - "/tmp/jarvis/"
+    # - "/home/alexander/Dokumente/"       # Eigene Pfade hinzufügen
+
+# --- Logging ---
+logging:
+  level: "INFO"                            # DEBUG, INFO, WARNING, ERROR
+  json_logs: false                         # JSON-Format für maschinelle Auswertung
+  console: true                            # Ausgabe auf Terminal
+
+# --- Sandbox ---
+# sandbox:
+#   enabled: true
+#   timeout_seconds: 30
+#   max_output_bytes: 1048576               # 1 MB

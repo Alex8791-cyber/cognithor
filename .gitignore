@@ -1,0 +1,62 @@
+# ── Python ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+*.so
+*.pyd
+
+# ── Testing / Linting ────────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# ── Virtual Environments ─────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── IDE / Editor ─────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Environment & Secrets ────────────────────────────────────────
+.env
+*.pem
+*.key
+.credential_key
+
+# ── Runtime Data ─────────────────────────────────────────────────
+*.db
+*.sqlite3
+*.cache
+logs/
+*.log
+
+# ── Node (PWA app) ───────────────────────────────────────────────
+node_modules/
+apps/pwa/dist/
+apps/pwa/node_modules/
+
+# ── Claude Code ──────────────────────────────────────────────────
+.claude/
+
+# ── OS / Misc ────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig

@@ -1,0 +1,31 @@
+# Jarvis · Agent OS — Python-Abhängigkeiten
+# Installiere mit: pip install -r requirements.txt
+
+# === Core ===
+pydantic>=2.0,<3.0          # Datenmodelle, Validierung
+pyyaml>=6.0                  # Config-Parsing
+structlog>=24.0              # Structured Logging
+httpx>=0.27                  # Async HTTP-Client (Ollama)
+
+# === Security ===
+cryptography>=42.0           # Credential-Verschlüsselung (Fernet)
+
+# === Channels ===
+# fastapi>=0.110              # Web UI + REST API (optional)
+# uvicorn[standard]>=0.29    # ASGI-Server (optional)
+# python-telegram-bot>=21.0  # Telegram-Channel (optional)
+
+# === Browser-Automatisierung (optional) ===
+# playwright>=1.40            # Headless Browser (browse_url, browse_click, ...)
+                              # Nach Install: playwright install chromium
+
+# === Voice (optional, GPU-System) ===
+# faster-whisper>=1.0        # Speech-to-Text (Telegram Voice, Voice Channel)
+# piper-tts>=1.2             # Text-to-Speech
+# sounddevice>=0.5           # Audio I/O
+# webrtcvad>=2.0.10          # Voice Activity Detection
+
+# === Development ===
+# pytest>=8.0                # Tests
+# pytest-asyncio>=0.23       # Async-Tests
+# ruff>=0.4                  # Linter

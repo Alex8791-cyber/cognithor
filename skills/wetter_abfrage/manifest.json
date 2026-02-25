@@ -1,0 +1,9 @@
+{{
+  "name": "wetter_abfrage",
+  "version": "0.1.0",
+  "author": "alex",
+  "description": "Jarvis Skill: Wetter Abfrage",
+  "min_jarvis": "0.13.0",
+  "permissions": [],
+  "tags": []
+}}

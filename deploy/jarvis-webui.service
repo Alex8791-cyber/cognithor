@@ -1,0 +1,48 @@
+# ============================================================================
+# Jarvis · Web-UI Systemd Service (User-Level)
+# ============================================================================
+# Installation:
+#   cp deploy/jarvis-webui.service ~/.config/systemd/user/
+#   sed -i "s|__VENV__|$HOME/.jarvis/venv|g" ~/.config/systemd/user/jarvis-webui.service
+#   sed -i "s|__JARVIS_HOME__|$HOME/.jarvis|g" ~/.config/systemd/user/jarvis-webui.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now jarvis-webui
+# ============================================================================
+
+[Unit]
+Description=Jarvis Web-UI (FastAPI + WebSocket)
+Documentation=https://github.com/team-soellner/jarvis
+After=jarvis.service
+BindsTo=jarvis.service
+
+[Service]
+Type=simple
+ExecStart=__VENV__/bin/python -m uvicorn jarvis.channels.webui:create_app \
+    --host 127.0.0.1 \
+    --port 8080 \
+    --factory \
+    --log-level warning
+WorkingDirectory=__JARVIS_HOME__
+EnvironmentFile=-__JARVIS_HOME__/.env
+
+Restart=on-failure
+RestartSec=5
+
+# Sicherheits-Härtung
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__JARVIS_HOME__ /tmp/jarvis
+PrivateTmp=true
+
+# Resource-Limits
+MemoryMax=1G
+TasksMax=32
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis-webui
+
+[Install]
+WantedBy=default.target

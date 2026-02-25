@@ -1,0 +1,9 @@
+{{
+  "name": "test_skill",
+  "version": "0.1.0",
+  "author": "dev",
+  "description": "Jarvis Skill: Test Skill",
+  "min_jarvis": "0.13.0",
+  "permissions": [],
+  "tags": []
+}}

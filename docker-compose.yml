@@ -1,0 +1,63 @@
+# ============================================================================
+# Jarvis · Docker Compose
+# ============================================================================
+# Nutzung:
+#   docker compose up -d              # Starten
+#   docker compose logs -f jarvis     # Logs
+#   docker compose down               # Stoppen
+#
+# Hinweis: Ollama läuft NICHT im Container (benötigt GPU-Zugriff).
+#   Installiere Ollama nativ: curl -fsSL https://ollama.com/install.sh | sh
+# ============================================================================
+
+services:
+  # ── Jarvis Core (CLI) ───────────────────────────────────────
+  jarvis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarvis
+    restart: unless-stopped
+    volumes:
+      - jarvis-data:/home/jarvis/.jarvis
+    environment:
+      - JARVIS_OLLAMA_BASE_URL=${JARVIS_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - JARVIS_LOGGING_LEVEL=${JARVIS_LOGGING_LEVEL:-INFO}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    stdin_open: true    # Für CLI-Interaktion
+    tty: true
+    healthcheck:
+      test: ["CMD", "python", "scripts/health_check.py", "--quick", "--json"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Web-UI (Optional) ──────────────────────────────────────
+  webui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarvis-webui
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "uvicorn"]
+    command: ["jarvis.channels.webui:create_app", "--host", "0.0.0.0", "--port", "8080", "--factory"]
+    ports:
+      - "${JARVIS_WEBUI_PORT:-8080}:8080"
+    volumes:
+      - jarvis-data:/home/jarvis/.jarvis
+    environment:
+      - JARVIS_OLLAMA_BASE_URL=${JARVIS_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - JARVIS_CHANNELS_WEBUI_ENABLED=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      jarvis:
+        condition: service_healthy
+    profiles:
+      - webui       # Nur mit: docker compose --profile webui up
+
+volumes:
+  jarvis-data:
+    name: jarvis-data

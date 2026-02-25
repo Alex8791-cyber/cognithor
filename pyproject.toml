@@ -1,0 +1,150 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cognithor"
+version = "0.22.0"
+description = "Cognithor · Agent OS — Local-first autonomous agent operating system"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [
+    { name = "Alexander Söllner" },
+]
+keywords = ["ai", "agent", "ollama", "local-first", "automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    # Core
+    "pydantic>=2.10,<3",
+    "pydantic-settings>=2.7,<3",
+    "httpx>=0.28,<1",
+    "pyyaml>=6.0,<7",
+    # Logging
+    "structlog>=25.4,<26",
+    # CLI
+    "rich>=13.0,<14",
+    "prompt-toolkit>=3.0,<4",
+    # Async
+    "anyio>=4.0,<5",
+    # Security
+    "cryptography>=44.0,<45",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.24,<1",
+    "pytest-cov>=6.0,<7",
+    "ruff>=0.9,<1",
+    "mypy>=1.14,<2",
+]
+memory = [
+    "numpy>=2.0,<3",
+    "sqlite-vec>=0.1",
+]
+vector = [
+    "faiss-cpu>=1.7",
+]
+mcp = [
+    "mcp>=1.7,<2",
+]
+telegram = [
+    "python-telegram-bot>=21.0,<22",
+]
+web = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
+    "websockets>=14.0,<15",
+]
+voice = [
+    "faster-whisper>=1.0",
+    "piper-tts>=1.0",
+    "sounddevice>=0.5",
+    "webrtcvad>=2.0",
+]
+elevenlabs = [
+    "elevenlabs>=1.0",
+]
+google-chat = [
+    "google-auth>=2.0",
+    "google-api-core>=2.0",
+]
+irc = [
+    "irc>=20.0",
+]
+twitch = [
+    "twitchio>=2.0",
+]
+search = [
+    "trafilatura>=2.0",
+]
+cron = [
+    "apscheduler>=3.10,<4",
+    "croniter>=1.0",
+]
+postgresql = [
+    "psycopg[binary]>=3.1",
+    "psycopg-pool>=3.1",
+    "pgvector>=0.2",
+]
+all = [
+    "cognithor[memory,vector,mcp,telegram,web,search,cron,postgresql]",
+]
+full = [
+    "cognithor[all,voice,elevenlabs,google-chat,irc,twitch,dev]",
+]
+
+[project.scripts]
+cognithor = "jarvis.__main__:main"
+jarvis = "jarvis.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jarvis"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests requiring external services",
+]
+filterwarnings = [
+    # starlette uses deprecated multipart import — third-party, can't fix
+    "ignore::PendingDeprecationWarning:starlette",
+    # asyncio transport cleanup after event loop is closed (Windows + Linux)
+    "ignore:Exception ignored in.*Transport:pytest.PytestUnraisableExceptionWarning",
+    # Mock artifacts: coroutines created by AsyncMock but never awaited
+    "ignore:coroutine .* was never awaited:RuntimeWarning",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF",
+]
+ignore = [
+    "RUF001",  # Ambiguous EN DASH in strings (korrekt im Deutschen)
+    "RUF002",  # Ambiguous EN DASH in docstrings
+    "RUF003",  # Ambiguous EN DASH in comments
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
