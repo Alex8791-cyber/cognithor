@@ -5,7 +5,7 @@ Erweitert die WebUI um bidirektionales Audio-Streaming:
   - Jarvis → Browser: Antworttext → Piper TTS → WAV → Browser
 
 Wird vom WebChat-Widget über WebSocket-Messages mit type='voice_message'
-angesprochen. Benötigt keine zusätzlichen Dependencies — nutzt die
+angesprochen. Benötigt keine zusätzlichen Dependencies -- nutzt die
 vorhandene Media-Pipeline für Transkription und TTS.
 
 Bibel-Referenz: §9.3 (Voice Channel), §12.2 (Optionale Dependencies)
@@ -32,7 +32,7 @@ class VoiceMessageHandler:
       1. Eingehend: Base64-Audio → Whisper STT → Text
       2. Ausgehend: Text → Piper TTS → Base64-Audio
 
-    Hinweis: Vormals 'VoiceWebSocketBridge' — umbenannt um Kollision mit
+    Hinweis: Vormals 'VoiceWebSocketBridge' -- umbenannt um Kollision mit
     channels/voice_bridge.py:VoiceWebSocketBridge zu vermeiden.
     """
 

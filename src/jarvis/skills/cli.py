@@ -36,7 +36,7 @@ def main(argv: List[str] | None = None) -> None:
         argv = sys.argv[1:]
     parser = argparse.ArgumentParser(
         prog="jarvis-skills",
-        description="Jarvis Skills Manager – Skills erstellen und verwalten",
+        description="Jarvis Skills Manager -- Skills erstellen und verwalten",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

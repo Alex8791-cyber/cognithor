@@ -14,7 +14,7 @@ Architektur:
   CuratedCollection → Geprüfte Skill-Sammlung
   CircleManager → Verwaltung + Integration mit SkillExchange
 
-Bibel-Referenz: §13 (P2P-Ökosystem — Circle-Erweiterung)
+Bibel-Referenz: §13 (P2P-Ökosystem -- Circle-Erweiterung)
 """
 
 from __future__ import annotations

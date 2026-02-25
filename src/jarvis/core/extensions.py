@@ -234,7 +234,7 @@ _BUNDLE_DE = TranslationBundle(
         "nav.connectors": "Konnektoren",
 
         # Dashboard
-        "dashboard.title": "Jarvis Agent OS — Dashboard",
+        "dashboard.title": "Jarvis Agent OS -- Dashboard",
         "dashboard.active_agents": "Aktive Agenten",
         "dashboard.tasks_running": "Laufende Tasks",
         "dashboard.success_rate": "Erfolgsquote",
@@ -293,7 +293,7 @@ _BUNDLE_EN = TranslationBundle(
         "nav.workflows": "Workflows",
         "nav.connectors": "Connectors",
 
-        "dashboard.title": "Jarvis Agent OS — Dashboard",
+        "dashboard.title": "Jarvis Agent OS -- Dashboard",
         "dashboard.active_agents": "Active Agents",
         "dashboard.tasks_running": "Running Tasks",
         "dashboard.success_rate": "Success Rate",

@@ -1,4 +1,4 @@
-"""Tracer Provider — Span-Erzeugung und Trace-Management (v19).
+"""Tracer Provider -- Span-Erzeugung und Trace-Management (v19).
 
 Zentrale Instanz für Distributed Tracing:
   - Span-Erzeugung mit automatischer Parent-Verknüpfung
@@ -47,7 +47,7 @@ _current_span: contextvars.ContextVar[Span | None] = contextvars.ContextVar(
 # ── Sampler ──────────────────────────────────────────────────────
 
 class Sampler:
-    """Basis-Sampler — entscheidet ob ein Trace aufgezeichnet wird."""
+    """Basis-Sampler -- entscheidet ob ein Trace aufgezeichnet wird."""
 
     def should_sample(self, trace_id: str, name: str) -> bool:
         return True

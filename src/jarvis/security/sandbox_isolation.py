@@ -252,7 +252,7 @@ class PerAgentSecretVault:
         return secret
 
     def retrieve(self, agent_id: str, key: str, requesting_agent: str = "") -> str | None:
-        """Holt ein Secret — nur der eigene Agent darf zugreifen."""
+        """Holt ein Secret -- nur der eigene Agent darf zugreifen."""
         effective_requester = requesting_agent or agent_id
         self._access_log.append({
             "agent_id": agent_id,

@@ -427,7 +427,7 @@ class PipelineRun:
 
 
 class SecurityPipeline:
-    """MLOps Security Pipeline — Orchestriert alle Sicherheitsprüfungen.
+    """MLOps Security Pipeline -- Orchestriert alle Sicherheitsprüfungen.
 
     Wird automatisch bei jedem Skill-Update, Deploy oder
     manuell via CI/CD ausgelöst.
@@ -621,7 +621,7 @@ class CIIntegration:
     def generate_github_actions(self) -> str:
         """Generiert eine GitHub Actions Workflow-Definition."""
         stages = ", ".join(s.value for s in self._config.enabled_stages)
-        return f"""# Jarvis Security Pipeline — GitHub Actions
+        return f"""# Jarvis Security Pipeline -- GitHub Actions
 name: jarvis-security-scan
 on:
   push:
@@ -658,7 +658,7 @@ jobs:
 
     def generate_gitlab_ci(self) -> str:
         """Generiert eine GitLab CI Pipeline-Definition."""
-        return f"""# Jarvis Security Pipeline — GitLab CI
+        return f"""# Jarvis Security Pipeline -- GitLab CI
 security-scan:
   stage: test
   image: python:3.12

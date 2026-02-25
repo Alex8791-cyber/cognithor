@@ -1,4 +1,4 @@
-"""Core Vision Messages — Backend-agnostische multimodale Message-Konstruktion.
+"""Core Vision Messages -- Backend-agnostische multimodale Message-Konstruktion.
 
 Stellt Typen und Funktionen bereit, um Bilder (Screenshots) zusammen
 mit Text an beliebige LLM-Backends zu senden.  Jedes Backend hat ein

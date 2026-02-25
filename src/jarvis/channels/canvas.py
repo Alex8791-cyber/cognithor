@@ -1,7 +1,7 @@
-"""Live Canvas — Agent-Driven Visual Workspace.
+"""Live Canvas -- Agent-Driven Visual Workspace.
 
 Der Agent kann dynamisch HTML/CSS/JS in ein Canvas-Panel des Clients pushen.
-Visualisierungen, Dashboards, interaktive Formulare — alles was der Agent braucht.
+Visualisierungen, Dashboards, interaktive Formulare -- alles was der Agent braucht.
 
 WebSocket-Protocol:
   {"type": "canvas_push", "html": "<div>...</div>", "title": "Dashboard"}

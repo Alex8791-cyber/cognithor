@@ -1,4 +1,4 @@
-"""Browser-Use Types — v17.
+"""Browser-Use Types -- v17.
 
 Datenmodelle für autonome Browser-Automatisierung.
 Trennung von Low-Level (Playwright) und High-Level (Agent-Steuerung).

@@ -1,4 +1,4 @@
-"""Graph Builder — Fluent API zum Erstellen von Graph-Definitionen (v18).
+"""Graph Builder -- Fluent API zum Erstellen von Graph-Definitionen (v18).
 
 Ermöglicht deklarativen Graphenbau:
 
@@ -196,7 +196,7 @@ class GraphBuilder:
             ValueError: Wenn der Graph ungültig ist
         """
         if self._built:
-            raise ValueError("GraphBuilder already built — create a new builder")
+            raise ValueError("GraphBuilder already built -- create a new builder")
 
         # Auto-Entry: Erster hinzugefügter Node
         if not self._graph.entry_point and self._graph.nodes:

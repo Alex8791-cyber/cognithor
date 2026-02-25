@@ -438,7 +438,7 @@ class ComplianceExporter:
     def export_markdown(self, report: AIActReport) -> str:
         d = report.to_dict()
         lines = [
-            f"# EU AI Act Compliance Report — {d['system_name']} v{d['version']}",
+            f"# EU AI Act Compliance Report -- {d['system_name']} v{d['version']}",
             f"",
             f"**Report-ID:** {d['report_id']}",
             f"**Erstellt:** {d['generated_at']}",

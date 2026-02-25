@@ -6,7 +6,7 @@ register_builtin_handler()-System und dem neuen MCP-Server-Modus.
 ARCHITEKTUR:
   - Ohne MCP-Server: Tools laufen wie bisher über register_builtin_handler()
   - Mit MCP-Server: Tools werden ZUSÄTZLICH über den MCP-Server exponiert
-  - Der MCP-Server ist rein additiv — er ersetzt nichts
+  - Der MCP-Server ist rein additiv -- er ersetzt nichts
 
 Verantwortlich für:
   1. Bestehende Builtin-Handler in MCPToolDefs konvertieren

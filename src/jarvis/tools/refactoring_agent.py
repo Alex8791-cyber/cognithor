@@ -1,6 +1,6 @@
 """Autonomer Refactoring-Agent: Orchestriert Code- und Architektur-Analyse.
 
-Kein automatisches Refactoring — nur Report (Mensch entscheidet).
+Kein automatisches Refactoring -- nur Report (Mensch entscheidet).
 Standalone ausfuehrbar: python -m jarvis.tools.refactoring_agent src/jarvis/
 """
 

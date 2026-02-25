@@ -6,7 +6,7 @@ Grafischer Einrichtungs-Assistent für neue Installationen:
   - ModelRecommender:       Empfiehlt LLM-Modelle basierend auf Hardware
   - PresetConfig:           Vorkonfigurierte Setups (Minimal, Standard, Power, Enterprise)
   - ChannelConfigurator:    Konfiguriert Kommunikationskanäle
-  - SetupWizard:            Hauptklasse — schrittweiser Einrichtungsprozess
+  - SetupWizard:            Hauptklasse -- schrittweiser Einrichtungsprozess
 
 Architektur-Bibel: §2.1 (Installation), §2.2 (First-Run-Experience)
 """

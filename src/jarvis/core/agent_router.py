@@ -210,14 +210,14 @@ def _default_agents() -> list[AgentProfile]:
 
     Alle spezialisierten Agenten werden vom Nutzer definiert
     (via ~/.jarvis/config/agents.yaml oder Onboarding).
-    Jarvis ist ein universelles Agent-OS — keine hardcodierten
+    Jarvis ist ein universelles Agent-OS -- keine hardcodierten
     Branchen- oder Rollen-Agenten.
     """
     return [
         AgentProfile(
             name="jarvis",
             display_name="Jarvis",
-            description="Universeller Assistent — passt sich dynamisch an den Nutzer an.",
+            description="Universeller Assistent -- passt sich dynamisch an den Nutzer an.",
             system_prompt=(
                 "Du bist Jarvis, ein persönlicher KI-Assistent. "
                 "Du passt dich an die Sprache und Bedürfnisse des Nutzers an. "

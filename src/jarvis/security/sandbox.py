@@ -6,7 +6,7 @@ desto stärker die Isolation.
 
 Isolierungsstufen [B§3.3]:
   L0 (PROCESS):   subprocess + ulimit (Unix) / Job Objects (Windows)
-  L-JOB (JOBOBJECT): Windows Job Objects — native Windows-Isolation
+  L-JOB (JOBOBJECT): Windows Job Objects -- native Windows-Isolation
   L1 (NAMESPACE): nsjail/bubblewrap (Linux-Namespaces)
   L2 (CONTAINER): Docker mit Resource-Limits
   L3 (VM):        Reserved (nicht implementiert)

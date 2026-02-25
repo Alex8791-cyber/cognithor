@@ -353,7 +353,7 @@ class WebUIChannel(Channel):
             except Exception as exc:
                 log.warning("config_routes_not_available", error=str(exc))
 
-            # Static files (Frontend) — optional
+            # Static files (Frontend) -- optional
             if self._static_dir:
                 try:
                     from fastapi.staticfiles import StaticFiles
@@ -373,7 +373,7 @@ class WebUIChannel(Channel):
             return self._dummy_app()
 
     def _dummy_app(self) -> Any:
-        """Return a minimal stand‑in for a FastAPI application."""
+        """Return a minimal stand-in for a FastAPI application."""
         class DummyApp:
             def __init__(self) -> None:
                 self.title = "Jarvis Web UI (stub)"

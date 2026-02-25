@@ -201,11 +201,11 @@ class CliChannel(Channel):
             self._console.print(
                 Panel(
                     "[bold]Verfügbare Befehle:[/bold]\n\n"
-                    "/quit     – Jarvis beenden\n"
-                    "/help     – Diese Hilfe anzeigen\n"
-                    "/status   – Systemstatus anzeigen\n"
-                    "/clear    – Bildschirm leeren\n"
-                    "/version  – Versionsinformation",
+                    "/quit     -- Jarvis beenden\n"
+                    "/help     -- Diese Hilfe anzeigen\n"
+                    "/status   -- Systemstatus anzeigen\n"
+                    "/clear    -- Bildschirm leeren\n"
+                    "/version  -- Versionsinformation",
                     border_style="dim",
                     title="Hilfe",
                 )

@@ -300,7 +300,7 @@ class JarvisPromptProvider:
                 "content": {
                     "type": "text",
                     "text": (
-                        f"Fasse den folgenden Text zusammen — "
+                        f"Fasse den folgenden Text zusammen -- "
                         f"{length_map.get(length, length_map['medium'])}, "
                         f"{style_map.get(style, style_map['professional'])}.\n\n"
                         f"---\n\n{content}"
@@ -318,11 +318,11 @@ class JarvisPromptProvider:
     ) -> list[dict[str, Any]]:
         """Generiert Messages für Versicherungsberatung."""
         product_context = {
-            "bu": "Berufsunfähigkeitsversicherung (BU) — Absicherung der Arbeitskraft",
-            "bav": "Betriebliche Altersversorgung (bAV) — Arbeitgeberfinanzierte Vorsorge",
-            "rlv": "Risikolebensversicherung (RLV) — Hinterbliebenenabsicherung",
-            "pkv": "Private Krankenversicherung (PKV) — Gesundheitsschutz",
-            "sachversicherung": "Sachversicherungen — Haftpflicht, Hausrat, Wohngebäude",
+            "bu": "Berufsunfähigkeitsversicherung (BU) -- Absicherung der Arbeitskraft",
+            "bav": "Betriebliche Altersversorgung (bAV) -- Arbeitgeberfinanzierte Vorsorge",
+            "rlv": "Risikolebensversicherung (RLV) -- Hinterbliebenenabsicherung",
+            "pkv": "Private Krankenversicherung (PKV) -- Gesundheitsschutz",
+            "sachversicherung": "Sachversicherungen -- Haftpflicht, Hausrat, Wohngebäude",
         }
 
         system_msg = (

@@ -1,4 +1,4 @@
-"""OpenTelemetry Types — v19.
+"""OpenTelemetry Types -- v19.
 
 OTLP-kompatible Datenmodelle für Distributed Tracing und Metrics.
 Folgt der OpenTelemetry Specification (Traces + Metrics).
@@ -297,7 +297,7 @@ class Span:
 
 @dataclass
 class Trace:
-    """Vollständiger Trace — Baum von Spans."""
+    """Vollständiger Trace -- Baum von Spans."""
     trace_id: str = ""
     spans: list[Span] = field(default_factory=list)
     service_name: str = "jarvis"

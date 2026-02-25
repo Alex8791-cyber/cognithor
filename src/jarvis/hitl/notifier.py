@@ -1,4 +1,4 @@
-"""HITL Notifier — Multi-Channel-Benachrichtigung (v20).
+"""HITL Notifier -- Multi-Channel-Benachrichtigung (v20).
 
 Unterstützt:
   - In-App: Nachricht in internem Queue (für Dashboard/CLI)
@@ -243,7 +243,7 @@ class HITLNotifier:
         templates = {
             "new_request": f"[HITL] Neue Anfrage: {title} ({request.config.priority.value})",
             "reminder": f"[HITL] Erinnerung: {title} wartet auf Bearbeitung",
-            "resolved": f"[HITL] Erledigt: {title} — {extra.get('decision', '?') if extra else '?'}",
+            "resolved": f"[HITL] Erledigt: {title} -- {extra.get('decision', '?') if extra else '?'}",
             "escalated": f"[HITL] Eskaliert: {title} (Eskalation #{request.escalation_count})",
         }
         return templates.get(event, f"[HITL] {event}: {title}")

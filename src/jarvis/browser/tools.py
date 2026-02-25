@@ -1,4 +1,4 @@
-"""Browser MCP Tools — Registriert Browser-Use als MCP-Tools (v17).
+"""Browser MCP Tools -- Registriert Browser-Use als MCP-Tools (v17).
 
 Stellt dem LLM folgende High-Level-Tools bereit:
   - browser_navigate:      Seite laden + analysieren

@@ -168,7 +168,7 @@ class Reflector:
             user_message: Die eingehende User-Nachricht
             procedural_memory: ProceduralMemory-Instanz
             max_results: Maximale Anzahl zurückgegebener Prozeduren
-            min_score: Minimaler Match-Score (0–1)
+            min_score: Minimaler Match-Score (0--1)
 
         Returns:
             Liste von Prozedur-Texten (body), bereit zur Injection
@@ -689,7 +689,7 @@ Regeln:
             a for a in agent_result.audit_entries if a.decision_status == GateStatus.BLOCK
         ]
         if blocks:
-            block_lines = [f"BLOCKIERT: {a.action_tool} – {a.decision_reason}" for a in blocks[:5]]
+            block_lines = [f"BLOCKIERT: {a.action_tool} -- {a.decision_reason}" for a in blocks[:5]]
             parts.append("\n".join(block_lines))
 
         # Zusammenfügen und kürzen
@@ -992,7 +992,7 @@ Regeln:
             existing = procedural.load_procedure(candidate.name)
             if existing:
                 old_meta, old_body = existing
-                # Body zusammenführen — neues ans Ende
+                # Body zusammenführen -- neues ans Ende
                 merged_body = old_body.rstrip() + "\n\n---\n\n" + body
                 metadata = ProcedureMetadata(
                     name=old_meta.name,

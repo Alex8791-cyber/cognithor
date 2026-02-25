@@ -22,8 +22,8 @@ Fallback logging utilities for Jarvis.
 
 This module attempts to import and configure the `structlog` library for
 structured logging. In environments where `structlog` is unavailable
-(for example, when third‑party dependencies cannot be installed), the
-functions in this module fall back to Python's built‑in `logging`
+(for example, when third-party dependencies cannot be installed), the
+functions in this module fall back to Python's built-in `logging`
 module. The public API (`get_logger`, `setup_logging`, `bind_context`,
 `clear_context`) remains the same so that callers do not need to
 distinguish between structured and basic logging.
@@ -39,7 +39,7 @@ from importlib import import_module
 
 try:
     # Attempt to import structlog. If this fails, we'll fall back to
-    # Python's built‑in logging. It's important that this happens at
+    # Python's built-in logging. It's important that this happens at
     # runtime so environments without structlog can still run the code.
     structlog = import_module("structlog")  # type: ignore[assignment]
 except ModuleNotFoundError:
@@ -54,7 +54,7 @@ except ModuleNotFoundError:
 class _StructlogCompatLogger:
     """Akzeptiert structlog-Style Calls (event, **kwargs) ohne structlog.
 
-    Der gesamte Jarvis-Codebase nutzt ``log.info("event", key=val)`` —
+    Der gesamte Jarvis-Codebase nutzt ``log.info("event", key=val)`` --
     der Standard-Logger wirft dabei TypeError. Dieser Wrapper formatiert
     die kwargs als ``key=val``-Paare im Log-Message.
     """
@@ -150,7 +150,7 @@ def setup_logging(
 
     # Build a list of handlers for Python's logging module. Even when
     # structlog is present we need handlers so that Python's logging
-    # messages (from third‑party libraries) are emitted.
+    # messages (from third-party libraries) are emitted.
     handler_list: list[logging.Handler] = []
 
     # Console handler: always attach if requested. We write to
@@ -196,7 +196,7 @@ def setup_logging(
         force=True,
     )
 
-    # Silence noisy third‑party loggers. If structlog is unavailable,
+    # Silence noisy third-party loggers. If structlog is unavailable,
     # nothing else will touch these loggers so this still applies.
     for noisy in ("httpx", "httpcore", "asyncio", "watchdog", "urllib3"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
@@ -205,7 +205,7 @@ def setup_logging(
     if structlog is None:
         return
 
-    # Shared processors – werden in jeder Log-Nachricht durchlaufen
+    # Shared processors -- werden in jeder Log-Nachricht durchlaufen
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
@@ -217,7 +217,7 @@ def setup_logging(
     ]
 
     # Choose renderer based on json_logs flag. For JSON logs we omit
-    # colours and ensure the output uses UTF‑8 characters. Otherwise
+    # colours and ensure the output uses UTF-8 characters. Otherwise
     # use structlog.dev.ConsoleRenderer for colourised console output.
     if json_logs:
         renderer: structlog.types.Processor = structlog.processors.JSONRenderer(

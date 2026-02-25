@@ -1,4 +1,4 @@
-"""Session Manager — Cookie/State-Persistierung für Browser-Use v17.
+"""Session Manager -- Cookie/State-Persistierung für Browser-Use v17.
 
 Speichert und lädt:
   - Cookies pro Domain

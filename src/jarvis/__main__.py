@@ -1,5 +1,5 @@
 """
-Cognithor · Agent OS — Entry Point.
+Cognithor · Agent OS -- Entry Point.
 
 Usage: cognithor
        cognithor --config /path/to/config.yaml
@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     """Kommandozeilen-Argumente parsen."""
     parser = argparse.ArgumentParser(
         prog="cognithor",
-        description="Cognithor · Agent OS — Local-first autonomous agent operating system",
+        description="Cognithor · Agent OS -- Local-first autonomous agent operating system",
     )
     parser.add_argument(
         "--version",
@@ -97,7 +97,7 @@ def main() -> None:
         )
         return
 
-    # 5. System-Check — startup banner (intentional CLI output)
+    # 5. System-Check -- startup banner (intentional CLI output)
     _print_banner(config)
 
     # Phase 0 Checkpoint: Setup OK
@@ -164,7 +164,7 @@ def main() -> None:
 
                 discord_token = os.environ.get("JARVIS_DISCORD_TOKEN")
                 channel_id = config.channels.discord_channel_id or os.environ.get("JARVIS_DISCORD_CHANNEL_ID")
-                # channel_id kann als str übergeben werden – konvertieren falls nötig
+                # channel_id kann als str übergeben werden -- konvertieren falls nötig
                 try:
                     channel_id_int = int(channel_id) if channel_id else 0
                 except Exception:

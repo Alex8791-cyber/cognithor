@@ -189,7 +189,7 @@ class Executor:
                 results.append(
                     ToolResult(
                         tool_name=action.tool,
-                        content=f"Aktion übersprungen: {decision.status.value} – {decision.reason}",
+                        content=f"Aktion übersprungen: {decision.status.value} -- {decision.reason}",
                         is_error=True,
                         error_type="GatekeeperBlock",
                     )

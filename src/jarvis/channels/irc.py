@@ -262,7 +262,7 @@ class IRCChannel(Channel):
     async def request_approval(
         self, session_id: str, action: PlannedAction, reason: str,
     ) -> bool:
-        """IRC hat keine Buttons — Approval via Textnachricht (ja/nein)."""
+        """IRC hat keine Buttons -- Approval via Textnachricht (ja/nein)."""
         logger.warning("IRC: Interaktive Approvals nicht unterstützt, verwende Fallback")
         return False
 

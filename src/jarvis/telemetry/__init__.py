@@ -1,4 +1,4 @@
-"""Jarvis OpenTelemetry v19 — Distributed Tracing & Metrics.
+"""Jarvis OpenTelemetry v19 -- Distributed Tracing & Metrics.
 
 OTLP-kompatibles Observability-Framework:
   - Distributed Tracing (W3C Trace Context)

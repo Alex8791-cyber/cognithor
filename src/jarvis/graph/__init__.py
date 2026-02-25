@@ -1,4 +1,4 @@
-"""Jarvis Graph Orchestrator v18 — DAG-basierte Workflow-Engine.
+"""Jarvis Graph Orchestrator v18 -- DAG-basierte Workflow-Engine.
 
 LangGraph-inspirierte State-Graph-Engine mit:
   - Conditional Edges + Router-Nodes

@@ -80,13 +80,13 @@ def create_skill(skills_dir: Path, name: str, trigger_keywords: Optional[Iterabl
 
 
 def search_remote_skills(query: str, limit: int = 10) -> list[str]:
-    """Durchsucht lokale "Remote"‑Skill‑Repos nach passenden Skills.
+    """Durchsucht lokale "Remote"-Skill-Repos nach passenden Skills.
 
     In Abwesenheit eines echten Marktplatzes durchsucht diese Funktion
-    die bereitgestellten Beispiel‑Prozeduren im Repository, um ähnlich
-    wie eine Remote‑Suche zu funktionieren. Es werden sowohl die Namen
+    die bereitgestellten Beispiel-Prozeduren im Repository, um ähnlich
+    wie eine Remote-Suche zu funktionieren. Es werden sowohl die Namen
     der Dateien als auch deren Inhaltsfrontmatter betrachtet. Das
-    Ergebnis ist eine Liste von Skill‑Dateinamen (ohne Erweiterung),
+    Ergebnis ist eine Liste von Skill-Dateinamen (ohne Erweiterung),
     sortiert nach einfacher Übereinstimmung.
 
     Args:
@@ -94,15 +94,15 @@ def search_remote_skills(query: str, limit: int = 10) -> list[str]:
         limit: Maximale Anzahl an Ergebnissen.
 
     Returns:
-        Liste der Skill‑Basenamen (ohne ``.md``), die zur Suchanfrage passen.
+        Liste der Skill-Basenamen (ohne ``.md``), die zur Suchanfrage passen.
     """
     query_lower = query.lower().strip()
     results: list[str] = []
 
-    # Bestimme potenzielle "Remote"‑Verzeichnisse relativ zu diesem Modul
+    # Bestimme potenzielle "Remote"-Verzeichnisse relativ zu diesem Modul
     here = Path(__file__).resolve()
     # Die Struktur ist: project/src/jarvis/skills/manager.py → parents[4] = project
-    # Wir berücksichtigen zwei Orte als Quelle für "Remote"‑Skills:
+    # Wir berücksichtigen zwei Orte als Quelle für "Remote"-Skills:
     #  1. <repo_root>/project/data/procedures
     #  2. <repo_root>/data/procedures
     # parents[4] -> <repo_root>/project, parents[5] -> <repo_root>
@@ -168,11 +168,11 @@ def search_remote_skills(query: str, limit: int = 10) -> list[str]:
 
 
 def install_remote_skill(skills_dir: Path, name: str, repo_url: str | None = None) -> Path:
-    """Installiert einen Skill aus einem lokalen "Remote"‑Repository.
+    """Installiert einen Skill aus einem lokalen "Remote"-Repository.
 
     Diese Funktion versucht, eine vorhandene Prozedur (Skill) aus den
-    Beispiel‑Prozeduren des Repositories zu kopieren und unter dem
-    angegebenen Namen im Plugins‑Verzeichnis abzulegen. Wenn der Skill
+    Beispiel-Prozeduren des Repositories zu kopieren und unter dem
+    angegebenen Namen im Plugins-Verzeichnis abzulegen. Wenn der Skill
     bereits installiert ist, wird der bestehende Pfad zurückgegeben.
     Falls kein passender Skill gefunden wird, wird eine leere
     Vorlage erstellt.
@@ -181,12 +181,12 @@ def install_remote_skill(skills_dir: Path, name: str, repo_url: str | None = Non
         skills_dir: Zielverzeichnis für den Skill.
         name: Name des zu installierenden Skills. Kann sowohl der
             Dateiname ohne Erweiterung als auch der sichtbare
-            Frontmatter‑Name sein.
-        repo_url: Optionaler Verweis auf ein Remote‑Repository (wird in
-            dieser Offline‑Variante ignoriert).
+            Frontmatter-Name sein.
+        repo_url: Optionaler Verweis auf ein Remote-Repository (wird in
+            dieser Offline-Variante ignoriert).
 
     Returns:
-        Pfad zur installierten oder erstellten Skill‑Datei.
+        Pfad zur installierten oder erstellten Skill-Datei.
     """
     # Normalisiere den Dateinamen
     slug = _slugify(name)
@@ -197,7 +197,7 @@ def install_remote_skill(skills_dir: Path, name: str, repo_url: str | None = Non
     if target_path.exists():
         return target_path
 
-    # Bestimme "Remote"‑Quellverzeichnisse
+    # Bestimme "Remote"-Quellverzeichnisse
     here = Path(__file__).resolve()
     # parents[4] -> <repo_root>/project, parents[5] -> <repo_root>
     project_dir = here.parents[4]

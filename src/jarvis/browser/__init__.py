@@ -1,4 +1,4 @@
-"""Jarvis Browser-Use v17 — Autonome Browser-Automatisierung.
+"""Jarvis Browser-Use v17 -- Autonome Browser-Automatisierung.
 
 Ermöglicht dem Agent das selbstständige Navigieren, Lesen und
 Interagieren mit Webseiten. Headless Chromium über Playwright.

@@ -410,7 +410,7 @@ class IsolatedSessionStore:
         return session
 
     def get_session(self, agent_id: str, session_id: str) -> AgentSession | None:
-        """Holt eine Session — nur aus dem eigenen Store."""
+        """Holt eine Session -- nur aus dem eigenen Store."""
         store = self._stores.get(agent_id)
         if not store:
             return None

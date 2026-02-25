@@ -223,7 +223,7 @@ class Gateway:
             await self._cron_engine.start()
             log.info("cron_engine_started", jobs=self._cron_engine.job_count)
 
-        # MCP-Server starten (OPTIONAL — nur wenn Bridge aktiviert)
+        # MCP-Server starten (OPTIONAL -- nur wenn Bridge aktiviert)
         if self._mcp_bridge and self._mcp_bridge.enabled:
             try:
                 await self._mcp_bridge.start()
@@ -516,7 +516,7 @@ class Gateway:
         """Phase 2: Profiler, Budget, Run-Recording, Policy-Snapshot.
 
         Returns:
-            (run_id, budget_response) — budget_response is not None if budget exceeded.
+            (run_id, budget_response) -- budget_response is not None if budget exceeded.
         """
         if hasattr(self, "_task_profiler") and self._task_profiler:
             try:
@@ -911,7 +911,7 @@ class Gateway:
 
         # Planner mit Ziel-Agent-Kontext aufrufen
         if self._planner is None:
-            raise RuntimeError("Planner nicht initialisiert — Delegation nicht möglich")
+            raise RuntimeError("Planner nicht initialisiert -- Delegation nicht möglich")
 
         plan = await self._planner.plan(
             user_message=task,
@@ -932,7 +932,7 @@ class Gateway:
 
         # Gatekeeper prüfen
         if self._gatekeeper is None:
-            raise RuntimeError("Gatekeeper nicht initialisiert — Delegation nicht möglich")
+            raise RuntimeError("Gatekeeper nicht initialisiert -- Delegation nicht möglich")
         decisions = self._gatekeeper.evaluate_plan(plan.steps, session)
 
         # APPROVE/BLOCK-Entscheidungen in Delegationen blockieren (kein HITL moeglich)

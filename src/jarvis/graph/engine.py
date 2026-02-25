@@ -1,4 +1,4 @@
-"""Graph Engine — Kern-Ausführungslogik für Graph Orchestrator v18.
+"""Graph Engine -- Kern-Ausführungslogik für Graph Orchestrator v18.
 
 Führt einen GraphDefinition aus:
   - Traversiert Nodes entlang Edges

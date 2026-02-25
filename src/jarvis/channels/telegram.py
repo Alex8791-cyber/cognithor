@@ -518,7 +518,7 @@ class TelegramChannel(Channel):
             return text if text.strip() else None
 
         except ImportError:
-            logger.warning("faster-whisper nicht installiert — Voice-Transkription deaktiviert")
+            logger.warning("faster-whisper nicht installiert -- Voice-Transkription deaktiviert")
             return None
         except Exception:
             logger.exception("Transkriptionsfehler")

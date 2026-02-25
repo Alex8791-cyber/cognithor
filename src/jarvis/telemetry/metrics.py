@@ -1,4 +1,4 @@
-"""Metrics Provider — Counter, Histogram, Gauge (v19).
+"""Metrics Provider -- Counter, Histogram, Gauge (v19).
 
 OTLP-kompatible Metriken für Jarvis:
   - Counter:   Monoton steigende Zähler (Requests, Errors, Tokens)

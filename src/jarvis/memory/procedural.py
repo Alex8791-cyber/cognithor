@@ -1,4 +1,4 @@
-"""Procedural Memory · Tier 4 — Gelernte Skills/Routinen. [B§4.5, B§6]
+"""Procedural Memory · Tier 4 -- Gelernte Skills/Routinen. [B§4.5, B§6]
 
 Inspiration: Voyager Skill Library, SAGE Framework.
 Jede Prozedur ist eine Markdown-Datei mit YAML-Frontmatter.

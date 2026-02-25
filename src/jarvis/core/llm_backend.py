@@ -1,7 +1,7 @@
 """LLM backend abstraction: Unified interface for various LLM providers.
 
 Enables switching between Ollama (local), OpenAI-compatible API,
-and Anthropic Claude API — without changes to the rest of the system.
+and Anthropic Claude API -- without changes to the rest of the system.
 
 The ModelRouter continues to use its own logic for model selection,
 but delegates the actual communication to the configured backend.
@@ -692,7 +692,7 @@ class AnthropicBackend(LLMBackend):
     async def is_available(self) -> bool:
         try:
             client = await self._ensure_client()
-            # Use invalid empty body — a 400 means the API is reachable and auth is valid.
+            # Use invalid empty body -- a 400 means the API is reachable and auth is valid.
             # A 401 means bad key, connection errors mean unreachable.
             # This avoids wasting tokens on a real completion.
             resp = await client.post(
@@ -706,7 +706,7 @@ class AnthropicBackend(LLMBackend):
             return False
 
     async def list_models(self) -> list[str]:
-        # Statische Liste — Anthropic hat keinen dynamischen Modell-Endpunkt
+        # Statische Liste -- Anthropic hat keinen dynamischen Modell-Endpunkt
         return [
             "claude-sonnet-4-20250514",
             "claude-haiku-4-5-20251001",

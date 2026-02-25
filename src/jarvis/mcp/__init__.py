@@ -1,4 +1,4 @@
-"""Jarvis MCP module — Client, Server, Resources, Prompts, Discovery, Bridge."""
+"""Jarvis MCP module -- Client, Server, Resources, Prompts, Discovery, Bridge."""
 
 from jarvis.mcp.client import JarvisMCPClient, ToolCallResult
 from jarvis.mcp.server import (

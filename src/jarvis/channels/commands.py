@@ -423,7 +423,7 @@ class FallbackRenderer:
             desc = opt.get("description", "")
             line = f"  {i}) {label}"
             if desc:
-                line += f" — {desc}"
+                line += f" -- {desc}"
             lines.append(line)
         lines.append("")
         lines.append("Antworten Sie mit der Nummer Ihrer Wahl.")
@@ -443,7 +443,7 @@ class FallbackRenderer:
             "running": "►",
             "pending": "○",
             "failed": "✗",
-            "skipped": "—",
+            "skipped": "--",
         }
         lines = [f"=== {title} ==="]
         for step in steps:

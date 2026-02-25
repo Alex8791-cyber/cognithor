@@ -1,4 +1,4 @@
-"""Page Analyzer — Intelligente Seiten-Analyse für Browser-Use v17.
+"""Page Analyzer -- Intelligente Seiten-Analyse für Browser-Use v17.
 
 Extrahiert aus einer geladenen Seite:
   - Interaktive Elemente (Buttons, Links, Inputs)
@@ -7,7 +7,7 @@ Extrahiert aus einer geladenen Seite:
   - Seitenstruktur und Navigation
   - Cookie-Banner-Erkennung
 
-Arbeitet über JavaScript-Injection — kein Parsing von HTML nötig.
+Arbeitet über JavaScript-Injection -- kein Parsing von HTML nötig.
 Funktioniert mit jedem Playwright-Page-Objekt.
 """
 

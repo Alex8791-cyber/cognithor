@@ -44,7 +44,7 @@ class PolicyPatcher:
             # Create a timestamped backup before modifying
             backup_path = self._create_backup(policy_file)
 
-            # Apply the change — merge suggested change dict into the policy
+            # Apply the change -- merge suggested change dict into the policy
             change_dict = change.change if isinstance(change.change, dict) else {}
             policy_data = self._merge_change(policy_data, change_dict)
 

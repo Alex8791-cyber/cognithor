@@ -196,7 +196,7 @@ class OllamaClient:
         temperature: float = 0.7,
         top_p: float = 0.9,
     ) -> AsyncIterator[str]:
-        """Streaming Chat-Completion – Token für Token.
+        """Streaming Chat-Completion -- Token für Token.
 
         Yields:
             Einzelne Text-Tokens als Strings.

@@ -1,4 +1,4 @@
-"""Human-in-the-Loop Types — v20.
+"""Human-in-the-Loop Types -- v20.
 
 Datenmodelle für HITL-Workflows auf Graph-Ebene:
   - ApprovalRequest:   Anfrage an menschlichen Reviewer

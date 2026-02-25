@@ -1,4 +1,4 @@
-"""Browser Agent — Autonome Browser-Steuerung v17.
+"""Browser Agent -- Autonome Browser-Steuerung v17.
 
 Orchestriert:
   - Playwright Browser-Instanz (headless)
@@ -50,7 +50,7 @@ except ImportError:
 
 
 class BrowserAgent:
-    """Autonomer Browser-Agent — steuert Webseiten über Playwright.
+    """Autonomer Browser-Agent -- steuert Webseiten über Playwright.
 
     Usage:
         agent = BrowserAgent()
@@ -679,7 +679,7 @@ class BrowserAgent:
             description: Beschreibung des gesuchten Elements.
 
         Returns:
-            ActionResult — bei Vision-Fallback enthält data["vision_hint"] den Hinweis.
+            ActionResult -- bei Vision-Fallback enthält data["vision_hint"] den Hinweis.
         """
         self._ensure_running()
 

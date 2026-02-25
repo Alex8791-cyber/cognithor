@@ -63,7 +63,7 @@ _SECRET_FIELDS = frozenset({
 
 # Patterns in field names that indicate sensitive data.
 # Any field whose name contains one of these substrings (case-insensitive)
-# will be masked — unless the name also matches an exclusion pattern.
+# will be masked -- unless the name also matches an exclusion pattern.
 _SECRET_PATTERNS = ("token", "secret", "password", "key")
 _SECRET_PATTERN_EXCLUSIONS = ("key_file", "keyboard")
 

@@ -58,7 +58,7 @@ def _derive_key(passphrase: str, salt: bytes) -> bytes:
 
 
 def _obfuscate_key(passphrase: str, salt: bytes) -> bytes:
-    """Veraltet — wird nicht mehr verwendet.
+    """Veraltet -- wird nicht mehr verwendet.
 
     Existiert nur noch für Abwärtskompatibilität beim Lesen alter Stores.
     """
@@ -72,8 +72,8 @@ class CredentialStore:
 
     Speichert Key-Value-Paare verschlüsselt als JSON auf Disk.
     Unterstützt zwei Modi:
-      1. Fernet (AES-256) — wenn `cryptography` installiert ist
-      2. Base64-Obfuskation — Fallback für Entwicklung (UNSICHER)
+      1. Fernet (AES-256) -- wenn `cryptography` installiert ist
+      2. Base64-Obfuskation -- Fallback für Entwicklung (UNSICHER)
 
     Der Planner hat keinen direkten Zugriff. Credentials werden
     vom Gatekeeper über inject_credentials() bereitgestellt.

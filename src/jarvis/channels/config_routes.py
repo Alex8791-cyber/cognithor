@@ -50,7 +50,7 @@ def create_config_routes(
     """
     deps = [verify_token_dep] if verify_token_dep else []
 
-    # Shared MonitoringHub (singleton per app) — created lazily and used
+    # Shared MonitoringHub (singleton per app) -- created lazily and used
     # across monitoring, SSE, and audit routes.
     _hub_holder: dict[str, Any] = {"hub": None}
 

@@ -650,7 +650,7 @@ class JarvisMCPServer:
             t.add_done_callback(self._handle_task_exception)
 
     def _handle_task_exception(self, task: asyncio.Task[None]) -> None:
-        """Callback for fire-and-forget tasks — logs unhandled exceptions."""
+        """Callback for fire-and-forget tasks -- logs unhandled exceptions."""
         if task.cancelled():
             return
         exc = task.exception()

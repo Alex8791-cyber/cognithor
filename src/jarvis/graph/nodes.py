@@ -1,4 +1,4 @@
-"""Built-in Node Handlers — Vorgefertigte Nodes für Graph Orchestrator v18.
+"""Built-in Node Handlers -- Vorgefertigte Nodes für Graph Orchestrator v18.
 
 Stellt wiederverwendbare Handler bereit:
   - llm_node:       LLM-Aufruf mit Prompt-Template

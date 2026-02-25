@@ -4,8 +4,8 @@ Sessions überleben Gateway-Neustarts. Speichert SessionContext
 und Working-Memory-Chat-History in SQLite.
 
 Tabellen:
-  sessions      — SessionContext-Felder
-  chat_history   — Messages pro Session (für Working Memory)
+  sessions      -- SessionContext-Felder
+  chat_history   -- Messages pro Session (für Working Memory)
 """
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ def _from_ts(ts: float) -> datetime:
 class SessionStore:
     """SQLite-basierte Session-Persistenz.
 
-    Idempotent — kann beliebig oft instanziiert werden.
+    Idempotent -- kann beliebig oft instanziiert werden.
     """
 
     def __init__(self, db_path: str | Path) -> None:

@@ -130,7 +130,7 @@ class ConsentManager:
         return False
 
     def withdraw(self, consent_id: str) -> bool:
-        """Widerruf — DSGVO Art. 7(3)."""
+        """Widerruf -- DSGVO Art. 7(3)."""
         for consents in self._consents.values():
             for c in consents:
                 if c.consent_id == consent_id:
@@ -187,7 +187,7 @@ class ConsentManager:
 class SimpleDecisionView:
     """Verständliche Entscheidungsdarstellung für Endnutzer.
 
-    Keine technischen Details — nur was der Nutzer wissen muss.
+    Keine technischen Details -- nur was der Nutzer wissen muss.
     """
 
     view_id: str

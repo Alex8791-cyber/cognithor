@@ -89,7 +89,7 @@ class AnalysisVerdict(Enum):
 
     SAFE = "safe"  # Keine Auffälligkeiten
     SUSPICIOUS = "suspicious"  # Warnung, aber installierbar
-    DANGEROUS = "dangerous"  # Blockiert — nicht installieren
+    DANGEROUS = "dangerous"  # Blockiert -- nicht installieren
 
 
 class SandboxPermission(Enum):
@@ -330,31 +330,31 @@ class AnalysisReport:
 
 # Gefährliche Patterns (blockieren Installation)
 _DANGEROUS_PATTERNS: list[tuple[str, str]] = [
-    (r"\beval\s*\(", "eval() — dynamische Code-Ausführung"),
-    (r"\bexec\s*\(", "exec() — dynamische Code-Ausführung"),
-    (r"\b__import__\s*\(", "__import__() — dynamischer Import"),
-    (r"\bsubprocess\b", "subprocess — Prozess-Start"),
-    (r"\bos\.system\s*\(", "os.system() — Shell-Kommando"),
-    (r"\bos\.popen\s*\(", "os.popen() — Shell-Pipe"),
-    (r"\bshutil\.rmtree\s*\(", "shutil.rmtree() — rekursives Löschen"),
+    (r"\beval\s*\(", "eval() -- dynamische Code-Ausführung"),
+    (r"\bexec\s*\(", "exec() -- dynamische Code-Ausführung"),
+    (r"\b__import__\s*\(", "__import__() -- dynamischer Import"),
+    (r"\bsubprocess\b", "subprocess -- Prozess-Start"),
+    (r"\bos\.system\s*\(", "os.system() -- Shell-Kommando"),
+    (r"\bos\.popen\s*\(", "os.popen() -- Shell-Pipe"),
+    (r"\bshutil\.rmtree\s*\(", "shutil.rmtree() -- rekursives Löschen"),
     (r"\bopen\s*\([^)]*['\"]\/(?:etc|proc|sys)", "Zugriff auf Systemverzeichnisse"),
-    (r"\bsocket\b", "socket — direkter Netzwerkzugriff"),
-    (r"\bctypes\b", "ctypes — C-Level-Zugriff"),
-    (r"\bpickle\.loads?\s*\(", "pickle.load — unsichere Deserialisierung"),
+    (r"\bsocket\b", "socket -- direkter Netzwerkzugriff"),
+    (r"\bctypes\b", "ctypes -- C-Level-Zugriff"),
+    (r"\bpickle\.loads?\s*\(", "pickle.load -- unsichere Deserialisierung"),
     (r"\b(?:requests|httpx|urllib)\.(?:get|post|put|delete)\s*\(", "HTTP-Request ohne Genehmigung"),
     (r"(?:PRIVATE|SECRET|PASSWORD|API_KEY)\s*=\s*['\"]", "Hartcodierte Credentials"),
 ]
 
 # Verdächtige Patterns (Warnung, aber installierbar)
 _SUSPICIOUS_PATTERNS: list[tuple[str, str]] = [
-    (r"\bgetattr\s*\(", "getattr() — dynamischer Attributzugriff"),
-    (r"\bglobals\s*\(\)", "globals() — globaler Namespace-Zugriff"),
-    (r"\bcompile\s*\(", "compile() — Code-Kompilierung"),
-    (r"\bos\.environ", "os.environ — Umgebungsvariablen-Zugriff"),
-    (r"\bimportlib\b", "importlib — dynamischer Import"),
-    (r"\bsys\.path", "sys.path — Modifizierung des Importpfads"),
-    (r"\bthreading\b", "threading — Multi-Threading"),
-    (r"\basyncio\.create_subprocess", "asyncio.create_subprocess — Subprozess"),
+    (r"\bgetattr\s*\(", "getattr() -- dynamischer Attributzugriff"),
+    (r"\bglobals\s*\(\)", "globals() -- globaler Namespace-Zugriff"),
+    (r"\bcompile\s*\(", "compile() -- Code-Kompilierung"),
+    (r"\bos\.environ", "os.environ -- Umgebungsvariablen-Zugriff"),
+    (r"\bimportlib\b", "importlib -- dynamischer Import"),
+    (r"\bsys\.path", "sys.path -- Modifizierung des Importpfads"),
+    (r"\bthreading\b", "threading -- Multi-Threading"),
+    (r"\basyncio\.create_subprocess", "asyncio.create_subprocess -- Subprozess"),
 ]
 
 
@@ -401,7 +401,7 @@ class CodeAnalyzer:
         # Code-Länge prüfen
         if lines > self._max_lines:
             suspicious.append(
-                f"Code hat {lines} Zeilen (>{self._max_lines} — ungewöhnlich lang)"
+                f"Code hat {lines} Zeilen (>{self._max_lines} -- ungewöhnlich lang)"
             )
 
         # Kommentare und Strings entfernen für zuverlässigere Analyse
@@ -481,7 +481,7 @@ class CodeAnalyzer:
         # Multiline-Strings
         code = re.sub(r'""".*?"""', '""', code, flags=re.DOTALL)
         code = re.sub(r"'''.*?'''", "''", code, flags=re.DOTALL)
-        # Single-line Strings — bounded repetition to prevent ReDoS
+        # Single-line Strings -- bounded repetition to prevent ReDoS
         code = re.sub(r'"[^"\\]{0,10000}(?:\\.[^"\\]{0,10000}){0,100}"', '""', code)
         code = re.sub(r"'[^'\\]{0,10000}(?:\\.[^'\\]{0,10000}){0,100}'", "''", code)
         # Kommentare
@@ -499,11 +499,11 @@ class SkillPackage:
     """Ein vollständiges, verteilbares Skill-Paket.
 
     Struktur:
-      manifest.json    — Paket-Metadaten
-      skill.py         — Skill-Code
-      test_skill.py    — Unit-Tests
-      skill.md         — Markdown-Dokumentation
-      signature.json   — Digitale Signatur
+      manifest.json    -- Paket-Metadaten
+      skill.py         -- Skill-Code
+      test_skill.py    -- Unit-Tests
+      skill.md         -- Markdown-Dokumentation
+      signature.json   -- Digitale Signatur
     """
 
     manifest: SkillManifest
@@ -695,7 +695,7 @@ class PackageBuilder:
             report = self._analyzer.analyze(code, manifest)
             if report.verdict == AnalysisVerdict.DANGEROUS:
                 raise ValueError(
-                    f"Code-Analyse: GEFÄHRLICH — {'; '.join(report.dangerous_patterns)}"
+                    f"Code-Analyse: GEFÄHRLICH -- {'; '.join(report.dangerous_patterns)}"
                 )
 
         # 3. Content-Hash

@@ -1,4 +1,4 @@
-"""A2A Client — RC v1.0 (Linux Foundation).
+"""A2A Client -- RC v1.0 (Linux Foundation).
 
 Sendet Tasks an Remote-Agenten über JSON-RPC 2.0 / HTTP.
 Unterstützt Discovery, contextId, streaming, version negotiation.
@@ -146,7 +146,7 @@ class A2AClient:
         task_id: str | None = None, context_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Task | None:
-        """message/send — Nachricht senden / Task erstellen (RC v1.0)."""
+        """message/send -- Nachricht senden / Task erstellen (RC v1.0)."""
         endpoint = endpoint.rstrip("/")
         if message is None:
             message = Message(role=MessageRole.USER, parts=[TextPart(text=text)])
@@ -176,7 +176,7 @@ class A2AClient:
 
     async def list_tasks(self, endpoint: str, context_id: str | None = None,
                          state: str | None = None, limit: int = 50) -> list[Task]:
-        """tasks/list — Tasks auflisten (RC v1.0)."""
+        """tasks/list -- Tasks auflisten (RC v1.0)."""
         params: dict[str, Any] = {"limit": limit}
         if context_id:
             params["contextId"] = context_id
@@ -208,7 +208,7 @@ class A2AClient:
         self, endpoint: str, text: str = "", message: Message | None = None,
         context_id: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
-        """message/stream — Streaming-Nachricht mit SSE-Events."""
+        """message/stream -- Streaming-Nachricht mit SSE-Events."""
         endpoint = endpoint.rstrip("/")
         if message is None:
             message = Message(role=MessageRole.USER, parts=[TextPart(text=text)])

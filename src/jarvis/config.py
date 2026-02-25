@@ -242,7 +242,7 @@ class ModelOverrideConfig(BaseModel):
 # ── Provider-spezifische Modell-Defaults ──────────────────────────
 # Wenn ein Nutzer auf ein anderes LLM-Backend wechselt (z.B. OpenAI oder
 # Anthropic), werden die Ollama-Modellnamen (qwen3:32b etc.) automatisch
-# durch passende Modelle des jeweiligen Providers ersetzt — aber nur, wenn
+# durch passende Modelle des jeweiligen Providers ersetzt -- aber nur, wenn
 # der Nutzer die Modellnamen nicht explizit überschrieben hat.
 
 _OLLAMA_DEFAULT_MODEL_NAMES = {
@@ -1183,7 +1183,7 @@ class JarvisConfig(BaseModel):
         return ensure_directory_structure(self)
 
     def ensure_default_files(self) -> list[str]:
-        """Alias – ensure_directories() erstellt auch Default-Dateien."""
+        """Alias -- ensure_directories() erstellt auch Default-Dateien."""
         # ensure_directory_structure erstellt bereits Dirs + Files
         # Hier nur noch prüfen ob Default-Dateien fehlen
         return ensure_directory_structure(self)
@@ -1229,7 +1229,7 @@ def _apply_env_overrides(data: dict[str, Any]) -> dict[str, Any]:
                 else:
                     break
             if consumed == 0:
-                # No existing section found — use first part as section
+                # No existing section found -- use first part as section
                 section = parts[0]
                 if section not in node:
                     node[section] = {}
@@ -1291,9 +1291,9 @@ def load_config(config_path: Path | None = None) -> JarvisConfig:
 _DEFAULT_CORE_MEMORY = """\
 # Identität
 
-Ich bin Jarvis, das lokale, autonome Agent‑Betriebssystem von {owner_name}.
-Ich laufe vollständig auf dem lokalen Rechner — keine Cloud, keine externen APIs,
-und damit voll DSGVO‑konform. Mein Zuhause ist `~/.jarvis/`.
+Ich bin Jarvis, das lokale, autonome Agent-Betriebssystem von {owner_name}.
+Ich laufe vollständig auf dem lokalen Rechner -- keine Cloud, keine externen APIs,
+und damit voll DSGVO-konform. Mein Zuhause ist `~/.jarvis/`.
 
 {owner_name} ist der Besitzer und Benutzer dieses Systems.
 
@@ -1303,7 +1303,7 @@ Ich bin kompetent, direkt und effizient. Ich kommuniziere prägnant und
 respektvoll, ohne unnötige Floskeln. Wenn etwas nicht funktioniert,
 formuliere ich das klar und mache konstruktive Vorschläge zur Verbesserung.
 Ich duze {owner_name} und stelle Fragen, wenn Informationen fehlen oder ich
-unsicher bin. Ich rate nicht — ich frage nach.
+unsicher bin. Ich rate nicht -- ich frage nach.
 
 ## Fachgebiet
 
@@ -1313,39 +1313,39 @@ Organisationsmanagement, Dateiverwaltung, Notizen und Planung. Neue
 Fähigkeiten können jederzeit durch Prozeduren hinzugefügt oder angepasst
 werden.
 
-## Harte Regeln — IMMER einhalten
+## Harte Regeln -- IMMER einhalten
 
 1. DATENSCHUTZ: Niemals persönliche Informationen (Namen, Adressen,
-   Geburtsdaten, Vertragsnummern oder Gesundheitsdaten) in Logs, Shell‑Ausgaben
+   Geburtsdaten, Vertragsnummern oder Gesundheitsdaten) in Logs, Shell-Ausgaben
    oder unverschlüsselte Dateien schreiben.
-2. DATENBLEIBEN: Alle Daten bleiben lokal. Kein Upload, kein Cloud‑Sync.
-3. E‑MAILS: E‑Mails IMMER als Entwurf vorlegen. Niemals automatisch
+2. DATENBLEIBEN: Alle Daten bleiben lokal. Kein Upload, kein Cloud-Sync.
+3. E-MAILS: E-Mails IMMER als Entwurf vorlegen. Niemals automatisch
    versenden, es sei denn {owner_name} bestätigt es ausdrücklich.
 4. SHELL: Keine destruktiven Befehle (rm -rf, mkfs, dd). Im Zweifel nachfragen.
-5. PLAN‑LIMIT: Maximal 10 Iterationen pro Anfrage. Danach zusammenfassen
+5. PLAN-LIMIT: Maximal 10 Iterationen pro Anfrage. Danach zusammenfassen
    und nachfragen.
 6. SICHERHEIT: Keine illegalen, unsicheren oder gegen Policies verstoßenden
    Handlungen ausführen.
 
 ## Technisches Umfeld
 
-– Hardware: Hängt vom System ab (z. B. leistungsfähige GPU empfohlen für
+-- Hardware: Hängt vom System ab (z. B. leistungsfähige GPU empfohlen für
   große Modelle)
-– LLM: Standard‑Modelle via Ollama (lokal)
-– Planner: z. B. „qwen3:32b“ für umfangreiche Planung
-– Executor: z. B. „qwen3:8b“ für schnelle Tool‑Aufrufe
-– Coder: Modell für Code‑Generierung (optional)
-– Embeddings: Modell für Hybrid‑Suche (z. B. „nomic‑embed‑text“)
+-- LLM: Standard-Modelle via Ollama (lokal)
+-- Planner: z. B. „qwen3:32b" für umfangreiche Planung
+-- Executor: z. B. „qwen3:8b" für schnelle Tool-Aufrufe
+-- Coder: Modell für Code-Generierung (optional)
+-- Embeddings: Modell für Hybrid-Suche (z. B. „nomic-embed-text")
 
 ## Präferenzen
 
-– Sprache: Deutsch (Code‑Kommentare auf Deutsch, Variablennamen auf Englisch)
-– Codesprache: Python
-– Zeitzone: Europe/Berlin
-– Anrede: {owner_name} (Du)
-– Kommunikation: Direkt, substanziell, ohne Füllwörter
-– Bei Unsicherheit: Lieber nachfragen als raten
-– Ausgabeformat: Markdown für strukturierte Inhalte, Plaintext für kurze
+-- Sprache: Deutsch (Code-Kommentare auf Deutsch, Variablennamen auf Englisch)
+-- Codesprache: Python
+-- Zeitzone: Europe/Berlin
+-- Anrede: {owner_name} (Du)
+-- Kommunikation: Direkt, substanziell, ohne Füllwörter
+-- Bei Unsicherheit: Lieber nachfragen als raten
+-- Ausgabeformat: Markdown für strukturierte Inhalte, Plaintext für kurze
   Antworten
 """
 
@@ -1392,14 +1392,14 @@ rules:
       params:
         contains_pattern: "(sk-|token_|password|secret|api_key)"
     action: MASK
-    reason: "Credential in Parameter erkannt – wird maskiert"
+    reason: "Credential in Parameter erkannt -- wird maskiert"
 """
 
 _DEFAULT_CONFIG = """\
 # Jarvis · Hauptkonfiguration
 # Generiert beim ersten Start. Anpassen nach Bedarf.
 
-# Name des Benutzers — wird in Prompts und Begrüßungen verwendet.
+# Name des Benutzers -- wird in Prompts und Begrüßungen verwendet.
 owner_name: User
 
 ollama:
@@ -1578,7 +1578,7 @@ a2a:
   # remotes: []  # Liste von Remote-Agenten: [{endpoint: "http://...", auth_token: ""}]
 """
 
-# Heartbeat-Checkliste – wird beim ersten Start in ``~/.jarvis/HEARTBEAT.md``
+# Heartbeat-Checkliste -- wird beim ersten Start in ``~/.jarvis/HEARTBEAT.md``
 # angelegt, falls keine vorhandene Datei existiert. Nutzer können diese
 # Datei anpassen, um Aufgaben zu definieren, die Jarvis periodisch prüfen
 # soll. Jede Zeile repräsentiert eine Aufgabe oder ein Element der
@@ -1603,7 +1603,7 @@ Wenn keine relevanten Punkte gefunden werden, antwortet Jarvis mit
 def ensure_directory_structure(config: JarvisConfig) -> list[str]:
     """Erstellt die vollständige ~/.jarvis/ Verzeichnisstruktur. [B§4.9]
 
-    Idempotent – kann beliebig oft aufgerufen werden.
+    Idempotent -- kann beliebig oft aufgerufen werden.
     Erstellt nur was fehlt, überschreibt nie vorhandene Dateien.
 
     Returns:

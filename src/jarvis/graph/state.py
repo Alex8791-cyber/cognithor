@@ -1,4 +1,4 @@
-"""State Manager — Checkpoint-Persistierung für Graph Orchestrator v18.
+"""State Manager -- Checkpoint-Persistierung für Graph Orchestrator v18.
 
 Verwaltet:
   - Checkpoint-Erstellung und -Serialisierung

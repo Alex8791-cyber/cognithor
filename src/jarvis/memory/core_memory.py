@@ -1,4 +1,4 @@
-"""Core Memory · Tier 1 — Identität, Regeln, Präferenzen. [B§4.2]
+"""Core Memory · Tier 1 -- Identität, Regeln, Präferenzen. [B§4.2]
 
 Wird IMMER geladen. In jeder Session. Komplett.
 Änderungen nur durch User oder expliziten Befehl.
@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 class CoreMemory:
-    """Verwaltet die CORE.md Datei — Jarvis' Identität.
+    """Verwaltet die CORE.md Datei -- Jarvis' Identität.
 
     Source of Truth: ~/.jarvis/memory/CORE.md
     """

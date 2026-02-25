@@ -1,4 +1,4 @@
-"""Approval Manager — Zentrale HITL-Verwaltung (v20).
+"""Approval Manager -- Zentrale HITL-Verwaltung (v20).
 
 Verwaltet:
   - Approval-Queue: Erstellen, Abrufen, Auflösen

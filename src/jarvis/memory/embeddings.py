@@ -42,7 +42,7 @@ class EmbeddingStats:
 
     @property
     def cache_hit_rate(self) -> float:
-        """Berechnet die Cache-Hit-Rate (0.0–1.0)."""
+        """Berechnet die Cache-Hit-Rate (0.0--1.0)."""
         if self.total_requests == 0:
             return 0.0
         return self.cache_hits / self.total_requests
@@ -275,7 +275,7 @@ class EmbeddingClient:
                 logger.error("Batch-Embedding-Fehler: %s", e)
                 # Fehlende Ergebnisse bleiben None (kein Zero-Vektor)
 
-        # None-Eintraege bleiben None — Aufrufer muss filtern
+        # None-Eintraege bleiben None -- Aufrufer muss filtern
         return results  # type: ignore[return-value]
 
     async def close(self) -> None:

@@ -1,4 +1,4 @@
-"""Browser Vision — VisionAnalyzer: Screenshot → LLM → Beschreibung.
+"""Browser Vision -- VisionAnalyzer: Screenshot → LLM → Beschreibung.
 
 Verbindet Browser-Screenshots mit Vision-fähigen LLMs.
 Nutzt core/vision.py für Backend-agnostische Message-Formatierung
@@ -138,7 +138,7 @@ class VisionAnalyzer:
             page_content: Optionaler bereinigter HTML-Inhalt der Seite.
 
         Returns:
-            VisionAnalysisResult — elements enthält Hinweise zum Finden.
+            VisionAnalysisResult -- elements enthält Hinweise zum Finden.
         """
         if not self.is_enabled:
             return VisionAnalysisResult(error="Vision nicht aktiviert")
@@ -204,7 +204,7 @@ class VisionAnalyzer:
                 temperature=self._config.analysis_temperature,
             )
 
-            # Response auswerten — UnifiedLLMClient gibt Ollama-Format zurück
+            # Response auswerten -- UnifiedLLMClient gibt Ollama-Format zurück
             content = ""
             if isinstance(response, dict):
                 content = response.get("message", {}).get("content", "")

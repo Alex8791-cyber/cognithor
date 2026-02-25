@@ -1,7 +1,7 @@
 """MCP Resources: Exponiert Jarvis-Daten als MCP-Resources.
 
 Resources sind read-only Datenquellen die externe MCP-Clients
-abfragen können — im Gegensatz zu Tools, die Aktionen ausführen.
+abfragen können -- im Gegensatz zu Tools, die Aktionen ausführen.
 
 Registrierte Resources:
   - jarvis://memory/core         → Core Memory (CORE.md)

@@ -1,4 +1,4 @@
-"""Semantic Memory · Tier 3 — Wissens-Graph. [B§4.4]
+"""Semantic Memory · Tier 3 -- Wissens-Graph. [B§4.4]
 
 Entitäten (Personen, Firmen, Produkte, Projekte) und ihre Beziehungen.
 Gespeichert in SQLite (Index) + Markdown (Source of Truth).

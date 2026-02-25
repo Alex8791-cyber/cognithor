@@ -368,7 +368,7 @@ class MultimodalMemory:
                     return result.text, f"extract:{result.metadata.get('format', 'unknown')}"
 
         except Exception as exc:
-            logger.warning("media_extraction_failed: %s — %s", path.name, exc)
+            logger.warning("media_extraction_failed: %s -- %s", path.name, exc)
 
         return "", ""
 
@@ -406,7 +406,7 @@ class MultimodalMemory:
             return [c.id for c in chunks]
 
         except Exception as exc:
-            logger.warning("media_indexing_failed: %s — %s", asset.filename, exc)
+            logger.warning("media_indexing_failed: %s -- %s", asset.filename, exc)
             return []
 
     # ========================================================================

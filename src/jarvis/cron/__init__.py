@@ -1,4 +1,4 @@
-"""Jarvis cron module – Zeitgesteuerte und event-basierte Aufgaben.
+"""Jarvis cron module -- Zeitgesteuerte und event-basierte Aufgaben.
 
 Bibel-Referenz: §10 (Cron-Engine & Proaktive Autonomie)
 """

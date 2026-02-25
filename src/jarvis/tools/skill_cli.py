@@ -354,7 +354,7 @@ class SkillTester:
                 total = len(test_funcs)
                 failed = total
             except Exception:
-                # pytest not available or other error — fall back to count-based
+                # pytest not available or other error -- fall back to count-based
                 test_funcs = re.findall(r"def (test_\w+)", test_code)
                 total = len(test_funcs)
                 passed = total  # Assume pass when we can't run
@@ -670,7 +670,7 @@ class SkillCLI:
         return self._tester.test_skill(skill_name, test_code)
 
     def cmd_publish(self, skill_name: str, version: str, author: str) -> PublishRequest:
-        """jarvis skill publish — Erstellt Publish-Request."""
+        """jarvis skill publish -- Erstellt Publish-Request."""
         req = self._publisher.create_request(skill_name, version, author)
         return req
 

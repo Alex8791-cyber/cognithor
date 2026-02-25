@@ -1,4 +1,4 @@
-"""Working Memory · Tier 5 — Session-Kontext & Context-Budget. [B§4.6]
+"""Working Memory · Tier 5 -- Session-Kontext & Context-Budget. [B§4.6]
 
 RAM-only (außer Pre-Compaction Flush).
 Verwaltet das Token-Budget und entscheidet wann komprimiert wird.
@@ -144,7 +144,7 @@ class WorkingMemoryManager:
         """Pre-Compaction: Entfernt älteste Chat-History Einträge.
 
         Behält die letzten N Nachrichten (aus Config).
-        Extrahiert keine Fakten — das macht der Reflector separat.
+        Extrahiert keine Fakten -- das macht der Reflector separat.
 
         Returns:
             CompactionResult mit Infos über was entfernt wurde.

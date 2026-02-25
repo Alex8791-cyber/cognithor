@@ -255,7 +255,7 @@ class TwitchChannel(Channel):
     async def request_approval(
         self, session_id: str, action: PlannedAction, reason: str,
     ) -> bool:
-        """Twitch hat keine Buttons — Approval nicht unterstützt."""
+        """Twitch hat keine Buttons -- Approval nicht unterstützt."""
         logger.warning("Twitch: Interaktive Approvals nicht unterstützt")
         return False
 

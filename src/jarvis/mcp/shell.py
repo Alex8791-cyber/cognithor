@@ -1,4 +1,4 @@
-"""Shell-Tool für Jarvis — mit echter Sandbox-Isolation.
+"""Shell-Tool für Jarvis -- mit echter Sandbox-Isolation.
 
 Führt Shell-Befehle in einer isolierten Umgebung aus:
   - bubblewrap (bwrap): Linux-Namespaces, stärkste Isolation
@@ -49,9 +49,9 @@ class ShellTools:
     """Shell-Befehlsausführung mit echter Sandbox-Isolation. [B§5.3]
 
     Security-Architektur (Defense in Depth):
-      Layer 1: Gatekeeper — Regex-Blocklist + Policy-Regeln
-      Layer 2: Sandbox — OS-Level Prozess-Isolation (bwrap/firejail)
-      Layer 3: Resource-Limits — Timeout, Memory, Disk, Processes
+      Layer 1: Gatekeeper -- Regex-Blocklist + Policy-Regeln
+      Layer 2: Sandbox -- OS-Level Prozess-Isolation (bwrap/firejail)
+      Layer 3: Resource-Limits -- Timeout, Memory, Disk, Processes
     """
 
     def __init__(self, config: "JarvisConfig") -> None:
@@ -118,7 +118,7 @@ class ShellTools:
 
         cwd = working_dir or self._default_cwd
 
-        # Working-Directory validieren — muss unter Workspace liegen
+        # Working-Directory validieren -- muss unter Workspace liegen
         cwd_path = Path(cwd).expanduser().resolve()
         workspace_root = Path(self._default_cwd).expanduser().resolve()
         try:

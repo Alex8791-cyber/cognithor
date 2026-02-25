@@ -2,7 +2,7 @@
 
 Nutzt APScheduler 3.x (AsyncIOScheduler) um CronJobs periodisch
 auszuführen. Jeder Job erzeugt eine IncomingMessage die über den
-Gateway-Handler verarbeitet wird – identisch zu einer User-Nachricht.
+Gateway-Handler verarbeitet wird -- identisch zu einer User-Nachricht.
 
 Bibel-Referenz: §10 (Cron-Engine & Proaktive Autonomie)
 """
@@ -64,7 +64,7 @@ class CronEngine:
     Die CronEngine verwaltet zeitgesteuerte Jobs (CronJobs) und einen
     optionalen Heartbeat-Mechanismus. CronJobs werden aus einer YAML-
     Datei geladen und erzeugen `IncomingMessage`-Objekte, die an den
-    Gateway-Handler übergeben werden – identisch zu einer User-Nachricht.
+    Gateway-Handler übergeben werden -- identisch zu einer User-Nachricht.
     Der Heartbeat hingegen ist ein periodischer Check, der den Inhalt
     einer konfigurierten Checkliste liest und als Systemnachricht an den
     Handler sendet. Dieser Mechanismus ermöglicht proaktive Aktionen
@@ -173,7 +173,7 @@ class CronEngine:
             return
 
         # Lazy import APScheduler.  If unavailable, fall back to a very
-        # lightweight in‑process scheduler that mimics the minimal API
+        # lightweight in-process scheduler that mimics the minimal API
         # required by the unit tests.  This ensures that the CronEngine
         # can still be started and manipulated even when the optional
         # APScheduler dependency is missing.
@@ -193,7 +193,7 @@ class CronEngine:
                     self.func = func
                     self.args = args or []
                     # next_run_time is set to now; tests only verify that it
-                    # exists and is not None.  A timezone‑aware datetime
+                    # exists and is not None.  A timezone-aware datetime
                     # could be used here if needed.
                     self.next_run_time = datetime.now()
 

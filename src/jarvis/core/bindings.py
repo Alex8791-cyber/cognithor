@@ -2,7 +2,7 @@
 
 Im Gegensatz zum probabilistischen Keyword-Matching liefert das
 Bindings-System deterministische Routing-Entscheidungen. Bindings
-werden in Prioritätsreihenfolge ausgewertet — die erste passende
+werden in Prioritätsreihenfolge ausgewertet -- die erste passende
 Regel gewinnt. Erst wenn kein Binding greift, fällt das System
 auf das bestehende Keyword-/Pattern-Matching zurück.
 
@@ -24,7 +24,7 @@ Binding-Typen (alle AND-verknüpft innerhalb einer Regel):
   - Zeitfenster:       Nur in bestimmten Tageszeiten/Wochentagen
   - Negation:          Invertierte Bedingungen (NOT-Logik)
 
-Bibel-Referenz: §9.2 (Multi-Agent-Routing — Bindings-Erweiterung)
+Bibel-Referenz: §9.2 (Multi-Agent-Routing -- Bindings-Erweiterung)
 """
 
 from __future__ import annotations
@@ -501,7 +501,7 @@ class BindingEngine:
         """Wertet alle Bindings gegen den MessageContext aus.
 
         First-Match-Wins: Die erste passende Regel (nach Priorität)
-        bestimmt den Ziel-Agenten. Deterministic — gleiches Input
+        bestimmt den Ziel-Agenten. Deterministic -- gleiches Input
         ergibt immer gleiches Output.
 
         Args:

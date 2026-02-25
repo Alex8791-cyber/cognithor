@@ -207,14 +207,14 @@ class ActionPlan(BaseModel, frozen=True):
 
     @property
     def has_actions(self) -> bool:
-        """Alias für requires_tools – True wenn Steps vorhanden."""
+        """Alias für requires_tools -- True wenn Steps vorhanden."""
         return len(self.steps) > 0
 
 
 class GateDecision(BaseModel, frozen=True):
     """Entscheidung des Gatekeepers für eine einzelne Aktion. [B§3.2]
 
-    Immutable – einmal getroffen, nie änderbar.
+    Immutable -- einmal getroffen, nie änderbar.
     """
 
     status: GateStatus
@@ -316,7 +316,7 @@ class SandboxConfig(BaseModel):
 class SessionContext(BaseModel):
     """Kontext einer laufenden Sitzung. [B§9.1]
 
-    Mutable – wird während der Session aktualisiert.
+    Mutable -- wird während der Session aktualisiert.
     Jede Session gehört zu genau einem Agenten. Verschiedene Agenten
     haben getrennte Sessions und Working Memories.
     """
@@ -428,7 +428,7 @@ class ProcedureMetadata(BaseModel):
 
     @property
     def success_rate(self) -> float:
-        """Berechnet die Erfolgsrate (0.0–1.0)."""
+        """Berechnet die Erfolgsrate (0.0--1.0)."""
         if self.total_uses == 0:
             return 0.0
         return self.success_count / self.total_uses
@@ -577,7 +577,7 @@ class MCPToolInfo(BaseModel, frozen=True):
 class PolicyParamMatch(BaseModel, frozen=True):
     """Bedingung für einen einzelnen Parameter. [B§3.2]
 
-    Alle Felder sind optional – nur gesetzte werden geprüft.
+    Alle Felder sind optional -- nur gesetzte werden geprüft.
     Alle müssen matchen (AND-Verknüpfung).
     """
 

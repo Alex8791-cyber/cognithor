@@ -190,7 +190,7 @@ class Gatekeeper:
         if has_credentials:
             decision = GateDecision(
                 status=GateStatus.MASK,
-                reason="Credential in Parametern erkannt – maskiert",
+                reason="Credential in Parametern erkannt -- maskiert",
                 risk_level=RiskLevel.YELLOW,
                 original_action=action,
                 masked_params=masked_params,
@@ -236,7 +236,7 @@ class Gatekeeper:
         # --- Schritt 5: Capability-Matrix-Check (optional) ---
         if self._capability_matrix is not None:
             try:
-                # Only check known tools — unknown tools fall through to default
+                # Only check known tools -- unknown tools fall through to default
                 spec = self._capability_matrix.get_spec(action.tool)
                 if spec is not None:
                     from jarvis.security.capabilities import STANDARD as _std_profile

@@ -1,10 +1,10 @@
-"""A2A HTTP Handler — FastAPI-Routes für A2A Protocol RC v1.0.
+"""A2A HTTP Handler -- FastAPI-Routes für A2A Protocol RC v1.0.
 
 Stellt die HTTP-Endpoints bereit:
-  GET  /.well-known/agent.json  — Agent Card Discovery
-  POST /a2a                     — JSON-RPC 2.0 Dispatch
-  POST /a2a/stream              — SSE Streaming (message/stream)
-  GET  /a2a/health              — Health Check
+  GET  /.well-known/agent.json  -- Agent Card Discovery
+  POST /a2a                     -- JSON-RPC 2.0 Dispatch
+  POST /a2a/stream              -- SSE Streaming (message/stream)
+  GET  /a2a/health              -- Health Check
 
 OPTIONAL: Wird nur registriert wenn A2A-Adapter aktiv ist.
 Import-sicher: FastAPI ist Optional-Dependency.
@@ -50,7 +50,7 @@ class A2AHTTPHandler:
     # ── Route Handlers (Framework-agnostisch) ────────────────────
 
     async def handle_agent_card(self) -> dict[str, Any]:
-        """GET /.well-known/agent.json — Agent Card Discovery."""
+        """GET /.well-known/agent.json -- Agent Card Discovery."""
         return self.adapter.get_agent_card()
 
     async def handle_jsonrpc(
@@ -59,14 +59,14 @@ class A2AHTTPHandler:
         auth_header: str = "",
         client_version: str = "",
     ) -> dict[str, Any]:
-        """POST /a2a — JSON-RPC 2.0 Dispatch."""
+        """POST /a2a -- JSON-RPC 2.0 Dispatch."""
         return await self.adapter.handle_a2a_request(
             body, auth_header=auth_header,
             client_version=client_version,
         )
 
     async def handle_health(self) -> dict[str, Any]:
-        """GET /a2a/health — Health Check."""
+        """GET /a2a/health -- Health Check."""
         stats = self.adapter.stats()
         return {
             "status": "ok" if self.adapter.enabled else "disabled",

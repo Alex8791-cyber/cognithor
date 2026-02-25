@@ -1,4 +1,4 @@
-"""HITL Nodes — Graph-kompatible HITL-Handler (v20).
+"""HITL Nodes -- Graph-kompatible HITL-Handler (v20).
 
 Erstellt Node-Handler für v18 GraphBuilder die HITL-Interaktion
 auslösen. Jeder Handler:

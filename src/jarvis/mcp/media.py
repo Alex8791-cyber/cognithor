@@ -1,6 +1,6 @@
 """Media-Pipeline: Verarbeitung von Bildern, Audio und Dokumenten.
 
-MCP-Tools für multimodale Medienverarbeitung — vollständig lokal.
+MCP-Tools für multimodale Medienverarbeitung -- vollständig lokal.
 
 Tools:
   - media_transcribe_audio: Audio → Text (Whisper)
@@ -10,7 +10,7 @@ Tools:
   - media_image_resize: Bildgröße ändern (Pillow)
   - media_tts: Text → Sprache (Piper/eSpeak)
 
-Alle Tools arbeiten mit lokalen Dateipfaden — keine Cloud-Uploads.
+Alle Tools arbeiten mit lokalen Dateipfaden -- keine Cloud-Uploads.
 """
 
 from __future__ import annotations
@@ -546,7 +546,7 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "media_transcribe_audio": {
         "description": (
             "Transkribiert eine Audiodatei (WAV, MP3, OGG, etc.) zu Text. "
-            "Lokal via Whisper — keine Cloud-Uploads."
+            "Lokal via Whisper -- keine Cloud-Uploads."
         ),
         "inputSchema": {
             "type": "object",
@@ -592,7 +592,7 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "media_extract_text": {
         "description": (
             "Extrahiert Text aus Dokumenten: PDF, DOCX, TXT, MD, HTML, CSV, JSON, XML. "
-            "Lokal — keine Cloud-Dienste."
+            "Lokal -- keine Cloud-Dienste."
         ),
         "inputSchema": {
             "type": "object",

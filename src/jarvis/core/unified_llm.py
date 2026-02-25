@@ -94,7 +94,7 @@ class UnifiedLLMClient:
         return cls(ollama_client, backend)
 
     # ========================================================================
-    # Chat (Hauptmethode — von Planner/Reflector aufgerufen)
+    # Chat (Hauptmethode -- von Planner/Reflector aufgerufen)
     # ========================================================================
 
     async def chat(
@@ -305,7 +305,7 @@ class UnifiedLLMClient:
     def has_embedding_support(self) -> bool:
         """Prüft ob das aktive Backend Embeddings unterstützt.
 
-        Anthropic hat keine Embeddings — dann wird der Ollama-Fallback genutzt.
+        Anthropic hat keine Embeddings -- dann wird der Ollama-Fallback genutzt.
         """
         if self._backend_type == "anthropic":
             return False  # Ollama-Fallback wird in embed() automatisch genutzt

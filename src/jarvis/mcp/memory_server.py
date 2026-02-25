@@ -362,7 +362,7 @@ class MemoryTools:
             relation=relation_type,
             target=target_name,
         )
-        return f"Relation erstellt: {source_name} —[{relation_type}]→ {target_name}"
+        return f"Relation erstellt: {source_name} --[{relation_type}]→ {target_name}"
 
     # ── Core Memory ──────────────────────────────────────────────
 
@@ -656,7 +656,7 @@ def register_memory_tools(
         mt.add_relation,
         description=(
             "Erstellt eine Beziehung zwischen zwei Entitäten im Wissens-Graphen. "
-            "Beispiel: Müller —[nutzt]→ Cloud-Pro"
+            "Beispiel: Müller --[nutzt]→ Cloud-Pro"
         ),
         input_schema={
             "type": "object",

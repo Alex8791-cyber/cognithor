@@ -1,4 +1,4 @@
-"""Episodic Memory · Tier 2 — Tageslog. [B§4.3]
+"""Episodic Memory · Tier 2 -- Tageslog. [B§4.3]
 
 Was ist wann passiert? Zeitlich geordnete Einträge.
 Append-only: Einträge werden nie geändert, nur hinzugefügt.

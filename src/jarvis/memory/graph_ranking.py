@@ -52,9 +52,9 @@ class EntityRank:
 
     entity_id: str
     entity_name: str
-    pagerank: float  # 0.0 – 1.0 (normalisiert)
+    pagerank: float  # 0.0 -- 1.0 (normalisiert)
     degree: int  # Anzahl Verbindungen (ein+ausgehend)
-    staleness: float  # 0.0 (frisch) – 1.0 (veraltet)
+    staleness: float  # 0.0 (frisch) -- 1.0 (veraltet)
     combined_score: float = 0.0  # pagerank × (1 - staleness)
 
     @property

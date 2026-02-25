@@ -165,7 +165,7 @@ class EncryptedVault:
         self._agent_id = agent_id
         if master_key is None:
             _vault_log.warning(
-                "EncryptedVault(%s): No master_key provided — generating ephemeral key. "
+                "EncryptedVault(%s): No master_key provided -- generating ephemeral key. "
                 "Data will NOT survive restarts. Pass an explicit key for persistence.",
                 agent_id,
             )
@@ -259,7 +259,7 @@ class VaultManager:
         return self.get_vault(agent_id).store(service, key, value)
 
     def retrieve(self, agent_id: str, service: str, key: str) -> str | None:
-        """Holt ein Credential — nur aus dem eigenen Vault."""
+        """Holt ein Credential -- nur aus dem eigenen Vault."""
         vault = self._vaults.get(agent_id)
         if not vault:
             return None
@@ -357,7 +357,7 @@ class IsolatedSessionStore:
         return session
 
     def get_session(self, agent_id: str, session_id: str) -> AgentSession | None:
-        """Holt eine Session — nur aus dem eigenen Store."""
+        """Holt eine Session -- nur aus dem eigenen Store."""
         store = self._stores.get(agent_id, {})
         return store.get(session_id)
 

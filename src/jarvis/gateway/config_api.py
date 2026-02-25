@@ -27,7 +27,7 @@ log = get_logger(__name__)
 
 
 # ============================================================================
-# API-Models (Pydantic — für Request/Response-Validierung)
+# API-Models (Pydantic -- für Request/Response-Validierung)
 # ============================================================================
 
 

@@ -1,4 +1,4 @@
-"""Instrumentation — Auto-Instrumentierung für Jarvis-Module (v19).
+"""Instrumentation -- Auto-Instrumentierung für Jarvis-Module (v19).
 
 Instrumentiert automatisch:
   - Gateway:     Request-Spans, Latenz-Histogramme, Error-Counter
@@ -138,7 +138,7 @@ def measure(
 # ── TelemetryHub ─────────────────────────────────────────────────
 
 class TelemetryHub:
-    """Zentrale Telemetry-Instanz — verbindet Tracer + Metrics.
+    """Zentrale Telemetry-Instanz -- verbindet Tracer + Metrics.
 
     Stellt Standard-Metriken und Instrumentierung bereit.
     """

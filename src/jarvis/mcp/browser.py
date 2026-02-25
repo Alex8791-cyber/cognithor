@@ -1,7 +1,7 @@
 """Browser-Tool: Web-Automatisierung via Playwright.
 
 Ermöglicht Jarvis das Navigieren, Lesen, Klicken und Ausfüllen
-von Webseiten — headless und lokal, ohne Cloud-Dienste.
+von Webseiten -- headless und lokal, ohne Cloud-Dienste.
 
 Features:
   - Seiten laden und Text extrahieren
@@ -73,7 +73,7 @@ class BrowserTool:
     """Headless-Browser via Playwright für Web-Automatisierung.
 
     Verwaltet eine einzelne Browser-Instanz mit einer aktiven Seite.
-    Alle Aktionen laufen headless — kein GUI erforderlich.
+    Alle Aktionen laufen headless -- kein GUI erforderlich.
 
     Typische Nutzung:
         tool = BrowserTool(workspace_dir=Path("~/.jarvis/workspace"))

@@ -1,7 +1,7 @@
 """Jarvis Skills-Paket.
 
 Dieses Paket enthält Hilfsfunktionen zur Verwaltung zusätzlicher
-Prozeduren („Skills“). Skills sind Markdown-Dateien mit
+Prozeduren („Skills"). Skills sind Markdown-Dateien mit
 Frontmatter, die Trigger-Schlüsselwörter, Voraussetzungen und Schritt-für-
 Schritt-Anleitungen definieren. Sie werden im ``skills``-Verzeichnis
 innerhalb des Jarvis-Home abgelegt und beim Start automatisch geladen.

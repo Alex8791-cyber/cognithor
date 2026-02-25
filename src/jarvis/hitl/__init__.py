@@ -1,4 +1,4 @@
-"""Jarvis Human-in-the-Loop v20 — Graph-Level HITL-Workflows.
+"""Jarvis Human-in-the-Loop v20 -- Graph-Level HITL-Workflows.
 
 Professionelle HITL-Integration auf Graph-Ebene:
   - Approval/Reject/Delegate an beliebigen Knoten

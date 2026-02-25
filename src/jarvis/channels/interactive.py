@@ -636,7 +636,7 @@ class ProgressTracker:
         for step in self._steps:
             line = f"{step.status_emoji}  *{step.name}*"
             if step.message:
-                line += f"  —  _{step.message}_"
+                line += f"  --  _{step.message}_"
             if step.duration_ms > 0:
                 line += f"  ({step.duration_ms}ms)"
             builder.section(line)
@@ -1080,7 +1080,7 @@ class FallbackRenderer:
             for i, action in enumerate(card._actions, 1):
                 lines.append(f"  [{i}] {action['label']}")
         if card._footer:
-            lines.append(f"\n— {card._footer}")
+            lines.append(f"\n-- {card._footer}")
         return "\n".join(lines)
 
     @staticmethod
@@ -1089,7 +1089,7 @@ class FallbackRenderer:
         lines: list[str] = [f"Fortschritt: {tracker._title}"]
         for step in tracker._steps:
             emoji = {"pending": "○", "running": "►", "completed": "✓",
-                     "failed": "✗", "skipped": "–"}.get(step.status, "?")
+                     "failed": "✗", "skipped": "--"}.get(step.status, "?")
             lines.append(f"  {emoji} {step.name}")
         return "\n".join(lines)
 

@@ -165,7 +165,7 @@ class EventBus:
             except Exception as exc:
                 log.warning("async_event_handler_error", error=str(exc))
 
-        # SSE-Queues füttern — volle Queues als tot betrachten und entfernen
+        # SSE-Queues füttern -- volle Queues als tot betrachten und entfernen
         dead_queues: list[asyncio.Queue[SystemEvent]] = []
         for queue in self._sse_queues:
             try:

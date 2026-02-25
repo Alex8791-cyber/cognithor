@@ -220,7 +220,7 @@ class FileSystemTools:
             raise FileSystemError(f"Text nicht gefunden in {path}. Gesucht: '{old_text[:100]}...'")
         if count > 1:
             raise FileSystemError(
-                f"Text kommt {count}x vor in {path} – muss eindeutig sein. "
+                f"Text kommt {count}x vor in {path} -- muss eindeutig sein. "
                 f"Verwende einen längeren Ausschnitt als old_text."
             )
 

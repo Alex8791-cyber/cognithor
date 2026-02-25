@@ -149,7 +149,7 @@ class APIChannel(Channel):
         log.info("api_channel_stopped")
 
     async def send(self, message: OutgoingMessage) -> None:
-        """API-Channel sendet nicht aktiv – Antworten gehen via Response."""
+        """API-Channel sendet nicht aktiv -- Antworten gehen via Response."""
         pass
 
     async def request_approval(
@@ -236,7 +236,7 @@ class APIChannel(Channel):
             dependencies=[Depends(verify_token)],
         )
         async def send_message(req: MessageRequest, request: Request) -> MessageResponse:  # noqa: ARG001
-            # Rate limiting — per Client-IP
+            # Rate limiting -- per Client-IP
             client_ip = request.client.host if request.client else "unknown"
             rate_key = f"api_{client_ip}"
             if not await self._rate_limiter.check(rate_key):

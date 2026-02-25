@@ -492,7 +492,7 @@ class ResourceOptimizer:
     def recommendations(self) -> list[str]:
         """Gibt Optimierungs-Empfehlungen."""
         if not self._history:
-            return ["Noch keine Daten — erste Snapshot erfassen"]
+            return ["Noch keine Daten -- erste Snapshot erfassen"]
         recs = []
         latest = self._history[-1]
         if latest.ram_percent > 90:

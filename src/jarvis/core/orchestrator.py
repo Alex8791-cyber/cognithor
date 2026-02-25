@@ -50,7 +50,7 @@ class Orchestrator:
     Verwaltet Sub-Agent-Spawning, parallele Ausführung und
     Ergebnis-Aggregation. Erzwingt Policy-Limits.
 
-    Der Orchestrator kennt NICHT die LLM-Logik — er delegiert
+    Der Orchestrator kennt NICHT die LLM-Logik -- er delegiert
     die eigentliche Ausführung an eine AgentRunner-Funktion
     (typischerweise ein vereinfachter Gateway-Loop).
     """

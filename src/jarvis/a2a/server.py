@@ -1,4 +1,4 @@
-"""A2A Server — RC v1.0 (Linux Foundation).
+"""A2A Server -- RC v1.0 (Linux Foundation).
 
 JSON-RPC 2.0 Server für eingehende Agent-zu-Agent Tasks.
 Methoden nach RC v1.0:
@@ -186,7 +186,7 @@ class A2AServer:
     async def handle_stream_request(
         self, body: dict[str, Any], auth_token: str | None = None,
     ) -> AsyncIterator[str]:
-        """Handles message/stream — returns SSE events."""
+        """Handles message/stream -- returns SSE events."""
         if self._config.require_auth:
             if not auth_token or not hmac.compare_digest(auth_token, self._config.auth_token):
                 yield f"event: error\ndata: {{\"code\": {A2AErrorCode.UNAUTHORIZED}}}\n\n"
@@ -253,7 +253,7 @@ class A2AServer:
     # ── Method Handlers (RC v1.0) ────────────────────────────────
 
     async def _handle_message_send(self, params: dict[str, Any]) -> dict[str, Any]:
-        """message/send — erstellt Task oder sendet Nachricht an bestehenden."""
+        """message/send -- erstellt Task oder sendet Nachricht an bestehenden."""
         task_id = params.get("id")
         context_id = params.get("contextId", "")
         message_data = params.get("message", {})
@@ -313,7 +313,7 @@ class A2AServer:
         return result
 
     async def _handle_tasks_list(self, params: dict[str, Any]) -> dict[str, Any]:
-        """tasks/list — Tasks auflisten mit optionalen Filtern (RC v1.0)."""
+        """tasks/list -- Tasks auflisten mit optionalen Filtern (RC v1.0)."""
         context_id = params.get("contextId")
         state_filter = params.get("state")
         limit = params.get("limit", 50)
@@ -430,7 +430,7 @@ class A2AServer:
     # ── Task Execution ───────────────────────────────────────────
 
     def _handle_task_exception(self, task: asyncio.Task[None]) -> None:
-        """Callback for fire-and-forget tasks — logs unhandled exceptions."""
+        """Callback for fire-and-forget tasks -- logs unhandled exceptions."""
         if task.cancelled():
             return
         exc = task.exception()

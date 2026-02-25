@@ -167,7 +167,7 @@ async def init_tools(
         a2a_adapter = None
     result["a2a_adapter"] = a2a_adapter
 
-    # CostTracker (optional — tracks LLM API costs)
+    # CostTracker (optional -- tracks LLM API costs)
     cost_tracker = None
     if getattr(config, "cost_tracking_enabled", False):
         try:

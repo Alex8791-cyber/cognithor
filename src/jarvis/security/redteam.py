@@ -11,7 +11,7 @@ from __future__ import annotations
 import warnings as _warnings
 
 _warnings.warn(
-    "jarvis.security.redteam ist veraltet – bitte jarvis.security.red_team verwenden.",
+    "jarvis.security.redteam ist veraltet -- bitte jarvis.security.red_team verwenden.",
     DeprecationWarning,
     stacklevel=2,
 )

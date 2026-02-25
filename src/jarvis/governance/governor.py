@@ -135,7 +135,7 @@ class GovernanceAgent:
         created.extend(self._check_tool_latency())
         created.extend(self._check_unused_tools())
 
-        logger.info("Analysis complete – %d new proposal(s) created", len(created))
+        logger.info("Analysis complete -- %d new proposal(s) created", len(created))
         return created
 
     def _check_error_rate(self) -> list[PolicyProposal]:

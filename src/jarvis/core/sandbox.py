@@ -1,9 +1,9 @@
 """Prozess-Sandbox: Echte Isolation für Shell-Befehle.
 
 Drei Sandbox-Level (automatisches Fallback):
-  1. bubblewrap (bwrap) — Linux-Namespaces, kein Root nötig
-  2. firejail — Application Sandboxing
-  3. bare — Kein Sandbox (nur Timeout + Output-Limit)
+  1. bubblewrap (bwrap) -- Linux-Namespaces, kein Root nötig
+  2. firejail -- Application Sandboxing
+  3. bare -- Kein Sandbox (nur Timeout + Output-Limit)
 
 bubblewrap isoliert:
   - Dateisystem: Nur Workspace + /usr + /bin + /lib sichtbar
@@ -43,10 +43,10 @@ MAX_OUTPUT_BYTES = 50_000
 class SandboxLevel(StrEnum):
     """Verfügbare Sandbox-Level."""
 
-    BWRAP = "bwrap"  # bubblewrap — stärkste Isolation
-    FIREJAIL = "firejail"  # Firejail — gute Isolation
-    JOBOBJECT = "jobobject"  # Windows Job Objects — Windows-Isolation
-    BARE = "bare"  # Kein Sandbox — nur Timeout
+    BWRAP = "bwrap"  # bubblewrap -- stärkste Isolation
+    FIREJAIL = "firejail"  # Firejail -- gute Isolation
+    JOBOBJECT = "jobobject"  # Windows Job Objects -- Windows-Isolation
+    BARE = "bare"  # Kein Sandbox -- nur Timeout
 
 
 class NetworkPolicy(StrEnum):
@@ -139,7 +139,7 @@ class SandboxResult:
 
 
 class BwrapSandbox:
-    """bubblewrap (bwrap) Sandbox — stärkste Isolation.
+    """bubblewrap (bwrap) Sandbox -- stärkste Isolation.
 
     Nutzt Linux-Namespaces für:
     - Mount-Namespace: Isoliertes Dateisystem
@@ -229,7 +229,7 @@ class BwrapSandbox:
 
 
 class FirejailSandbox:
-    """Firejail-basierte Sandbox — gute Isolation."""
+    """Firejail-basierte Sandbox -- gute Isolation."""
 
     def __init__(self, config: SandboxConfig) -> None:
         self._config = config
@@ -280,7 +280,7 @@ class FirejailSandbox:
 
 
 class WindowsJobObjectSandbox:
-    """Windows Job Object Sandbox — Windows-native Prozess-Isolation.
+    """Windows Job Object Sandbox -- Windows-native Prozess-Isolation.
 
     Nutzt Win32 Job Objects für:
     - Memory-Limit: Beschränkt den Arbeitsspeicher pro Prozess

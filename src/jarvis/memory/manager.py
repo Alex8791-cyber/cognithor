@@ -89,7 +89,7 @@ class MemoryManager:
         except Exception:
             logger.debug("EpisodicStore init skipped")
 
-        # Search Weight Optimizer (EMA-basiert, optional) — VOR HybridSearch
+        # Search Weight Optimizer (EMA-basiert, optional) -- VOR HybridSearch
         self._weight_optimizer: SearchWeightOptimizer | None = None
         try:
             from jarvis.memory.weight_optimizer import SearchWeightOptimizer as _SWO
@@ -466,13 +466,13 @@ class MemoryManager:
         results = await self._embeddings.embed_batch(texts, hashes)
         if len(results) != len(chunks):
             logger.warning(
-                "Embedding-Mismatch: %d Chunks, %d Ergebnisse — überschüssige ignoriert",
+                "Embedding-Mismatch: %d Chunks, %d Ergebnisse -- überschüssige ignoriert",
                 len(chunks),
                 len(results),
             )
         for chunk, emb_result in zip(chunks, results, strict=False):
             if emb_result is None:
-                logger.debug("Embedding fehlgeschlagen fuer chunk %s — uebersprungen", chunk.content_hash[:8])
+                logger.debug("Embedding fehlgeschlagen fuer chunk %s -- uebersprungen", chunk.content_hash[:8])
                 continue
             if not emb_result.cached:
                 self._index.store_embedding(

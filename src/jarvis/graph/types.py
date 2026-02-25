@@ -1,4 +1,4 @@
-"""Graph Orchestrator Types — v18.
+"""Graph Orchestrator Types -- v18.
 
 DAG-basierte Workflow-Engine nach LangGraph-Vorbild.
 Unterstützt Conditional Edges, Parallel Branches, Loops,

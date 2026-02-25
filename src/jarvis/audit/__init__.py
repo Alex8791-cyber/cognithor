@@ -311,7 +311,7 @@ class AuditLogger:
             action=f"gate:{decision.lower()}",
             agent_name=agent_name,
             tool_name=tool_name,
-            description=f"Gatekeeper: {decision} — {reason}",
+            description=f"Gatekeeper: {decision} -- {reason}",
             parameters={"decision": decision, "reason": reason},
             success=not is_block,
         )
