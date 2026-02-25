@@ -62,8 +62,18 @@ def _obfuscate_key(passphrase: str, salt: bytes) -> bytes:
 
     Existiert nur noch für Abwärtskompatibilität beim Lesen alter Stores.
     """
-    combined = passphrase.encode() + salt
-    key = hashlib.sha256(combined).digest()
+    if not _HAS_CRYPTO:
+        raise RuntimeError("cryptography-Paket nicht installiert. pip install cryptography")
+    # Historische Obfuskations-Funktion: verwendet jetzt dieselbe
+    # PBKDF2-Konfiguration wie _derive_key, um Brute-Force-Angriffe
+    # zu erschweren, behält aber das Base64-Format bei.
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=600_000,
+    )
+    key = kdf.derive(passphrase.encode())
     return base64.urlsafe_b64encode(key)
 
 
