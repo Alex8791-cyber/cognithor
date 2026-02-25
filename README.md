@@ -136,7 +136,11 @@ gemini_api_key: "AIza..."
 
 ## Demo
 
-Run the cinematic terminal demo to see Cognithor in action:
+<p align="center">
+  <img src="demo.svg" alt="Cognithor Demo" width="100%">
+</p>
+
+Run the cinematic terminal demo yourself:
 
 ```bash
 python demo.py           # Full experience (~3 minutes)
@@ -144,8 +148,6 @@ python demo.py --fast    # Speed run (~15 seconds)
 ```
 
 The demo showcases all 10 core capabilities: boot sequence, 15-provider scan, 17-channel init, 5-tier memory, live conversation with streaming, PGE Trinity tool execution, Gatekeeper security block, multi-channel broadcast, reflection/learning cycle, and system stats.
-
-> **Tip:** Record it with `asciinema rec demo.cast && agg demo.cast demo.gif` for a README GIF.
 
 ## Modules
 
