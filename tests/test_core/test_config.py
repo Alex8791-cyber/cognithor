@@ -354,10 +354,11 @@ class TestModelAutoAdaptation:
 class TestVisionModelAutoAdaptation:
     """Vision-Modell passt sich automatisch an das LLM-Backend an."""
 
-    def test_vision_model_default_llava(self) -> None:
-        """Default Vision-Model ist llava:13b (Ollama)."""
+    def test_vision_model_default_minicpm(self) -> None:
+        """Default Vision-Model ist openbmb/minicpm-v4.5 (Ollama)."""
         config = JarvisConfig()
-        assert config.vision_model == "llava:13b"
+        assert config.vision_model == "openbmb/minicpm-v4.5"
+        assert config.vision_model_detail == "qwen3-vl:32b"
 
     def test_vision_model_auto_openai(self, tmp_path: Path) -> None:
         """OpenAI-Key → vision_model wird gpt-5.2."""

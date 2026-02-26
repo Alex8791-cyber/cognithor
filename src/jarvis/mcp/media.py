@@ -33,7 +33,8 @@ MAX_EXTRACT_LENGTH = 15_000
 MAX_IMAGE_FILE_SIZE = 10_485_760
 
 # Standard-Modelle und -Stimmen
-DEFAULT_OLLAMA_MODEL = "llava:13b"
+DEFAULT_OLLAMA_MODEL = "openbmb/minicpm-v4.5"
+DETAIL_OLLAMA_MODEL = "qwen3-vl:32b"
 DEFAULT_IMAGE_PROMPT = "Beschreibe dieses Bild detailliert auf Deutsch."
 DEFAULT_PIPER_VOICE = "de_DE-thorsten-high"
 
@@ -568,8 +569,10 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     },
     "media_analyze_image": {
         "description": (
-            "Analysiert ein Bild mit einem multimodalen LLM (LLaVA via Ollama). "
-            "Beschreibt Inhalt, erkennt Text, beantwortet Fragen zum Bild."
+            "Analysiert ein Bild mit einem multimodalen Vision-LLM via Ollama. "
+            "Beschreibt Inhalt, erkennt Text (OCR), beantwortet Fragen zum Bild. "
+            "Standard-Modell: schnell und gut. Mit detail=true: höchste Qualität "
+            "(langsamer, für komplexe Bilder, Dokumente, schwer lesbare Texte)."
         ),
         "inputSchema": {
             "type": "object",
@@ -580,10 +583,10 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
                     "description": "Analyseanweisung",
                     "default": DEFAULT_IMAGE_PROMPT,
                 },
-                "model": {
-                    "type": "string",
-                    "description": "Multimodales Ollama-Modell",
-                    "default": DEFAULT_OLLAMA_MODEL,
+                "detail": {
+                    "type": "boolean",
+                    "description": "true = Detail-Modell (höchste Qualität, langsamer)",
+                    "default": False,
                 },
             },
             "required": ["image_path"],
@@ -673,7 +676,9 @@ def register_media_tools(mcp_client: Any) -> MediaPipeline:
         )
         return result.text if result.success else f"Fehler: {result.error}"
 
-    async def _analyze_image(image_path: str, prompt: str = DEFAULT_IMAGE_PROMPT, model: str = DEFAULT_OLLAMA_MODEL, **_: Any) -> str:
+    async def _analyze_image(image_path: str, prompt: str = DEFAULT_IMAGE_PROMPT, detail: bool = False, **_: Any) -> str:
+        model = DETAIL_OLLAMA_MODEL if detail else DEFAULT_OLLAMA_MODEL
+        log.info("vision_model_selected", model=model, detail=detail)
         result = await pipeline.analyze_image(
             image_path, prompt=prompt, model=model,
         )
