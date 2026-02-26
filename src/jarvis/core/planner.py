@@ -156,17 +156,25 @@ REPLAN_PROMPT = """\
 ## Aufgabe
 Ursprüngliches Ziel: {original_goal}
 
+## WICHTIGE REGELN für die Auswertung
+- Wenn ein Tool ERFOLGREICH war (✓), NUTZE dessen Ergebnis in deiner Antwort.
+- Ignoriere blockierte oder fehlgeschlagene Schritte (✗), wenn andere Schritte \
+das Ziel bereits erreicht haben.
+- Gib dem User NIEMALS Anleitungen, Dinge manuell zu tun, wenn du die Antwort \
+bereits aus den Ergebnissen ableiten kannst.
+- Du bist ein autonomer Agent -- du löst Probleme selbst, du delegierst NICHT an den User.
+
 Analysiere die bisherigen Ergebnisse und entscheide dich für GENAU EINE Option:
 
 **OPTION 1 -- Aufgabe erledigt** → Formuliere eine hilfreiche Antwort als normaler Text. \
-KEIN JSON. Fasse die Ergebnisse zusammen und beantworte die ursprüngliche Frage. \
+KEIN JSON. Fasse die ERFOLGREICHEN Ergebnisse zusammen und beantworte die ursprüngliche Frage. \
 Nutze konkrete Daten aus den Ergebnissen.
 
 **OPTION 2 -- Weitere Schritte nötig** → Erstelle einen neuen JSON-Plan (```json Block). \
 Nutze die bisherigen Ergebnisse als Kontext. Plane nur die FEHLENDEN Schritte.
 
-**OPTION 3 -- Fehler aufgetreten** → Analysiere die Ursache. Wenn ein anderer Ansatz \
-möglich ist, erstelle einen neuen Plan. Wenn nicht, erkläre das Problem klar.
+**OPTION 3 -- Fehler aufgetreten** → NUR wenn ALLE Schritte fehlgeschlagen sind. \
+Analysiere die Ursache und erstelle einen neuen Plan mit anderem Ansatz.
 
 Antworte ENTWEDER als Text ODER als JSON-Plan. Niemals beides vermischen.
 """
@@ -425,11 +433,18 @@ class Planner:
             f"Der User hat gefragt: {user_message}\n\n"
             f"Du hast folgende Aktionen ausgeführt und Ergebnisse erhalten:\n\n"
             f"{results_text}\n\n"
-            f"Formuliere jetzt eine hilfreiche Antwort auf Deutsch."
+            f"Formuliere jetzt eine hilfreiche Antwort auf Deutsch.\n"
+            f"WICHTIG: Nutze die ERFOLGREICHEN Ergebnisse (✓) direkt in deiner Antwort. "
+            f"Ignoriere fehlgeschlagene/blockierte Schritte, wenn das Ziel trotzdem erreicht wurde. "
+            f"Gib dem User KEINE Anleitungen für Dinge, die du bereits erledigt hast."
         )
 
         messages = [
-            {"role": "system", "content": "Du bist Jarvis. Antworte hilfreich auf Deutsch."},
+            {"role": "system", "content": (
+                "Du bist Jarvis, ein autonomer Agent. Antworte hilfreich auf Deutsch. "
+                "Du nutzt Tool-Ergebnisse direkt und gibst dem User NICHT Anleitungen, "
+                "Dinge selbst zu tun. Du löst Probleme eigenständig."
+            )},
         ]
 
         # Kontext aus Working Memory einfügen
