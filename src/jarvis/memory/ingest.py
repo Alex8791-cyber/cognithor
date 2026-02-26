@@ -166,20 +166,18 @@ class TextExtractor:
 
     def _extract_html(self, file_path: Path) -> str:
         """Extrahiert Text aus HTML (Tags strippen)."""
-        import re
+        from bs4 import BeautifulSoup
 
         content = file_path.read_text(encoding="utf-8", errors="replace")
+        soup = BeautifulSoup(content, "html.parser")
+
         # Script und Style komplett entfernen
-        content = re.sub(r"<script[^>]*>.*?</script>", "", content, flags=re.DOTALL | re.IGNORECASE)
-        content = re.sub(r"<style[^>]*>.*?</style>", "", content, flags=re.DOTALL | re.IGNORECASE)
-        # HTML-Tags entfernen
-        content = re.sub(r"<[^>]+>", " ", content)
-        # HTML-Entities
-        content = content.replace("&nbsp;", " ").replace("&amp;", "&")
-        content = content.replace("&lt;", "<").replace("&gt;", ">")
-        # Mehrfache Leerzeichen/Newlines bereinigen
-        content = re.sub(r"\s+", " ", content).strip()
-        return content
+        for tag in soup(["script", "style"]):
+            tag.decompose()
+
+        # Text extrahieren und Whitespace normalisieren
+        text = soup.get_text(separator=" ", strip=True)
+        return " ".join(text.split())
 
     async def _extract_pdf(self, file_path: Path) -> str:
         """Extrahiert Text aus PDF via MediaPipeline."""
