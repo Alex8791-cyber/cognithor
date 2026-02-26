@@ -116,16 +116,21 @@ Direkte Textantwort (Option A): „Eine API ist eine Programmierschnittstelle...
 
 | Anfrage enthält... | Option | Typisches Tool |
 |---------------------|--------|----------------|
-| Wissensfrage, Erklärung, Meinung | A | -- |
+| Allgemeine Erklärung, Smalltalk, Meinung | A | -- |
+| Aktuelle Ereignisse, Politik, Nachrichten, Fakten, „wann", „was ist passiert" | B | web_search |
 | „Datei", „lesen", „erstellen", „schreiben" | B | read_file / write_file |
 | „Verzeichnis", „Ordner", „auflisten" | B | list_directory |
-| „Befehl", „ausführen", „Shell" | B | exec_command |
-| „suchen", „googlen", „Web" | B | web_search |
+| „Befehl", „ausführen", „Shell", „Code" | B | exec_command |
+| „suchen", „googlen", „Web", „recherchiere" | B | web_search |
 | „erinnern", „Memory", „was weißt du über" | B | search_memory |
 | „speichern", „merken" | B | save_to_memory |
 | „Kontakt", „Entität" | B | get_entity / add_entity |
 | „Prozedur", „wie mache ich" | B | search_procedures |
 | Unklare Anfrage | A | -- (nachfragen) |
+
+WICHTIG: Wenn eine Frage sich auf aktuelle Ereignisse, politische Geschehnisse, \
+Nachrichten, Daten oder Fakten bezieht, die sich ändern können, nutze IMMER \
+web_search statt aus dem Gedächtnis zu antworten. Dein Wissen kann veraltet sein.
 
 ## Regeln
 - Verwende NUR Tool-Namen aus der obigen Liste. Erfinde KEINE Tools.
