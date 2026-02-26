@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from urllib.parse import urlparse
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -647,7 +648,8 @@ class TestFactory:
         config.ollama.timeout_seconds = 120
         backend = create_backend(config)
         assert isinstance(backend, OpenAIBackend)
-        assert "models.inference.ai.azure.com" in backend._base_url
+        parsed = urlparse(backend._base_url)
+        assert parsed.hostname == "models.inference.ai.azure.com"
 
     def test_create_bedrock_backend(self) -> None:
         config = MagicMock()
