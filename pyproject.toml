@@ -39,6 +39,8 @@ dependencies = [
     "anyio>=4.0,<5",
     # Security
     "cryptography>=44.0,<45",
+    # .env file loading
+    "python-dotenv>=1.0,<2",
 ]
 
 [project.optional-dependencies]

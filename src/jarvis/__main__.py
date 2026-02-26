@@ -51,6 +51,16 @@ def main() -> None:
     """Haupteintrittspunkt für Jarvis."""
     args = parse_args()
 
+    # 0. .env-Datei laden (Secrets aus ~/.jarvis/.env oder Projekt-Root)
+    try:
+        from dotenv import load_dotenv
+
+        # Zuerst Projekt-.env, dann User-.env (User überschreibt)
+        load_dotenv(Path(".env"), override=False)
+        load_dotenv(Path.home() / ".jarvis" / ".env", override=True)
+    except ImportError:
+        pass  # python-dotenv optional
+
     # 1. Konfiguration laden
     from jarvis.config import ensure_directory_structure, load_config
 
