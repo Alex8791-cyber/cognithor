@@ -437,7 +437,10 @@ class MultiUserIsolation:
         Cross-User Delegation ist blockiert.
         """
         source = self._scopes.get(f"{from_user}:{from_agent}")
-        return source is not None
+        if source is None:
+            return False
+        target = self._scopes.get(f"{from_user}:{to_agent}")
+        return target is not None
 
     def user_scopes(self, user_id: str) -> list[UserAgentScope]:
         """Alle Scopes eines Users."""

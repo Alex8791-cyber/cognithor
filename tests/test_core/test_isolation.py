@@ -280,7 +280,13 @@ class TestMultiUserIsolation:
     def test_delegation_within_user(self) -> None:
         iso = MultiUserIsolation()
         iso.get_or_create_scope("alice", "jarvis")
+        iso.get_or_create_scope("alice", "coder")
         assert iso.can_delegate("alice", "jarvis", "coder")
+
+    def test_delegation_target_not_registered_blocked(self) -> None:
+        iso = MultiUserIsolation()
+        iso.get_or_create_scope("alice", "jarvis")
+        assert not iso.can_delegate("alice", "jarvis", "coder")
 
     def test_delegation_unknown_user_blocked(self) -> None:
         iso = MultiUserIsolation()
