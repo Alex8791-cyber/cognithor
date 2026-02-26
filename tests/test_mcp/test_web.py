@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+import re
 
 from jarvis.mcp.web import (
     WebError,
@@ -492,7 +493,8 @@ class TestSearchAndRead:
 
             result = await web.search_and_read("test query", num_results=1)
             assert "test query" in result
-            assert "https://page1.com" in result
+            urls_in_result = re.findall(r"https?://\S+", result)
+            assert "https://page1.com" in urls_in_result
 
 
 # ── register_web_tools ────────────────────────────────────────────────────
