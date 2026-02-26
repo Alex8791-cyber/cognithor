@@ -12,6 +12,7 @@ Bibel-Referenz: §5.3 (jarvis-web Server)
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -382,19 +383,55 @@ def _extract_text_from_html(html: str, url: str = "") -> str:
     return _simple_html_to_text(html)
 
 
+class _TextExtractor(HTMLParser):
+    """Einfache HTML-Parser-Klasse zum Extrahieren von Text.
+
+    Ignoriert Inhalt von <script> und <style> und fügt für bestimmte
+    Block-Elemente Zeilenumbrüche ein.
+    """
+
+    _BLOCK_TAGS = {"br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._texts: list[str] = []
+        self._in_script_or_style = False
+
+    def handle_starttag(self, tag: str, attrs) -> None:  # type: ignore[override]
+        tag_lower = tag.lower()
+        if tag_lower in ("script", "style"):
+            self._in_script_or_style = True
+            return
+        if tag_lower in self._BLOCK_TAGS:
+            # Block-Elemente als Zeilenumbruch behandeln
+            self._texts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:  # type: ignore[override]
+        tag_lower = tag.lower()
+        if tag_lower in ("script", "style"):
+            self._in_script_or_style = False
+            return
+        if tag_lower in self._BLOCK_TAGS:
+            self._texts.append("\n")
+
+    def handle_data(self, data: str) -> None:  # type: ignore[override]
+        if not self._in_script_or_style:
+            self._texts.append(data)
+
+    def get_text(self) -> str:
+        return "".join(self._texts)
+
+
 def _simple_html_to_text(html: str) -> str:
     """Einfache HTML→Text-Konvertierung als Fallback.
 
     Entfernt Tags, Scripts, Styles und normalisiert Whitespace.
     """
-    # Script und Style entfernen
-    text = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
-    # Block-Elemente → Zeilenumbrüche
-    text = re.sub(r"<(?:br|p|div|h[1-6]|li|tr)[^>]*>", "\n", text, flags=re.IGNORECASE)
-    # Alle Tags entfernen
-    text = re.sub(r"<[^>]+>", " ", text)
-    # HTML-Entities
+    parser = _TextExtractor()
+    parser.feed(html)
+    parser.close()
+    text = parser.get_text()
+    # HTML-Entities (zusätzlich zu convert_charrefs)
     text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
     text = text.replace("&nbsp;", " ").replace("&quot;", '"')
     # Whitespace normalisieren
