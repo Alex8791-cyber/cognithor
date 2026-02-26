@@ -693,7 +693,8 @@ def _register_memory_routes(
             report = engine.scan_batch(entries, auto_quarantine=auto_quarantine)
             return report.to_dict()
         except Exception as exc:
-            return {"error": str(exc)}
+            log.exception("Error during memory hygiene scan")
+            return {"error": "Internal error during memory hygiene scan"}
 
     @app.get("/api/v1/memory/hygiene/stats", dependencies=deps)
     async def memory_hygiene_stats() -> dict[str, Any]:
