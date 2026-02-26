@@ -143,9 +143,13 @@ class SignalChannel(Channel):
             await self._setup_webhook()
 
         self._running = True
+        safe_phone = self._phone_number
+        if safe_phone:
+            # Nur die letzten Ziffern der Nummer im Log anzeigen, Rest maskieren
+            safe_phone = "***" + safe_phone[-4:]
         logger.info(
             "SignalChannel gestartet (Nummer=%s, Modus=%s)",
-            self._phone_number,
+            safe_phone,
             "polling" if self._use_polling else "webhook",
         )
 
