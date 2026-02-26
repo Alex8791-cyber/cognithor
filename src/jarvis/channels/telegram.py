@@ -107,7 +107,7 @@ class TelegramChannel(Channel):
             )
             return
 
-        self._app = Application.builder().token(self.token).build()
+        self._app = Application.builder().token(self.token).concurrent_updates(True).build()
 
         # Handler registrieren
         self._app.add_handler(

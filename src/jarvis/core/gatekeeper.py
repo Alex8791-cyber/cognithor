@@ -295,6 +295,12 @@ class Gatekeeper:
             "get_entity",
             "search",
             "list_jobs",
+            "web_search",
+            "web_fetch",
+            "search_and_read",
+            "browse_url",
+            "search_procedures",
+            "media_analyze_image",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
