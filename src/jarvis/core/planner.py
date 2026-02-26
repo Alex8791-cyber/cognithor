@@ -141,6 +141,9 @@ web_search statt aus dem Gedächtnis zu antworten. Dein Wissen kann veraltet sei
 - Antworte ENTWEDER als Text ODER als JSON-Plan. Niemals beides vermischen.
 - Wenn dir eine Prozedur im Kontext angezeigt wird, folge deren Ablauf.
 
+## Aktuelles Datum und Uhrzeit
+{current_datetime}
+
 ## Kontext
 {context_section}
 """
@@ -518,9 +521,15 @@ class Planner:
 
         context_section = "\n\n".join(context_parts) if context_parts else "Kein Kontext geladen."
 
+        # Aktuelles Datum und Uhrzeit
+        from datetime import datetime
+        now = datetime.now()
+        current_datetime = now.strftime("%A, %d. %B %Y, %H:%M Uhr")
+
         return SYSTEM_PROMPT.format(
             tools_section=tools_section,
             context_section=context_section,
+            current_datetime=current_datetime,
             owner_name=self._config.owner_name,
         )
 

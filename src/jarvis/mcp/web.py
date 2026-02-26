@@ -269,58 +269,51 @@ class WebTools:
         num_results: int,
         language: str,
     ) -> str:
-        """Suche über DuckDuckGo HTML (kein API-Key nötig).
+        """Suche über DuckDuckGo (kein API-Key nötig).
 
-        Nutzt die DuckDuckGo-HTML-Version und parst die Ergebnisse direkt.
+        Nutzt die duckduckgo-search Bibliothek für zuverlässige Ergebnisse.
         Kostenlos und ohne Registrierung nutzbar.
         """
-        url = "https://html.duckduckgo.com/html/"
-        data = {"q": query, "kl": f"{language}-{language}"}
-        headers = {"User-Agent": DEFAULT_USER_AGENT}
+        import anyio
 
-        async with httpx.AsyncClient(
-            timeout=SEARCH_TIMEOUT,
-            follow_redirects=True,
-        ) as client:
-            resp = await client.post(url, data=data, headers=headers)
-            resp.raise_for_status()
+        def _sync_search() -> list[dict[str, Any]]:
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                try:
+                    from duckduckgo_search import DDGS
+                except ImportError:
+                    raise WebError(
+                        "ddgs nicht installiert. "
+                        "Installiere mit: pip install ddgs"
+                    )
 
-        html = resp.text
-        results: list[dict[str, Any]] = []
+            # Region-Mapping: Sprachcode -> DuckDuckGo Region
+            region_map = {
+                "de": "de-de",
+                "en": "us-en",
+                "fr": "fr-fr",
+                "es": "es-es",
+                "it": "it-it",
+                "pt": "pt-pt",
+                "nl": "nl-nl",
+                "ja": "jp-jp",
+                "zh": "cn-zh",
+            }
+            region = region_map.get(language, "wt-wt")
 
-        # Ergebnisse aus HTML extrahieren
-        # DuckDuckGo HTML hat Links in <a class="result__a"> und Snippets in <a class="result__snippet">
-        result_blocks = re.findall(
-            r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>',
-            html,
-            re.DOTALL,
-        )
-        snippet_blocks = re.findall(
-            r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>',
-            html,
-            re.DOTALL,
-        )
+            raw = list(DDGS().text(query, region=region, max_results=num_results))
 
-        for i, (href, title_html) in enumerate(result_blocks[:num_results]):
-            title = re.sub(r"<[^>]+>", "", title_html).strip()
-            snippet = ""
-            if i < len(snippet_blocks):
-                snippet = re.sub(r"<[^>]+>", "", snippet_blocks[i]).strip()
+            return [
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("href", ""),
+                    "content": r.get("body", ""),
+                }
+                for r in raw
+            ]
 
-            # DuckDuckGo redirect-URLs auflösen
-            if "uddg=" in href:
-                from urllib.parse import unquote, parse_qs
-                parsed_qs = parse_qs(urlparse(href).query)
-                actual_url = unquote(parsed_qs.get("uddg", [href])[0])
-            else:
-                actual_url = href
-
-            if title and actual_url.startswith("http"):
-                results.append({
-                    "title": title,
-                    "url": actual_url,
-                    "content": snippet,
-                })
+        results = await anyio.to_thread.run_sync(_sync_search)
 
         if not results:
             return f"Keine Ergebnisse für: {query}"
