@@ -507,10 +507,14 @@ class TelegramChannel(Channel):
             Transkribierter Text oder None wenn nicht verfügbar.
         """
         try:
+            import os
+            # CUDA deaktivieren falls cuDNN nicht verfügbar (verhindert DLL-Crash)
+            if not os.environ.get("CUDA_VISIBLE_DEVICES"):
+                os.environ["CUDA_VISIBLE_DEVICES"] = ""
             from faster_whisper import WhisperModel
 
             if self._whisper_model is None:
-                self._whisper_model = WhisperModel("base", device="auto", compute_type="int8")
+                self._whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
             model = self._whisper_model
             segments, _info = model.transcribe(str(audio_path), language="de")
             text = " ".join(seg.text.strip() for seg in segments)
