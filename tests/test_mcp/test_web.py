@@ -231,8 +231,10 @@ class TestWebSearch:
     """Tests für die Websuche."""
 
     @pytest.mark.asyncio()
-    async def test_no_backend_configured(self, web: WebTools) -> None:
-        """Ohne Backend → hilfreiche Meldung."""
+    async def test_no_backend_configured(self) -> None:
+        """Ohne Backend und DDG deaktiviert → hilfreiche Meldung."""
+        web = WebTools()
+        web._duckduckgo_enabled = False
         result = await web.web_search("test")
         assert "Keine Suchengine konfiguriert" in result
 
@@ -450,8 +452,10 @@ class TestSearchAndRead:
     """Tests für die kombinierte Suche+Fetch-Funktion."""
 
     @pytest.mark.asyncio()
-    async def test_search_and_read_no_backend(self, web: WebTools) -> None:
-        """Ohne Backend → Meldung."""
+    async def test_search_and_read_no_backend(self) -> None:
+        """Ohne Backend und DDG deaktiviert → Meldung."""
+        web = WebTools()
+        web._duckduckgo_enabled = False
         result = await web.search_and_read("test")
         assert "Keine Suchengine" in result
 

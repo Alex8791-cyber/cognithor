@@ -95,6 +95,25 @@ class PlannerConfig(BaseModel):
     response_token_budget: int = Field(default=3000, ge=500, le=8000)
 
 
+class WebConfig(BaseModel):
+    """Web-Tools Konfiguration. [B§5.3]
+
+    Suchbackends (Priorität: SearXNG > Brave > DuckDuckGo):
+      - SearXNG: Self-hosted, keine API-Keys nötig
+      - Brave Search: Schnell, 2000 Anfragen/Monat kostenlos
+      - DuckDuckGo: Immer verfügbar, kein API-Key nötig (Standard-Fallback)
+    """
+
+    searxng_url: str = ""
+    """URL der SearXNG-Instanz (z.B. 'http://localhost:8888')."""
+
+    brave_api_key: str = ""
+    """Brave Search API Key (https://brave.com/search/api/)."""
+
+    duckduckgo_enabled: bool = True
+    """DuckDuckGo als kostenloser Fallback wenn kein anderes Backend konfiguriert."""
+
+
 class MemoryConfig(BaseModel):
     """Memory-System Konfiguration. [B§4]"""
 
@@ -947,6 +966,7 @@ class JarvisConfig(BaseModel):
     planner: PlannerConfig = Field(default_factory=PlannerConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     channels: ChannelConfig = Field(default_factory=ChannelConfig)
+    web: WebConfig = Field(default_factory=WebConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)

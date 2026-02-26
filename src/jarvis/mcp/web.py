@@ -89,13 +89,15 @@ class WebTools:
         """
         self._searxng_url = searxng_url
         self._brave_api_key = brave_api_key
+        self._duckduckgo_enabled = True
 
         # Aus Config laden falls vorhanden
         if config is not None:
             web_cfg = getattr(config, "web", None)
             if web_cfg is not None:
-                self._searxng_url = self._searxng_url or getattr(web_cfg, "searxng_url", None)
-                self._brave_api_key = self._brave_api_key or getattr(web_cfg, "brave_api_key", None)
+                self._searxng_url = self._searxng_url or getattr(web_cfg, "searxng_url", None) or ""
+                self._brave_api_key = self._brave_api_key or getattr(web_cfg, "brave_api_key", None) or ""
+                self._duckduckgo_enabled = getattr(web_cfg, "duckduckgo_enabled", True)
 
     def _validate_url(self, url: str) -> str:
         """Validiert eine URL gegen SSRF-Angriffe.
@@ -180,9 +182,17 @@ class WebTools:
             except Exception as exc:
                 log.warning("Brave-Suche fehlgeschlagen: %s", exc)
 
+        # DuckDuckGo als kostenloser Fallback (kein API-Key nötig)
+        if self._duckduckgo_enabled:
+            try:
+                return await self._search_duckduckgo(query, num_results, language)
+            except Exception as exc:
+                log.warning("DuckDuckGo-Suche fehlgeschlagen: %s", exc)
+
         return (
             "Keine Suchengine konfiguriert.\n"
-            "Setze `searxng_url` oder `brave_api_key` in der Konfiguration."
+            "Setze `searxng_url` oder `brave_api_key` in der Konfiguration,\n"
+            "oder aktiviere `duckduckgo_enabled: true` (Standard)."
         )
 
     async def _search_searxng(
@@ -251,6 +261,70 @@ class WebTools:
             }
             for r in web_results
         ]
+        return _format_search_results(results, query)
+
+    async def _search_duckduckgo(
+        self,
+        query: str,
+        num_results: int,
+        language: str,
+    ) -> str:
+        """Suche über DuckDuckGo HTML (kein API-Key nötig).
+
+        Nutzt die DuckDuckGo-HTML-Version und parst die Ergebnisse direkt.
+        Kostenlos und ohne Registrierung nutzbar.
+        """
+        url = "https://html.duckduckgo.com/html/"
+        data = {"q": query, "kl": f"{language}-{language}"}
+        headers = {"User-Agent": DEFAULT_USER_AGENT}
+
+        async with httpx.AsyncClient(
+            timeout=SEARCH_TIMEOUT,
+            follow_redirects=True,
+        ) as client:
+            resp = await client.post(url, data=data, headers=headers)
+            resp.raise_for_status()
+
+        html = resp.text
+        results: list[dict[str, Any]] = []
+
+        # Ergebnisse aus HTML extrahieren
+        # DuckDuckGo HTML hat Links in <a class="result__a"> und Snippets in <a class="result__snippet">
+        result_blocks = re.findall(
+            r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>',
+            html,
+            re.DOTALL,
+        )
+        snippet_blocks = re.findall(
+            r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>',
+            html,
+            re.DOTALL,
+        )
+
+        for i, (href, title_html) in enumerate(result_blocks[:num_results]):
+            title = re.sub(r"<[^>]+>", "", title_html).strip()
+            snippet = ""
+            if i < len(snippet_blocks):
+                snippet = re.sub(r"<[^>]+>", "", snippet_blocks[i]).strip()
+
+            # DuckDuckGo redirect-URLs auflösen
+            if "uddg=" in href:
+                from urllib.parse import unquote, parse_qs
+                parsed_qs = parse_qs(urlparse(href).query)
+                actual_url = unquote(parsed_qs.get("uddg", [href])[0])
+            else:
+                actual_url = href
+
+            if title and actual_url.startswith("http"):
+                results.append({
+                    "title": title,
+                    "url": actual_url,
+                    "content": snippet,
+                })
+
+        if not results:
+            return f"Keine Ergebnisse für: {query}"
+
         return _format_search_results(results, query)
 
     # ── web_fetch ──────────────────────────────────────────────────────────
