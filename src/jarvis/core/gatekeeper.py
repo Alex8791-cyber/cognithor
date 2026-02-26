@@ -318,14 +318,14 @@ class Gatekeeper:
         if tool in orange_tools:
             return RiskLevel.ORANGE
 
-        # RED: Shell-Befehle und unbekannte Tools
-        red_tools = {
+        # ORANGE: Shell-Befehle erfordern User-Bestätigung
+        shell_tools = {
             "exec_command",
             "shell_exec",
             "shell",
         }
-        if tool in red_tools:
-            return RiskLevel.RED
+        if tool in shell_tools:
+            return RiskLevel.ORANGE
 
         # Unbekannte Tools → ORANGE (Fail-Safe: lieber nachfragen)
         return RiskLevel.ORANGE
