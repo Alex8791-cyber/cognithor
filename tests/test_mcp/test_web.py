@@ -492,7 +492,7 @@ class TestSearchAndRead:
 
             result = await web.search_and_read("test query", num_results=1)
             assert "test query" in result
-            assert "page1.com" in result
+            assert "https://page1.com" in result
 
 
 # ── register_web_tools ────────────────────────────────────────────────────
