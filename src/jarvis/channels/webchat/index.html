@@ -377,11 +377,21 @@
 // Konfiguration
 // ============================================================================
 
+function secureRandomString(length) {
+  const bytes = new Uint8Array(length);
+  (window.crypto || self.crypto).getRandomValues(bytes);
+  const chars = [];
+  for (let i = 0; i < bytes.length; i++) {
+    chars.push((bytes[i] % 36).toString(36));
+  }
+  return chars.join('');
+}
+
 const CONFIG = {
   wsUrl: `ws://${location.hostname || 'localhost'}:8741/ws/`,
   reconnectDelay: 3000,
   maxReconnectAttempts: 10,
-  sessionId: `web_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  sessionId: `web_${Date.now()}_${secureRandomString(6)}`,
 };
 
 // ============================================================================
