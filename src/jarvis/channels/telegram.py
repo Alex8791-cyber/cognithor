@@ -400,9 +400,14 @@ class TelegramChannel(Channel):
             photo_path = self._workspace_dir / f"photo-{photo.file_unique_id}.jpg"
             await file.download_to_drive(str(photo_path))
 
-            text = f"[Foto empfangen: {photo_path.name}, {photo.width}x{photo.height}]"
+            text = (
+                f"[Foto empfangen: {photo_path.name}, {photo.width}x{photo.height}]\n"
+                f"Dateipfad: {photo_path}"
+            )
             if caption:
-                text += f"\nBeschreibung: {caption}"
+                text += f"\nUser-Frage zum Bild: {caption}"
+            else:
+                text += "\nUser möchte das Bild analysiert haben."
 
             await self._process_incoming(chat_id, user_id, text, update)
 
