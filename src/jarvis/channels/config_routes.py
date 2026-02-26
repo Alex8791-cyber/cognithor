@@ -158,8 +158,9 @@ def _register_system_routes(
             cfg_mgr = CfgMgr(config_manager.config)
             overview = cfg_mgr.get_overview()
             return overview.model_dump()
-        except Exception as exc:
-            return {"error": str(exc)}
+        except Exception:
+            log.exception("Failed to build configuration overview")
+            return {"error": "Konfigurationsübersicht konnte nicht geladen werden."}
 
     # -- Agents -----------------------------------------------------------
 
