@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 import re
+from urllib.parse import urlparse
 
 from jarvis.mcp.web import (
     WebError,
@@ -494,7 +495,9 @@ class TestSearchAndRead:
             result = await web.search_and_read("test query", num_results=1)
             assert "test query" in result
             urls_in_result = re.findall(r"https?://\S+", result)
-            assert "https://page1.com" in urls_in_result
+            assert urls_in_result, "Es sollten URLs im Ergebnis enthalten sein."
+            parsed_url = urlparse(urls_in_result[0])
+            assert parsed_url.hostname == "page1.com"
 
 
 # ── register_web_tools ────────────────────────────────────────────────────
