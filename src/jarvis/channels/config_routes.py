@@ -173,7 +173,7 @@ def _register_system_routes(
     async def list_agents() -> dict[str, Any]:
         """Listet alle registrierten Agent-Profile aus agents.yaml."""
         try:
-            agents_path = Path.home() / ".jarvis" / "agents.yaml"
+            agents_path = config_manager.config.jarvis_home / "agents.yaml"
             if agents_path.exists():
                 raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
                 agents = raw.get("agents", [])
@@ -243,11 +243,15 @@ def _register_system_routes(
 
     @app.get("/api/v1/bindings", dependencies=deps)
     async def list_bindings() -> dict[str, Any]:
-        """Listet alle Binding-Regeln."""
+        """Listet alle Binding-Regeln aus bindings.yaml."""
         try:
-            from jarvis.gateway.config_api import ConfigManager as CfgMgr
-            cfg_mgr = CfgMgr(config_manager.config)
-            return {"bindings": cfg_mgr.list_bindings()}
+            bindings_path = config_manager.config.jarvis_home / "bindings.yaml"
+            if bindings_path.exists():
+                raw = yaml.safe_load(bindings_path.read_text(encoding="utf-8")) or {}
+                bindings = raw.get("bindings", [])
+            else:
+                bindings = []
+            return {"bindings": bindings}
         except Exception as exc:
             return {"bindings": [], "error": str(exc)}
 
@@ -440,6 +444,11 @@ def _register_config_routes(
 ) -> None:
     """Config CRUD, presets, reload."""
 
+    @app.get("/api/v1/health", dependencies=deps)
+    async def health_check() -> dict[str, Any]:
+        """Health check endpoint used by the Vite launcher."""
+        return {"status": "ok"}
+
     @app.get("/api/v1/config", dependencies=deps)
     async def get_config() -> dict[str, Any]:
         """Gibt die gesamte Konfiguration zurück (ohne Secrets)."""
@@ -449,27 +458,6 @@ def _register_config_routes(
             "editable_top_level": config_manager.editable_top_level_fields(),
         }
         return data
-
-    @app.get("/api/v1/config/{section}", dependencies=deps)
-    async def get_config_section(section: str) -> dict[str, Any]:
-        """Gibt eine einzelne Konfigurations-Sektion zurück."""
-        result = config_manager.read_section(section)
-        if result is None:
-            return {"error": f"Sektion '{section}' nicht gefunden", "status": 404}
-        return {"section": section, "values": result}
-
-    @app.patch("/api/v1/config/{section}", dependencies=deps)
-    async def update_config_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
-        """Aktualisiert eine Konfigurations-Sektion."""
-        from jarvis.config_manager import _is_secret_field
-        # Strip masked secret placeholders so "***" is never written back
-        cleaned = {k: v for k, v in values.items() if not (v == "***" and _is_secret_field(k))}
-        try:
-            config_manager.update_section(section, cleaned)
-            config_manager.save()
-            return {"status": "ok", "section": section, "updated_keys": list(cleaned.keys())}
-        except ValueError as exc:
-            return {"error": str(exc), "status": 400}
 
     @app.patch("/api/v1/config", dependencies=deps)
     async def update_config_top_level(updates: dict[str, Any]) -> dict[str, Any]:
@@ -495,7 +483,7 @@ def _register_config_routes(
         config_manager.reload()
         return {"status": "ok", "message": "Konfiguration neu geladen"}
 
-    # -- Presets ----------------------------------------------------------
+    # -- Presets (BEFORE {section} routes to avoid path parameter conflict) --
 
     @app.get("/api/v1/config/presets", dependencies=deps)
     async def list_presets() -> dict[str, Any]:
@@ -555,6 +543,29 @@ def _register_config_routes(
                 results.append({"section": section, "status": "error", "error": str(exc)})
         config_manager.save()
         return {"preset": preset_name, "results": results}
+
+    # -- Config Section CRUD (AFTER presets to avoid {section} capturing "presets") --
+
+    @app.get("/api/v1/config/{section}", dependencies=deps)
+    async def get_config_section(section: str) -> dict[str, Any]:
+        """Gibt eine einzelne Konfigurations-Sektion zurück."""
+        result = config_manager.read_section(section)
+        if result is None:
+            return {"error": f"Sektion '{section}' nicht gefunden", "status": 404}
+        return {"section": section, "values": result}
+
+    @app.patch("/api/v1/config/{section}", dependencies=deps)
+    async def update_config_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
+        """Aktualisiert eine Konfigurations-Sektion."""
+        from jarvis.config_manager import _is_secret_field
+        # Strip masked secret placeholders so "***" is never written back
+        cleaned = {k: v for k, v in values.items() if not (v == "***" and _is_secret_field(k))}
+        try:
+            config_manager.update_section(section, cleaned)
+            config_manager.save()
+            return {"status": "ok", "section": section, "updated_keys": list(cleaned.keys())}
+        except ValueError as exc:
+            return {"error": str(exc), "status": 400}
 
 
 # ======================================================================
@@ -2143,26 +2154,54 @@ def _register_ui_routes(
 
     @app.get("/api/v1/mcp-servers", dependencies=deps)
     async def ui_get_mcp_servers() -> dict[str, Any]:
-        """Reads MCP server config (server_mode + external servers)."""
+        """Reads MCP server config, flattened for the UI."""
         try:
             mcp_path = config_manager.config.mcp_config_file
             data = _load_yaml(mcp_path)
-            return {
-                "server_mode": data.get("server_mode", {}),
-                "external_servers": data.get("servers", []),
+            sm = data.get("server_mode", {})
+            servers_raw = data.get("servers", {})
+            # servers can be dict (name→config) or list; normalize to dict
+            if isinstance(servers_raw, list):
+                servers_dict = {s.get("name", f"server_{i}"): s for i, s in enumerate(servers_raw) if isinstance(s, dict)}
+            elif isinstance(servers_raw, dict):
+                servers_dict = servers_raw
+            else:
+                servers_dict = {}
+            # Flatten server_mode fields into response + external_servers as dict
+            result: dict[str, Any] = {
+                "mode": sm.get("mode", "disabled"),
+                "http_host": sm.get("http_host", "127.0.0.1"),
+                "http_port": sm.get("http_port", 3001),
+                "server_name": sm.get("server_name", "jarvis"),
+                "require_auth": sm.get("require_auth", False),
+                "auth_token": sm.get("auth_token", ""),
+                "expose_tools": sm.get("expose_tools", True),
+                "expose_resources": sm.get("expose_resources", True),
+                "expose_prompts": sm.get("expose_prompts", False),
+                "enable_sampling": sm.get("enable_sampling", False),
+                "external_servers": servers_dict,
             }
+            return result
         except Exception as exc:
-            return {"server_mode": {}, "external_servers": [], "error": str(exc)}
+            return {"mode": "disabled", "external_servers": {}, "error": str(exc)}
 
     @app.put("/api/v1/mcp-servers", dependencies=deps)
     async def ui_put_mcp_servers(request: Request) -> dict[str, Any]:
-        """Writes server_mode + servers, preserving a2a and built_in_tools."""
+        """Writes MCP config from flat UI format, preserving a2a and built_in_tools."""
         try:
             body = await request.json()
             mcp_path = config_manager.config.mcp_config_file
             data = _load_yaml(mcp_path)
-            if "server_mode" in body:
-                data["server_mode"] = body["server_mode"]
+            # Reconstruct server_mode from flat fields
+            sm_keys = ("mode", "http_host", "http_port", "server_name",
+                       "require_auth", "auth_token", "expose_tools",
+                       "expose_resources", "expose_prompts", "enable_sampling")
+            sm = data.get("server_mode", {})
+            for k in sm_keys:
+                if k in body:
+                    sm[k] = body[k]
+            data["server_mode"] = sm
+            # external_servers → servers
             if "external_servers" in body:
                 data["servers"] = body["external_servers"]
             _save_yaml(mcp_path, data)
