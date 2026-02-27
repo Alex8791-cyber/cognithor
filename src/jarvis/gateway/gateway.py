@@ -730,7 +730,12 @@ class Gateway:
             has_errors = any(r.is_error for r in results)
             has_success = any(r.success for r in results)
 
-            if has_success and not has_errors:
+            # Coding-Tools: Nicht sofort breaken -- Replan entscheidet
+            # ob weitere Schritte nötig sind (Code testen, analysieren, fixen)
+            _CODING_TOOLS = {"run_python", "exec_command", "write_file", "edit_file", "analyze_code"}
+            used_coding_tool = any(r.tool_name in _CODING_TOOLS for r in results)
+
+            if has_success and not has_errors and not used_coding_tool:
                 final_response = await self._planner.formulate_response(
                     user_message=msg.text,
                     results=all_results,
@@ -738,7 +743,7 @@ class Gateway:
                 )
                 break
 
-            if not has_success and session.iteration_count >= 3:
+            if not has_success and session.iteration_count >= 5:
                 final_response = await self._planner.formulate_response(
                     user_message=msg.text,
                     results=all_results,

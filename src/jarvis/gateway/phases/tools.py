@@ -49,6 +49,7 @@ async def init_tools(
         PhaseResult with initialized tool subsystems.
     """
     from jarvis.mcp.bridge import MCPBridge
+    from jarvis.mcp.code_tools import register_code_tools
     from jarvis.mcp.filesystem import register_fs_tools
     from jarvis.mcp.memory_server import register_memory_tools
     from jarvis.mcp.shell import register_shell_tools
@@ -60,6 +61,7 @@ async def init_tools(
     register_fs_tools(mcp_client, config)
     register_shell_tools(mcp_client, config)
     register_web_tools(mcp_client, config)
+    register_code_tools(mcp_client, config)
 
     # Browser-Use v17: Autonomous browser automation (optional)
     browser_agent = None

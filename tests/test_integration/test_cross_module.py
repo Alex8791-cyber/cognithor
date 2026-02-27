@@ -691,8 +691,8 @@ class TestPGEToolExecution:
         assert (sandbox / "info.txt").exists()
 
     @pytest.mark.asyncio
-    async def test_exec_command_classified_as_red(self, pge_env):
-        """exec_command wird als RED/BLOCK klassifiziert (Fail-Safe Design)."""
+    async def test_exec_command_classified_as_yellow(self, pge_env):
+        """exec_command wird als YELLOW/INFORM klassifiziert (autonomes Coding)."""
         config, _sandbox = pge_env
         gatekeeper = Gatekeeper(config)
         gatekeeper.initialize()
@@ -704,8 +704,8 @@ class TestPGEToolExecution:
         )
         session = SessionContext(user_id="alex", channel="cli")
         decision = gatekeeper.evaluate(action, session)
-        # exec_command ist per Design RED (muss über Approval gelöst werden)
-        assert decision.risk_level == RiskLevel.RED
+        # exec_command ist YELLOW (INFORM) -- Sandbox-Schutz bleibt, kein Approval nötig
+        assert decision.risk_level == RiskLevel.YELLOW
 
 
 # =============================================================================

@@ -65,13 +65,14 @@ STANDARD = SandboxProfile(
         ToolCapability.MEMORY_WRITE,
         ToolCapability.NETWORK_HTTP,
         ToolCapability.SYSTEM_INFO,
+        ToolCapability.EXEC_PROCESS,
+        ToolCapability.EXEC_SCRIPT,
     },
     denied_capabilities={
-        ToolCapability.EXEC_PROCESS,
         ToolCapability.CREDENTIAL_ACCESS,
     },
-    max_memory_mb=512,
-    max_timeout_seconds=30,
+    max_memory_mb=1024,
+    max_timeout_seconds=120,
 )
 
 PERMISSIVE = SandboxProfile(
@@ -129,7 +130,13 @@ class CapabilityMatrix:
                 tool_name="exec_command",
                 capabilities=frozenset({ToolCapability.EXEC_PROCESS, ToolCapability.FS_READ, ToolCapability.FS_WRITE}),
                 max_memory_mb=1024,
-                max_timeout_seconds=60,
+                max_timeout_seconds=120,
+            ),
+            ToolCapabilitySpec(
+                tool_name="run_python",
+                capabilities=frozenset({ToolCapability.EXEC_SCRIPT, ToolCapability.FS_READ, ToolCapability.FS_WRITE}),
+                max_memory_mb=1024,
+                max_timeout_seconds=120,
             ),
             ToolCapabilitySpec(
                 tool_name="web_search",

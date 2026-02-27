@@ -89,7 +89,7 @@ class GatekeeperConfig(BaseModel):
 class PlannerConfig(BaseModel):
     """Planner-Einstellungen. [B§3.1, §3.4]"""
 
-    max_iterations: int = Field(default=10, ge=1, le=50)
+    max_iterations: int = Field(default=25, ge=1, le=50)
     escalation_after: int = Field(default=3, ge=1, le=10)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     response_token_budget: int = Field(default=3000, ge=500, le=8000)
@@ -857,7 +857,7 @@ class SecurityConfig(BaseModel):
     """Sicherheits-Konfiguration. [B§11]"""
 
     # Maximale Agent-Loop Iterationen pro Anfrage
-    max_iterations: int = Field(default=10, ge=1, le=50)
+    max_iterations: int = Field(default=25, ge=1, le=50)
     # Erlaubte Dateipfade (Gatekeeper prüft dagegen)
     allowed_paths: list[str] = Field(default_factory=lambda: ["~/.jarvis/", "/tmp/jarvis/"])
     # Regex-Patterns für destruktive Shell-Befehle [B§3.2]
@@ -1344,7 +1344,7 @@ werden.
 3. E-MAILS: E-Mails IMMER als Entwurf vorlegen. Niemals automatisch
    versenden, es sei denn {owner_name} bestätigt es ausdrücklich.
 4. SHELL: Keine destruktiven Befehle (rm -rf, mkfs, dd). Im Zweifel nachfragen.
-5. PLAN-LIMIT: Maximal 10 Iterationen pro Anfrage. Danach zusammenfassen
+5. PLAN-LIMIT: Maximal 25 Iterationen pro Anfrage. Danach zusammenfassen
    und nachfragen.
 6. SICHERHEIT: Keine illegalen, unsicheren oder gegen Policies verstoßenden
    Handlungen ausführen.
@@ -1379,8 +1379,9 @@ rules:
   - name: no_destructive_shell
     match:
       tool: exec_command
-      params.command:
-        regex: "rm -rf|mkfs|dd if=/dev|:(){ :|:& };:|format |del /f|shutdown|reboot"
+      params:
+        command:
+          regex: "rm -rf|mkfs|dd if=/dev|:(){ :|:& };:|format |del /f|shutdown|reboot"
     action: BLOCK
     reason: "Destruktiver Shell-Befehl erkannt"
 
@@ -1430,7 +1431,7 @@ ollama:
   keep_alive: 30m
 
 planner:
-  max_iterations: 10
+  max_iterations: 25
   temperature: 0.7
 
 memory:
@@ -1533,6 +1534,7 @@ _DEFAULT_MCP_CONFIG = """\
 # Builtin-Tools (automatisch aktiv, keine Konfiguration nötig):
 #   Filesystem: read_file, write_file, edit_file, list_directory, delete_file
 #   Shell:      exec_command
+#   Code:       run_python, analyze_code
 #   Memory:     search_memory, save_to_memory, get_entity, add_entity,
 #               get_recent_episodes, search_procedures, get_core_memory,
 #               update_core_section, save_episode, get_working_context

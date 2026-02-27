@@ -78,6 +78,7 @@ class Executor:
             "read_file",
             "edit_file",
             "list_directory",
+            "run_python",
         }
     )
 
@@ -108,6 +109,7 @@ class Executor:
             "media_transcribe_audio": 120,
             "media_extract_text": 120,
             "media_tts": 120,
+            "run_python": 120,
         }
         self._max_retries = 3
         self._base_delay = 1.0  # Sekunden (exponentiell: 1s, 2s, 4s)

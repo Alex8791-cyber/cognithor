@@ -22,8 +22,10 @@ class TestSandboxProfile:
     def test_standard_allows_write(self):
         assert STANDARD.is_capability_allowed(ToolCapability.FS_WRITE)
 
-    def test_standard_denies_exec(self):
-        assert not STANDARD.is_capability_allowed(ToolCapability.EXEC_PROCESS)
+    def test_standard_allows_exec(self):
+        """STANDARD erlaubt EXEC_PROCESS fuer autonomes Coding."""
+        assert STANDARD.is_capability_allowed(ToolCapability.EXEC_PROCESS)
+        assert STANDARD.is_capability_allowed(ToolCapability.EXEC_SCRIPT)
 
     def test_permissive_allows_all(self):
         for cap in ToolCapability:
@@ -71,7 +73,8 @@ class TestCapabilityMatrix:
     def test_check_allowed_standard(self):
         assert self.matrix.check_allowed("read_file", STANDARD)
         assert self.matrix.check_allowed("write_file", STANDARD)
-        assert not self.matrix.check_allowed("exec_command", STANDARD)
+        assert self.matrix.check_allowed("exec_command", STANDARD)
+        assert self.matrix.check_allowed("run_python", STANDARD)
 
     def test_check_allowed_permissive(self):
         assert self.matrix.check_allowed("read_file", PERMISSIVE)
@@ -101,9 +104,15 @@ class TestPolicyEvaluator:
         assert len(decision.violations) == 0
 
     def test_evaluate_denied(self):
-        decision = self.evaluator.evaluate("exec_command", profile_name="standard")
+        """exec_command/run_python sind in 'restrictive' verweigert."""
+        decision = self.evaluator.evaluate("exec_command", profile_name="restrictive")
         assert not decision.allowed
         assert len(decision.violations) > 0
+
+    def test_evaluate_exec_allowed_in_standard(self):
+        """exec_command ist im 'standard'-Profil erlaubt (autonomes Coding)."""
+        decision = self.evaluator.evaluate("exec_command", profile_name="standard")
+        assert decision.allowed
 
     def test_evaluate_unknown_profile(self):
         decision = self.evaluator.evaluate("read_file", profile_name="nonexistent")

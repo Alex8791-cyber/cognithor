@@ -311,6 +311,7 @@ class Gatekeeper:
             "record_procedure_usage",
             "browse_page_info",
             "browse_screenshot",
+            "analyze_code",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
@@ -326,6 +327,10 @@ class Gatekeeper:
             "document_export",
             "media_tts",
             "media_convert_audio",
+            "exec_command",
+            "shell_exec",
+            "shell",
+            "run_python",
         }
         if tool in yellow_tools:
             return RiskLevel.YELLOW
@@ -337,15 +342,6 @@ class Gatekeeper:
             "fetch_url",
         }
         if tool in orange_tools:
-            return RiskLevel.ORANGE
-
-        # ORANGE: Shell-Befehle erfordern User-Bestätigung
-        shell_tools = {
-            "exec_command",
-            "shell_exec",
-            "shell",
-        }
-        if tool in shell_tools:
             return RiskLevel.ORANGE
 
         # Unbekannte Tools → ORANGE (Fail-Safe: lieber nachfragen)
@@ -601,6 +597,17 @@ class Gatekeeper:
                     params_match[param_name] = PolicyParamMatch(**param_criteria)
                 elif isinstance(param_criteria, str):
                     params_match[param_name] = PolicyParamMatch(equals=param_criteria)
+
+        # Backwards-Kompatibilität: Dotted-Notation (z.B. "params.command")
+        # Ältere Policy-Dateien nutzen "params.command:" statt "params: command:"
+        for key in list(match_data.keys()):
+            if key.startswith("params.") and key != "params":
+                param_name = key[len("params."):]
+                criteria = match_data[key]
+                if isinstance(criteria, dict):
+                    params_match[param_name] = PolicyParamMatch(**criteria)
+                elif isinstance(criteria, str):
+                    params_match[param_name] = PolicyParamMatch(equals=criteria)
 
         policy_match = PolicyMatch(
             tool=match_data.get("tool", "*"),

@@ -49,7 +49,7 @@ class TestJarvisConfigDefaults:
 
     def test_planner_defaults(self) -> None:
         config = JarvisConfig()
-        assert config.planner.max_iterations == 10
+        assert config.planner.max_iterations == 25
         assert config.planner.escalation_after == 3
         assert config.planner.temperature == 0.7
 
@@ -215,7 +215,7 @@ class TestSecurityConfig:
     """Tests für SecurityConfig."""
 
     def test_defaults(self, config: JarvisConfig) -> None:
-        assert config.security.max_iterations == 10
+        assert config.security.max_iterations == 25
         assert len(config.security.allowed_paths) >= 2
         assert len(config.security.blocked_commands) >= 6
         assert len(config.security.credential_patterns) >= 3
