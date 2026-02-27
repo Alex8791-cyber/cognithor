@@ -423,6 +423,11 @@ class Gateway:
 
         # User- und Antwort-Nachricht in Working Memory speichern (nach PGE-Loop)
         wm.add_message(Message(role=MessageRole.USER, content=msg.text, channel=msg.channel))
+
+        # Wichtige Tool-Ergebnisse als TOOL-Messages in Chat-History persistieren,
+        # damit Folge-Requests den vollen Kontext haben (z.B. Vision-Text für PDF-Export)
+        self._persist_key_tool_results(wm, all_results)
+
         wm.add_message(Message(role=MessageRole.ASSISTANT, content=final_response))
 
         # Phase 4: Reflexion, Skill-Tracking, Telemetry, Profiler, Run-Recording
@@ -1017,6 +1022,55 @@ class Gateway:
     # =========================================================================
     # Private Methoden
     # =========================================================================
+
+    # Tools deren Ergebnisse für Folge-Requests in der Chat-History bleiben sollen.
+    # Ohne diese Persistierung geht der Kontext (z.B. extrahierter Text aus Bildern)
+    # bei clear_for_new_request() verloren.
+    _CONTEXT_TOOLS: frozenset[str] = frozenset({
+        "media_analyze_image",
+        "media_extract_text",
+        "media_transcribe_audio",
+        "analyze_code",
+        "run_python",
+        "web_search",
+        "web_fetch",
+        "search_and_read",
+    })
+    # Maximale Zeichenzahl für persistierte Tool-Ergebnisse in Chat-History
+    _CONTEXT_RESULT_LIMIT: int = 4000
+
+    def _persist_key_tool_results(
+        self,
+        wm: "WorkingMemory",
+        results: list["ToolResult"],
+    ) -> None:
+        """Persistiert wichtige Tool-Ergebnisse als TOOL-Messages in der Chat-History.
+
+        Damit behält der Planner bei Folge-Requests den vollen Kontext,
+        z.B. extrahierter Text aus Bildern, Analyse-Ergebnisse, Suchergebnisse.
+        """
+        for result in results:
+            if not result.success:
+                continue
+            if result.tool_name not in self._CONTEXT_TOOLS:
+                continue
+            if not result.content.strip():
+                continue
+
+            content = result.content[:self._CONTEXT_RESULT_LIMIT]
+            if len(result.content) > self._CONTEXT_RESULT_LIMIT:
+                content += "\n[... gekürzt]"
+
+            wm.add_message(Message(
+                role=MessageRole.TOOL,
+                content=content,
+                name=result.tool_name,
+            ))
+            log.debug(
+                "tool_result_persisted",
+                tool=result.tool_name,
+                chars=len(content),
+            )
 
     # Tools whose results are file paths that should be attached to the response
     _ATTACHMENT_TOOLS: frozenset[str] = frozenset({

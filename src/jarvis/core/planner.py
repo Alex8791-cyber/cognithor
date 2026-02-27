@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 from jarvis.core.model_router import ModelRouter, OllamaClient, OllamaError
 from jarvis.models import (
     ActionPlan,
+    MessageRole,
     PlannedAction,
     RiskLevel,
     ToolResult,
@@ -704,10 +705,20 @@ class Planner:
 
         # Chat-History einfügen (neueste zuerst, bis Budget erschöpft)
         for msg in working_memory.chat_history:
+            role = msg.role.value
+            content = msg.content
+
+            # TOOL-Messages als assistant mit Präfix darstellen,
+            # da nicht alle LLM-Backends die "tool"-Rolle unterstützen
+            if msg.role == MessageRole.TOOL:
+                role = "assistant"
+                tool_label = msg.name or "tool"
+                content = f"[Ergebnis von {tool_label}]\n{content}"
+
             messages.append(
                 {
-                    "role": msg.role.value,
-                    "content": msg.content,
+                    "role": role,
+                    "content": content,
                 }
             )
 
@@ -878,6 +889,8 @@ class Planner:
     # Tools deren Ergebnisse mehr Kontext brauchen (größeres Content-Limit)
     _HIGH_CONTEXT_TOOLS: frozenset[str] = frozenset({
         "web_search", "web_news_search", "search_and_read", "web_fetch",
+        "media_analyze_image", "media_extract_text",
+        "analyze_code", "run_python",
     })
 
     def _format_results(self, results: list[ToolResult]) -> str:
