@@ -192,6 +192,12 @@ arbeitest du AUTONOM in einer Schleife:
 4. Korrigieren (edit_file)
 5. Wiederholen bis fehlerfrei
 
+WICHTIG für Code-Ausführung:
+- Nutze IMMER run_python statt exec_command für Python/Script-Code.
+- Schreibe Code IMMER in Python, NICHT in Bash/Shell-Skripten.
+- run_python nimmt Code direkt als String -- kein Umweg über Dateien nötig.
+- exec_command nur für System-Befehle (ls, git, pip install, etc.), NICHT für Scripts.
+
 Regeln für Coding:
 - Gib bei einem Fehler NIEMALS auf. Analysiere den Fehler und erstelle einen Fix-Plan.
 - Teste Code IMMER nach dem Schreiben mit run_python.
@@ -715,6 +721,65 @@ class Planner:
 
         return messages
 
+    @staticmethod
+    def _sanitize_json_escapes(json_str: str) -> str:
+        """Repariert ungültige Escape-Sequenzen in LLM-generiertem JSON.
+
+        LLMs erzeugen häufig Bash/Regex-Code mit Backslashes (\\s, \\d, \\b, etc.)
+        die in JSON-Strings ungültig sind. Diese Methode verdoppelt alleinstehende
+        Backslashes die kein gültiges JSON-Escape bilden.
+
+        Gültige JSON-Escapes: \\\", \\\\, \\/, \\b, \\f, \\n, \\r, \\t, \\uXXXX
+        """
+        # Ersetze Backslashes die kein gültiges JSON-Escape einleiten
+        # Negative Lookahead: Backslash gefolgt von etwas das KEIN gültiges Escape ist
+        return re.sub(
+            r'\\(?!["\\/bfnrtu])',
+            r'\\\\',
+            json_str,
+        )
+
+    def _try_parse_json(self, json_str: str) -> dict[str, Any] | None:
+        """Versucht JSON zu parsen, mit mehreren Fallback-Strategien.
+
+        Reihenfolge:
+          1. Normales json.loads (strict)
+          2. Escape-Sanitierung (\\s, \\d etc. → \\\\s, \\\\d)
+          3. strict=False (erlaubt Steuerzeichen wie literale Newlines in Strings)
+          4. Sanitierung + strict=False (Kombination)
+        """
+        # 1. Normales Parsing
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            pass
+
+        # 2. Ungültige Escapes reparieren
+        sanitized = self._sanitize_json_escapes(json_str)
+        try:
+            data = json.loads(sanitized)
+            log.debug("planner_json_sanitized", strategy="escape_fix")
+            return data
+        except json.JSONDecodeError:
+            pass
+
+        # 3. strict=False (erlaubt Control-Characters in Strings)
+        try:
+            data = json.loads(json_str, strict=False)
+            log.debug("planner_json_sanitized", strategy="strict_false")
+            return data
+        except json.JSONDecodeError:
+            pass
+
+        # 4. Beides kombiniert
+        try:
+            data = json.loads(sanitized, strict=False)
+            log.debug("planner_json_sanitized", strategy="escape_fix+strict_false")
+            return data
+        except json.JSONDecodeError as exc:
+            log.warning("planner_json_parse_failed", error=str(exc), text=json_str[:200])
+            return None
+
     def _extract_plan(self, text: str, goal: str) -> ActionPlan:
         """Extrahiert einen ActionPlan aus der LLM-Antwort.
 
@@ -730,11 +795,9 @@ class Planner:
 
         if json_match:
             json_str = json_match.group(1).strip()
-            try:
-                data = json.loads(json_str)
+            data = self._try_parse_json(json_str)
+            if data is not None:
                 return self._parse_plan_json(data, goal)
-            except json.JSONDecodeError as exc:
-                log.warning("planner_json_parse_failed", error=str(exc), text=json_str[:200])
 
         # Versuche rohen JSON zu parsen (ohne Code-Block)
         # Finde erstes { und letztes }
@@ -742,12 +805,9 @@ class Planner:
         last_brace = text.rfind("}")
         if first_brace >= 0 and last_brace > first_brace:
             json_str = text[first_brace : last_brace + 1]
-            try:
-                data = json.loads(json_str)
-                if "steps" in data or "goal" in data:
-                    return self._parse_plan_json(data, goal)
-            except json.JSONDecodeError:
-                pass
+            data = self._try_parse_json(json_str)
+            if data is not None and ("steps" in data or "goal" in data):
+                return self._parse_plan_json(data, goal)
 
         # Kein JSON gefunden → direkte Antwort
         return ActionPlan(
