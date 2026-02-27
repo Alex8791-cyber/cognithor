@@ -11,7 +11,7 @@
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C673%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C691%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   </p>
@@ -35,8 +35,10 @@
 - **Enterprise Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance, credential vault, red-teaming
 - **Model Context Protocol (MCP)** — 13+ tool servers (filesystem, shell, memory, web, browser, media)
 - **Agent-to-Agent Protocol (A2A)** — Linux Foundation RC v1.0 for inter-agent communication
+- **React Control Center** — Full-featured web dashboard for config, agents, prompts, cron, MCP, and A2A management
+- **Auto-Detect Channels** — Channels activate automatically when tokens are present in `.env` — no manual config flags needed
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
-- **4,650+ tests** · **89% coverage** · **0 lint errors**
+- **4,691 tests** · **89% coverage** · **0 lint errors**
 
 ## Architecture
 
@@ -252,9 +254,37 @@ ollama pull nomic-embed-text    # Embeddings (300 MB VRAM)
 cognithor
 # or: python -m jarvis
 
+# Headless mode (API only, for Control Center UI)
+python -m jarvis --no-cli
+
 # With custom home directory
 JARVIS_HOME=~/my-cognithor cognithor
 ```
+
+### Control Center UI
+
+The React-based Control Center provides a full web dashboard for managing Cognithor:
+
+```bash
+cd UI/app
+npm install && npm run dev    # → http://localhost:5173
+```
+
+Click **Power On** to start the backend directly from the UI. The Vite dev server automatically spawns and manages the Python backend process. All configuration — agents, prompts, cron jobs, MCP servers, A2A settings — can be edited and saved through the dashboard.
+
+### Channel Auto-Detection
+
+Channels start automatically when their tokens are found in `~/.jarvis/.env`:
+
+```bash
+# ~/.jarvis/.env — just add your tokens, channels activate automatically
+JARVIS_TELEGRAM_TOKEN=your-bot-token
+JARVIS_TELEGRAM_ALLOWED_USERS=123456789
+JARVIS_DISCORD_TOKEN=your-discord-token
+JARVIS_SLACK_TOKEN=xoxb-your-slack-token
+```
+
+No need to set `telegram_enabled: true` in the config — the presence of the token is sufficient.
 
 On first start, Cognithor automatically creates the directory structure under `~/.cognithor/`:
 
@@ -296,10 +326,9 @@ ollama:
 
 channels:
   cli_enabled: true
-  telegram_enabled: false
-  whatsapp_enabled: false
-  signal_enabled: false
-  voice_enabled: false
+  # Channels auto-detect from tokens in ~/.jarvis/.env
+  # Set to false only to explicitly disable a channel:
+  # telegram_enabled: false
 
 security:
   allowed_paths:
@@ -347,7 +376,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **4,650+ tests** · **100% pass rate** · **89% coverage**
+Current status: **4,691 tests** · **100% pass rate** · **89% coverage**
 
 | Area | Tests | Description |
 |------|-------|-------------|
@@ -424,9 +453,10 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 | **Phase 4** | Channels, cron, web tools, model router | Done |
 | **Phase 5** | Multi-agent & security hardening | Done |
 | **Phase 6** | Web UI & voice | Done |
+| **Phase 7** | Control Center UI, API integration, channel auto-detect | Done |
 | **Deploy** | Installer, systemd, Docker, backup, smoke test | Done |
 
-**Metrics:** ~85,000 LOC source · 53,000+ LOC tests · 4,650+ tests · 89% coverage · 0 lint errors
+**Metrics:** ~85,000 LOC source · 53,000+ LOC tests · 4,691 tests · 89% coverage · 0 lint errors
 
 ## License
 
