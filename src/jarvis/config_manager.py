@@ -65,7 +65,14 @@ _SECRET_FIELDS = frozenset({
 # Any field whose name contains one of these substrings (case-insensitive)
 # will be masked -- unless the name also matches an exclusion pattern.
 _SECRET_PATTERNS = ("token", "secret", "password", "key")
-_SECRET_PATTERN_EXCLUSIONS = ("key_file", "keyboard")
+_SECRET_PATTERN_EXCLUSIONS = (
+    "key_file",
+    "keyboard",
+    # Numeric *token* fields that are NOT secrets
+    "_tokens",        # chunk_size_tokens, chunk_overlap_tokens
+    "token_budget",   # response_token_budget
+    "max_tokens",     # anthropic_max_tokens
+)
 
 # Sektionen die über die API editierbar sind
 _EDITABLE_SECTIONS = frozenset({
@@ -82,12 +89,37 @@ _EDITABLE_SECTIONS = frozenset({
     "plugins",
     "dashboard",
     "model_overrides",
+    "web",
+    "database",
 })
 
 # Top-Level-Felder die editierbar sind
 _EDITABLE_TOP_LEVEL = frozenset({
     "owner_name",
     "llm_backend_type",
+    "operation_mode",
+    "cost_tracking_enabled",
+    "daily_budget_usd",
+    "monthly_budget_usd",
+    "vision_model",
+    "vision_model_detail",
+    "openai_base_url",
+    "anthropic_max_tokens",
+    # API keys — the UI sends these; the update handler skips masked "***" values
+    "openai_api_key",
+    "anthropic_api_key",
+    "gemini_api_key",
+    "groq_api_key",
+    "deepseek_api_key",
+    "mistral_api_key",
+    "together_api_key",
+    "openrouter_api_key",
+    "xai_api_key",
+    "cerebras_api_key",
+    "github_api_key",
+    "bedrock_api_key",
+    "huggingface_api_key",
+    "moonshot_api_key",
 })
 
 

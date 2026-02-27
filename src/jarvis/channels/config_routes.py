@@ -13,9 +13,13 @@ Architektur-Bibel: §12 (Konfiguration), §9.3 (Web UI)
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 try:
     from starlette.requests import Request
@@ -70,6 +74,7 @@ def create_config_routes(
     _register_governance_routes(app, deps, gateway)
     _register_infrastructure_routes(app, deps, gateway)
     _register_portal_routes(app, deps, gateway)
+    _register_ui_routes(app, deps, config_manager, gateway)
 
 
 # ======================================================================
@@ -166,20 +171,29 @@ def _register_system_routes(
 
     @app.get("/api/v1/agents", dependencies=deps)
     async def list_agents() -> dict[str, Any]:
-        """Listet alle registrierten Agent-Profile."""
+        """Listet alle registrierten Agent-Profile aus agents.yaml."""
         try:
-            from jarvis.core.agent_router import AgentRouter
-            return {
-                "agents": [
-                    {
-                        "name": "jarvis",
-                        "description": "Haupt-Agent (Default)",
-                        "credential_scope": "",
-                        "is_default": True,
-                    },
-                ],
-                "note": "Agent-Profile werden in der config.yaml definiert",
-            }
+            agents_path = Path.home() / ".jarvis" / "agents.yaml"
+            if agents_path.exists():
+                raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
+                agents = raw.get("agents", [])
+            else:
+                agents = [{
+                    "name": "jarvis",
+                    "display_name": "Jarvis",
+                    "description": "Haupt-Agent (Default)",
+                    "system_prompt": "",
+                    "language": "de",
+                    "trigger_patterns": [],
+                    "trigger_keywords": [],
+                    "priority": 100,
+                    "allowed_tools": [],
+                    "blocked_tools": [],
+                    "preferred_model": "",
+                    "temperature": 0.7,
+                    "enabled": True,
+                }]
+            return {"agents": agents}
         except Exception as exc:
             return {"agents": [], "error": str(exc)}
 
@@ -447,18 +461,26 @@ def _register_config_routes(
     @app.patch("/api/v1/config/{section}", dependencies=deps)
     async def update_config_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
         """Aktualisiert eine Konfigurations-Sektion."""
+        from jarvis.config_manager import _is_secret_field
+        # Strip masked secret placeholders so "***" is never written back
+        cleaned = {k: v for k, v in values.items() if not (v == "***" and _is_secret_field(k))}
         try:
-            config_manager.update_section(section, values)
+            config_manager.update_section(section, cleaned)
             config_manager.save()
-            return {"status": "ok", "section": section, "updated_keys": list(values.keys())}
+            return {"status": "ok", "section": section, "updated_keys": list(cleaned.keys())}
         except ValueError as exc:
             return {"error": str(exc), "status": 400}
 
     @app.patch("/api/v1/config", dependencies=deps)
     async def update_config_top_level(updates: dict[str, Any]) -> dict[str, Any]:
         """Aktualisiert Top-Level-Felder."""
+        from jarvis.config_manager import _is_secret_field
         results: list[dict[str, Any]] = []
         for key, value in updates.items():
+            # Skip masked secret values — the UI sends "***" back for secrets
+            if value == "***" and _is_secret_field(key):
+                results.append({"key": key, "status": "skipped"})
+                continue
             try:
                 config_manager.update_top_level(key, value)
                 results.append({"key": key, "status": "ok"})
@@ -1840,3 +1862,343 @@ def _register_portal_routes(
         if up is None:
             return {"total_users": 0}
         return up.consents.stats()
+
+
+# ======================================================================
+# UI-specific routes (Control Center frontend)
+# ======================================================================
+
+
+def _register_ui_routes(
+    app: Any,
+    deps: list[Any],
+    config_manager: ConfigManager,
+    gateway: Any,
+) -> None:
+    """Endpoints consumed by the Cognithor Control Center React UI.
+
+    Covers system lifecycle, agent/binding persistence, prompts,
+    cron-jobs, MCP servers, and A2A configuration.
+    """
+
+    jarvis_home = config_manager.config.jarvis_home
+    agents_path = jarvis_home / "agents.yaml"
+    bindings_path = jarvis_home / "bindings.yaml"
+
+    def _load_yaml(path: Path) -> Any:
+        if not path.exists():
+            return {}
+        try:
+            return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            return {}
+
+    def _save_yaml(path: Path, data: Any) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            yaml.dump(data, default_flow_style=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+
+    # -- 3.1: System Status -----------------------------------------------
+
+    @app.get("/api/v1/system/status", dependencies=deps)
+    async def ui_system_status() -> dict[str, Any]:
+        """Returns running status for the UI status indicator."""
+        return {
+            "status": "running",
+            "timestamp": time.time(),
+            "config_version": config_manager.config.version,
+            "owner": config_manager.config.owner_name,
+        }
+
+    # -- 3.2: System Start / Stop ----------------------------------------
+
+    @app.post("/api/v1/system/start", dependencies=deps)
+    async def ui_system_start() -> dict[str, Any]:
+        """Reloads configuration (logical start)."""
+        try:
+            config_manager.reload()
+            return {"status": "ok", "message": "System gestartet (Config neu geladen)"}
+        except Exception as exc:
+            return {"error": str(exc), "status": 500}
+
+    @app.post("/api/v1/system/stop", dependencies=deps)
+    async def ui_system_stop() -> dict[str, Any]:
+        """Initiates graceful shutdown if gateway is available."""
+        try:
+            if gateway is not None and hasattr(gateway, "shutdown"):
+                asyncio.create_task(gateway.shutdown())
+                return {"status": "ok", "message": "Shutdown eingeleitet"}
+            return {"status": "ok", "message": "Kein Gateway — nur Config-Server aktiv"}
+        except Exception as exc:
+            return {"error": str(exc), "status": 500}
+
+    # -- 3.4: POST /agents/{name} ----------------------------------------
+
+    @app.post("/api/v1/agents/{name}", dependencies=deps)
+    async def ui_upsert_agent(name: str, request: Request) -> dict[str, Any]:
+        """Creates or updates an agent profile in agents.yaml."""
+        try:
+            body = await request.json()
+            data = _load_yaml(agents_path)
+            agents = data.get("agents", [])
+            if not isinstance(agents, list):
+                agents = []
+            # Upsert by name
+            found = False
+            for i, a in enumerate(agents):
+                if isinstance(a, dict) and a.get("name") == name:
+                    agents[i] = body
+                    found = True
+                    break
+            if not found:
+                body["name"] = name
+                agents.append(body)
+            data["agents"] = agents
+            _save_yaml(agents_path, data)
+            return {"status": "ok", "agent": name}
+        except Exception as exc:
+            return {"error": str(exc), "status": 400}
+
+    # -- 3.5: POST /bindings/{name} --------------------------------------
+
+    @app.post("/api/v1/bindings/{name}", dependencies=deps)
+    async def ui_upsert_binding(name: str, request: Request) -> dict[str, Any]:
+        """Creates or updates a binding rule in bindings.yaml."""
+        try:
+            body = await request.json()
+            data = _load_yaml(bindings_path)
+            bindings = data.get("bindings", [])
+            if not isinstance(bindings, list):
+                bindings = []
+            found = False
+            for i, b in enumerate(bindings):
+                if isinstance(b, dict) and b.get("name") == name:
+                    bindings[i] = body
+                    found = True
+                    break
+            if not found:
+                body["name"] = name
+                bindings.append(body)
+            data["bindings"] = bindings
+            _save_yaml(bindings_path, data)
+            return {"status": "ok", "binding": name}
+        except Exception as exc:
+            return {"error": str(exc), "status": 400}
+
+    # -- 3.6: Prompts GET / PUT ------------------------------------------
+
+    @app.get("/api/v1/prompts", dependencies=deps)
+    async def ui_get_prompts() -> dict[str, Any]:
+        """Reads prompt/policy files for the Prompts & Policies page."""
+        cfg = config_manager.config
+        prompts_dir = jarvis_home / "prompts"
+        result: dict[str, str] = {}
+
+        # coreMd
+        try:
+            core_path = cfg.core_memory_file
+            result["coreMd"] = core_path.read_text(encoding="utf-8") if core_path.exists() else ""
+        except Exception:
+            result["coreMd"] = ""
+
+        # plannerSystem
+        try:
+            sys_path = prompts_dir / "SYSTEM_PROMPT.txt"
+            if sys_path.exists():
+                result["plannerSystem"] = sys_path.read_text(encoding="utf-8")
+            else:
+                from jarvis.core.planner import SYSTEM_PROMPT
+                result["plannerSystem"] = SYSTEM_PROMPT
+        except Exception:
+            result["plannerSystem"] = ""
+
+        # replanPrompt
+        try:
+            replan_path = prompts_dir / "REPLAN_PROMPT.txt"
+            if replan_path.exists():
+                result["replanPrompt"] = replan_path.read_text(encoding="utf-8")
+            else:
+                from jarvis.core.planner import REPLAN_PROMPT
+                result["replanPrompt"] = REPLAN_PROMPT
+        except Exception:
+            result["replanPrompt"] = ""
+
+        # escalationPrompt
+        try:
+            esc_path = prompts_dir / "ESCALATION_PROMPT.txt"
+            if esc_path.exists():
+                result["escalationPrompt"] = esc_path.read_text(encoding="utf-8")
+            else:
+                from jarvis.core.planner import ESCALATION_PROMPT
+                result["escalationPrompt"] = ESCALATION_PROMPT
+        except Exception:
+            result["escalationPrompt"] = ""
+
+        # policyYaml
+        try:
+            policy_path = cfg.policies_dir / "default.yaml"
+            result["policyYaml"] = policy_path.read_text(encoding="utf-8") if policy_path.exists() else ""
+        except Exception:
+            result["policyYaml"] = ""
+
+        # heartbeatMd
+        try:
+            hb_path = jarvis_home / cfg.heartbeat.checklist_file
+            result["heartbeatMd"] = hb_path.read_text(encoding="utf-8") if hb_path.exists() else ""
+        except Exception:
+            result["heartbeatMd"] = ""
+
+        return result
+
+    @app.put("/api/v1/prompts", dependencies=deps)
+    async def ui_put_prompts(request: Request) -> dict[str, Any]:
+        """Writes prompt/policy files from the UI."""
+        try:
+            body = await request.json()
+            cfg = config_manager.config
+            prompts_dir = jarvis_home / "prompts"
+            prompts_dir.mkdir(parents=True, exist_ok=True)
+            written: list[str] = []
+
+            if "coreMd" in body:
+                cfg.core_memory_file.parent.mkdir(parents=True, exist_ok=True)
+                cfg.core_memory_file.write_text(body["coreMd"], encoding="utf-8")
+                written.append("coreMd")
+
+            if "plannerSystem" in body:
+                (prompts_dir / "SYSTEM_PROMPT.txt").write_text(body["plannerSystem"], encoding="utf-8")
+                written.append("plannerSystem")
+
+            if "replanPrompt" in body:
+                (prompts_dir / "REPLAN_PROMPT.txt").write_text(body["replanPrompt"], encoding="utf-8")
+                written.append("replanPrompt")
+
+            if "escalationPrompt" in body:
+                (prompts_dir / "ESCALATION_PROMPT.txt").write_text(body["escalationPrompt"], encoding="utf-8")
+                written.append("escalationPrompt")
+
+            if "policyYaml" in body:
+                cfg.policies_dir.mkdir(parents=True, exist_ok=True)
+                (cfg.policies_dir / "default.yaml").write_text(body["policyYaml"], encoding="utf-8")
+                written.append("policyYaml")
+
+            if "heartbeatMd" in body:
+                hb_path = jarvis_home / cfg.heartbeat.checklist_file
+                hb_path.parent.mkdir(parents=True, exist_ok=True)
+                hb_path.write_text(body["heartbeatMd"], encoding="utf-8")
+                written.append("heartbeatMd")
+
+            return {"status": "ok", "written": written}
+        except Exception as exc:
+            return {"error": str(exc), "status": 400}
+
+    # -- 3.7: Cron Jobs GET / PUT ----------------------------------------
+
+    @app.get("/api/v1/cron-jobs", dependencies=deps)
+    async def ui_get_cron_jobs() -> dict[str, Any]:
+        """Reads cron jobs via JobStore."""
+        try:
+            from jarvis.cron.jobs import JobStore
+            store = JobStore(config_manager.config.cron_config_file)
+            jobs = store.load()
+            return {
+                "jobs": [
+                    {
+                        "name": j.name,
+                        "schedule": j.schedule,
+                        "prompt": j.prompt,
+                        "channel": j.channel,
+                        "model": j.model,
+                        "enabled": j.enabled,
+                        "agent": j.agent,
+                    }
+                    for j in jobs.values()
+                ],
+            }
+        except Exception as exc:
+            return {"jobs": [], "error": str(exc)}
+
+    @app.put("/api/v1/cron-jobs", dependencies=deps)
+    async def ui_put_cron_jobs(request: Request) -> dict[str, Any]:
+        """Writes cron jobs via JobStore."""
+        try:
+            from jarvis.cron.jobs import JobStore
+            from jarvis.models import CronJob
+            body = await request.json()
+            store = JobStore(config_manager.config.cron_config_file)
+            store.load()
+            store.jobs = {}
+            for j in body.get("jobs", []):
+                if not isinstance(j, dict) or "name" not in j:
+                    continue
+                store.jobs[j["name"]] = CronJob(**j)
+            store._save()
+            return {"status": "ok", "count": len(store.jobs)}
+        except Exception as exc:
+            return {"error": str(exc), "status": 400}
+
+    # -- 3.8: MCP Servers GET / PUT --------------------------------------
+
+    @app.get("/api/v1/mcp-servers", dependencies=deps)
+    async def ui_get_mcp_servers() -> dict[str, Any]:
+        """Reads MCP server config (server_mode + external servers)."""
+        try:
+            mcp_path = config_manager.config.mcp_config_file
+            data = _load_yaml(mcp_path)
+            return {
+                "server_mode": data.get("server_mode", {}),
+                "external_servers": data.get("servers", []),
+            }
+        except Exception as exc:
+            return {"server_mode": {}, "external_servers": [], "error": str(exc)}
+
+    @app.put("/api/v1/mcp-servers", dependencies=deps)
+    async def ui_put_mcp_servers(request: Request) -> dict[str, Any]:
+        """Writes server_mode + servers, preserving a2a and built_in_tools."""
+        try:
+            body = await request.json()
+            mcp_path = config_manager.config.mcp_config_file
+            data = _load_yaml(mcp_path)
+            if "server_mode" in body:
+                data["server_mode"] = body["server_mode"]
+            if "external_servers" in body:
+                data["servers"] = body["external_servers"]
+            _save_yaml(mcp_path, data)
+            return {"status": "ok"}
+        except Exception as exc:
+            return {"error": str(exc), "status": 400}
+
+    # -- 3.9: A2A GET / PUT ----------------------------------------------
+
+    @app.get("/api/v1/a2a", dependencies=deps)
+    async def ui_get_a2a() -> dict[str, Any]:
+        """Reads a2a section from MCP config."""
+        try:
+            mcp_path = config_manager.config.mcp_config_file
+            data = _load_yaml(mcp_path)
+            a2a = data.get("a2a", {})
+            # Provide sensible defaults
+            return {
+                "enabled": a2a.get("enabled", False),
+                "host": a2a.get("host", "0.0.0.0"),
+                "port": a2a.get("port", 8742),
+                "agent_name": a2a.get("agent_name", "jarvis"),
+                **{k: v for k, v in a2a.items() if k not in ("enabled", "host", "port", "agent_name")},
+            }
+        except Exception as exc:
+            return {"enabled": False, "error": str(exc)}
+
+    @app.put("/api/v1/a2a", dependencies=deps)
+    async def ui_put_a2a(request: Request) -> dict[str, Any]:
+        """Writes a2a section, preserving other MCP config sections."""
+        try:
+            body = await request.json()
+            mcp_path = config_manager.config.mcp_config_file
+            data = _load_yaml(mcp_path)
+            data["a2a"] = body
+            _save_yaml(mcp_path, data)
+            return {"status": "ok"}
+        except Exception as exc:
+            return {"error": str(exc), "status": 400}

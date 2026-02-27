@@ -285,6 +285,12 @@ class TestConfigRoutes:
                     return func
                 return deco
 
+            def put(self, path: str, **kwargs: Any) -> Any:
+                def deco(func: Any) -> Any:
+                    handlers[f"PUT {path}"] = func
+                    return func
+                return deco
+
         from jarvis.channels.config_routes import create_config_routes
         create_config_routes(MockApp(), mgr)
         return handlers

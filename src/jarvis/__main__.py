@@ -44,6 +44,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Nur Verzeichnisstruktur erstellen, nicht starten",
     )
+    parser.add_argument(
+        "--no-cli",
+        action="store_true",
+        help="CLI-Channel nicht starten (Headless-Betrieb für Control Center)",
+    )
+    parser.add_argument(
+        "--api-port",
+        type=int,
+        default=8741,
+        help="Port für die Control Center API (Default: 8741)",
+    )
     return parser.parse_args()
 
 
@@ -108,7 +119,7 @@ def main() -> None:
         return
 
     # 5. System-Check -- startup banner (intentional CLI output)
-    _print_banner(config)
+    _print_banner(config, api_port=args.api_port)
 
     # Phase 0 Checkpoint: Setup OK
     log.info(
@@ -127,37 +138,68 @@ def main() -> None:
         from jarvis.gateway.gateway import Gateway
 
         gateway = Gateway(config)
+        api_server = None
 
         try:
             # Alle Subsysteme initialisieren
             await gateway.initialize()
 
+            # Control Center API-Server starten (immer, Port 8741)
+            try:
+                from fastapi import FastAPI
+                from fastapi.middleware.cors import CORSMiddleware
+                import uvicorn
+                from jarvis.channels.config_routes import create_config_routes
+                from jarvis.config_manager import ConfigManager
+
+                api_app = FastAPI(title="Cognithor Control Center API")
+                api_app.add_middleware(
+                    CORSMiddleware,
+                    allow_origins=["*"],
+                    allow_methods=["*"],
+                    allow_headers=["*"],
+                )
+                config_mgr = ConfigManager(config=config)
+                create_config_routes(api_app, config_mgr, gateway=gateway)
+
+                uvi_config = uvicorn.Config(
+                    api_app,
+                    host="127.0.0.1",
+                    port=args.api_port,
+                    log_level="warning",
+                )
+                api_server = uvicorn.Server(uvi_config)
+                asyncio.create_task(api_server.serve())
+                log.info("control_center_api_started", port=args.api_port)
+            except ImportError:
+                log.warning("control_center_api_requires_fastapi_uvicorn")
+            except Exception as exc:
+                log.warning("control_center_api_failed", error=str(exc))
+
             # CLI-Channel registrieren und starten
-            if config.channels.cli_enabled:
+            if config.channels.cli_enabled and not args.no_cli:
                 cli = CliChannel(version=__version__)
                 gateway.register_channel(cli)
 
-            # Telegram-Channel
-            if getattr(config.channels, "telegram_enabled", False):
+            # Telegram-Channel (auto-detect: token in env → start)
+            telegram_token = os.environ.get("JARVIS_TELEGRAM_TOKEN")
+            if telegram_token:
                 from jarvis.channels.telegram import TelegramChannel
 
-                token = os.environ.get("JARVIS_TELEGRAM_TOKEN")
                 allowed = [int(u) for u in os.environ.get("JARVIS_TELEGRAM_ALLOWED_USERS", "").split(",") if u]
-                if token:
-                    gateway.register_channel(TelegramChannel(token=token, allowed_users=allowed))
-                else:
-                    log.warning("telegram_enabled_without_token")
+                gateway.register_channel(TelegramChannel(token=telegram_token, allowed_users=allowed))
+                log.info("telegram_channel_registered", allowed_users=len(allowed))
 
-            # Slack-Channel (bidirektional mit App-Token)
-            if getattr(config.channels, "slack_enabled", False):
+            # Slack-Channel (auto-detect: token + channel in env → start)
+            slack_token = os.environ.get("JARVIS_SLACK_TOKEN")
+            if slack_token:
                 from jarvis.channels.slack import SlackChannel
 
-                slack_token = os.environ.get("JARVIS_SLACK_TOKEN")
                 slack_app_token = os.environ.get("JARVIS_SLACK_APP_TOKEN", "")
                 default_channel = config.channels.slack_default_channel or os.environ.get(
                     "JARVIS_SLACK_CHANNEL", ""
                 )
-                if slack_token and default_channel:
+                if default_channel:
                     gateway.register_channel(
                         SlackChannel(
                             token=slack_token,
@@ -166,31 +208,30 @@ def main() -> None:
                         )
                     )
                 else:
-                    log.warning("slack_enabled_without_token_or_channel")
+                    log.warning("slack_token_found_but_no_channel")
 
-            # Discord-Channel
-            if getattr(config.channels, "discord_enabled", False):
+            # Discord-Channel (auto-detect: token + channel_id → start)
+            discord_token = os.environ.get("JARVIS_DISCORD_TOKEN")
+            if discord_token:
                 from jarvis.channels.discord import DiscordChannel
 
-                discord_token = os.environ.get("JARVIS_DISCORD_TOKEN")
                 channel_id = config.channels.discord_channel_id or os.environ.get("JARVIS_DISCORD_CHANNEL_ID")
-                # channel_id kann als str übergeben werden -- konvertieren falls nötig
                 try:
                     channel_id_int = int(channel_id) if channel_id else 0
                 except Exception:
                     channel_id_int = 0
-                if discord_token and channel_id_int:
+                if channel_id_int:
                     gateway.register_channel(
                         DiscordChannel(token=discord_token, channel_id=channel_id_int)
                     )
                 else:
-                    log.warning("discord_enabled_without_token_or_channel")
+                    log.warning("discord_token_found_but_no_channel_id")
 
-            # WhatsApp-Channel
-            if getattr(config.channels, "whatsapp_enabled", False):
+            # WhatsApp-Channel (auto-detect: token + phone_number_id → start)
+            wa_token = os.environ.get("JARVIS_WHATSAPP_TOKEN")
+            if wa_token:
                 from jarvis.channels.whatsapp import WhatsAppChannel
 
-                wa_token = os.environ.get("JARVIS_WHATSAPP_TOKEN")
                 phone_number_id = (
                     config.channels.whatsapp_phone_number_id
                     or os.environ.get("JARVIS_WHATSAPP_PHONE_NUMBER_ID", "")
@@ -200,7 +241,7 @@ def main() -> None:
                     or os.environ.get("JARVIS_WHATSAPP_VERIFY_TOKEN", "")
                 )
                 allowed = config.channels.whatsapp_allowed_numbers
-                if wa_token and phone_number_id:
+                if phone_number_id:
                     gateway.register_channel(
                         WhatsAppChannel(
                             api_token=wa_token,
@@ -211,28 +252,28 @@ def main() -> None:
                         )
                     )
                 else:
-                    log.warning("whatsapp_enabled_without_token_or_phone_id")
+                    log.warning("whatsapp_token_found_but_no_phone_number_id")
 
-            # Signal-Channel
-            if getattr(config.channels, "signal_enabled", False):
+            # Signal-Channel (auto-detect: token + default_user → start)
+            signal_token = os.environ.get("JARVIS_SIGNAL_TOKEN")
+            if signal_token:
                 from jarvis.channels.signal import SignalChannel
 
-                signal_token = os.environ.get("JARVIS_SIGNAL_TOKEN")
                 default_user = config.channels.signal_default_user or os.environ.get(
                     "JARVIS_SIGNAL_DEFAULT_USER", ""
                 )
-                if signal_token and default_user:
+                if default_user:
                     gateway.register_channel(
                         SignalChannel(token=signal_token, default_user=default_user)
                     )
                 else:
-                    log.warning("signal_enabled_without_token_or_user")
+                    log.warning("signal_token_found_but_no_default_user")
 
-            # Matrix-Channel
-            if getattr(config.channels, "matrix_enabled", False):
+            # Matrix-Channel (auto-detect: token + homeserver + user_id → start)
+            matrix_token = os.environ.get("JARVIS_MATRIX_TOKEN")
+            if matrix_token:
                 from jarvis.channels.matrix import MatrixChannel
 
-                matrix_token = os.environ.get("JARVIS_MATRIX_TOKEN")
                 homeserver = (
                     os.environ.get("JARVIS_MATRIX_HOMESERVER")
                     or config.channels.matrix_homeserver
@@ -240,29 +281,29 @@ def main() -> None:
                 user_id = (
                     os.environ.get("JARVIS_MATRIX_USER_ID") or config.channels.matrix_user_id
                 )
-                if matrix_token and homeserver and user_id:
+                if homeserver and user_id:
                     gateway.register_channel(
                         MatrixChannel(
                             token=matrix_token, homeserver=homeserver, user_id=user_id
                         )
                     )
                 else:
-                    log.warning("matrix_enabled_without_credentials")
+                    log.warning("matrix_token_found_but_no_homeserver_or_user_id")
 
-            # Teams-Channel
-            if getattr(config.channels, "teams_enabled", False):
+            # Teams-Channel (auto-detect: token + channel → start)
+            teams_token = os.environ.get("JARVIS_TEAMS_TOKEN")
+            if teams_token:
                 from jarvis.channels.teams import TeamsChannel
 
-                teams_token = os.environ.get("JARVIS_TEAMS_TOKEN")
                 default_channel = config.channels.teams_default_channel or os.environ.get(
                     "JARVIS_TEAMS_DEFAULT_CHANNEL", ""
                 )
-                if teams_token and default_channel:
+                if default_channel:
                     gateway.register_channel(
                         TeamsChannel(token=teams_token, default_channel=default_channel)
                     )
                 else:
-                    log.warning("teams_enabled_without_token_or_channel")
+                    log.warning("teams_token_found_but_no_channel")
 
             # iMessage-Channel
             if getattr(config.channels, "imessage_enabled", False):
@@ -287,9 +328,18 @@ def main() -> None:
             log.info("jarvis_ready", channels=list(gateway._channels.keys()))
             await gateway.start()
 
+            # Headless-Modus: wenn keine interaktiven Channels laufen,
+            # halte den Prozess am Leben für die API
+            if args.no_cli and api_server and not api_server.should_exit:
+                log.info("jarvis_headless_mode", port=args.api_port)
+                while not api_server.should_exit:
+                    await asyncio.sleep(1)
+
         except KeyboardInterrupt:
             log.info("jarvis_interrupted")
         finally:
+            if api_server:
+                api_server.should_exit = True
             await gateway.shutdown()
             log.info("jarvis_stopped")
 
@@ -299,7 +349,7 @@ def main() -> None:
         log.info("jarvis_shutdown_by_user")
 
 
-def _print_banner(config: Any) -> None:
+def _print_banner(config: Any, api_port: int = 8741) -> None:
     """Print the startup banner to the console.
 
     This is intentional CLI output so we use print() rather than the
@@ -309,6 +359,7 @@ def _print_banner(config: Any) -> None:
     print(f"\n{'=' * 60}")
     print(f"  COGNITHOR · Agent OS v{__version__}")
     print(f"  Home:   {config.jarvis_home}")
+    print(f"  API:    http://127.0.0.1:{api_port}")
     print(f"  Ollama: {config.ollama.base_url}")
     print(f"  Planner: {config.models.planner.name}")
     print(f"  Executor: {config.models.executor.name}")
