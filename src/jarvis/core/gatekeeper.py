@@ -297,20 +297,35 @@ class Gatekeeper:
             "list_jobs",
             "web_search",
             "web_fetch",
+            "web_news_search",
             "search_and_read",
             "browse_url",
             "search_procedures",
             "media_analyze_image",
+            "media_extract_text",
+            "media_transcribe_audio",
+            "media_resize_image",
+            "get_core_memory",
+            "get_recent_episodes",
+            "memory_stats",
+            "record_procedure_usage",
+            "browse_page_info",
+            "browse_screenshot",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
 
-        # YELLOW: Schreibende aber ungefährliche Operationen
+        # YELLOW: Schreibende aber ungefährliche Operationen (lokal, kein Netzwerk)
         yellow_tools = {
             "write_file",
             "edit_file",
             "save_to_memory",
+            "add_entity",
+            "add_relation",
             "schedule_job",
+            "document_export",
+            "media_tts",
+            "media_convert_audio",
         }
         if tool in yellow_tools:
             return RiskLevel.YELLOW

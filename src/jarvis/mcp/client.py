@@ -139,6 +139,10 @@ class JarvisMCPClient:
         )
         log.debug("builtin_tool_registered", tool=tool_name)
 
+    def get_handler(self, tool_name: str) -> Any | None:
+        """Gibt den registrierten Handler für ein builtin-Tool zurück (oder None)."""
+        return self._builtin_handlers.get(tool_name)
+
     async def call_tool(
         self,
         name: str,

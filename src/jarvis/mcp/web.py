@@ -3,16 +3,28 @@
 Ermöglicht dem Agenten Webrecherche und Seiteninhalt-Extraktion.
 
 Tools:
-  - web_search: Websuche über SearXNG oder Brave Search API
+  - web_search: Websuche über SearXNG, Brave oder DuckDuckGo (Multi-Backend)
+  - web_news_search: Nachrichtensuche via DuckDuckGo News
   - web_fetch: URL abrufen und Text extrahieren (via trafilatura)
+  - search_and_read: Kombinierte Suche + Fetch
+
+DuckDuckGo-Optimierungen:
+  - Multi-Backend-Fallback (ddgs: duckduckgo → bing → google → brave)
+  - Lokaler Cache mit konfigurierbarem TTL (Standard: 1h)
+  - Rate-Limiting (2s Mindestabstand zwischen Suchen)
+  - Region/Sprache/Zeitfilter-Support
 
 Bibel-Referenz: §5.3 (jarvis-web Server)
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
+import time
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -36,6 +48,15 @@ DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
+
+# DuckDuckGo-Optimierung: Backends in Fallback-Reihenfolge
+DDG_BACKENDS = ("duckduckgo", "bing", "google", "brave")
+# Mindestabstand zwischen DuckDuckGo-Suchen (Sekunden)
+DDG_MIN_DELAY = 2.0
+# Wartezeit bei Rate-Limiting (Sekunden)
+DDG_RATELIMIT_WAIT = 30
+# Cache-TTL (Sekunden) — Standard: 1 Stunde
+DDG_CACHE_TTL = 3600
 
 # Blocked Domains (Sicherheit)
 BLOCKED_DOMAINS = frozenset(
@@ -65,9 +86,16 @@ class WebError(Exception):
 class WebTools:
     """Web-Recherche und URL-Fetch-Tools. [B§5.3]
 
-    Unterstützt zwei Such-Backends:
+    Unterstützt drei Such-Backends (Fallback-Kette):
       1. SearXNG (self-hosted, bevorzugt)
-      2. Brave Search API (Fallback)
+      2. Brave Search API
+      3. DuckDuckGo via ddgs (kostenlos, Multi-Backend, mit Cache)
+
+    DuckDuckGo-Optimierungen:
+      - Multi-Backend-Fallback (duckduckgo → bing → google → brave)
+      - Lokaler Ergebnis-Cache (1h TTL)
+      - Rate-Limiting (2s Mindestabstand)
+      - timelimit-Support (d/w/m/y)
 
     Attributes:
         searxng_url: URL der SearXNG-Instanz.
@@ -91,6 +119,10 @@ class WebTools:
         self._brave_api_key = brave_api_key
         self._duckduckgo_enabled = True
 
+        # DuckDuckGo-Optimierung: State
+        self._ddg_last_search: float = 0.0
+        self._ddg_cache_dir: Path | None = None
+
         # Aus Config laden falls vorhanden
         if config is not None:
             web_cfg = getattr(config, "web", None)
@@ -98,6 +130,14 @@ class WebTools:
                 self._searxng_url = self._searxng_url or getattr(web_cfg, "searxng_url", None) or ""
                 self._brave_api_key = self._brave_api_key or getattr(web_cfg, "brave_api_key", None) or ""
                 self._duckduckgo_enabled = getattr(web_cfg, "duckduckgo_enabled", True)
+
+            # Cache-Verzeichnis: ~/.jarvis/cache/web_search/
+            jarvis_home = getattr(config, "jarvis_home", None)
+            if jarvis_home:
+                self._ddg_cache_dir = Path(jarvis_home) / "cache" / "web_search"
+
+        if self._ddg_cache_dir is None:
+            self._ddg_cache_dir = Path.home() / ".jarvis" / "cache" / "web_search"
 
     def _validate_url(self, url: str) -> str:
         """Validiert eine URL gegen SSRF-Angriffe.
@@ -150,15 +190,17 @@ class WebTools:
         query: str,
         num_results: int = 5,
         language: str = "de",
+        timelimit: str = "",
     ) -> str:
         """Führt eine Websuche durch.
 
-        Versucht zuerst SearXNG, dann Brave Search als Fallback.
+        Fallback-Kette: SearXNG → Brave → DuckDuckGo (Multi-Backend).
 
         Args:
             query: Suchanfrage.
             num_results: Anzahl gewünschter Ergebnisse (1-10).
             language: Sprache für Suchergebnisse.
+            timelimit: Zeitfilter ('d'=Tag, 'w'=Woche, 'm'=Monat, 'y'=Jahr, ''=alle).
 
         Returns:
             Formatierte Suchergebnisse als Text.
@@ -182,10 +224,10 @@ class WebTools:
             except Exception as exc:
                 log.warning("Brave-Suche fehlgeschlagen: %s", exc)
 
-        # DuckDuckGo als kostenloser Fallback (kein API-Key nötig)
+        # DuckDuckGo mit Multi-Backend-Fallback, Cache und Rate-Limiting
         if self._duckduckgo_enabled:
             try:
-                return await self._search_duckduckgo(query, num_results, language)
+                return await self._search_duckduckgo(query, num_results, language, timelimit)
             except Exception as exc:
                 log.warning("DuckDuckGo-Suche fehlgeschlagen: %s", exc)
 
@@ -268,57 +310,287 @@ class WebTools:
         query: str,
         num_results: int,
         language: str,
+        timelimit: str = "",
     ) -> str:
-        """Suche über DuckDuckGo (kein API-Key nötig).
+        """Optimierte DuckDuckGo-Suche mit Cache, Rate-Limiting und Multi-Backend.
 
-        Nutzt die duckduckgo-search Bibliothek für zuverlässige Ergebnisse.
-        Kostenlos und ohne Registrierung nutzbar.
+        Features:
+          - Lokaler Cache (1h TTL) — identische Queries werden nicht doppelt gesucht
+          - Rate-Limiting (2s Mindestabstand) — verhindert HTTP 429
+          - Multi-Backend-Fallback — bei Blocking automatisch auf bing/google wechseln
+          - Region/Zeitfilter-Support
+
+        Args:
+            query: Suchanfrage.
+            num_results: Anzahl gewünschter Ergebnisse.
+            language: Sprache (ISO-Code).
+            timelimit: Zeitfilter ('d', 'w', 'm', 'y', '' für alle).
         """
         import anyio
 
-        def _sync_search() -> list[dict[str, Any]]:
-            try:
-                from ddgs import DDGS
-            except ImportError:
-                try:
-                    from duckduckgo_search import DDGS
-                except ImportError:
-                    raise WebError(
-                        "ddgs nicht installiert. "
-                        "Installiere mit: pip install ddgs"
-                    )
+        # Region-Mapping
+        region_map = {
+            "de": "de-de", "en": "us-en", "fr": "fr-fr", "es": "es-es",
+            "it": "it-it", "pt": "pt-pt", "nl": "nl-nl", "ja": "jp-jp",
+            "zh": "cn-zh", "ru": "ru-ru", "ko": "kr-ko", "pl": "pl-pl",
+        }
+        region = region_map.get(language, "wt-wt")
+        tl = timelimit if timelimit in ("d", "w", "m", "y") else None
 
-            # Region-Mapping: Sprachcode -> DuckDuckGo Region
-            region_map = {
-                "de": "de-de",
-                "en": "us-en",
-                "fr": "fr-fr",
-                "es": "es-es",
-                "it": "it-it",
-                "pt": "pt-pt",
-                "nl": "nl-nl",
-                "ja": "jp-jp",
-                "zh": "cn-zh",
-            }
-            region = region_map.get(language, "wt-wt")
+        # 1. Cache prüfen
+        cached = self._ddg_cache_get(query, region, tl, num_results)
+        if cached is not None:
+            log.info("ddg_cache_hit", query=query[:60])
+            return _format_search_results(cached, query)
 
-            raw = list(DDGS().text(query, region=region, max_results=num_results))
+        # 2. Rate-Limiting: Mindestabstand einhalten
+        now = time.monotonic()
+        elapsed = now - self._ddg_last_search
+        if elapsed < DDG_MIN_DELAY:
+            wait = DDG_MIN_DELAY - elapsed
+            log.debug("ddg_rate_limit_wait", wait_s=round(wait, 1))
+            await anyio.sleep(wait)
 
-            return [
-                {
-                    "title": r.get("title", ""),
-                    "url": r.get("href", ""),
-                    "content": r.get("body", ""),
-                }
-                for r in raw
-            ]
-
-        results = await anyio.to_thread.run_sync(_sync_search)
+        # 3. Multi-Backend-Suche mit Fallback
+        results = await anyio.to_thread.run_sync(
+            lambda: self._ddg_search_with_fallback(query, region, tl, num_results)
+        )
+        self._ddg_last_search = time.monotonic()
 
         if not results:
             return f"Keine Ergebnisse für: {query}"
 
+        # 4. Cache speichern
+        self._ddg_cache_put(query, region, tl, num_results, results)
+
         return _format_search_results(results, query)
+
+    def _ddg_search_with_fallback(
+        self,
+        query: str,
+        region: str,
+        timelimit: str | None,
+        num_results: int,
+    ) -> list[dict[str, Any]]:
+        """Synchrone DuckDuckGo-Suche mit Backend-Fallback-Kette.
+
+        Probiert nacheinander: duckduckgo → bing → google → brave.
+        Bei RateLimit: 30s warten, dann nächstes Backend.
+        """
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            try:
+                from duckduckgo_search import DDGS  # type: ignore[no-redef]
+            except ImportError:
+                raise WebError(
+                    "ddgs nicht installiert. Installiere mit: pip install ddgs"
+                ) from None
+
+        last_error: Exception | None = None
+
+        for backend in DDG_BACKENDS:
+            try:
+                log.debug("ddg_backend_try", backend=backend, query=query[:60])
+                raw = list(
+                    DDGS(timeout=SEARCH_TIMEOUT).text(
+                        query,
+                        region=region,
+                        safesearch="moderate",
+                        timelimit=timelimit,
+                        max_results=num_results,
+                        backend=backend,
+                    )
+                )
+                if raw:
+                    log.info(
+                        "ddg_search_ok",
+                        backend=backend,
+                        results=len(raw),
+                        query=query[:60],
+                    )
+                    return [
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("href", ""),
+                            "content": r.get("body", ""),
+                        }
+                        for r in raw
+                    ]
+                # Leere Ergebnisse → nächstes Backend probieren
+                log.debug("ddg_backend_empty", backend=backend)
+
+            except Exception as exc:
+                last_error = exc
+                exc_str = str(exc).lower()
+                is_ratelimit = "ratelimit" in exc_str or "429" in exc_str or "202" in exc_str
+                if is_ratelimit:
+                    log.warning(
+                        "ddg_ratelimit",
+                        backend=backend,
+                        query=query[:60],
+                    )
+                    # Bei Rate-Limit kurz warten bevor nächstes Backend versucht wird
+                    time.sleep(min(DDG_RATELIMIT_WAIT, 5))
+                else:
+                    log.warning(
+                        "ddg_backend_error",
+                        backend=backend,
+                        error=str(exc)[:200],
+                    )
+
+        # Alle Backends gescheitert
+        if last_error:
+            raise WebError(f"DuckDuckGo-Suche fehlgeschlagen (alle Backends): {last_error}") from last_error
+        return []
+
+    # ── DuckDuckGo News-Suche ──────────────────────────────────────────────
+
+    async def web_news_search(
+        self,
+        query: str,
+        num_results: int = 5,
+        language: str = "de",
+        timelimit: str = "w",
+    ) -> str:
+        """Sucht aktuelle Nachrichten über DuckDuckGo News.
+
+        Args:
+            query: Suchanfrage.
+            num_results: Anzahl Ergebnisse (1-10).
+            language: Sprache.
+            timelimit: Zeitfilter ('d'=Tag, 'w'=Woche, 'm'=Monat).
+
+        Returns:
+            Formatierte Nachrichtenergebnisse.
+        """
+        if not query.strip():
+            return "Keine Suchanfrage angegeben."
+
+        num_results = min(max(num_results, 1), MAX_SEARCH_RESULTS)
+
+        import anyio
+
+        region_map = {
+            "de": "de-de", "en": "us-en", "fr": "fr-fr", "es": "es-es",
+        }
+        region = region_map.get(language, "wt-wt")
+        tl = timelimit if timelimit in ("d", "w", "m") else "w"
+
+        # Rate-Limiting
+        now = time.monotonic()
+        elapsed = now - self._ddg_last_search
+        if elapsed < DDG_MIN_DELAY:
+            await anyio.sleep(DDG_MIN_DELAY - elapsed)
+
+        def _sync_news() -> list[dict[str, Any]]:
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                try:
+                    from duckduckgo_search import DDGS  # type: ignore[no-redef]
+                except ImportError:
+                    raise WebError("ddgs nicht installiert. pip install ddgs") from None
+
+            raw = list(
+                DDGS(timeout=SEARCH_TIMEOUT).news(
+                    query,
+                    region=region,
+                    safesearch="moderate",
+                    timelimit=tl,
+                    max_results=num_results,
+                )
+            )
+            return [
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "content": r.get("body", ""),
+                    "source": r.get("source", ""),
+                    "date": r.get("date", ""),
+                }
+                for r in raw
+            ]
+
+        results = await anyio.to_thread.run_sync(_sync_news)
+        self._ddg_last_search = time.monotonic()
+
+        if not results:
+            return f"Keine Nachrichten für: {query}"
+
+        return _format_news_results(results, query)
+
+    # ── DuckDuckGo Cache ───────────────────────────────────────────────────
+
+    def _ddg_cache_key(
+        self,
+        query: str,
+        region: str,
+        timelimit: str | None,
+        num_results: int,
+    ) -> str:
+        """Berechnet einen deterministischen Cache-Key."""
+        data = json.dumps(
+            {"q": query, "r": region, "t": timelimit or "", "n": num_results},
+            sort_keys=True,
+        )
+        return hashlib.sha256(data.encode()).hexdigest()[:24]
+
+    def _ddg_cache_get(
+        self,
+        query: str,
+        region: str,
+        timelimit: str | None,
+        num_results: int,
+    ) -> list[dict[str, Any]] | None:
+        """Liest Suchergebnisse aus dem lokalen Cache.
+
+        Returns:
+            Gecachte Ergebnisse oder None bei Cache-Miss/Expired.
+        """
+        if self._ddg_cache_dir is None:
+            return None
+
+        key = self._ddg_cache_key(query, region, timelimit, num_results)
+        cache_file = self._ddg_cache_dir / f"{key}.json"
+
+        try:
+            if not cache_file.exists():
+                return None
+            data = json.loads(cache_file.read_text(encoding="utf-8"))
+            if time.time() - data.get("ts", 0) > DDG_CACHE_TTL:
+                # Abgelaufen → löschen
+                cache_file.unlink(missing_ok=True)
+                return None
+            return data.get("results")
+        except Exception:
+            return None
+
+    def _ddg_cache_put(
+        self,
+        query: str,
+        region: str,
+        timelimit: str | None,
+        num_results: int,
+        results: list[dict[str, Any]],
+    ) -> None:
+        """Speichert Suchergebnisse im lokalen Cache."""
+        if self._ddg_cache_dir is None or not results:
+            return
+
+        try:
+            self._ddg_cache_dir.mkdir(parents=True, exist_ok=True)
+            key = self._ddg_cache_key(query, region, timelimit, num_results)
+            cache_file = self._ddg_cache_dir / f"{key}.json"
+            cache_file.write_text(
+                json.dumps(
+                    {"ts": time.time(), "q": query, "results": results},
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            log.debug("ddg_cache_write_failed", error=str(exc))
 
     # ── web_fetch ──────────────────────────────────────────────────────────
 
@@ -525,7 +797,37 @@ def _format_search_results(results: list[dict[str, Any]], query: str) -> str:
         lines.append(f"[{i}] {title}")
         lines.append(f"    URL: {url}")
         if snippet:
-            lines.append(f"    {snippet[:300]}")
+            lines.append(f"    {snippet[:600]}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _format_news_results(results: list[dict[str, Any]], query: str) -> str:
+    """Formatiert Nachrichtenergebnisse mit Quelle und Datum.
+
+    Args:
+        results: Liste von News-Dicts (title, url, content, source, date).
+        query: Original-Suchanfrage.
+
+    Returns:
+        Formatierter Text.
+    """
+    lines = [f"Nachrichtenergebnisse für: {query}\n"]
+    for i, r in enumerate(results, 1):
+        title = r.get("title", "Kein Titel")
+        url = r.get("url", "")
+        snippet = r.get("content", "")
+        source = r.get("source", "")
+        date = r.get("date", "")
+        header = f"[{i}] {title}"
+        if source:
+            header += f"  ({source})"
+        lines.append(header)
+        if date:
+            lines.append(f"    Datum: {date}")
+        lines.append(f"    URL: {url}")
+        if snippet:
+            lines.append(f"    {snippet[:600]}")
         lines.append("")
     return "\n".join(lines)
 
@@ -641,7 +943,8 @@ def register_web_tools(
         web.web_search,
         description=(
             "Websuche durchführen. Gibt formatierte Suchergebnisse "
-            "mit Titel, URL und Snippet zurück."
+            "mit Titel, URL und Snippet zurück. "
+            "Unterstützt Zeitfilter für aktuelle Ergebnisse."
         ),
         input_schema={
             "type": "object",
@@ -659,6 +962,12 @@ def register_web_tools(
                     "type": "string",
                     "description": "Sprachcode (Default: de)",
                     "default": "de",
+                },
+                "timelimit": {
+                    "type": "string",
+                    "enum": ["", "d", "w", "m", "y"],
+                    "description": "Zeitfilter: d=Tag, w=Woche, m=Monat, y=Jahr, leer=alle",
+                    "default": "",
                 },
             },
             "required": ["query"],
@@ -723,5 +1032,41 @@ def register_web_tools(
         },
     )
 
-    log.info("web_tools_registered", tools=["web_search", "web_fetch", "search_and_read"])
+    mcp_client.register_builtin_handler(
+        "web_news_search",
+        web.web_news_search,
+        description=(
+            "Nachrichtensuche durchführen. Gibt aktuelle Nachrichten "
+            "mit Titel, Quelle, Datum und Snippet zurück. "
+            "Ideal für aktuelle Ereignisse und Neuigkeiten."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Suchanfrage",
+                },
+                "num_results": {
+                    "type": "integer",
+                    "description": "Anzahl Ergebnisse (1-10, Default: 5)",
+                    "default": 5,
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Sprachcode (Default: de)",
+                    "default": "de",
+                },
+                "timelimit": {
+                    "type": "string",
+                    "enum": ["d", "w", "m"],
+                    "description": "Zeitfilter: d=Tag, w=Woche, m=Monat (Default: w)",
+                    "default": "w",
+                },
+            },
+            "required": ["query"],
+        },
+    )
+
+    log.info("web_tools_registered", tools=["web_search", "web_news_search", "web_fetch", "search_and_read"])
     return web

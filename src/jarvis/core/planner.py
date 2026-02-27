@@ -75,7 +75,7 @@ Für Wissensfragen, Erklärungen, Meinungen, Smalltalk, Nachfragen.
 Antworte einfach als normaler Text. KEIN JSON, KEIN Code-Block.
 
 ### OPTION B -- Tool-Plan
-Für alles was Dateien, Shell, Web oder Memory erfordert.
+Für alles was Dateien, Shell, Web, Memory oder Dokument-Erstellung erfordert.
 Antworte mit EXAKT diesem JSON-Format in einem ```json Block:
 
 ```json
@@ -109,6 +109,43 @@ Antworte mit EXAKT diesem JSON-Format in einem ```json Block:
 }}
 ```
 
+### Beispiel: User fragt nach einem aktuellen Ereignis
+```json
+{{
+  "goal": "Aktuelle Informationen über das Ereignis recherchieren",
+  "reasoning": "Faktenfrage zu einem aktuellen Ereignis -- mein Wissen könnte veraltet sein.",
+  "steps": [
+    {{
+      "tool": "search_and_read",
+      "params": {{"query": "USA Venezuela Maduro Militäroperation 2026", "num_results": 3}},
+      "rationale": "Web-Recherche mit Keywords, Seiteninhalte lesen für vollständige Informationen"
+    }}
+  ],
+  "confidence": 0.9
+}}
+```
+
+### Beispiel: User sagt „Erstelle ein Kündigungsschreiben als PDF"
+```json
+{{
+  "goal": "Kündigungsschreiben als PDF erstellen",
+  "reasoning": "Der User will ein Dokument erstellt bekommen.",
+  "steps": [
+    {{
+      "tool": "document_export",
+      "params": {{
+        "content": "Sehr geehrte Damen und Herren,\\n\\nhiermit kündige ich ...",
+        "format": "pdf",
+        "title": "Kündigung",
+        "filename": "kuendigung"
+      }},
+      "rationale": "PDF-Dokument mit dem Kündigungstext generieren"
+    }}
+  ],
+  "confidence": 0.95
+}}
+```
+
 ### Beispiel: User sagt „Was ist eine API?"
 Direkte Textantwort (Option A): „Eine API ist eine Programmierschnittstelle..."
 
@@ -117,20 +154,32 @@ Direkte Textantwort (Option A): „Eine API ist eine Programmierschnittstelle...
 | Anfrage enthält... | Option | Typisches Tool |
 |---------------------|--------|----------------|
 | Allgemeine Erklärung, Smalltalk, Meinung | A | -- |
-| Aktuelle Ereignisse, Politik, Nachrichten, Fakten, „wann", „was ist passiert" | B | web_search |
+| Aktuelle Ereignisse, Politik, Nachrichten, Fakten, „wann", „was ist passiert" | B | search_and_read (bevorzugt) oder web_news_search |
 | „Datei", „lesen", „erstellen", „schreiben" | B | read_file / write_file |
 | „Verzeichnis", „Ordner", „auflisten" | B | list_directory |
 | „Befehl", „ausführen", „Shell", „Code" | B | exec_command |
-| „suchen", „googlen", „Web", „recherchiere" | B | web_search |
+| „suchen", „googlen", „Web", „recherchiere" | B | search_and_read |
 | „erinnern", „Memory", „was weißt du über" | B | search_memory |
 | „speichern", „merken" | B | save_to_memory |
 | „Kontakt", „Entität" | B | get_entity / add_entity |
 | „Prozedur", „wie mache ich" | B | search_procedures |
+| „PDF", „DOCX", „Brief", „Schreiben", „Dokument", „Kündigung", „Vertrag", „Bewerbung", „erstelle als" | B | document_export |
 | Unklare Anfrage | A | -- (nachfragen) |
 
 WICHTIG: Wenn eine Frage sich auf aktuelle Ereignisse, politische Geschehnisse, \
 Nachrichten, Daten oder Fakten bezieht, die sich ändern können, nutze IMMER \
-web_search statt aus dem Gedächtnis zu antworten. Dein Wissen kann veraltet sein.
+search_and_read statt aus dem Gedächtnis zu antworten. Dein Wissen kann veraltet sein. \
+Antworte bei Faktenfragen NIEMALS aus dem Gedächtnis -- nutze IMMER ein Such-Tool.
+
+### Tipps für bessere Suchergebnisse
+- **Bevorzuge search_and_read** statt web_search -- es liest die Seiteninhalte und liefert \
+dir den vollen Text, nicht nur kurze Snippets. Nutze es für alle Faktenfragen.
+- Bei aktuellen Nachrichten: web_news_search mit `"timelimit": "w"`.
+- Formuliere die Suchanfrage als KEYWORDS, NICHT als Frage. \
+Beispiel: Statt „Wann hat die USA den venezolanischen Präsidenten entführt?" → \
+`"USA Maduro Venezuela Entführung 2026"` oder `"US military operation Venezuela Maduro"`.
+- Setze `"timelimit": "m"` bei aktuellen Ereignissen.
+- Bei unklaren Ergebnissen: Zweite Suche mit anderen Keywords oder auf Englisch.
 
 ## Regeln
 - Verwende NUR Tool-Namen aus der obigen Liste. Erfinde KEINE Tools.
@@ -140,6 +189,11 @@ web_search statt aus dem Gedächtnis zu antworten. Dein Wissen kann veraltet sei
 - Im Zweifel: OPTION A wählen und nachfragen.
 - Antworte ENTWEDER als Text ODER als JSON-Plan. Niemals beides vermischen.
 - Wenn dir eine Prozedur im Kontext angezeigt wird, folge deren Ablauf.
+- WICHTIG: Wenn im Kontext bereits "AKTUELLE FAKTEN AUS DEM INTERNET" oder \
+"Web-Suchergebnisse" stehen, nutze diese Informationen DIREKT in deiner Antwort \
+(Option A). Du brauchst dann KEINEN neuen Such-Plan. Die Suchergebnisse sind AKTUELL \
+und KORREKT -- dein Trainingswissen ist dagegen VERALTET. Basiere deine Antwort \
+AUSSCHLIEẞLICH auf den bereitgestellten Suchergebnissen.
 
 ## Aktuelles Datum und Uhrzeit
 {current_datetime}
@@ -163,6 +217,17 @@ das Ziel bereits erreicht haben.
 - Gib dem User NIEMALS Anleitungen, Dinge manuell zu tun, wenn du die Antwort \
 bereits aus den Ergebnissen ableiten kannst.
 - Du bist ein autonomer Agent -- du löst Probleme selbst, du delegierst NICHT an den User.
+
+### KRITISCH -- Umgang mit Suchergebnissen (web_search, web_news_search, search_and_read)
+- Wenn ein Suchergebnis vorliegt, sind die SUCHERGEBNISSE deine EINZIGE Faktenquelle.
+- Dein Trainingswissen ist VERALTET. Die Suchergebnisse sind AKTUELL und KORREKT.
+- Vertraue den Suchergebnissen, AUCH wenn sie deinem Vorwissen widersprechen.
+- Wenn die Suchergebnisse ein Ereignis beschreiben, dann IST es passiert.
+- Erfinde KEINE Fakten, die nicht in den Suchergebnissen stehen.
+- Zitiere konkrete Informationen (Daten, Namen, Orte) DIREKT aus den Ergebnissen.
+- Sage NIEMALS „es gibt keinen Beleg", „das ist fiktiv" oder „das ist nicht passiert", \
+wenn die Suchergebnisse das Gegenteil belegen.
+- Bezeichne Suchergebnisse NIEMALS als „hypothetisch" oder „fiktional".
 
 Analysiere die bisherigen Ergebnisse und entscheide dich für GENAU EINE Option:
 
@@ -429,22 +494,67 @@ class Planner:
         model = self._router.select_model("planning", "medium")
 
         results_text = self._format_results(results)
-        prompt = (
-            f"Der User hat gefragt: {user_message}\n\n"
-            f"Du hast folgende Aktionen ausgeführt und Ergebnisse erhalten:\n\n"
-            f"{results_text}\n\n"
-            f"Formuliere jetzt eine hilfreiche Antwort auf Deutsch.\n"
-            f"WICHTIG: Nutze die ERFOLGREICHEN Ergebnisse (✓) direkt in deiner Antwort. "
-            f"Ignoriere fehlgeschlagene/blockierte Schritte, wenn das Ziel trotzdem erreicht wurde. "
-            f"Gib dem User KEINE Anleitungen für Dinge, die du bereits erledigt hast."
+
+        # Prüfe ob Suchergebnisse unter den Tool-Ergebnissen sind
+        has_search_results = any(
+            r.tool_name in ("web_search", "web_news_search", "search_and_read", "web_fetch")
+            and r.success
+            for r in results
         )
 
-        messages = [
-            {"role": "system", "content": (
+        if has_search_results:
+            # Extrahiere den tatsächlichen Such-Content für die Antwort
+            search_content_parts = []
+            for r in results:
+                if r.tool_name in ("web_search", "web_news_search", "search_and_read", "web_fetch") and r.success:
+                    search_content_parts.append(r.content[:5000])
+            search_content_block = "\n\n".join(search_content_parts)
+
+            prompt = (
+                f"Der User hat gefragt: {user_message}\n\n"
+                f"## Suchergebnisse aus dem Internet (AKTUELLE FAKTEN)\n\n"
+                f"{search_content_block}\n\n"
+                f"## Anweisungen\n"
+                f"Beantworte die Frage des Users AUSSCHLIEẞLICH auf Basis der obigen Suchergebnisse.\n"
+                f"REGELN:\n"
+                f"1. Die Suchergebnisse sind AKTUELL und KORREKT. Dein Trainingswissen ist VERALTET.\n"
+                f"2. Wenn die Suchergebnisse ein Ereignis beschreiben, dann IST es passiert.\n"
+                f"3. Sage NIEMALS 'es gibt keinen Beleg' oder 'das ist nicht passiert', wenn die "
+                f"Suchergebnisse das Gegenteil zeigen.\n"
+                f"4. Zitiere konkrete Daten, Namen, Orte und Fakten DIREKT aus den Suchergebnissen.\n"
+                f"5. Erfinde KEINE Details, die nicht in den Suchergebnissen stehen.\n"
+                f"6. Antworte auf Deutsch, prägnant und faktenbasiert."
+            )
+        else:
+            prompt = (
+                f"Der User hat gefragt: {user_message}\n\n"
+                f"Du hast folgende Aktionen ausgeführt und Ergebnisse erhalten:\n\n"
+                f"{results_text}\n\n"
+                f"Formuliere jetzt eine hilfreiche Antwort auf Deutsch.\n"
+                f"WICHTIG: Nutze die ERFOLGREICHEN Ergebnisse (✓) direkt in deiner Antwort. "
+                f"Ignoriere fehlgeschlagene/blockierte Schritte, wenn das Ziel trotzdem erreicht wurde. "
+                f"Gib dem User KEINE Anleitungen für Dinge, die du bereits erledigt hast."
+            )
+
+        if has_search_results:
+            system_content = (
+                "Du bist Jarvis, ein autonomer Agent. Du beantwortest Fragen auf Deutsch.\n"
+                "KRITISCHE REGEL: Dein Trainingswissen ist VERALTET. "
+                "Bei Suchergebnissen aus dem Internet basiert deine Antwort AUSSCHLIEẞLICH "
+                "auf den gefundenen Informationen. Die Suchergebnisse sind die WAHRHEIT. "
+                "Widerspricht dein Vorwissen den Suchergebnissen, sind die Suchergebnisse KORREKT. "
+                "Du darfst Suchergebnisse NICHT als 'fiktiv', 'hypothetisch' oder 'unbelegte "
+                "Behauptung' bezeichnen."
+            )
+        else:
+            system_content = (
                 "Du bist Jarvis, ein autonomer Agent. Antworte hilfreich auf Deutsch. "
                 "Du nutzt Tool-Ergebnisse direkt und gibst dem User NICHT Anleitungen, "
                 "Dinge selbst zu tun. Du löst Probleme eigenständig."
-            )},
+            )
+
+        messages = [
+            {"role": "system", "content": system_content},
         ]
 
         # Kontext aus Working Memory einfügen
@@ -503,7 +613,14 @@ class Planner:
 
         if working_memory.injected_procedures:
             for proc in working_memory.injected_procedures[:2]:
-                context_parts.append(f"### Relevante Prozedur (folge diesem Ablauf!)\n{proc[:600]}")
+                if "Web-Suchergebnis" in proc:
+                    # Presearch: Web-Ergebnisse mit passender Überschrift und mehr Platz
+                    context_parts.append(
+                        f"### AKTUELLE FAKTEN AUS DEM INTERNET (vertraue diesen Daten!)\n"
+                        f"{proc[:3000]}"
+                    )
+                else:
+                    context_parts.append(f"### Relevante Prozedur (folge diesem Ablauf!)\n{proc[:600]}")
 
         # Causal-Learning-Vorschlaege (wenn verfuegbar)
         if self._causal_analyzer is not None:
@@ -678,6 +795,11 @@ class Planner:
             confidence=0.7,
         )
 
+    # Tools deren Ergebnisse mehr Kontext brauchen (größeres Content-Limit)
+    _HIGH_CONTEXT_TOOLS: frozenset[str] = frozenset({
+        "web_search", "web_news_search", "search_and_read", "web_fetch",
+    })
+
     def _format_results(self, results: list[ToolResult]) -> str:
         """Formatiert Tool-Ergebnisse als lesbaren Text."""
         if not results:
@@ -686,8 +808,11 @@ class Planner:
         parts: list[str] = []
         for i, r in enumerate(results, 1):
             status = "✓" if r.success else "✗"
-            content = r.content[:1000]  # Maximal 1000 Zeichen pro Ergebnis
-            if r.truncated:
+            # Suchergebnisse bekommen mehr Platz (4000 Zeichen),
+            # andere Tools bleiben bei 1000 Zeichen
+            limit = 4000 if r.tool_name in self._HIGH_CONTEXT_TOOLS else 1000
+            content = r.content[:limit]
+            if r.truncated or len(r.content) > limit:
                 content += "\n[... Output gekürzt]"
             parts.append(f"### Schritt {i}: {r.tool_name} [{status}]\n{content}")
 

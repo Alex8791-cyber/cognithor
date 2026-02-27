@@ -88,8 +88,13 @@ irc = [
 twitch = [
     "twitchio>=2.0",
 ]
+documents = [
+    "fpdf2>=2.7,<3",
+    "python-docx>=1.0,<2",
+]
 search = [
     "trafilatura>=2.0",
+    "ddgs>=9.0,<10",
 ]
 cron = [
     "apscheduler>=3.10,<4",
@@ -101,7 +106,7 @@ postgresql = [
     "pgvector>=0.2",
 ]
 all = [
-    "cognithor[memory,vector,mcp,telegram,web,search,cron,postgresql]",
+    "cognithor[memory,vector,mcp,telegram,web,search,cron,postgresql,documents]",
 ]
 full = [
     "cognithor[all,voice,elevenlabs,google-chat,irc,twitch,dev]",

@@ -187,7 +187,7 @@ class MediaPipeline:
             # Bild als Base64 laden
             image_data = base64.b64encode(path.read_bytes()).decode("utf-8")
 
-            async with httpx.AsyncClient(timeout=120.0, trust_env=False) as client:
+            async with httpx.AsyncClient(timeout=180.0, trust_env=False) as client:
                 resp = await client.post(
                     f"{ollama_url}/api/chat",
                     json={
@@ -466,6 +466,170 @@ class MediaPipeline:
     # Text → Sprache (TTS)
     # ========================================================================
 
+    # ========================================================================
+    # Dokument-Export (PDF / DOCX)
+    # ========================================================================
+
+    async def export_document(
+        self,
+        content: str,
+        *,
+        fmt: str = "pdf",
+        title: str = "",
+        author: str = "",
+        filename: str = "dokument",
+    ) -> MediaResult:
+        """Exportiert Text als PDF- oder DOCX-Dokument.
+
+        Args:
+            content: Text-Inhalt (Absätze durch \\n\\n getrennt).
+            fmt: Ausgabeformat ('pdf' oder 'docx').
+            title: Optionaler Titel/Betreff.
+            author: Optionaler Absender/Autor.
+            filename: Dateiname ohne Endung.
+        """
+        fmt = fmt.lower().strip()
+        if fmt not in ("pdf", "docx"):
+            return MediaResult(success=False, error=f"Nicht unterstütztes Format: {fmt}. Erlaubt: pdf, docx")
+
+        if not content.strip():
+            return MediaResult(success=False, error="Leerer Inhalt")
+
+        # Sicheres Verzeichnis
+        doc_dir = Path.home() / ".jarvis" / "workspace" / "documents"
+        doc_dir.mkdir(parents=True, exist_ok=True)
+
+        # Dateinamen bereinigen
+        safe_name = "".join(c for c in filename if c.isalnum() or c in "-_ ").strip() or "dokument"
+        output_path = doc_dir / f"{safe_name}.{fmt}"
+
+        loop = asyncio.get_running_loop()
+
+        try:
+            if fmt == "pdf":
+                await loop.run_in_executor(None, self._generate_pdf, output_path, content, title, author)
+            else:
+                await loop.run_in_executor(None, self._generate_docx, output_path, content, title, author)
+
+            log.info("document_exported", path=str(output_path), format=fmt)
+            return MediaResult(
+                success=True,
+                text=f"Dokument erstellt: {output_path}",
+                output_path=str(output_path),
+                metadata={"format": fmt, "title": title, "filename": safe_name},
+            )
+        except ImportError as exc:
+            return MediaResult(success=False, error=str(exc))
+        except Exception as exc:
+            log.error("document_export_failed", error=str(exc))
+            return MediaResult(success=False, error=f"Dokument-Export fehlgeschlagen: {exc}")
+
+    def _generate_pdf(self, output_path: Path, content: str, title: str, author: str) -> None:
+        """Generiert ein PDF-Dokument mit fpdf2."""
+        try:
+            from fpdf import FPDF
+        except ImportError:
+            raise ImportError("fpdf2 nicht installiert. pip install fpdf2") from None
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=25)
+        pdf.add_page()
+
+        # Unicode-Font einbetten (für Umlaute etc.), sonst Helvetica
+        font_name = "Helvetica"
+        has_bold = True  # Built-in Fonts haben immer Bold
+        try:
+            # Suche einen Unicode-fähigen TrueType-Font
+            font_candidates = [
+                # DejaVu Sans (Regular + Bold)
+                ("DejaVu", [
+                    Path("C:/Windows/Fonts/DejaVuSans.ttf"),
+                    Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+                    Path.home() / ".fonts" / "DejaVuSans.ttf",
+                ], [
+                    Path("C:/Windows/Fonts/DejaVuSans-Bold.ttf"),
+                    Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+                    Path.home() / ".fonts" / "DejaVuSans-Bold.ttf",
+                ]),
+                # Arial als Fallback (Windows)
+                ("ArialUni", [
+                    Path("C:/Windows/Fonts/arial.ttf"),
+                ], [
+                    Path("C:/Windows/Fonts/arialbd.ttf"),
+                ]),
+            ]
+            for fname, regular_paths, bold_paths in font_candidates:
+                regular = next((p for p in regular_paths if p.exists()), None)
+                if regular:
+                    pdf.add_font(fname, "", str(regular), uni=True)
+                    font_name = fname
+                    bold = next((p for p in bold_paths if p.exists()), None)
+                    if bold:
+                        pdf.add_font(fname, "B", str(bold), uni=True)
+                        has_bold = True
+                    else:
+                        has_bold = False
+                    break
+        except Exception:
+            pass  # Fallback auf Helvetica
+
+        # Autor/Absender
+        if author:
+            pdf.set_font(font_name, size=10)
+            pdf.multi_cell(0, 6, author)
+            pdf.ln(10)
+
+        # Titel
+        if title:
+            pdf.set_font(font_name, "B" if has_bold else "", size=14)
+            pdf.multi_cell(0, 8, title)
+            pdf.ln(8)
+
+        # Inhalt
+        pdf.set_font(font_name, size=11)
+        paragraphs = content.split("\n\n")
+        for para in paragraphs:
+            para = para.strip()
+            if para:
+                pdf.multi_cell(0, 6, para)
+                pdf.ln(4)
+
+        pdf.output(str(output_path))
+
+    def _generate_docx(self, output_path: Path, content: str, title: str, author: str) -> None:
+        """Generiert ein DOCX-Dokument mit python-docx."""
+        try:
+            from docx import Document
+            from docx.shared import Pt
+        except ImportError:
+            raise ImportError("python-docx nicht installiert. pip install python-docx") from None
+
+        doc = Document()
+
+        # Standardschriftart auf Calibri setzen
+        style = doc.styles["Normal"]
+        font = style.font
+        font.name = "Calibri"
+        font.size = Pt(11)
+
+        # Autor/Absender
+        if author:
+            p = doc.add_paragraph(author)
+            p.style.font.size = Pt(10)
+
+        # Titel
+        if title:
+            doc.add_heading(title, level=1)
+
+        # Inhalt
+        paragraphs = content.split("\n\n")
+        for para in paragraphs:
+            para = para.strip()
+            if para:
+                doc.add_paragraph(para)
+
+        doc.save(str(output_path))
+
     async def text_to_speech(
         self,
         text: str,
@@ -656,6 +820,32 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
             "required": ["text"],
         },
     },
+    "document_export": {
+        "description": (
+            "Exportiert Text als PDF- oder DOCX-Dokument (Briefform, Schreiben, etc.). "
+            "Der Inhalt wird als Fließtext übergeben, Absätze durch doppelte Zeilenumbrüche getrennt."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "content": {"type": "string", "description": "Text-Inhalt des Dokuments"},
+                "format": {
+                    "type": "string",
+                    "enum": ["pdf", "docx"],
+                    "description": "Ausgabeformat",
+                    "default": "pdf",
+                },
+                "title": {"type": "string", "description": "Titel/Betreff", "default": ""},
+                "author": {"type": "string", "description": "Absender/Autor", "default": ""},
+                "filename": {
+                    "type": "string",
+                    "description": "Dateiname (ohne Endung)",
+                    "default": "dokument",
+                },
+            },
+            "required": ["content"],
+        },
+    },
 }
 
 
@@ -704,6 +894,21 @@ def register_media_tools(mcp_client: Any) -> MediaPipeline:
         result = await pipeline.text_to_speech(text, voice=voice)
         return result.text if result.success else f"Fehler: {result.error}"
 
+    async def _export_document(
+        content: str,
+        format: str = "pdf",
+        title: str = "",
+        author: str = "",
+        filename: str = "dokument",
+        **_: Any,
+    ) -> str:
+        result = await pipeline.export_document(
+            content, fmt=format, title=title, author=author, filename=filename,
+        )
+        if result.success:
+            return result.output_path or result.text
+        return f"Fehler: {result.error}"
+
     handlers = {
         "media_transcribe_audio": _transcribe,
         "media_analyze_image": _analyze_image,
@@ -711,6 +916,7 @@ def register_media_tools(mcp_client: Any) -> MediaPipeline:
         "media_convert_audio": _convert_audio,
         "media_resize_image": _resize_image,
         "media_tts": _tts,
+        "document_export": _export_document,
     }
 
     for name, schema in MEDIA_TOOL_SCHEMAS.items():

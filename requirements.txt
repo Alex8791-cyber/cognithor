@@ -16,6 +16,14 @@ cryptography>=42.0           # Credential-Verschlüsselung (Fernet)
 # uvicorn[standard]>=0.29    # ASGI-Server (optional)
 # python-telegram-bot>=21.0  # Telegram-Channel (optional)
 
+# === Websuche (optional) ===
+# ddgs>=9.0                   # DuckDuckGo-Suche (Multi-Backend, kostenlos)
+# trafilatura>=2.0            # Volltext-Extraktion aus HTML
+
+# === Dokument-Export (optional) ===
+# fpdf2>=2.7                  # PDF-Generierung (document_export Tool)
+# python-docx>=1.0            # DOCX-Generierung (document_export Tool)
+
 # === Browser-Automatisierung (optional) ===
 # playwright>=1.40            # Headless Browser (browse_url, browse_click, ...)
                               # Nach Install: playwright install chromium

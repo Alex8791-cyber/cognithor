@@ -218,10 +218,10 @@ class TestFormatSearchResults:
         assert "nothing" in text
 
     def test_truncates_long_snippets(self) -> None:
-        results = [{"title": "X", "url": "http://x.com", "content": "A" * 500}]
+        results = [{"title": "X", "url": "http://x.com", "content": "A" * 800}]
         text = _format_search_results(results, "q")
-        # Snippet sollte auf 300 Zeichen gekürzt sein
-        assert text.count("A") <= 300
+        # Snippet sollte auf 600 Zeichen gekürzt sein
+        assert text.count("A") <= 600
 
 
 # ── web_search ─────────────────────────────────────────────────────────────
@@ -510,18 +510,19 @@ class TestSearchAndRead:
 class TestRegisterWebTools:
     """Tests für die MCP-Client-Registrierung."""
 
-    def test_registers_three_tools(self) -> None:
-        """Alle 3 Web-Tools werden registriert."""
+    def test_registers_four_tools(self) -> None:
+        """Alle 4 Web-Tools werden registriert."""
 
         mock_client = MagicMock()
         web = register_web_tools(mock_client, searxng_url="http://localhost:8888")
 
         assert isinstance(web, WebTools)
-        assert mock_client.register_builtin_handler.call_count == 3
+        assert mock_client.register_builtin_handler.call_count == 4
 
         # Tool-Namen prüfen
         registered = [call.args[0] for call in mock_client.register_builtin_handler.call_args_list]
         assert "web_search" in registered
+        assert "web_news_search" in registered
         assert "web_fetch" in registered
         assert "search_and_read" in registered
 

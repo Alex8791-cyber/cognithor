@@ -34,6 +34,13 @@ logger = logging.getLogger(__name__)
 # Maximale Telegram-Nachrichtenlänge
 MAX_MESSAGE_LENGTH = 4096
 
+# Vision-Postprocessing: System-Prompt für Textkorrektur
+_VISION_POLISH_PROMPT = (
+    "Überarbeite den folgenden Text. Korrigiere Rechtschreibung, Grammatik, "
+    "Satzbau und Satzzeichen. Behalte den Inhalt und die Sprache exakt bei. "
+    "Gib NUR den korrigierten Text aus, ohne Erklärungen."
+)
+
 # Timeout für Approval-Anfragen (Sekunden)
 APPROVAL_TIMEOUT = 300  # 5 Minuten
 
@@ -74,6 +81,7 @@ class TelegramChannel(Channel):
         self._approval_results: dict[str, bool] = {}
         self._approval_lock = asyncio.Lock()
         self._session_chat_map: dict[str, int] = {}
+        self._user_chat_map: dict[str, int] = {}  # user_id → chat_id (Fallback)
         self._running = False
         self._typing_tasks: dict[int, asyncio.Task[None]] = {}
         self._whisper_model: Any | None = None
@@ -202,6 +210,13 @@ class TelegramChannel(Channel):
                     )
                 except Exception:
                     logger.exception("Fehler beim Senden an chat_id=%s", chat_id)
+
+        # Attachments senden (z.B. generierte PDF/DOCX-Dokumente)
+        for att_path in message.attachments:
+            try:
+                await self.send_file(int(chat_id), Path(att_path))
+            except Exception:
+                logger.exception("Fehler beim Senden von Attachment %s", att_path)
 
     async def request_approval(
         self,
@@ -376,7 +391,13 @@ class TelegramChannel(Channel):
             self._stop_typing(chat_id, typing_task)
 
     async def _on_photo_message(self, update: Any, context: Any) -> None:
-        """Verarbeitet Fotos: Download + Caption als Nachricht weiterleiten."""
+        """Verarbeitet Fotos: Direkte Vision-Analyse (umgeht Planner).
+
+        Fotos werden direkt mit dem Vision-LLM analysiert, statt den Planner
+        entscheiden zu lassen -- das ist zuverlässiger und schneller.
+        Bei komplexen Captions (Follow-Up-Fragen) wird das Analyseergebnis
+        als Kontext an den Planner weitergereicht.
+        """
         if update.effective_message is None or update.effective_user is None:
             return
 
@@ -399,19 +420,50 @@ class TelegramChannel(Channel):
             file = await photo.get_file()
             photo_path = self._workspace_dir / f"photo-{photo.file_unique_id}.jpg"
             await file.download_to_drive(str(photo_path))
-
-            user_question = caption if caption else "Beschreibe dieses Bild detailliert."
-            text = (
-                f"Analysiere dieses Bild mit dem Tool media_analyze_image.\n"
-                f"image_path: {photo_path}\n"
-                f"prompt: {user_question}"
-            )
-
-            await self._process_incoming(chat_id, user_id, text, update)
-
         except Exception:
             logger.exception("Fehler beim Foto-Download")
             await update.effective_message.reply_text("❌ Fehler beim Empfangen des Fotos.")
+            return
+
+        user_question = caption if caption else "Beschreibe dieses Bild detailliert auf Deutsch."
+
+        # Direkte Vision-Analyse (kein Planner nötig)
+        typing_task = self._start_typing(chat_id)
+        try:
+            from jarvis.mcp.media import DEFAULT_OLLAMA_MODEL, MediaPipeline
+
+            pipeline = MediaPipeline()
+            result = await pipeline.analyze_image(
+                str(photo_path),
+                prompt=user_question,
+                model=DEFAULT_OLLAMA_MODEL,
+            )
+
+            if result.success and result.text:
+                response_text = await self._polish_vision_text(result.text)
+            else:
+                response_text = f"❌ Bildanalyse fehlgeschlagen: {result.error}"
+
+            # Antwort senden (Telegram-Limit beachten)
+            if len(response_text) <= MAX_MESSAGE_LENGTH:
+                await update.effective_message.reply_text(response_text)
+            else:
+                # Lange Antworten aufteilen
+                for i in range(0, len(response_text), MAX_MESSAGE_LENGTH):
+                    chunk = response_text[i : i + MAX_MESSAGE_LENGTH]
+                    await update.effective_message.reply_text(chunk)
+
+            logger.info(
+                "Foto analysiert für User %d: %s (%s)",
+                user_id, photo_path, DEFAULT_OLLAMA_MODEL,
+            )
+        except Exception:
+            logger.exception("Fehler bei Vision-Analyse für User %d", user_id)
+            await update.effective_message.reply_text(
+                "❌ Bildanalyse fehlgeschlagen. Bitte versuche es erneut."
+            )
+        finally:
+            self._stop_typing(chat_id, typing_task)
 
     async def _on_document_message(self, update: Any, context: Any) -> None:
         """Verarbeitet Dokumente: Download + Metadaten als Nachricht weiterleiten."""
@@ -458,6 +510,43 @@ class TelegramChannel(Channel):
 
     # === Hilfsmethoden ===
 
+    async def _polish_vision_text(
+        self,
+        raw_text: str,
+        *,
+        ollama_url: str = "http://localhost:11434",
+        model: str = "qwen3:32b",
+    ) -> str:
+        """Nachbearbeitung des Vision-Outputs durch ein Text-LLM.
+
+        Korrigiert Rechtschreibung, Grammatik, Satzbau und Satzzeichen.
+        Bei Fehler wird der Rohtext unverändert zurückgegeben.
+        """
+        try:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=60.0, trust_env=False) as client:
+                resp = await client.post(
+                    f"{ollama_url}/api/chat",
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": _VISION_POLISH_PROMPT},
+                            {"role": "user", "content": raw_text},
+                        ],
+                        "stream": False,
+                    },
+                )
+                if resp.status_code == 200:
+                    polished = resp.json().get("message", {}).get("content", "")
+                    if polished.strip():
+                        logger.info("Vision-Text nachbearbeitet (%d → %d Zeichen)", len(raw_text), len(polished))
+                        return polished.strip()
+        except Exception:
+            logger.debug("Vision-Postprocessing fehlgeschlagen, nutze Rohtext", exc_info=True)
+
+        return raw_text
+
     async def _process_incoming(
         self,
         chat_id: int,
@@ -469,6 +558,10 @@ class TelegramChannel(Channel):
         if self._handler is None:
             await update.effective_message.reply_text("⚠️ Jarvis ist noch nicht bereit.")
             return
+
+        # user_id → chat_id Mapping VOR Handler-Call speichern
+        # (damit Approval-Anfragen die chat_id finden, auch beim ersten Request)
+        self._user_chat_map[str(user_id)] = chat_id
 
         # Typing-Indicator starten
         typing_task = self._start_typing(chat_id)
@@ -482,7 +575,7 @@ class TelegramChannel(Channel):
         try:
             response = await self._handler(msg)
 
-            # Session → chat_id Mapping speichern
+            # Session → chat_id Mapping speichern (für zukünftige Lookups)
             if response.session_id:
                 self._session_chat_map[response.session_id] = chat_id
             enriched = OutgoingMessage(
@@ -491,6 +584,7 @@ class TelegramChannel(Channel):
                 session_id=response.session_id,
                 is_final=response.is_final,
                 reply_to=response.reply_to,
+                attachments=response.attachments,
                 metadata={**response.metadata, "chat_id": str(chat_id)},
             )
             await self.send(enriched)
@@ -634,8 +728,9 @@ class TelegramChannel(Channel):
     def _extract_chat_id_from_session(self, session_id: str) -> int | None:
         """Extrahiert die chat_id aus einer Session-ID.
 
-        Nutzt das interne Session→Chat-ID Mapping, das beim
-        Empfang von Gateway-Antworten befüllt wird.
+        Versucht zuerst das Session→Chat-ID Mapping, dann als Fallback
+        das User→Chat-ID Mapping (wichtig nach Neustart, wenn die
+        Session-Map noch leer ist).
 
         Args:
             session_id: Session-ID.
@@ -643,7 +738,21 @@ class TelegramChannel(Channel):
         Returns:
             Chat-ID oder None.
         """
-        return self._session_chat_map.get(session_id)
+        # Primär: direkte Session→Chat-ID Zuordnung
+        chat_id = self._session_chat_map.get(session_id)
+        if chat_id is not None:
+            return chat_id
+
+        # Fallback: Wenn nur ein User aktiv ist (typischer 1:1-Bot-Chat),
+        # verwende dessen chat_id. Bei mehreren aktiven Usern: kein Fallback.
+        if len(self._user_chat_map) == 1:
+            chat_id = next(iter(self._user_chat_map.values()))
+            # Mapping für zukünftige Lookups nachtragen
+            self._session_chat_map[session_id] = chat_id
+            logger.debug("chat_id via user_chat_map Fallback gefunden: %d", chat_id)
+            return chat_id
+
+        return None
 
 
 def _split_message(text: str) -> list[str]:

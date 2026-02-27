@@ -102,6 +102,13 @@ class Executor:
         self._task_telemetry = task_telemetry
         self._error_clusterer = error_clusterer
         self._default_timeout = 30  # Sekunden
+        # Längere Timeouts für Tools, die große Modelle laden (z.B. Vision 20 GB+)
+        self._tool_timeouts: dict[str, int] = {
+            "media_analyze_image": 180,
+            "media_transcribe_audio": 120,
+            "media_extract_text": 120,
+            "media_tts": 120,
+        }
         self._max_retries = 3
         self._base_delay = 1.0  # Sekunden (exponentiell: 1s, 2s, 4s)
         # Agent context tokens (for contextvar reset)
@@ -267,7 +274,7 @@ class Executor:
                 error_type="NoMCPClient",
             )
 
-        timeout = params.pop("_timeout", self._default_timeout)
+        timeout = params.pop("_timeout", self._tool_timeouts.get(tool_name, self._default_timeout))
 
         # --- Agent-Kontext in Tool-Params injizieren ---
         if _agent_workspace_var.get() and tool_name in self.WORKSPACE_TOOLS:

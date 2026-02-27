@@ -16,6 +16,7 @@ import asyncio
 import contextlib
 import hashlib
 import json as _json
+import re
 import signal
 import time
 from typing import TYPE_CHECKING, Any
@@ -393,10 +394,32 @@ class Gateway:
         if self._planner is None or self._gatekeeper is None or self._executor is None:
             raise RuntimeError("Gateway.initialize() must be called before handle_message()")
 
-        # Phase 3: PGE-Loop
-        final_response, all_results, all_plans, all_audit = await self._run_pge_loop(
-            msg, session, wm, tool_schemas, route_decision, agent_workspace, run_id,
-        )
+        # Phase 2.5: Automatische Vor-Suche für Faktenfragen
+        # Wenn die Nachricht eine Faktenfrage ist, suchen wir VORAB im Web
+        # und generieren die Antwort DIREKT aus den Suchergebnissen.
+        # Der Planner wird komplett umgangen, damit das LLM nicht auf
+        # veraltetes Trainingswissen zurückgreifen kann.
+        presearch_results = await self._maybe_presearch(msg, wm)
+
+        all_results: list[ToolResult] = []
+        all_plans: list[ActionPlan] = []
+        all_audit: list[AuditEntry] = []
+
+        if presearch_results:
+            # Direktantwort aus Suchergebnissen generieren (PGE-Bypass)
+            final_response = await self._answer_from_presearch(msg.text, presearch_results)
+            if final_response:
+                log.info("presearch_bypass_used", response_chars=len(final_response))
+            else:
+                # Fallback: normaler PGE-Loop wenn Antwort-Generierung fehlschlug
+                final_response, all_results, all_plans, all_audit = await self._run_pge_loop(
+                    msg, session, wm, tool_schemas, route_decision, agent_workspace, run_id,
+                )
+        else:
+            # Phase 3: PGE-Loop (regulärer Ablauf)
+            final_response, all_results, all_plans, all_audit = await self._run_pge_loop(
+                msg, session, wm, tool_schemas, route_decision, agent_workspace, run_id,
+            )
 
         # User- und Antwort-Nachricht in Working Memory speichern (nach PGE-Loop)
         wm.add_message(Message(role=MessageRole.USER, content=msg.text, channel=msg.channel))
@@ -420,11 +443,15 @@ class Gateway:
         # Phase 5: Session persistieren
         await self._persist_session(session, wm)
 
+        # Attachments aus Tool-Ergebnissen extrahieren (z.B. document_export)
+        attachments = self._extract_attachments(all_results)
+
         return OutgoingMessage(
             channel=msg.channel,
             text=final_response,
             session_id=session.session_id,
             is_final=True,
+            attachments=attachments,
         )
 
     # ── handle_message sub-methods ────────────────────────────────
@@ -985,6 +1012,228 @@ class Gateway:
     # =========================================================================
     # Private Methoden
     # =========================================================================
+
+    # Tools whose results are file paths that should be attached to the response
+    _ATTACHMENT_TOOLS: frozenset[str] = frozenset({
+        "document_export",
+    })
+    # File extensions considered valid attachments
+    _ATTACHMENT_EXTENSIONS: frozenset[str] = frozenset({
+        ".pdf", ".docx", ".doc", ".xlsx", ".csv", ".png", ".jpg", ".jpeg", ".gif",
+    })
+
+    def _extract_attachments(self, results: list[ToolResult]) -> list[str]:
+        """Extrahiert Dateipfade aus Tool-Ergebnissen für den Anhang-Versand.
+
+        Prüft ob das Tool-Ergebnis einen gültigen Dateipfad enthält und ob
+        die Datei existiert.
+        """
+        from pathlib import Path
+
+        attachments: list[str] = []
+        for result in results:
+            if not result.success:
+                continue
+            if result.tool_name not in self._ATTACHMENT_TOOLS:
+                continue
+            # content enthält den Dateipfad
+            candidate = result.content.strip()
+            if not candidate:
+                continue
+            try:
+                path = Path(candidate)
+                if path.exists() and path.is_file() and path.suffix.lower() in self._ATTACHMENT_EXTENSIONS:
+                    attachments.append(str(path))
+                    log.info("attachment_detected", tool=result.tool_name, path=str(path))
+            except (ValueError, OSError):
+                continue
+        return attachments
+
+    # ── Automatische Vor-Suche für Faktenfragen ────────────────────
+
+    # Regex-Patterns für Faktenfragen (Wann/Wo/Wer/Was + Verb)
+    _FACT_QUESTION_PATTERNS: list[re.Pattern[str]] = [
+        re.compile(
+            r"\b(wann|wo|wer|was|wie viele|welche[rsmn]?)\b.{3,}(hat|haben|ist|sind|wurde|wurden|war|waren|gibt|gab|passiert|geschehen|entführ|verhaft|angegriff|getötet|gestorben|gewählt|gestürzt)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(when|where|who|what|how many|which)\b.{3,}(did|has|have|was|were|is|are|happened)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(stimmt es|ist es wahr|hat .+ wirklich)\b",
+            re.IGNORECASE,
+        ),
+    ]
+
+    # Begriffe die KEINE Faktenfrage signalisieren (Smalltalk, Meinungen)
+    _SKIP_PRESEARCH_PATTERNS: list[re.Pattern[str]] = [
+        re.compile(r"\b(meinst du|findest du|was denkst du|erkläre mir|was ist ein|definier)\b", re.IGNORECASE),
+        re.compile(r"\b(schreib|erstell|generier|mach|öffne|lösch|speicher|such im memory)\b", re.IGNORECASE),
+    ]
+
+    def _is_fact_question(self, text: str) -> bool:
+        """Prüft ob eine Nachricht eine Faktenfrage ist, die Web-Recherche braucht."""
+        # Zu kurz → wahrscheinlich kein Fakten-Query
+        if len(text) < 15:
+            return False
+
+        # Skip-Patterns prüfen (Befehle, Meinungen, Erklärungen)
+        for skip_pat in self._SKIP_PRESEARCH_PATTERNS:
+            if skip_pat.search(text):
+                return False
+
+        # Faktenfrage-Patterns prüfen
+        for fact_pat in self._FACT_QUESTION_PATTERNS:
+            if fact_pat.search(text):
+                return True
+
+        return False
+
+    async def _maybe_presearch(self, msg: IncomingMessage, wm: "WorkingMemory") -> str | None:
+        """Führt automatisch eine Web-Suche durch wenn die Nachricht eine Faktenfrage ist.
+
+        Returns:
+            Suchergebnis-Text wenn Ergebnisse gefunden wurden, sonst None.
+        """
+        if not self._is_fact_question(msg.text):
+            return None
+
+        # WebTools-Instanz finden
+        web_tools = None
+        if self._mcp_client:
+            web_tools = getattr(self._mcp_client, "_web_tools", None)
+            if web_tools is None:
+                # Fallback: WebTools aus registrierten Handlern extrahieren
+                handler = self._mcp_client.get_handler("web_search")
+                if handler is not None:
+                    # Handler ist eine gebundene Methode von WebTools
+                    web_tools = getattr(handler, "__self__", None)
+
+        if web_tools is None:
+            log.debug("presearch_skip_no_webtools")
+            return None
+
+        # Suchanfrage als Keywords formulieren (nicht als Frage)
+        query = msg.text.strip()
+        # Befehls-Suffixe abschneiden ("Recherchiere das online", etc.)
+        # Längere Phrasen zuerst, damit "bitte such" vor "such" matcht
+        for splitter in ("recherchiere das", "recherchiere", "recherchier",
+                         "bitte such", "such das", "such online",
+                         "finde heraus", "schau nach", "google"):
+            idx = query.lower().find(splitter)
+            if idx > 10:  # Nur abschneiden wenn genug Fragetext davor steht
+                query = query[:idx].strip()
+                break
+        query = query.rstrip("?!.").strip()
+        # Frageworte entfernen für bessere Suchergebnisse
+        for prefix in ("wann hat", "wann haben", "wann wurde", "wann war",
+                        "wo hat", "wo haben", "wo wurde", "wo war",
+                        "wer hat", "wer ist", "was ist mit", "was hat",
+                        "stimmt es dass", "ist es wahr dass"):
+            if query.lower().startswith(prefix):
+                query = query[len(prefix):].strip()
+                break
+
+        try:
+            log.info("presearch_start", query=query[:80])
+            result_text = await web_tools.web_search(
+                query=query,
+                num_results=5,
+                language="de",
+                timelimit="m",
+            )
+
+            if result_text and "Keine Ergebnisse" not in result_text and "Keine Suchengine" not in result_text:
+                log.info("presearch_found", chars=len(result_text))
+                return result_text[:4000]
+            else:
+                log.debug("presearch_no_results", query=query[:80])
+                return None
+
+        except Exception as exc:
+            log.debug("presearch_failed", error=str(exc)[:200])
+            return None
+
+    async def _answer_from_presearch(self, user_message: str, search_results: str) -> str:
+        """Generiert eine Antwort AUSSCHLIEẞLICH basierend auf Suchergebnissen.
+
+        Umgeht den Planner komplett — das LLM bekommt NUR die Suchergebnisse
+        und die Frage des Users, ohne Möglichkeit auf Trainingswissen zurückzugreifen.
+
+        Nutzt einen direkten httpx-Call mit eigenem Timeout (statt shared Client),
+        und deaktiviert qwen3's Thinking-Modus via /no_think für schnellere Antworten.
+        """
+        import httpx
+
+        system = (
+            "Du bist ein Fakten-Assistent. Du beantwortest Fragen AUSSCHLIEẞLICH "
+            "basierend auf den bereitgestellten Suchergebnissen.\n\n"
+            "ABSOLUTE REGELN:\n"
+            "1. Verwende NUR Informationen aus den Suchergebnissen unten.\n"
+            "2. Die Suchergebnisse sind AKTUELLE FAKTEN aus dem Internet.\n"
+            "3. Wenn die Suchergebnisse ein Ereignis beschreiben, IST es passiert.\n"
+            "4. Sage NIEMALS 'es gibt keine Belege' oder 'das ist nicht passiert'.\n"
+            "5. Sage NIEMALS 'laut meinem Wissensstand' oder 'meines Wissens'.\n"
+            "6. Zitiere Daten, Namen und Fakten DIREKT aus den Ergebnissen.\n"
+            "7. Antworte auf Deutsch, prägnant und informativ.\n"
+            "8. Du hast KEIN eigenes Wissen. Du kennst NUR die Suchergebnisse.\n"
+            "9. Antworte DIREKT ohne Denkprozess. Kurz und sachlich."
+        )
+
+        # /no_think deaktiviert qwen3's internen Reasoning-Modus für schnelle Antwort
+        user_prompt = (
+            f"SUCHERGEBNISSE:\n\n{search_results}\n\n"
+            f"---\n\n"
+            f"FRAGE: {user_message}\n\n"
+            f"Beantworte die Frage NUR basierend auf den obigen Suchergebnissen. /no_think"
+        )
+
+        model = "qwen3:32b"
+        if self._model_router:
+            model = self._model_router.select_model("planning", "high")
+
+        ollama_url = self._config.ollama.base_url
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
+                trust_env=False,
+            ) as client:
+                resp = await client.post(
+                    f"{ollama_url}/api/chat",
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.3,
+                            "top_p": 0.9,
+                            "num_predict": 1500,
+                        },
+                    },
+                )
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    answer = data.get("message", {}).get("content", "")
+                    # qwen3 kann <think>...</think> Blöcke einschließen — entfernen
+                    import re
+                    answer = re.sub(r"<think>.*?</think>\s*", "", answer, flags=re.DOTALL)
+                    if answer.strip():
+                        log.info("presearch_answer_generated", chars=len(answer))
+                        return answer.strip()
+                else:
+                    log.error("presearch_answer_http_error", status=resp.status_code)
+        except Exception as exc:
+            log.error("presearch_answer_failed", error=str(exc)[:200])
+
+        # Fallback: regulären PGE-Loop nutzen
+        return ""
 
     def _cleanup_stale_sessions(self) -> None:
         """Remove sessions that have not been accessed for more than _SESSION_TTL_SECONDS.
