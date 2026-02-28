@@ -11,7 +11,7 @@
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C691%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C746%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   </p>
@@ -35,15 +35,20 @@
 - **Enterprise Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance, credential vault, red-teaming
 - **Model Context Protocol (MCP)** — 13+ tool servers (filesystem, shell, memory, web, browser, media)
 - **Agent-to-Agent Protocol (A2A)** — Linux Foundation RC v1.0 for inter-agent communication
-- **React Control Center** — Full-featured web dashboard for config, agents, prompts, cron, MCP, and A2A management
+- **React Control Center** — Full web dashboard (React 19 + Vite 7) with integrated backend launcher, live config editing, agent management, prompt editing, cron jobs, MCP servers, and A2A settings
 - **Auto-Detect Channels** — Channels activate automatically when tokens are present in `.env` — no manual config flags needed
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
-- **4,691 tests** · **89% coverage** · **0 lint errors**
+- **4,746 tests** · **89% coverage** · **0 lint errors**
 
 ## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
+│           Control Center UI (React 19 + Vite 7)              │
+│  Config · Agents · Prompts · Cron · MCP · A2A · Status       │
+├──────────────────────────────────────────────────────────────┤
+│          REST API (FastAPI, 20+ endpoints, port 8741)        │
+├──────────────────────────────────────────────────────────────┤
 │                      Channels (17)                           │
 │  CLI · Web · Telegram · Discord · Slack · WhatsApp · Signal  │
 │  iMessage · Teams · Matrix · Voice · IRC · Twitch · ...      │
@@ -147,66 +152,93 @@ python demo.py           # Full experience (~3 minutes)
 python demo.py --fast    # Speed run (~15 seconds)
 ```
 
-## Modules
+## Project Structure
 
 ```
-src/jarvis/
-├── config.py                      # Configuration system (YAML + env vars)
-├── models.py                      # Pydantic data models (58+ classes)
-├── core/
-│   ├── planner.py                 # LLM planner with re-planning
-│   ├── gatekeeper.py              # Deterministic policy engine (no LLM)
-│   ├── executor.py                # Sandboxed tool executor with audit trail
-│   ├── model_router.py            # Model selection by task type
-│   ├── llm_backend.py             # Multi-provider LLM abstraction (15 backends)
-│   ├── orchestrator.py            # High-level agent orchestration
-│   └── reflector.py               # Reflection, fact extraction, skill synthesis
-├── memory/
-│   ├── manager.py                 # Central memory API (all 5 tiers)
-│   ├── core_memory.py             # Tier 1: CORE.md management
-│   ├── episodic.py                # Tier 2: Daily logs (Markdown)
-│   ├── semantic.py                # Tier 3: Knowledge graph (entities + relations)
-│   ├── procedural.py              # Tier 4: Skills (YAML frontmatter + Markdown)
-│   ├── working.py                 # Tier 5: Session context (RAM)
-│   ├── indexer.py                 # SQLite index (FTS5 + entities + vectors)
-│   ├── search.py                  # 3-channel hybrid search (BM25 + vector + graph)
-│   ├── embeddings.py              # Embedding client with LRU cache
-│   ├── chunker.py                 # Markdown-aware sliding window chunker
-│   └── watcher.py                 # Auto-reindexing (watchdog/polling)
-├── mcp/
-│   ├── client.py                  # Multi-server MCP client (stdio + builtin)
-│   ├── server.py                  # Jarvis as MCP server
-│   ├── filesystem.py              # File tools (path sandbox)
-│   ├── shell.py                   # Shell execution (timeout, sandbox)
-│   ├── memory_server.py           # Memory as 10 MCP tools
-│   ├── web.py                     # Web search and URL fetch
-│   ├── browser.py                 # Browser automation (Playwright, 6 tools)
-│   └── media.py                   # Media pipeline (STT, TTS, image, PDF, 6 tools)
-├── gateway/
-│   └── gateway.py                 # Agent loop, session management, subsystem init
-├── channels/                      # 17 communication channels
-│   ├── base.py                    # Abstract channel interface
-│   ├── cli.py, api.py, webui.py   # Core channels
-│   ├── telegram.py, discord.py    # Chat platforms
-│   ├── whatsapp.py, signal.py     # Encrypted messaging
-│   ├── imessage.py, teams.py      # Platform-specific
-│   ├── voice.py, voice_bridge.py  # Voice I/O (STT/TTS)
-│   └── ...                        # Matrix, IRC, Twitch, Mattermost, Feishu, Google Chat
-├── security/
-│   ├── audit.py                   # Append-only audit trail (SHA-256 chain)
-│   ├── credentials.py             # Credential store (Fernet encrypted)
-│   ├── sandbox.py                 # Multi-level sandbox (L0–L2)
-│   ├── policies.py                # Security policies (path, command, network)
-│   └── sanitizer.py               # Input sanitization (injection protection)
-├── cron/
-│   ├── engine.py                  # Cron engine with APScheduler
-│   └── jobs.py                    # Predefined jobs (backup, cleanup)
-├── a2a/                           # Agent-to-Agent protocol (Linux Foundation RC v1.0)
-├── skills/                        # Skill registry, generator, marketplace
-├── graph/                         # Knowledge graph engine
-├── telemetry/                     # Cost tracking, metrics, tracing
-└── utils/
-    └── logging.py                 # Structured logging (structlog + Rich)
+cognithor/
+├── src/jarvis/                    # Python backend
+│   ├── config.py                  # Configuration system (YAML + env vars)
+│   ├── config_manager.py          # Runtime config management (read/update/save)
+│   ├── models.py                  # Pydantic data models (58+ classes)
+│   ├── core/
+│   │   ├── planner.py             # LLM planner with re-planning
+│   │   ├── gatekeeper.py          # Deterministic policy engine (no LLM)
+│   │   ├── executor.py            # Sandboxed tool executor with audit trail
+│   │   ├── model_router.py        # Model selection by task type
+│   │   ├── llm_backend.py         # Multi-provider LLM abstraction (15 backends)
+│   │   ├── orchestrator.py        # High-level agent orchestration
+│   │   └── reflector.py           # Reflection, fact extraction, skill synthesis
+│   ├── memory/
+│   │   ├── manager.py             # Central memory API (all 5 tiers)
+│   │   ├── core_memory.py         # Tier 1: CORE.md management
+│   │   ├── episodic.py            # Tier 2: Daily logs (Markdown)
+│   │   ├── semantic.py            # Tier 3: Knowledge graph (entities + relations)
+│   │   ├── procedural.py          # Tier 4: Skills (YAML frontmatter + Markdown)
+│   │   ├── working.py             # Tier 5: Session context (RAM)
+│   │   ├── indexer.py             # SQLite index (FTS5 + entities + vectors)
+│   │   ├── search.py              # 3-channel hybrid search (BM25 + vector + graph)
+│   │   ├── embeddings.py          # Embedding client with LRU cache
+│   │   ├── chunker.py             # Markdown-aware sliding window chunker
+│   │   └── watcher.py             # Auto-reindexing (watchdog/polling)
+│   ├── mcp/
+│   │   ├── client.py              # Multi-server MCP client (stdio + builtin)
+│   │   ├── server.py              # Jarvis as MCP server
+│   │   ├── filesystem.py          # File tools (path sandbox)
+│   │   ├── shell.py               # Shell execution (timeout, sandbox)
+│   │   ├── memory_server.py       # Memory as 10 MCP tools
+│   │   ├── web.py                 # Web search and URL fetch
+│   │   ├── browser.py             # Browser automation (Playwright, 6 tools)
+│   │   └── media.py               # Media pipeline (STT, TTS, image, PDF, 6 tools)
+│   ├── gateway/
+│   │   └── gateway.py             # Agent loop, session management, subsystem init
+│   ├── channels/                  # 17 communication channels + Control Center API
+│   │   ├── base.py                # Abstract channel interface
+│   │   ├── config_routes.py       # REST API for Control Center (20+ endpoints)
+│   │   ├── cli.py, api.py         # Core channels
+│   │   ├── telegram.py, discord.py # Chat platforms
+│   │   ├── whatsapp.py, signal.py # Encrypted messaging
+│   │   ├── voice.py               # Voice I/O (STT/TTS)
+│   │   └── ...                    # Teams, Matrix, IRC, Twitch, Mattermost, etc.
+│   ├── security/
+│   │   ├── audit.py               # Append-only audit trail (SHA-256 chain)
+│   │   ├── credentials.py         # Credential store (Fernet encrypted)
+│   │   ├── sandbox.py             # Multi-level sandbox (L0–L2)
+│   │   ├── policies.py            # Security policies (path, command, network)
+│   │   └── sanitizer.py           # Input sanitization (injection protection)
+│   ├── cron/                      # Cron engine with APScheduler
+│   ├── a2a/                       # Agent-to-Agent protocol (Linux Foundation RC v1.0)
+│   ├── skills/                    # Skill registry, generator, marketplace
+│   ├── graph/                     # Knowledge graph engine
+│   ├── telemetry/                 # Cost tracking, metrics, tracing
+│   └── utils/
+│       └── logging.py             # Structured logging (structlog + Rich)
+├── ui/                            # Control Center (React 19 + Vite 7)
+│   ├── vite.config.js             # Dev server with backend launcher plugin
+│   ├── package.json               # Dependencies (react, vite)
+│   ├── index.html                 # Entry point
+│   └── src/
+│       ├── CognithorControlCenter.jsx  # Main dashboard (1,700 LOC)
+│       ├── App.jsx                # App shell
+│       └── main.jsx               # React entry
+├── tests/                         # 4,746 tests
+│   ├── test_core/                 # Planner, Gatekeeper, Executor
+│   ├── test_memory/               # All 5 memory tiers
+│   ├── test_mcp/                  # MCP tools and client
+│   ├── test_channels/             # All channel implementations
+│   ├── test_security/             # Audit, sandbox, policies
+│   ├── test_integration/          # End-to-end tests
+│   ├── test_config_manager.py     # Config manager + API routes
+│   └── test_ui_api_integration.py # 55 Control Center API integration tests
+├── skills/                        # Built-in skill definitions
+├── scripts/                       # Backup, deployment, utilities
+├── deploy/                        # Docker, systemd, nginx configs
+├── apps/                          # PWA app (legacy)
+├── config.yaml.example            # Example configuration
+├── pyproject.toml                 # Python project metadata
+├── Makefile                       # Build, test, lint commands
+├── Dockerfile                     # Container image
+├── docker-compose.yml             # Multi-service deployment
+└── install.sh                     # Interactive installer
 ```
 
 ## Quick Start
@@ -223,7 +255,7 @@ src/jarvis/
 
 ```bash
 # Clone the repository
-git clone https://github.com/cognithor/cognithor.git
+git clone https://github.com/Alex8791-cyber/cognithor.git
 cd cognithor
 
 # Recommended: Interactive installation (venv, Ollama check, systemd, smoke test)
@@ -234,6 +266,9 @@ pip install -e ".[all,dev]"
 
 # Individual feature groups
 pip install -e ".[telegram,voice,web,cron]"
+
+# Control Center UI (optional)
+cd ui && npm install
 ```
 
 The installer offers four modes: `--minimal` (core only), `--full` (all features), `--systemd` (+ service installation), `--uninstall` (removal). Without flags, it starts in interactive mode.
@@ -266,11 +301,14 @@ JARVIS_HOME=~/my-cognithor cognithor
 The React-based Control Center provides a full web dashboard for managing Cognithor:
 
 ```bash
-cd UI/app
-npm install && npm run dev    # → http://localhost:5173
+cd ui
+npm install
+npm run dev    # → http://localhost:5173
 ```
 
-Click **Power On** to start the backend directly from the UI. The Vite dev server automatically spawns and manages the Python backend process. All configuration — agents, prompts, cron jobs, MCP servers, A2A settings — can be edited and saved through the dashboard.
+Click **Power On** to start the backend directly from the UI. The Vite dev server automatically spawns and manages the Python backend process on port 8741 — including orphan detection, clean shutdown, and process lifecycle management. Power Off reliably kills the backend even if it was started externally.
+
+All configuration — agents, prompts, cron jobs, MCP servers, A2A settings — can be edited and saved through the dashboard. Changes persist to YAML files under `~/.jarvis/`.
 
 ### Channel Auto-Detection
 
@@ -376,7 +414,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **4,691 tests** · **100% pass rate** · **89% coverage**
+Current status: **4,746 tests** · **100% pass rate** · **89% coverage**
 
 | Area | Tests | Description |
 |------|-------|-------------|
@@ -385,6 +423,7 @@ Current status: **4,691 tests** · **100% pass rate** · **89% coverage**
 | MCP | 177 | Client, filesystem, shell, memory server, web tools |
 | Channels | 163 | CLI, Telegram, Discord, Slack, WhatsApp, API, WebUI, Voice |
 | Security | 133 | Audit, credentials, policies, sandbox, sanitizer |
+| UI API | 55 | Control Center endpoints (config, agents, prompts, cron, MCP, A2A) |
 | Cron | 57 | Engine, job store, scheduling |
 | Integration | 46 | End-to-end tests, entrypoint |
 
@@ -412,10 +451,20 @@ journalctl --user -u cognithor -f    # Logs
 ### With Docker
 
 ```bash
-docker compose up -d                         # Core
+docker compose up -d                         # Core backend
 docker compose --profile webui up -d         # + Web UI
 docker compose --profile full up -d          # Everything
 ```
+
+### With Control Center UI (Development)
+
+```bash
+cd ui
+npm install
+npm run dev          # Starts Vite on :5173, manages backend on :8741
+```
+
+The Vite dev server includes a launcher plugin that automatically spawns, monitors, and stops the Python backend. Use **Power On** / **Power Off** in the dashboard header to control the backend lifecycle.
 
 ### Backup
 
@@ -454,9 +503,10 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 | **Phase 5** | Multi-agent & security hardening | Done |
 | **Phase 6** | Web UI & voice | Done |
 | **Phase 7** | Control Center UI, API integration, channel auto-detect | Done |
+| **Phase 8** | UI integration into repo, backend launcher, orphan management | Done |
 | **Deploy** | Installer, systemd, Docker, backup, smoke test | Done |
 
-**Metrics:** ~85,000 LOC source · 53,000+ LOC tests · 4,691 tests · 89% coverage · 0 lint errors
+**Metrics:** ~85,000 LOC source · 53,000+ LOC tests · 4,746 tests · 89% coverage · 0 lint errors
 
 ## License
 
