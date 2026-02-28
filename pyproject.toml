@@ -54,6 +54,7 @@ dev = [
 memory = [
     "numpy>=2.0,<3",
     "sqlite-vec>=0.1",
+    "beautifulsoup4>=4.12",
 ]
 vector = [
     "faiss-cpu>=1.7",
