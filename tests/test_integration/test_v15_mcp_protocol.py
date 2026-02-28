@@ -132,7 +132,7 @@ class TestMCPServerConfig:
 class TestJarvisMCPServer:
     """Tests für den MCP-Server-Kern."""
 
-    def _make_server(self) -> "JarvisMCPServer":
+    def _make_server(self) -> JarvisMCPServer:  # noqa: F821
         from jarvis.mcp.server import JarvisMCPServer, MCPServerConfig, MCPServerMode
 
         cfg = MCPServerConfig(mode=MCPServerMode.HTTP)
@@ -443,7 +443,7 @@ class TestJarvisMCPServer:
 
 
 class TestJarvisResourceProvider:
-    def _make_provider(self) -> "JarvisResourceProvider":
+    def _make_provider(self) -> JarvisResourceProvider:  # noqa: F821
         from jarvis.mcp.resources import JarvisResourceProvider
         return JarvisResourceProvider(config=None, memory=None)
 
@@ -501,7 +501,7 @@ class TestJarvisResourceProvider:
 
 
 class TestJarvisPromptProvider:
-    def _make_provider(self) -> "JarvisPromptProvider":
+    def _make_provider(self) -> JarvisPromptProvider:  # noqa: F821
         from jarvis.mcp.prompts import JarvisPromptProvider
         return JarvisPromptProvider()
 

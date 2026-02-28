@@ -12,6 +12,7 @@ Testet:
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest

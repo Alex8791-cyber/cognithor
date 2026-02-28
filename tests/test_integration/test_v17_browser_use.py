@@ -468,7 +468,6 @@ class TestSessionManager:
         snap = SessionSnapshot(session_id="old-1", domain="x.com")
         mgr.save_session(snap)
         # Overwrite file with old timestamp
-        import json
         path = Path(tmpdir) / "old-1.json"
         data = json.loads(path.read_text())
         data["updated_at"] = "2020-01-01T00:00:00Z"
