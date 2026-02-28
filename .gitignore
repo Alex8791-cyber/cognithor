@@ -48,10 +48,12 @@ desktop.ini
 logs/
 *.log
 
-# ── Node (PWA app) ───────────────────────────────────────────────
+# ── Node (PWA app + Control Center UI) ───────────────────────────
 node_modules/
 apps/pwa/dist/
 apps/pwa/node_modules/
+ui/node_modules/
+ui/dist/
 
 # ── Claude Code ──────────────────────────────────────────────────
 .claude/
