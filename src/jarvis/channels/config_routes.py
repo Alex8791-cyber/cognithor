@@ -2014,43 +2014,44 @@ def _register_ui_routes(
         except Exception:
             result["coreMd"] = ""
 
-        # plannerSystem
+        # plannerSystem (fallback to Python constant if file missing or empty)
         try:
             sys_path = prompts_dir / "SYSTEM_PROMPT.txt"
-            if sys_path.exists():
-                result["plannerSystem"] = sys_path.read_text(encoding="utf-8")
-            else:
+            content = sys_path.read_text(encoding="utf-8").strip() if sys_path.exists() else ""
+            if not content:
                 from jarvis.core.planner import SYSTEM_PROMPT
-                result["plannerSystem"] = SYSTEM_PROMPT
+                content = SYSTEM_PROMPT
+            result["plannerSystem"] = content
         except Exception:
             result["plannerSystem"] = ""
 
         # replanPrompt
         try:
             replan_path = prompts_dir / "REPLAN_PROMPT.txt"
-            if replan_path.exists():
-                result["replanPrompt"] = replan_path.read_text(encoding="utf-8")
-            else:
+            content = replan_path.read_text(encoding="utf-8").strip() if replan_path.exists() else ""
+            if not content:
                 from jarvis.core.planner import REPLAN_PROMPT
-                result["replanPrompt"] = REPLAN_PROMPT
+                content = REPLAN_PROMPT
+            result["replanPrompt"] = content
         except Exception:
             result["replanPrompt"] = ""
 
         # escalationPrompt
         try:
             esc_path = prompts_dir / "ESCALATION_PROMPT.txt"
-            if esc_path.exists():
-                result["escalationPrompt"] = esc_path.read_text(encoding="utf-8")
-            else:
+            content = esc_path.read_text(encoding="utf-8").strip() if esc_path.exists() else ""
+            if not content:
                 from jarvis.core.planner import ESCALATION_PROMPT
-                result["escalationPrompt"] = ESCALATION_PROMPT
+                content = ESCALATION_PROMPT
+            result["escalationPrompt"] = content
         except Exception:
             result["escalationPrompt"] = ""
 
         # policyYaml
         try:
             policy_path = cfg.policies_dir / "default.yaml"
-            result["policyYaml"] = policy_path.read_text(encoding="utf-8") if policy_path.exists() else ""
+            content = policy_path.read_text(encoding="utf-8") if policy_path.exists() else ""
+            result["policyYaml"] = content
         except Exception:
             result["policyYaml"] = ""
 
