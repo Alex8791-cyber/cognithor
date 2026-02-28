@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cognithor · Agent OS</title>
+  <meta name="description" content="Local-first autonomous agent operating system. 15 LLM providers, 17 channels, 5-tier cognitive memory, React Control Center, enterprise security.">
+  <meta property="og:title" content="Cognithor · Agent OS">
+  <meta property="og:description" content="Local-first autonomous agent operating system with 15 LLM providers, 17 channels, and a React Control Center.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://alex8791-cyber.github.io/cognithor/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Cognithor · Agent OS">
+  <meta name="twitter:description" content="Local-first autonomous agent OS. 15 LLM providers, 17 channels, 5-tier memory.">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --purple: #bc8cff;
+      --orange: #d29922;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 20px 60px;
+      background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero .tagline {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .hero .sub {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 32px;
+    }
+    .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 36px; }
+    .badges img { height: 22px; }
+    .cta {
+      display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    }
+    .cta a {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.15s;
+    }
+    .cta .primary {
+      background: var(--accent);
+      color: #0d1117;
+    }
+    .cta .primary:hover { background: var(--accent-hover); text-decoration: none; }
+    .cta .secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .cta .secondary:hover { border-color: var(--accent); text-decoration: none; }
+
+    /* Stats bar */
+    .stats {
+      display: flex; justify-content: center; gap: 48px; flex-wrap: wrap;
+      padding: 32px 20px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .stat { text-align: center; }
+    .stat .num { font-size: 2rem; font-weight: 700; color: var(--accent); }
+    .stat .label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Features */
+    .features {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 64px 20px;
+    }
+    .features h2 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 48px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      transition: border-color 0.15s;
+    }
+    .card:hover { border-color: var(--accent); }
+    .card .icon { font-size: 1.5rem; margin-bottom: 12px; }
+    .card h3 { font-size: 1.1rem; margin-bottom: 8px; }
+    .card p { font-size: 0.9rem; color: var(--text-muted); }
+
+    /* Architecture */
+    .arch {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+    .arch h2 { text-align: center; font-size: 2rem; margin-bottom: 32px; }
+    .arch pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    /* Quick Start */
+    .quickstart {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+    .quickstart h2 { text-align: center; font-size: 2rem; margin-bottom: 32px; }
+    .quickstart pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .quickstart pre code { color: var(--text); }
+    .quickstart .comment { color: var(--text-muted); }
+    .quickstart .cmd { color: var(--green); }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--text-muted); }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 2rem; }
+      .stats { gap: 24px; }
+      .stat .num { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<section class="hero">
+  <h1><span>Cognithor</span> · Agent OS</h1>
+  <p class="tagline">Local-first, autonomous agent operating system for personal AI assistance.</p>
+  <p class="sub">Cognition + Thor — Intelligence with Power</p>
+  <div class="badges">
+    <img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python">
+    <img src="https://img.shields.io/badge/tests-4%2C746%20passing-brightgreen?style=flat-square" alt="Tests">
+    <img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage">
+    <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/v/release/Alex8791-cyber/cognithor?style=flat-square&color=blue" alt="Release">
+  </div>
+  <div class="cta">
+    <a class="primary" href="https://github.com/Alex8791-cyber/cognithor">View on GitHub</a>
+    <a class="secondary" href="https://github.com/Alex8791-cyber/cognithor/releases/latest">Download Latest</a>
+  </div>
+</section>
+
+<section class="stats">
+  <div class="stat"><div class="num">15</div><div class="label">LLM Providers</div></div>
+  <div class="stat"><div class="num">17</div><div class="label">Channels</div></div>
+  <div class="stat"><div class="num">5</div><div class="label">Memory Tiers</div></div>
+  <div class="stat"><div class="num">4,746</div><div class="label">Tests</div></div>
+  <div class="stat"><div class="num">89%</div><div class="label">Coverage</div></div>
+</section>
+
+<section class="features">
+  <h2>Features</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="icon">🧠</div>
+      <h3>15 LLM Providers</h3>
+      <p>Ollama (local), OpenAI, Anthropic, Gemini, Groq, DeepSeek, Mistral, Together, OpenRouter, xAI, Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot. Auto-detects from API key.</p>
+    </div>
+    <div class="card">
+      <div class="icon">📡</div>
+      <h3>17 Channels</h3>
+      <p>CLI, Web UI, REST API, Telegram, Discord, Slack, WhatsApp, Signal, iMessage, Teams, Matrix, Google Chat, Mattermost, Feishu, IRC, Twitch, Voice (STT/TTS). Auto-detect from tokens.</p>
+    </div>
+    <div class="card">
+      <div class="icon">💾</div>
+      <h3>5-Tier Cognitive Memory</h3>
+      <p>Core identity, episodic logs, semantic knowledge graph, procedural skills, working memory. 3-channel hybrid search: BM25 + vector + graph.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🛡️</div>
+      <h3>Enterprise Security</h3>
+      <p>Deterministic Gatekeeper (4 risk levels), multi-level sandbox, SHA-256 audit chain, encrypted credential vault, EU AI Act compliance, red-teaming suite.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🎛️</div>
+      <h3>React Control Center</h3>
+      <p>Full web dashboard (React 19 + Vite 7) with backend launcher, live config editing, agent management, prompt editing, cron jobs, MCP servers, A2A settings.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🔧</div>
+      <h3>MCP + A2A Protocols</h3>
+      <p>13+ MCP tool servers (filesystem, shell, memory, web, browser, media). Agent-to-Agent protocol (Linux Foundation RC v1.0) for inter-agent communication.</p>
+    </div>
+    <div class="card">
+      <div class="icon">⚙️</div>
+      <h3>PGE Architecture</h3>
+      <p>Planner (LLM) → Gatekeeper (deterministic policy) → Executor (sandboxed). No hallucinated tool calls — every action is policy-checked before execution.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🔒</div>
+      <h3>100% Local-First</h3>
+      <p>All data stays on your machine. No cloud required — Ollama runs fully local. Optional cloud LLM providers available. Full GDPR compliance.</p>
+    </div>
+    <div class="card">
+      <div class="icon">📚</div>
+      <h3>Procedural Learning</h3>
+      <p>Reflector auto-synthesizes reusable skills from successful sessions. Learned procedures are suggested for future similar requests.</p>
+    </div>
+  </div>
+</section>
+
+<section class="arch">
+  <h2>Architecture</h2>
+  <pre>
+┌──────────────────────────────────────────────────────────────┐
+│           Control Center UI (React 19 + Vite 7)              │
+├──────────────────────────────────────────────────────────────┤
+│          REST API (FastAPI, 20+ endpoints, port 8741)        │
+├──────────────────────────────────────────────────────────────┤
+│                      Channels (17)                           │
+│  CLI · Web · Telegram · Discord · Slack · WhatsApp · Signal  │
+├──────────────────────────────────────────────────────────────┤
+│                    Gateway Layer                              │
+│            Session Management · Agent Loop                    │
+├────────────┬──────────────┬──────────────────────────────────┤
+│  Planner   │  Gatekeeper  │  Executor                        │
+│  (LLM)     │  (Policy)    │  (Sandbox)                       │
+├────────────┴──────────────┴──────────────────────────────────┤
+│              MCP Tool Layer (13+) + A2A Protocol              │
+├──────────────────────────────────────────────────────────────┤
+│              Multi-LLM Backend Layer (15)                     │
+├──────────────────────────────────────────────────────────────┤
+│              5-Tier Cognitive Memory                          │
+│  Core · Episodic · Semantic · Procedural · Working            │
+└──────────────────────────────────────────────────────────────┘</pre>
+</section>
+
+<section class="quickstart">
+  <h2>Quick Start</h2>
+  <pre><code><span class="comment"># Clone and install</span>
+<span class="cmd">git clone https://github.com/Alex8791-cyber/cognithor.git</span>
+<span class="cmd">cd cognithor</span>
+<span class="cmd">pip install -e ".[all,dev]"</span>
+
+<span class="comment"># Pull Ollama models</span>
+<span class="cmd">ollama pull qwen3:32b</span>
+<span class="cmd">ollama pull qwen3:8b</span>
+<span class="cmd">ollama pull nomic-embed-text</span>
+
+<span class="comment"># Start CLI</span>
+<span class="cmd">cognithor</span>
+
+<span class="comment"># Or start the Control Center UI</span>
+<span class="cmd">cd ui && npm install && npm run dev</span></code></pre>
+</section>
+
+<footer>
+  <p>
+    <a href="https://github.com/Alex8791-cyber/cognithor">GitHub</a> ·
+    <a href="https://github.com/Alex8791-cyber/cognithor/releases">Releases</a> ·
+    <a href="https://github.com/Alex8791-cyber/cognithor/blob/main/LICENSE">Apache 2.0</a>
+  </p>
+  <p style="margin-top: 8px;">&copy; 2026 Alexander Soellner. Built with Cognithor.</p>
+</footer>
+
+</body>
+</html>
