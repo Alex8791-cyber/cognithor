@@ -192,7 +192,7 @@ class Gateway:
 
         log.info(
             "gateway_init_complete",
-            ollama_available=llm_ok,
+            llm_available=llm_ok,
             tools=self._mcp_client.get_tool_list(),
             cron_jobs=self._cron_engine.job_count if self._cron_engine else 0,
         )

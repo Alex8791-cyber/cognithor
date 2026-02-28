@@ -125,7 +125,7 @@ def main() -> None:
     # Phase 0 Checkpoint: Setup OK
     log.info(
         "setup_ok",
-        ollama_url=config.ollama.base_url,
+        backend=getattr(config, "llm_backend_type", "ollama"),
         planner_model=config.models.planner.name,
         executor_model=config.models.executor.name,
     )
@@ -357,11 +357,15 @@ def _print_banner(config: Any, api_port: int = 8741) -> None:
     logger.  Keeping it in a dedicated function makes the main flow
     cleaner and easier to test.
     """
+    backend = getattr(config, "llm_backend_type", "ollama")
     print(f"\n{'=' * 60}")
     print(f"  COGNITHOR · Agent OS v{__version__}")
     print(f"  Home:   {config.jarvis_home}")
     print(f"  API:    http://127.0.0.1:{api_port}")
-    print(f"  Ollama: {config.ollama.base_url}")
+    if backend == "ollama":
+        print(f"  Ollama: {config.ollama.base_url}")
+    else:
+        print(f"  Backend: {backend}")
     print(f"  Planner: {config.models.planner.name}")
     print(f"  Executor: {config.models.executor.name}")
     print(f"{'=' * 60}\n")

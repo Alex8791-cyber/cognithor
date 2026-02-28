@@ -518,7 +518,7 @@ class Planner:
         Wird am Ende des Agent-Loops aufgerufen, wenn alle Tools
         ausgeführt wurden und eine zusammenfassende Antwort nötig ist.
         """
-        model = self._router.select_model("planning", "medium")
+        model = self._router.select_model("summarization", "medium")
 
         results_text = self._format_results(results)
 
@@ -563,9 +563,16 @@ class Planner:
                 f"Gib dem User KEINE Anleitungen für Dinge, die du bereits erledigt hast."
             )
 
+        # Aktuelles Datum/Uhrzeit für korrekte zeitliche Bezüge
+        from datetime import datetime
+        now = datetime.now()
+        current_dt = now.strftime("%A, %d. %B %Y, %H:%M Uhr")
+        date_line = f"\nHeutiges Datum und Uhrzeit: {current_dt}\n"
+
         if has_search_results:
             system_content = (
                 "Du bist Jarvis, ein autonomer Agent. Du beantwortest Fragen auf Deutsch.\n"
+                f"{date_line}"
                 "KRITISCHE REGEL: Dein Trainingswissen ist VERALTET. "
                 "Bei Suchergebnissen aus dem Internet basiert deine Antwort AUSSCHLIEẞLICH "
                 "auf den gefundenen Informationen. Die Suchergebnisse sind die WAHRHEIT. "
@@ -575,7 +582,8 @@ class Planner:
             )
         else:
             system_content = (
-                "Du bist Jarvis, ein autonomer Agent. Antworte hilfreich auf Deutsch. "
+                "Du bist Jarvis, ein autonomer Agent. Antworte hilfreich auf Deutsch.\n"
+                f"{date_line}"
                 "Du nutzt Tool-Ergebnisse direkt und gibst dem User NICHT Anleitungen, "
                 "Dinge selbst zu tun. Du löst Probleme eigenständig."
             )
