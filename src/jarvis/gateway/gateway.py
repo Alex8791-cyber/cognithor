@@ -1113,7 +1113,7 @@ class Gateway:
     # Regex-Patterns für Faktenfragen (Wann/Wo/Wer/Was + Verb)
     _FACT_QUESTION_PATTERNS: list[re.Pattern[str]] = [
         re.compile(
-            r"\b(wann|wo|wer|was|wie viele|welche[rsmn]?)\b.{3,}(hat|haben|ist|sind|wurde|wurden|war|waren|gibt|gab|passiert|geschehen|entführ|verhaft|angegriff|getötet|gestorben|gewählt|gestürzt)",
+            r"\b(wann|wo|wer|was|wie viele|welche[rsmn]?)\b.{3,}(hat|haben|ist|sind|wurde|wurden|war|waren|gibt|gab|passiert|geschehen|entführ|verhaft|angegriff|getötet|gestorben|gewählt|gestürzt|finde[nt]?|stattfinde[nt]?|statt|spiele[nt]?|laufe[nt]?|läuft|komm[ent]?|beginne[nt]?|beginn|anfange[nt]?|fängt|endet|aufgetreten|gestartet|eröffnet|erschien|veröffentlich)",
             re.IGNORECASE,
         ),
         re.compile(
@@ -1149,6 +1149,53 @@ class Gateway:
                 return True
 
         return False
+
+    @staticmethod
+    def _resolve_relative_dates(text: str) -> str:
+        """Ersetzt relative Zeitangaben durch konkrete Datumsangaben.
+
+        'morgen' → '01.03.2026', 'heute' → '28.02.2026', etc.
+        """
+        from datetime import datetime, timedelta
+
+        now = datetime.now()
+        today = now.date()
+
+        # Mapping: (regex_pattern, Datum-Offset oder Callback)
+        replacements: list[tuple[str, str]] = [
+            (r"\bheute\b", today.strftime("%d.%m.%Y")),
+            (r"\bmorgen\b", (today + timedelta(days=1)).strftime("%d.%m.%Y")),
+            (r"\bübermorgen\b", (today + timedelta(days=2)).strftime("%d.%m.%Y")),
+            (r"\bgestern\b", (today - timedelta(days=1)).strftime("%d.%m.%Y")),
+            (r"\bvorgestern\b", (today - timedelta(days=2)).strftime("%d.%m.%Y")),
+        ]
+
+        # Wochentags-basierte Auflösung: "nächsten Montag", "am Freitag", etc.
+        _WOCHENTAGE = {
+            "montag": 0, "dienstag": 1, "mittwoch": 2, "donnerstag": 3,
+            "freitag": 4, "samstag": 5, "sonntag": 6,
+        }
+        for tag_name, weekday_num in _WOCHENTAGE.items():
+            days_ahead = (weekday_num - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7  # "am Montag" = nächster Montag
+            target = today + timedelta(days=days_ahead)
+            replacements.append(
+                (rf"\b(?:nächsten?\s+|am\s+|kommenden?\s+)?{tag_name}\b", target.strftime("%d.%m.%Y")),
+            )
+
+        # "nächste Woche" / "diese Woche" / "dieses Wochenende"
+        replacements.append(
+            (r"\bnächste(?:r|s|n)?\s+woche\b", f"Woche ab {(today + timedelta(days=7 - today.weekday())).strftime('%d.%m.%Y')}"),
+        )
+        replacements.append(
+            (r"\bdiese(?:s|r|n)?\s+wochenende\b", f"{(today + timedelta(days=5 - today.weekday())).strftime('%d.%m.%Y')}"),
+        )
+
+        for pattern, replacement in replacements:
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+        return text
 
     async def _maybe_presearch(self, msg: IncomingMessage, wm: "WorkingMemory") -> str | None:
         """Führt automatisch eine Web-Suche durch wenn die Nachricht eine Faktenfrage ist.
@@ -1195,6 +1242,9 @@ class Gateway:
                 query = query[len(prefix):].strip()
                 break
 
+        # Relative Zeitangaben zu konkreten Datumsangaben auflösen
+        query = self._resolve_relative_dates(query)
+
         try:
             log.info("presearch_start", query=query[:80])
             result_text = await web_tools.web_search(
@@ -1221,11 +1271,8 @@ class Gateway:
         Umgeht den Planner komplett — das LLM bekommt NUR die Suchergebnisse
         und die Frage des Users, ohne Möglichkeit auf Trainingswissen zurückzugreifen.
 
-        Nutzt einen direkten httpx-Call mit eigenem Timeout (statt shared Client),
-        und deaktiviert qwen3's Thinking-Modus via /no_think für schnellere Antworten.
+        Nutzt den unified LLM-Client (funktioniert mit jedem Backend).
         """
-        import httpx
-
         system = (
             "Du bist ein Fakten-Assistent. Du beantwortest Fragen AUSSCHLIEẞLICH "
             "basierend auf den bereitgestellten Suchergebnissen.\n\n"
@@ -1249,45 +1296,30 @@ class Gateway:
             f"Beantworte die Frage NUR basierend auf den obigen Suchergebnissen. /no_think"
         )
 
-        model = "qwen3:32b"
+        # Modell via ModelRouter wählen (Backend-agnostisch)
         if self._model_router:
             model = self._model_router.select_model("planning", "high")
-
-        ollama_url = self._config.ollama.base_url
+        else:
+            model = self._config.models.planner.name
 
         try:
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
-                trust_env=False,
-            ) as client:
-                resp = await client.post(
-                    f"{ollama_url}/api/chat",
-                    json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": user_prompt},
-                        ],
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.3,
-                            "top_p": 0.9,
-                            "num_predict": 1500,
-                        },
-                    },
-                )
+            response = await self._llm.chat(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.3,
+                top_p=0.9,
+            )
 
-                if resp.status_code == 200:
-                    data = resp.json()
-                    answer = data.get("message", {}).get("content", "")
-                    # qwen3 kann <think>...</think> Blöcke einschließen — entfernen
-                    import re
-                    answer = re.sub(r"<think>.*?</think>\s*", "", answer, flags=re.DOTALL)
-                    if answer.strip():
-                        log.info("presearch_answer_generated", chars=len(answer))
-                        return answer.strip()
-                else:
-                    log.error("presearch_answer_http_error", status=resp.status_code)
+            answer = response.get("message", {}).get("content", "")
+            # qwen3 kann <think>...</think> Blöcke einschließen — entfernen
+            answer = re.sub(r"<think>.*?</think>\s*", "", answer, flags=re.DOTALL)
+            if answer.strip():
+                log.info("presearch_answer_generated", chars=len(answer))
+                return answer.strip()
+
         except Exception as exc:
             log.error("presearch_answer_failed", error=str(exc)[:200])
 

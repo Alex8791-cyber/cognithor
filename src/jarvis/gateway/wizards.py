@@ -22,6 +22,63 @@ from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
 
+# Ollama-Default-Modelle (Fallback wenn kein Config verfügbar)
+_OLLAMA_MODEL_OPTIONS = [
+    {"value": "", "label": "Standard (vom ModelRouter)"},
+    {"value": "qwen3:8b", "label": "Qwen 3 8B (schnell)"},
+    {"value": "qwen3:32b", "label": "Qwen 3 32B (ausgewogen)"},
+    {"value": "deepseek-r1:70b", "label": "DeepSeek R1 70B (stark)"},
+    {"value": "codestral:22b", "label": "Codestral 22B (Code)"},
+]
+
+
+def _get_backend_info() -> tuple[str, dict[str, dict[str, Any]]]:
+    """Liefert (backend_type, provider_defaults) aus Config."""
+    try:
+        from jarvis.config import JarvisConfig, _PROVIDER_MODEL_DEFAULTS
+
+        config = JarvisConfig()
+        backend = config.llm_backend_type
+        defaults = _PROVIDER_MODEL_DEFAULTS.get(backend, {})
+        return backend, defaults
+    except Exception:
+        return "ollama", {}
+
+
+def _get_model_options() -> list[dict[str, str]]:
+    """Liefert Modell-Optionen basierend auf dem aktiven Backend."""
+    backend, provider_defaults = _get_backend_info()
+
+    if backend == "ollama":
+        return _OLLAMA_MODEL_OPTIONS
+
+    if not provider_defaults:
+        return [{"value": "", "label": "Standard (vom ModelRouter)"}]
+
+    options: list[dict[str, str]] = [
+        {"value": "", "label": "Standard (vom ModelRouter)"},
+    ]
+    for role, model_info in provider_defaults.items():
+        if role in ("planner", "executor", "coder") and isinstance(model_info, dict):
+            name = model_info.get("name", "")
+            if name:
+                label = f"{name} ({role.capitalize()})"
+                options.append({"value": name, "label": label})
+    return options
+
+
+def _get_model_for_role(role: str, fallback: str = "") -> str:
+    """Liefert den Modellnamen für eine Rolle basierend auf dem Backend."""
+    backend, provider_defaults = _get_backend_info()
+
+    if backend == "ollama":
+        return fallback
+
+    role_info = provider_defaults.get(role, {})
+    if isinstance(role_info, dict) and role_info.get("name"):
+        return role_info["name"]
+    return fallback
+
 
 # ============================================================================
 # Wizard-Framework
@@ -520,13 +577,7 @@ class AgentWizard(BaseWizard):
                 field_type=WizardStepType.SELECT,
                 field_name="preferred_model",
                 default="",
-                options=[
-                    {"value": "", "label": "Standard (vom ModelRouter)"},
-                    {"value": "qwen3:8b", "label": "Qwen 3 8B (schnell)"},
-                    {"value": "qwen3:32b", "label": "Qwen 3 32B (ausgewogen)"},
-                    {"value": "deepseek-r1:70b", "label": "DeepSeek R1 70B (stark)"},
-                    {"value": "codestral:22b", "label": "Codestral 22B (Code)"},
-                ],
+                options=_get_model_options(),
             ),
             WizardStep(
                 step_id="a_tools",
@@ -584,7 +635,7 @@ class AgentWizard(BaseWizard):
                 preset_values={
                     "name": "coder",
                     "system_prompt": "Du bist ein erfahrener Entwickler. Schreibe sauberen, getesteten Code.",
-                    "preferred_model": "codestral:22b",
+                    "preferred_model": _get_model_for_role("coder", "codestral:22b"),
                     "allowed_tools": ["shell", "filesystem", "web"],
                     "sandbox_profile": "standard",
                 },
@@ -610,7 +661,7 @@ class AgentWizard(BaseWizard):
                 preset_values={
                     "name": "family_assistant",
                     "system_prompt": "Du hilfst bei Familienorganisation: Termine, Einkäufe, Erinnerungen.",
-                    "preferred_model": "qwen3:8b",
+                    "preferred_model": _get_model_for_role("executor", "qwen3:8b"),
                     "allowed_tools": ["calendar", "memory"],
                     "sandbox_profile": "minimal",
                 },

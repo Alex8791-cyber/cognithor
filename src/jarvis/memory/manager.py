@@ -20,7 +20,7 @@ import anyio
 from jarvis.config import JarvisConfig
 from jarvis.memory.chunker import chunk_file, chunk_text
 from jarvis.memory.core_memory import CoreMemory
-from jarvis.memory.embeddings import EmbeddingClient
+from jarvis.memory.embeddings import EmbeddingClient, create_embedding_provider
 from jarvis.memory.enhanced_retrieval import (
     EnhancedSearchPipeline,
     EpisodicCompressor,
@@ -73,11 +73,12 @@ class MemoryManager:
         # Tier 4: Procedural Memory
         self._procedural = ProceduralMemory(self._config.procedures_dir)
 
-        # Embedding Client
+        # Embedding Client (Provider basierend auf LLM-Backend)
+        _emb_provider = create_embedding_provider(self._config)
         self._embeddings = EmbeddingClient(
             model=self._config.models.embedding.name,
-            base_url=self._config.ollama.base_url,
             dimensions=self._config.models.embedding.embedding_dimensions,
+            provider=_emb_provider,
         )
 
         # Episodic Store (SQLite-basiert, optional)

@@ -430,13 +430,24 @@ class TelegramChannel(Channel):
         # Direkte Vision-Analyse (kein Planner nötig)
         typing_task = self._start_typing(chat_id)
         try:
-            from jarvis.mcp.media import DEFAULT_OLLAMA_MODEL, MediaPipeline
+            from jarvis.mcp.media import MediaPipeline
+
+            # Vision-Modell aus Config (auto-adaptiert je nach Backend)
+            try:
+                from jarvis.config import load_config
+                _cfg = load_config()
+                _vision_model = _cfg.vision_model
+                _ollama_url = _cfg.ollama.base_url
+            except Exception:
+                _vision_model = "openbmb/minicpm-v4.5"
+                _ollama_url = "http://localhost:11434"
 
             pipeline = MediaPipeline()
             result = await pipeline.analyze_image(
                 str(photo_path),
                 prompt=user_question,
-                model=DEFAULT_OLLAMA_MODEL,
+                model=_vision_model,
+                ollama_url=_ollama_url,
             )
 
             if result.success and result.text:
@@ -455,7 +466,7 @@ class TelegramChannel(Channel):
 
             logger.info(
                 "Foto analysiert für User %d: %s (%s)",
-                user_id, photo_path, DEFAULT_OLLAMA_MODEL,
+                user_id, photo_path, _vision_model,
             )
         except Exception:
             logger.exception("Fehler bei Vision-Analyse für User %d", user_id)

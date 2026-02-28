@@ -465,7 +465,8 @@ def _register_config_routes(
         from jarvis.config_manager import _is_secret_field
         results: list[dict[str, Any]] = []
         for key, value in updates.items():
-            # Skip masked secret values — the UI sends "***" back for secrets
+            # Skip masked secret values — the UI sends "***" for untouched secrets.
+            # Real changes (new value or "") are passed through and persisted.
             if value == "***" and _is_secret_field(key):
                 results.append({"key": key, "status": "skipped"})
                 continue
@@ -558,8 +559,43 @@ def _register_config_routes(
     async def update_config_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
         """Aktualisiert eine Konfigurations-Sektion."""
         from jarvis.config_manager import _is_secret_field
-        # Strip masked secret placeholders so "***" is never written back
-        cleaned = {k: v for k, v in values.items() if not (v == "***" and _is_secret_field(k))}
+
+        def _deep_clean_secrets(
+            data: dict[str, Any],
+            existing: dict[str, Any] | None = None,
+            *,
+            _depth: int = 0,
+        ) -> dict[str, Any]:
+            """Recursively strip masked ('***') and empty secret values."""
+            if _depth > 5:
+                return data
+            out: dict[str, Any] = {}
+            for k, v in data.items():
+                if isinstance(v, dict):
+                    ex_sub = existing.get(k) if isinstance(existing, dict) else None
+                    cleaned_sub = _deep_clean_secrets(
+                        v,
+                        ex_sub if isinstance(ex_sub, dict) else None,
+                        _depth=_depth + 1,
+                    )
+                    if cleaned_sub:  # only include non-empty dicts
+                        out[k] = cleaned_sub
+                elif _is_secret_field(k):
+                    if v == "***":
+                        continue  # skip masked placeholders
+                    if (v == "" or v is None) and existing:
+                        ex_val = existing.get(k, "") if isinstance(existing, dict) else ""
+                        if ex_val and ex_val != "":
+                            continue  # protect existing non-empty secret
+                    out[k] = v
+                else:
+                    out[k] = v
+            return out
+
+        # Get existing section values (raw, unmasked) for protection comparison
+        raw_cfg = config_manager.config.model_dump(mode="json")
+        existing_section = raw_cfg.get(section, {}) if isinstance(raw_cfg.get(section), dict) else {}
+        cleaned = _deep_clean_secrets(values, existing_section)
         try:
             config_manager.update_section(section, cleaned)
             config_manager.save()

@@ -135,7 +135,7 @@ async def init_tools(
     # Media-Tools (Audio/Image/Document processing)
     try:
         from jarvis.mcp.media import register_media_tools
-        register_media_tools(mcp_client)
+        register_media_tools(mcp_client, config)
     except Exception:
         log.warning("media_tools_not_registered")
 

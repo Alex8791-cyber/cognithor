@@ -52,7 +52,7 @@ class TestHealthcheck:
 
         result = health_status(ollama_available=False)
         assert result["status"] == "degraded"
-        assert "Ollama" in result["errors"][0]
+        assert "nicht erreichbar" in result["errors"][0]
 
     def test_degraded_with_errors(self):
         """Mit expliziten Fehlern: Status 'degraded'."""

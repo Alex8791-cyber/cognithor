@@ -44,27 +44,36 @@ async def init_core(config: Any) -> PhaseResult:
 
     # Unified LLM Client
     llm = UnifiedLLMClient.create(config)
-    ollama = llm._ollama  # Legacy access
+    ollama = llm._ollama  # Legacy access (kann None sein bei API-Modus)
     llm_ok = await llm.is_available()
 
     if not llm_ok:
-        log.warning(
-            "llm_not_available",
-            backend=llm.backend_type,
-            url=config.ollama.base_url,
-            message="Jarvis startet trotzdem, aber LLM-Funktionen sind eingeschraenkt.",
-        )
+        if llm.backend_type == "ollama":
+            log.warning(
+                "llm_not_available",
+                backend=llm.backend_type,
+                url=config.ollama.base_url,
+                message="Jarvis startet trotzdem, aber LLM-Funktionen sind eingeschraenkt.",
+            )
+        else:
+            log.warning(
+                "llm_not_available",
+                backend=llm.backend_type,
+                message=f"LLM-Backend '{llm.backend_type}' nicht erreichbar. "
+                        f"Jarvis startet trotzdem, aber LLM-Funktionen sind eingeschraenkt.",
+            )
     else:
         log.info("llm_backend_ready", backend=llm.backend_type)
 
     result["llm"] = llm
-    result["ollama"] = ollama
+    result["ollama"] = ollama  # kann None sein
 
     # Model Router
     if llm._backend is not None:
         model_router = ModelRouter.from_backend(config, llm._backend)
     else:
-        model_router = ModelRouter(config, ollama)
+        model_router = ModelRouter(config, llm._ollama)
+
     if llm_ok:
         await model_router.initialize()
 

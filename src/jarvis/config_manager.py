@@ -258,7 +258,27 @@ class ConfigManager:
             raise ValueError(msg)
 
         current = self._config.model_dump(mode="json")
+        old_value = current.get(key)
         current[key] = value
+
+        # Log secret field changes (without exposing actual values)
+        if _is_secret_field(key):
+            had_value = bool(old_value and old_value != "")
+            gets_value = bool(value and value != "" and value != "***")
+            if had_value and not gets_value:
+                log.warning(
+                    "config_secret_field_cleared",
+                    key=key,
+                    msg="A secret field with a real value is being cleared — "
+                        "this may indicate a UI bug sending default values",
+                )
+            else:
+                log.info(
+                    "config_secret_field_update",
+                    key=key,
+                    had_value=had_value,
+                    gets_value=gets_value,
+                )
 
         try:
             new_config = JarvisConfig(**current)
@@ -277,12 +297,19 @@ class ConfigManager:
     def save(self, path: Path | None = None) -> Path:
         """Speichert die Konfiguration in config.yaml.
 
+        Schreibt atomar: erst in eine temporäre Datei, dann rename.
+        So kann ein Absturz während des Schreibens die bestehende
+        config.yaml nicht korrumpieren.
+
         Args:
             path: Ziel-Pfad. Default: config_path oder config.config_file.
 
         Returns:
             Pfad der gespeicherten Datei.
         """
+        import os
+        import tempfile
+
         target = path or self._config_path or self._config.config_file
 
         # Serialisieren
@@ -297,14 +324,31 @@ class ConfigManager:
         self._strip_masked_secrets(data)
 
         target.parent.mkdir(parents=True, exist_ok=True)
-        with open(target, "w", encoding="utf-8") as f:
-            yaml.dump(
-                data,
-                f,
-                default_flow_style=False,
-                allow_unicode=True,
-                sort_keys=False,
+
+        # Atomic write: temp file in same directory → rename
+        try:
+            fd, tmp_path = tempfile.mkstemp(
+                dir=str(target.parent),
+                prefix=".config_",
+                suffix=".yaml.tmp",
             )
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                yaml.dump(
+                    data,
+                    f,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False,
+                )
+            # On Windows os.rename fails if target exists; use os.replace
+            os.replace(tmp_path, str(target))
+        except Exception:
+            # Clean up temp file on failure
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
         log.info("config_saved", path=str(target))
 

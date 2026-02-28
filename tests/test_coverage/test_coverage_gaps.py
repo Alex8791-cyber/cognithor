@@ -301,7 +301,7 @@ class TestEmbeddingClient:
         mock_http = AsyncMock()
         mock_http.post.return_value = mock_response
         mock_http.is_closed = False
-        client._client = mock_http
+        client._provider._client = mock_http
 
         result = await client.embed_text("Projektmanagement", content_hash="ins-hash")
         assert result.cached is False
@@ -317,7 +317,7 @@ class TestEmbeddingClient:
         mock_http = AsyncMock()
         mock_http.post.side_effect = httpx.HTTPError("Connection refused")
         mock_http.is_closed = False
-        client._client = mock_http
+        client._provider._client = mock_http
 
         with pytest.raises(httpx.HTTPError):
             await client.embed_text("test")
@@ -334,7 +334,7 @@ class TestEmbeddingClient:
         mock_http = AsyncMock()
         mock_http.post.return_value = mock_response
         mock_http.is_closed = False
-        client._client = mock_http
+        client._provider._client = mock_http
 
         with pytest.raises(ValueError, match="Keine Embeddings"):
             await client.embed_text("test")
@@ -351,7 +351,7 @@ class TestEmbeddingClient:
         mock_http = AsyncMock()
         mock_http.post.return_value = mock_response
         mock_http.is_closed = False
-        client._client = mock_http
+        client._provider._client = mock_http
 
         result = await client.embed_text("test")  # Kein content_hash
         assert result.cached is False
@@ -371,7 +371,7 @@ class TestEmbeddingClient:
         mock_http = AsyncMock()
         mock_http.post.return_value = mock_response
         mock_http.is_closed = False
-        client._client = mock_http
+        client._provider._client = mock_http
 
         results = await client.embed_batch(
             ["cached text", "new text"],
@@ -399,7 +399,7 @@ class TestEmbeddingClient:
         mock_http = AsyncMock()
         mock_http.post.return_value = mock_response
         mock_http.is_closed = False
-        client._client = mock_http
+        client._provider._client = mock_http
 
         results = await client.embed_batch(["text1"])
         assert len(results) == 1
@@ -426,7 +426,7 @@ class TestEmbeddingClient:
         """Client schließt httpx-Client sauber."""
         mock_http = AsyncMock()
         mock_http.is_closed = False
-        client._client = mock_http
+        client._provider._client = mock_http
 
         await client.close()
         mock_http.aclose.assert_awaited_once()
@@ -436,23 +436,23 @@ class TestEmbeddingClient:
         """Close bei bereits geschlossenem Client ist no-op."""
         mock_http = MagicMock()
         mock_http.is_closed = True
-        client._client = mock_http
+        client._provider._client = mock_http
 
         await client.close()  # Sollte nicht crashen
 
     @pytest.mark.asyncio()
     async def test_close_no_client(self, client):
         """Close ohne Client ist no-op."""
-        client._client = None
+        client._provider._client = None
         await client.close()  # Sollte nicht crashen
 
     @pytest.mark.asyncio()
     async def test_get_client_lazy_init(self, client):
-        """_get_client erstellt Client lazy."""
-        assert client._client is None
-        http_client = await client._get_client()
+        """_get_client erstellt Client lazy (via Provider)."""
+        assert client._provider._client is None
+        http_client = await client._provider._get_client()
         assert http_client is not None
-        assert client._client is not None
+        assert client._provider._client is not None
         await client.close()
 
 

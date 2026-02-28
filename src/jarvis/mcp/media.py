@@ -32,9 +32,9 @@ MAX_EXTRACT_LENGTH = 15_000
 # Maximale Bilddateigroesse fuer Base64-Encoding (10 MB)
 MAX_IMAGE_FILE_SIZE = 10_485_760
 
-# Standard-Modelle und -Stimmen
-DEFAULT_OLLAMA_MODEL = "openbmb/minicpm-v4.5"
-DETAIL_OLLAMA_MODEL = "qwen3-vl:32b"
+# Standard-Modelle und -Stimmen (Fallbacks, wenn kein Config verfügbar)
+_DEFAULT_VISION_MODEL = "openbmb/minicpm-v4.5"
+_DEFAULT_VISION_MODEL_DETAIL = "qwen3-vl:32b"
 DEFAULT_IMAGE_PROMPT = "Beschreibe dieses Bild detailliert auf Deutsch."
 DEFAULT_PIPER_VOICE = "de_DE-thorsten-high"
 
@@ -149,7 +149,7 @@ class MediaPipeline:
         image_path: str,
         *,
         prompt: str = DEFAULT_IMAGE_PROMPT,
-        model: str = DEFAULT_OLLAMA_MODEL,
+        model: str = _DEFAULT_VISION_MODEL,
         ollama_url: str = "http://localhost:11434",
     ) -> MediaResult:
         """Analysiert ein Bild mit einem multimodalen LLM (Ollama).
@@ -849,15 +849,21 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
 }
 
 
-def register_media_tools(mcp_client: Any) -> MediaPipeline:
+def register_media_tools(mcp_client: Any, config: Any = None) -> MediaPipeline:
     """Registriert Media-MCP-Tools beim MCP-Client.
 
     Args:
         mcp_client: JarvisMCPClient-Instanz.
+        config: JarvisConfig-Instanz (optional, für Vision-Modell-Auswahl).
 
     Returns:
         MediaPipeline-Instanz.
     """
+    # Vision-Modelle aus Config oder Fallback-Defaults
+    vision_model = getattr(config, "vision_model", _DEFAULT_VISION_MODEL) if config else _DEFAULT_VISION_MODEL
+    vision_model_detail = getattr(config, "vision_model_detail", _DEFAULT_VISION_MODEL_DETAIL) if config else _DEFAULT_VISION_MODEL_DETAIL
+    ollama_url = getattr(getattr(config, "ollama", None), "base_url", "http://localhost:11434") if config else "http://localhost:11434"
+
     pipeline = MediaPipeline()
 
     async def _transcribe(audio_path: str, language: str = "de", model: str = "base", **_: Any) -> str:
@@ -867,10 +873,10 @@ def register_media_tools(mcp_client: Any) -> MediaPipeline:
         return result.text if result.success else f"Fehler: {result.error}"
 
     async def _analyze_image(image_path: str, prompt: str = DEFAULT_IMAGE_PROMPT, detail: bool = False, **_: Any) -> str:
-        model = DETAIL_OLLAMA_MODEL if detail else DEFAULT_OLLAMA_MODEL
+        model = vision_model_detail if detail else vision_model
         log.info("vision_model_selected", model=model, detail=detail)
         result = await pipeline.analyze_image(
-            image_path, prompt=prompt, model=model,
+            image_path, prompt=prompt, model=model, ollama_url=ollama_url,
         )
         return result.text if result.success else f"Fehler: {result.error}"
 

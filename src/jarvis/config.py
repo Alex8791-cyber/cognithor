@@ -306,6 +306,7 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["semantic-search"],
             "speed": "fast",
+            "embedding_dimensions": 3072,
         },
         "vision": {
             "name": "gpt-5.2",
@@ -373,6 +374,7 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["semantic-search"],
             "speed": "fast",
+            "embedding_dimensions": 768,
         },
         "vision": {
             "name": "gemini-2.5-pro",
@@ -475,6 +477,7 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["semantic-search"],
             "speed": "fast",
+            "embedding_dimensions": 1024,
         },
         "vision": {
             "name": "pixtral-large-latest",
@@ -643,6 +646,7 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["semantic-search"],
             "speed": "fast",
+            "embedding_dimensions": 3072,
         },
         "vision": {
             "name": "gpt-4.1",
@@ -676,6 +680,7 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["semantic-search"],
             "speed": "fast",
+            "embedding_dimensions": 1024,
         },
         "vision": {
             "name": "us.anthropic.claude-sonnet-4-6-v1:0",
@@ -1090,6 +1095,8 @@ class JarvisConfig(BaseModel):
                     object.__setattr__(current_model, "vram_gb", new_model.vram_gb)
                     object.__setattr__(current_model, "strengths", new_model.strengths)
                     object.__setattr__(current_model, "speed", new_model.speed)
+                    if "embedding_dimensions" in role_defaults:
+                        object.__setattr__(current_model, "embedding_dimensions", new_model.embedding_dimensions)
 
         # Heartbeat-Modell ebenfalls anpassen wenn noch auf Ollama-Default
         if self.heartbeat.model in _OLLAMA_DEFAULT_MODEL_NAMES:

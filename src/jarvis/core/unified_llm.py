@@ -41,15 +41,15 @@ class UnifiedLLMClient:
 
     def __init__(
         self,
-        ollama_client: OllamaClient,
+        ollama_client: OllamaClient | None,
         backend: Any | None = None,
     ) -> None:
         """Erstellt den unified Client.
 
         Args:
-            ollama_client: Fallback OllamaClient (immer vorhanden).
+            ollama_client: Optionaler OllamaClient (nur bei Ollama-Modus oder Fallback).
             backend: Optionales LLMBackend aus llm_backend.py.
-                     Wenn None, wird direkt OllamaClient genutzt.
+                     Wenn None und ollama_client vorhanden, wird direkt OllamaClient genutzt.
         """
         self._ollama = ollama_client
         self._backend = backend
@@ -70,9 +70,9 @@ class UnifiedLLMClient:
         Returns:
             Konfigurierter UnifiedLLMClient.
         """
-        ollama_client = OllamaClient(config)
-
         backend = None
+        ollama_client: OllamaClient | None = None
+
         if config.llm_backend_type != "ollama":
             try:
                 from jarvis.core.llm_backend import create_backend
@@ -90,6 +90,11 @@ class UnifiedLLMClient:
                     fallback="ollama",
                 )
                 backend = None
+                # Backend-Erstellung fehlgeschlagen → Ollama als Fallback
+                ollama_client = OllamaClient(config)
+        else:
+            # Ollama-Modus: OllamaClient erstellen
+            ollama_client = OllamaClient(config)
 
         return cls(ollama_client, backend)
 
@@ -129,6 +134,8 @@ class UnifiedLLMClient:
         """
         if self._backend is None:
             # Direkt an OllamaClient weiterleiten
+            if self._ollama is None:
+                raise OllamaError("Kein LLM-Backend verfügbar (weder API noch Ollama)")
             return await self._ollama.chat(
                 model=model,
                 messages=messages,
@@ -198,6 +205,8 @@ class UnifiedLLMClient:
             Dicts im Format: {"message": {"content": "token"}, "done": false}
         """
         if self._backend is None:
+            if self._ollama is None:
+                raise OllamaError("Kein LLM-Backend verfügbar (weder API noch Ollama)")
             async for token in self._ollama.chat_stream(
                 model=model,
                 messages=messages,
@@ -238,6 +247,8 @@ class UnifiedLLMClient:
     async def embed(self, model: str, text: str) -> dict[str, Any]:
         """Embedding im Ollama-Format: {"embedding": [0.1, 0.2, ...]}."""
         if self._backend is None:
+            if self._ollama is None:
+                raise OllamaError("Kein LLM-Backend verfügbar für Embeddings")
             vec = await self._ollama.embed(model, text)
             return {"embedding": vec} if not isinstance(vec, dict) else vec
 
@@ -245,16 +256,20 @@ class UnifiedLLMClient:
             response = await self._backend.embed(model, text)
             return {"embedding": response.embedding}
         except (NotImplementedError, LLMBackendError):
-            # Anthropic hat kein Embedding → Ollama-Fallback
-            log.info("embedding_fallback_to_ollama", backend=self._backend_type)
-            vec = await self._ollama.embed(model, text)
-            return {"embedding": vec} if not isinstance(vec, dict) else vec
+            # Backend hat kein Embedding → Ollama-Fallback nur wenn verfügbar
+            if self._ollama is not None:
+                log.info("embedding_fallback_to_ollama", backend=self._backend_type)
+                vec = await self._ollama.embed(model, text)
+                return {"embedding": vec} if not isinstance(vec, dict) else vec
+            raise
         except Exception as exc:
             raise OllamaError(f"Embedding-Fehler: {exc}") from exc
 
     async def batch_embed(self, model: str, texts: list[str]) -> list[dict[str, Any]]:
         """Batch-Embedding. Nutzt Backend wenn möglich, sonst OllamaClient."""
         if self._backend is None:
+            if self._ollama is None:
+                raise OllamaError("Kein LLM-Backend verfügbar für Embeddings")
             vecs = await self._ollama.embed_batch(model, texts)
             return [{"embedding": v} if not isinstance(v, dict) else v for v in vecs]
 
@@ -276,7 +291,9 @@ class UnifiedLLMClient:
                 return await self._backend.is_available()
             except Exception:
                 return False
-        return await self._ollama.is_available()
+        if self._ollama is not None:
+            return await self._ollama.is_available()
+        return False
 
     async def list_models(self) -> list[str]:
         """Listet verfügbare Modelle."""
@@ -285,7 +302,9 @@ class UnifiedLLMClient:
                 return await self._backend.list_models()
             except Exception:
                 return []
-        return await self._ollama.list_models()
+        if self._ollama is not None:
+            return await self._ollama.list_models()
+        return []
 
     async def close(self) -> None:
         """Schließt alle Verbindungen."""
@@ -294,7 +313,8 @@ class UnifiedLLMClient:
                 await self._backend.close()
             except Exception:
                 pass
-        await self._ollama.close()
+        if self._ollama is not None:
+            await self._ollama.close()
 
     @property
     def backend_type(self) -> str:

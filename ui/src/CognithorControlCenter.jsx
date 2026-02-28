@@ -1123,6 +1123,8 @@ export default function App() {
   const [appStatus, setAppStatus] = useState("stopped"); // "running", "stopped", "starting", "stopping"
   const [menuOpen, setMenuOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const configLoadedRef = useRef(false);
+  const prevStatusRef = useRef("stopped");
   const [validationErrors, setValidationErrors] = useState({});
   const { toasts, add: toast, dismiss: dismissToast } = useToast();
 
@@ -1134,6 +1136,7 @@ export default function App() {
   const [mcpServers, setMcpServers] = useState({ mode: "disabled", external_servers: {} });
   const [a2a, setA2a] = useState({ enabled: false, host: "127.0.0.1", port: 3002, agent_name: "Jarvis" });
   const [prompts, setPrompts] = useState(defaultPrompts());
+  const [promptsLoaded, setPromptsLoaded] = useState(false);
   const defaultPromptsRef = useRef(defaultPrompts());
   const [agents, setAgents] = useState([{ name: "jarvis", display_name: "Jarvis", description: "Haupt-Agent (Default)", system_prompt: "", language: "de", trigger_patterns: [], trigger_keywords: [], priority: 0, allowed_tools: null, blocked_tools: [], preferred_model: "", temperature: 0.7, enabled: true }]);
   const [bindings, setBindings] = useState([]);
@@ -1151,17 +1154,59 @@ export default function App() {
     return currentSnapshot !== savedSnapshot;
   }, [currentSnapshot, savedSnapshot]);
 
-  // App Status Polling
+  // Fix #25: Reusable config loader — called on mount AND when backend starts.
+  // Only sets loaded=true when the backend is reachable and config is fetched.
+  // This prevents default/empty values from being saved to disk.
+  const loadAllConfig = useCallback(async () => {
+    const data = await api("GET", "/config");
+    if (!data || data.error) return false;
+    setCfg(prev => ({ ...prev, ...data }));
+    const agentData = await api("GET", "/agents");
+    if (agentData?.agents?.length) setAgents(agentData.agents);
+    const bindData = await api("GET", "/bindings");
+    if (bindData?.bindings?.length) setBindings(bindData.bindings);
+    const promptData = await api("GET", "/prompts");
+    if (promptData && !promptData.error) {
+      setPrompts(promptData);
+      setPromptsLoaded(true);
+      defaultPromptsRef.current = { ...defaultPrompts(), ...promptData };
+    }
+    const cronData = await api("GET", "/cron-jobs");
+    if (cronData?.jobs?.length) setCronJobs(cronData.jobs);
+    const mcpData = await api("GET", "/mcp-servers");
+    if (mcpData && !mcpData.error) setMcpServers(mcpData);
+    const a2aData = await api("GET", "/a2a");
+    if (a2aData && !a2aData.error) setA2a(a2aData);
+    configLoadedRef.current = true;
+    // Reset snapshot so dirty-state tracking recaptures real backend values
+    setSavedSnapshot("");
+    setLoaded(true);
+    return true;
+  }, []); // All setters are stable React refs — no deps needed
+
+  // App Status Polling — auto-reload config when backend transitions to "running"
   useEffect(() => {
     const checkStatus = async () => {
-      // Dummy-Annahme: Das API "/system/status" gibt { status: "running" | "stopped" } zurück.
       const res = await api("GET", "/system/status");
-      if (res && res.status) setAppStatus(res.status);
+      if (res && res.status) {
+        const prev = prevStatusRef.current;
+        prevStatusRef.current = res.status;
+        setAppStatus(res.status);
+        // Backend just came up — reload config from the now-running backend
+        if (res.status === "running" && prev !== "running" && !configLoadedRef.current) {
+          await loadAllConfig();
+        }
+        // Backend went down — mark config as stale so saves are blocked
+        // and config will auto-reload when backend comes back
+        if (res.status !== "running" && configLoadedRef.current) {
+          configLoadedRef.current = false;
+        }
+      }
     };
     checkStatus();
     const interval = setInterval(checkStatus, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadAllConfig]);
 
   const toggleAppStatus = async () => {
     if (appStatus === "running") {
@@ -1180,6 +1225,8 @@ export default function App() {
       if (!res.error) {
         setAppStatus("running");
         toast("Cognithor/Jarvis wurde gestartet.", "success");
+        // Reload all config data from the now-running backend
+        await loadAllConfig();
       } else {
         setAppStatus("stopped");
         toast(`Fehler beim Starten: ${res.error}`, "error");
@@ -1203,39 +1250,29 @@ export default function App() {
     });
   }, []);
 
-  // Fix #5: Load config from API with loading state
-  useEffect(() => {
-    (async () => {
-      const data = await api("GET", "/config");
-      if (data && !data.error) {
-        setCfg(prev => ({ ...prev, ...data }));
-      }
-      setLoaded(true);
-      const agentData = await api("GET", "/agents");
-      if (agentData?.agents?.length) setAgents(agentData.agents);
-      const bindData = await api("GET", "/bindings");
-      if (bindData?.bindings?.length) setBindings(bindData.bindings);
-      // B9+B10: Load prompts, cronJobs, mcpServers, a2a from API
-      const promptData = await api("GET", "/prompts");
-      if (promptData && !promptData.error) { setPrompts(promptData); defaultPromptsRef.current = { ...defaultPrompts(), ...promptData }; }
-      const cronData = await api("GET", "/cron-jobs");
-      if (cronData?.jobs?.length) setCronJobs(cronData.jobs);
-      const mcpData = await api("GET", "/mcp-servers");
-      if (mcpData && !mcpData.error) setMcpServers(mcpData);
-      const a2aData = await api("GET", "/a2a");
-      if (a2aData && !a2aData.error) setA2a(a2aData);
-    })();
-  }, []);
+  // Fix #25: Load config from API — only marks loaded when backend responds.
+  // If backend is not running, loaded stays false → UI shows waiting message
+  // and saves are blocked until real config has been fetched.
+  useEffect(() => { loadAllConfig(); }, [loadAllConfig]);
 
-  // B4: Set initial snapshot AFTER all state is loaded (one-time)
+  // B4: Set initial snapshot AFTER all state is loaded.
+  // Also re-runs when savedSnapshot is reset (e.g. after config reload from backend).
   useEffect(() => {
     if (loaded && !savedSnapshot) {
       setSavedSnapshot(JSON.stringify({ cfg, agents, bindings, cronJobs, mcpServers, a2a, prompts }));
     }
-  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, savedSnapshot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fix #2: Parallel save with error tracking + Fix #15: includes prompts
+  // Fix #23: Block save before config loads + only send changed API keys
   const save = useCallback(async () => {
+    // Guard: don't save until config has been successfully loaded from backend.
+    // This prevents default/empty values from overwriting real config on disk.
+    if (!loaded || !configLoadedRef.current) {
+      toast("Konfiguration wurde noch nicht vom Backend geladen – bitte Jarvis starten und warten.", "warn");
+      return;
+    }
+
     const activeErrors = Object.values(validationErrors).filter(Boolean);
     if (activeErrors.length > 0 || document.querySelector('.cc-error')) {
       toast(`Bitte beheben Sie zuerst alle rot markierten Validierungsfehler.`, "error");
@@ -1251,31 +1288,44 @@ export default function App() {
         if (r?.error) errors.push(`${s}: ${r.error}`);
       }
     });
-    const topLevel = api("PATCH", "/config", {
+
+    // Build top-level payload — only include API keys that were actually
+    // changed by the user.  Masked values ("***") mean "not touched" and
+    // are skipped so the backend keeps the existing secret.  Empty strings
+    // mean "user explicitly cleared" and ARE sent.
+    const API_KEY_FIELDS = [
+      "openai_api_key","anthropic_api_key","gemini_api_key","groq_api_key",
+      "deepseek_api_key","mistral_api_key","together_api_key","openrouter_api_key",
+      "xai_api_key","cerebras_api_key","github_api_key","bedrock_api_key",
+      "huggingface_api_key","moonshot_api_key",
+    ];
+    const topPayload = {
       owner_name: cfg.owner_name, llm_backend_type: cfg.llm_backend_type,
       operation_mode: cfg.operation_mode, cost_tracking_enabled: cfg.cost_tracking_enabled,
       daily_budget_usd: cfg.daily_budget_usd, monthly_budget_usd: cfg.monthly_budget_usd,
       vision_model: cfg.vision_model, vision_model_detail: cfg.vision_model_detail,
-      openai_api_key: cfg.openai_api_key, openai_base_url: cfg.openai_base_url,
-      anthropic_api_key: cfg.anthropic_api_key, anthropic_max_tokens: cfg.anthropic_max_tokens,
-      gemini_api_key: cfg.gemini_api_key, groq_api_key: cfg.groq_api_key,
-      deepseek_api_key: cfg.deepseek_api_key, mistral_api_key: cfg.mistral_api_key,
-      together_api_key: cfg.together_api_key, openrouter_api_key: cfg.openrouter_api_key,
-      xai_api_key: cfg.xai_api_key, cerebras_api_key: cfg.cerebras_api_key,
-      github_api_key: cfg.github_api_key, bedrock_api_key: cfg.bedrock_api_key,
-      huggingface_api_key: cfg.huggingface_api_key, moonshot_api_key: cfg.moonshot_api_key,
-    }).then(r => {
+      openai_base_url: cfg.openai_base_url, anthropic_max_tokens: cfg.anthropic_max_tokens,
+    };
+    for (const k of API_KEY_FIELDS) {
+      if (cfg[k] !== "***") topPayload[k] = cfg[k];
+    }
+
+    const topLevel = api("PATCH", "/config", topPayload).then(r => {
       if (r?.error) errors.push(`top-level: ${r.error}`);
     });
     const agentPromises = agents.map(a => api("POST", `/agents/${a.name}`, a).then(r => { if (r?.error) errors.push(`agent ${a.name}: ${r.error}`); }));
     const bindingPromises = bindings.map(b => api("POST", `/bindings/${b.name}`, b).then(r => { if (r?.error) errors.push(`binding ${b.name}: ${r.error}`); }));
 
     // B3: Save cronJobs, mcpServers, a2a, prompts
+    // Only save prompts if they were successfully loaded from the backend.
+    // Otherwise empty defaults would overwrite the real files on disk.
     const extraSaves = [
       api("PUT", "/cron-jobs", { jobs: cronJobs }).then(r => { if (r?.error) errors.push(`cron: ${r.error}`); }),
       api("PUT", "/mcp-servers", mcpServers).then(r => { if (r?.error) errors.push(`mcp: ${r.error}`); }),
       api("PUT", "/a2a", a2a).then(r => { if (r?.error) errors.push(`a2a: ${r.error}`); }),
-      api("PUT", "/prompts", prompts).then(r => { if (r?.error) errors.push(`prompts: ${r.error}`); }),
+      ...(promptsLoaded
+        ? [api("PUT", "/prompts", prompts).then(r => { if (r?.error) errors.push(`prompts: ${r.error}`); })]
+        : []),
     ];
 
     await Promise.all([...sectionPromises, topLevel, ...agentPromises, ...bindingPromises, ...extraSaves]);
@@ -1287,12 +1337,16 @@ export default function App() {
       const data = await api("GET", "/config");
       if (data && !data.error) setCfg(prev => ({ ...prev, ...data }));
     } else {
-      setSavedSnapshot(currentSnapshot);
+      // Reload config from backend to reflect effective values
+      // (e.g. model_post_init auto-remapping after backend change)
+      const data = await api("GET", "/config");
+      if (data && !data.error) setCfg(prev => ({ ...prev, ...data }));
+      setSavedSnapshot(JSON.stringify({ cfg: data || cfg, agents, bindings, cronJobs, mcpServers, a2a, prompts }));
       toast("Konfiguration gespeichert", "success");
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);
     }
-  }, [cfg, agents, bindings, cronJobs, mcpServers, a2a, prompts, currentSnapshot, validationErrors, toast]);
+  }, [cfg, agents, bindings, cronJobs, mcpServers, a2a, prompts, promptsLoaded, loaded, currentSnapshot, validationErrors, toast]);
 
   // Restart
   const restart = useCallback(async () => {
@@ -1660,8 +1714,16 @@ export default function App() {
 
         {/* Main */}
         <main className="cc-main">
-          {/* Fix #5: Loading spinner */}
-          {!loaded ? <Spinner /> : renderPage()}
+          {/* Fix #5+#25: Loading — spinner if backend starting, message if stopped */}
+          {!loaded ? (
+            appStatus === "running" || appStatus === "starting" ? <Spinner /> : (
+              <div className="cc-spinner-wrap">
+                <span className="cc-spinner-text" style={{textAlign:"center",lineHeight:"1.6"}}>
+                  Backend nicht gestartet.<br/>Klicken Sie oben auf <b>&quot;Power On&quot;</b>, um Cognithor zu starten.
+                </span>
+              </div>
+            )
+          ) : renderPage()}
           <div style={{ height: 80 }} />
         </main>
       </div>

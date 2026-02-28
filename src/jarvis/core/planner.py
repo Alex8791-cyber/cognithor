@@ -608,9 +608,10 @@ class Planner:
             self._record_cost(response, model, session_id=working_memory.session_id)
             content: str = response.get("message", {}).get("content", "")
             return content
-        except OllamaError:
-            # Fallback: Rohe Ergebnisse als Antwort
-            return results_text
+        except OllamaError as exc:
+            # Fallback: Fehlermeldung statt roher Ergebnisse (könnten HTML enthalten)
+            log.warning("formulate_response_llm_error", error=str(exc))
+            return "Ich konnte die Suchergebnisse leider nicht zusammenfassen. Bitte versuche es erneut."
 
     # =========================================================================
     # Private Methoden

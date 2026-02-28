@@ -78,12 +78,16 @@ class WebUIChannel(Channel):
         api_token: str | None = None,
         cors_origins: list[str] | None = None,
         static_dir: str | None = None,
+        config: Any = None,
+        config_manager: Any = None,
     ) -> None:
         self._host = host
         self._port = port
         self._api_token = api_token
         self._cors_origins = cors_origins or []
         self._static_dir = static_dir
+        self._config_manager = config_manager
+        self._config = config  # JarvisConfig (optional, für ConfigManager)
         # Default: eingebautes WebChat-Widget ausliefern
         if self._static_dir is None:
             builtin_webchat = Path(__file__).parent / "webchat"
@@ -341,17 +345,22 @@ class WebUIChannel(Channel):
                     self._connections.pop(session_id, None)
 
             # --- Config-API Routes ---
-            try:
-                from jarvis.channels.config_routes import create_config_routes
-                from jarvis.config_manager import ConfigManager
-
-                config_mgr = ConfigManager()
-                create_config_routes(
-                    app, config_mgr, verify_token_dep=Depends(verify_token),
-                )
-                log.info("config_routes_registered")
-            except Exception as exc:
-                log.warning("config_routes_not_available", error=str(exc))
+            # NOTE: Config routes are already registered on the main Cognithor
+            # API (port 8741) in __main__.py.  We only register them here if
+            # the WebUI channel runs on a DIFFERENT port and the caller passed
+            # a shared ConfigManager via self._config_manager.  Creating a
+            # separate ConfigManager would cause state divergence and data loss.
+            if getattr(self, "_config_manager", None) is not None:
+                try:
+                    from jarvis.channels.config_routes import create_config_routes
+                    create_config_routes(
+                        app, self._config_manager, verify_token_dep=Depends(verify_token),
+                    )
+                    log.info("config_routes_registered", source="shared_manager")
+                except Exception as exc:
+                    log.warning("config_routes_not_available", error=str(exc))
+            else:
+                log.debug("config_routes_skipped", reason="no shared config_manager")
 
             # Static files (Frontend) -- optional
             if self._static_dir:

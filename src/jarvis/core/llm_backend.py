@@ -323,6 +323,9 @@ class OpenAIBackend(LLMBackend):
         timeout: Request timeout in seconds.
     """
 
+    # Modelle die temperature/top_p nicht unterstützen (OpenAI Reasoning Models)
+    _REASONING_MODEL_PREFIXES = ("o1", "o3", "o4")
+
     def __init__(
         self,
         api_key: str = "",
@@ -337,6 +340,22 @@ class OpenAIBackend(LLMBackend):
     @property
     def backend_type(self) -> LLMBackendType:
         return LLMBackendType.OPENAI
+
+    def _is_reasoning_model(self, model: str) -> bool:
+        """Prüft ob ein Modell ein Reasoning-Model ist (kein temperature/top_p).
+
+        Erkennt: o1, o3, o4, gpt-5*, gpt-5.1*, gpt-5.2* und Varianten.
+        """
+        model_lower = model.lower()
+        # Prefix-Check: "o1-...", "o3-...", "o4-mini-..."
+        for prefix in self._REASONING_MODEL_PREFIXES:
+            if model_lower == prefix or model_lower.startswith(f"{prefix}-"):
+                return True
+        # GPT-5+ Modelle: gpt-5, gpt-5-mini, gpt-5.1, gpt-5.2, gpt-5.2-pro, etc.
+        # Alle GPT-5+ Varianten unterstützen kein benutzerdefiniertes temperature
+        if model_lower.startswith("gpt-5"):
+            return True
+        return False
 
     async def _ensure_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -366,10 +385,15 @@ class OpenAIBackend(LLMBackend):
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
-            "temperature": temperature,
-            "top_p": top_p,
             "stream": False,
         }
+
+        # Reasoning-Models (o1, o3, o4, gpt-5.2, ...) unterstützen
+        # temperature/top_p nicht — nur den Default (1.0)
+        if not self._is_reasoning_model(model):
+            payload["temperature"] = temperature
+            payload["top_p"] = top_p
+
         if tools:
             # OpenAI-Format: tools als Function-Definitionen
             payload["tools"] = tools
@@ -379,6 +403,14 @@ class OpenAIBackend(LLMBackend):
         start = time.monotonic()
         try:
             resp = await client.post("/chat/completions", json=payload)
+
+            # Retry ohne temperature/top_p bei 400 "unsupported_value"
+            if resp.status_code == 400 and "temperature" in resp.text and "temperature" in payload:
+                log.info("openai_retry_without_temperature", model=model)
+                payload.pop("temperature", None)
+                payload.pop("top_p", None)
+                resp = await client.post("/chat/completions", json=payload)
+
             if resp.status_code != 200:
                 raise LLMBackendError(
                     f"OpenAI HTTP {resp.status_code}: {resp.text[:500]}",
@@ -435,13 +467,14 @@ class OpenAIBackend(LLMBackend):
         top_p: float = 0.9,
     ) -> AsyncIterator[str]:
         client = await self._ensure_client()
-        payload = {
+        payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
-            "temperature": temperature,
-            "top_p": top_p,
             "stream": True,
         }
+        if not self._is_reasoning_model(model):
+            payload["temperature"] = temperature
+            payload["top_p"] = top_p
 
         async with client.stream("POST", "/chat/completions", json=payload) as resp:
             if resp.status_code != 200:
