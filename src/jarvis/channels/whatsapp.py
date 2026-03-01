@@ -23,12 +23,16 @@ import json
 import logging
 import secrets
 import uuid
-from typing import Any, Callable, Coroutine
+from typing import TYPE_CHECKING, Any, Callable, Coroutine
 
 import httpx
 
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
+from jarvis.security.token_store import get_token_store
+
+if TYPE_CHECKING:
+    from jarvis.gateway.session_store import SessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +58,23 @@ class WhatsAppChannel(Channel):
         webhook_host: str = "127.0.0.1",
         webhook_port: int = 8443,
         allowed_numbers: list[str] | None = None,
+        ssl_certfile: str = "",
+        ssl_keyfile: str = "",
+        session_store: SessionStore | None = None,
     ) -> None:
-        self._api_token = api_token
+        self._token_store = get_token_store()
+        self._token_store.store("whatsapp_api_token", api_token)
+        if app_secret:
+            self._token_store.store("whatsapp_app_secret", app_secret)
+        self._has_app_secret = bool(app_secret)
         self._phone_number_id = phone_number_id
         self._verify_token = verify_token or secrets.token_urlsafe(16)
-        self._app_secret = app_secret  # Meta App Secret for webhook HMAC
         self._webhook_host = webhook_host
         self._webhook_port = webhook_port
         self._allowed_numbers = set(allowed_numbers or [])
+        self._ssl_certfile = ssl_certfile
+        self._ssl_keyfile = ssl_keyfile
+        self._session_store = session_store
 
         self._handler: MessageHandler | None = None
         self._running = False
@@ -82,6 +95,18 @@ class WhatsAppChannel(Channel):
             logger.info("WhatsApp: faster-whisper geladen fuer Voice-Transkription")
         except ImportError:
             logger.debug("WhatsApp: faster-whisper nicht verfuegbar, Voice wird als Text-Hinweis weitergeleitet")
+
+    @property
+    def _api_token(self) -> str:
+        """API-Token (entschlüsselt bei Zugriff)."""
+        return self._token_store.retrieve("whatsapp_api_token")
+
+    @property
+    def _app_secret(self) -> str:
+        """App-Secret (entschlüsselt bei Zugriff)."""
+        if self._has_app_secret:
+            return self._token_store.retrieve("whatsapp_app_secret")
+        return ""
 
     @property
     def name(self) -> str:
@@ -215,14 +240,25 @@ class WhatsAppChannel(Channel):
 
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, self._webhook_host, self._webhook_port)
+
+        # TLS-Support
+        ssl_ctx = None
+        if self._ssl_certfile and self._ssl_keyfile:
+            from jarvis.security.token_store import create_ssl_context
+            ssl_ctx = create_ssl_context(self._ssl_certfile, self._ssl_keyfile)
+
+        if not ssl_ctx and self._webhook_host not in ("127.0.0.1", "localhost", "::1"):
+            logger.warning("WARNUNG: WhatsApp-Webhook auf %s ohne TLS gestartet!", self._webhook_host)
+
+        site = web.TCPSite(runner, self._webhook_host, self._webhook_port, ssl_context=ssl_ctx)
         await site.start()
 
         self._webhook_runner = runner
         self._webhook_site = site
         logger.info(
-            "WhatsApp: Webhook-Server gestartet auf Port %d",
+            "WhatsApp: Webhook-Server gestartet auf Port %d (TLS=%s)",
             self._webhook_port,
+            ssl_ctx is not None,
         )
 
     async def _handle_verification(self, request: Any) -> Any:
@@ -404,6 +440,10 @@ class WhatsAppChannel(Channel):
     def _get_or_create_session(self, phone_number: str) -> str:
         if phone_number not in self._sessions:
             self._sessions[phone_number] = uuid.uuid4().hex
+            if self._session_store:
+                self._session_store.save_channel_mapping(
+                    "whatsapp_sessions", phone_number, self._sessions[phone_number],
+                )
         return self._sessions[phone_number]
 
     # -- Channel Interface -----------------------------------------------------
@@ -411,6 +451,12 @@ class WhatsAppChannel(Channel):
     async def start(self, handler: MessageHandler) -> None:
         self._handler = handler
         self._running = True
+
+        # Persistierte Mappings laden
+        if self._session_store:
+            for key, val in self._session_store.load_all_channel_mappings("whatsapp_sessions").items():
+                self._sessions[key] = val
+
         await self._setup_webhook()
         logger.info("WhatsAppChannel gestartet (Cloud API v21.0)")
 

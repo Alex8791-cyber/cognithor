@@ -75,6 +75,18 @@ python scripts/first_boot.py --fix
 
 ## 5. Jarvis starten
 
+### Option A: One-Click (empfohlen)
+
+```
+Doppelklick auf  start_cognithor.bat  →  Browser öffnet sich  →  "Power On" klicken  →  Fertig.
+```
+
+Das Batch-File startet das Control Center UI, das den Python-Backend-Prozess automatisch verwaltet (Start, Stop, Health-Checks, Orphan-Cleanup). Keine Terminal-Kenntnisse nötig.
+
+> **Tipp:** Auf dem Desktop liegt eine Verknüpfung namens **Cognithor** — einfach doppelklicken.
+
+### Option B: CLI
+
 ```bash
 python -m jarvis
 ```
@@ -172,7 +184,7 @@ tail -f ~/.jarvis/logs/jarvis.log
 
 ## Nächste Schritte
 
-- **Telegram-Bot** einrichten → `~/.jarvis/config.yaml` → `telegram_enabled: true`
+- **Telegram-Bot** einrichten → Token in `~/.jarvis/.env` → `JARVIS_TELEGRAM_TOKEN=...`
 - **Cron-Jobs** aktivieren → Morning Briefing, Weekly Review
 - **Eigene Prozeduren** anlegen → `~/.jarvis/memory/procedures/mein-workflow.md`
 - **CORE.md** personalisieren → Eigene Regeln und Präferenzen ergänzen

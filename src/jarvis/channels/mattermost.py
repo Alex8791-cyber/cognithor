@@ -25,6 +25,7 @@ from typing import Any
 
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
+from jarvis.security.token_store import get_token_store
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,10 @@ class MattermostChannel(Channel):
         default_channel: str = "",
     ) -> None:
         self._url = url.rstrip("/")
-        self._token = token
+        self._token_store_ref = get_token_store()
+        if token:
+            self._token_store_ref.store("mattermost_token", token)
+        self._has_token = bool(token)
         self._default_channel = default_channel
         self._handler: MessageHandler | None = None
         self._running = False
@@ -52,6 +56,13 @@ class MattermostChannel(Channel):
         self._approval_futures: dict[str, asyncio.Future[bool]] = {}
         self._approval_lock = asyncio.Lock()
         self._stream_buffers: dict[str, list[str]] = {}
+
+    @property
+    def _token(self) -> str:
+        """Bot-Token (entschlüsselt bei Zugriff)."""
+        if self._has_token:
+            return self._token_store_ref.retrieve("mattermost_token")
+        return ""
 
     @property
     def name(self) -> str:

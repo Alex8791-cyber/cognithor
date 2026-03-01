@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.channels.interactive import (
@@ -31,6 +31,10 @@ from jarvis.channels.interactive import (
     ProgressTracker,
 )
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
+from jarvis.security.token_store import get_token_store
+
+if TYPE_CHECKING:
+    from jarvis.gateway.session_store import SessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +46,16 @@ class DiscordChannel(Channel):
     und unterstützt interaktive Approvals über Reactions (✅/❌).
     """
 
-    def __init__(self, token: str, channel_id: int) -> None:
-        self.token = token
+    def __init__(
+        self,
+        token: str,
+        channel_id: int,
+        session_store: SessionStore | None = None,
+    ) -> None:
+        self._token_store = get_token_store()
+        self._token_store.store("discord_bot_token", token)
         self.channel_id = channel_id
+        self._session_store = session_store
         self._client: Any | None = None
         self._handler: MessageHandler | None = None
         self._running = False
@@ -54,6 +65,11 @@ class DiscordChannel(Channel):
         self._session_users: dict[str, int] = {}  # session_id → Discord user_id
         self._stream_buffers: dict[str, list[str]] = {}
         self._stream_lock = asyncio.Lock()
+
+    @property
+    def token(self) -> str:
+        """Bot-Token (entschlüsselt bei Zugriff)."""
+        return self._token_store.retrieve("discord_bot_token")
 
     @property
     def name(self) -> str:
@@ -67,6 +83,11 @@ class DiscordChannel(Channel):
     async def start(self, handler: MessageHandler) -> None:
         """Startet den Discord-Client mit Event-Handling."""
         self._handler = handler
+
+        # Persistierte Mappings laden
+        if self._session_store:
+            for key, val in self._session_store.load_all_channel_mappings("discord_session_users").items():
+                self._session_users[key] = int(val)
 
         try:
             import discord  # type: ignore[import-untyped]
@@ -143,6 +164,10 @@ class DiscordChannel(Channel):
         )
         # Session → Discord User-ID Mapping für Approval-Validierung
         self._session_users[session_id] = message.author.id
+        if self._session_store:
+            self._session_store.save_channel_mapping(
+                "discord_session_users", session_id, str(message.author.id),
+            )
 
         if self._handler:
             response = await self._handler(incoming)

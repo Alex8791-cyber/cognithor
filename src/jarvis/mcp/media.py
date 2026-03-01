@@ -32,6 +32,10 @@ MAX_EXTRACT_LENGTH = 15_000
 # Maximale Bilddateigroesse fuer Base64-Encoding (10 MB)
 MAX_IMAGE_FILE_SIZE = 10_485_760
 
+# Maximale Dateigroessen fuer Security-Limits
+MAX_EXTRACT_FILE_SIZE = 52_428_800   # 50 MB für Dokument-Extraktion
+MAX_AUDIO_FILE_SIZE = 104_857_600    # 100 MB für Audio-Transkription
+
 # Standard-Modelle und -Stimmen (Fallbacks, wenn kein Config verfügbar)
 _DEFAULT_VISION_MODEL = "openbmb/minicpm-v4.5"
 _DEFAULT_VISION_MODEL_DETAIL = "qwen3-vl:32b"
@@ -129,6 +133,13 @@ class MediaPipeline:
         path = self._validate_input_path(audio_path)
         if path is None:
             return MediaResult(success=False, error=f"Datei nicht gefunden oder ungueltig: {audio_path}")
+
+        file_size = path.stat().st_size
+        if file_size > MAX_AUDIO_FILE_SIZE:
+            return MediaResult(
+                success=False,
+                error=f"Audiodatei zu gross ({file_size / 1_048_576:.1f} MB, max {MAX_AUDIO_FILE_SIZE // 1_048_576} MB)",
+            )
 
         try:
             from faster_whisper import WhisperModel
@@ -267,6 +278,13 @@ class MediaPipeline:
         if path is None:
             return MediaResult(success=False, error=f"Datei nicht gefunden oder ungueltig: {file_path}")
 
+        file_size = path.stat().st_size
+        if file_size > MAX_EXTRACT_FILE_SIZE:
+            return MediaResult(
+                success=False,
+                error=f"Datei zu gross ({file_size / 1_048_576:.1f} MB, max {MAX_EXTRACT_FILE_SIZE // 1_048_576} MB)",
+            )
+
         suffix = path.suffix.lower()
         loop = asyncio.get_running_loop()
 
@@ -346,6 +364,11 @@ class MediaPipeline:
         """HTML-Textextraktion (einfach, ohne BeautifulSoup-Pflicht)."""
         import re
 
+        if path.stat().st_size > MAX_EXTRACT_FILE_SIZE:
+            raise ValueError(
+                f"HTML-Datei zu gross ({path.stat().st_size / 1_048_576:.1f} MB, "
+                f"max {MAX_EXTRACT_FILE_SIZE // 1_048_576} MB)"
+            )
         html = path.read_text(encoding="utf-8", errors="replace")
         # Script/Style-Tags entfernen
         html = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.DOTALL | re.IGNORECASE)

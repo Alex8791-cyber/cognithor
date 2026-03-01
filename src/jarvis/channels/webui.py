@@ -29,9 +29,13 @@ from uuid import uuid4
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
 from jarvis.security.rate_limiter import RateLimiter
+from jarvis.security.token_store import get_token_store
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
+
+# Maximale Upload-Groesse (50 MB)
+MAX_UPLOAD_SIZE = 52_428_800
 
 
 # ============================================================================
@@ -80,11 +84,18 @@ class WebUIChannel(Channel):
         static_dir: str | None = None,
         config: Any = None,
         config_manager: Any = None,
+        ssl_certfile: str = "",
+        ssl_keyfile: str = "",
     ) -> None:
         self._host = host
         self._port = port
-        self._api_token = api_token
+        self._token_store = get_token_store()
+        if api_token:
+            self._token_store.store("webui_channel_token", api_token)
+        self._has_api_token = bool(api_token)
         self._cors_origins = cors_origins or []
+        self._ssl_certfile = ssl_certfile
+        self._ssl_keyfile = ssl_keyfile
         self._static_dir = static_dir
         self._config_manager = config_manager
         self._config = config  # JarvisConfig (optional, für ConfigManager)
@@ -106,6 +117,13 @@ class WebUIChannel(Channel):
         self._rate_limiter = RateLimiter()
 
     @property
+    def _api_token(self) -> str | None:
+        """API-Token (entschlüsselt bei Zugriff)."""
+        if self._has_api_token:
+            return self._token_store.retrieve("webui_channel_token")
+        return None
+
+    @property
     def name(self) -> str:
         return "webui"
 
@@ -114,6 +132,11 @@ class WebUIChannel(Channel):
         self._handler = handler
         self._start_time = time.monotonic()
         self._app = self._create_app()
+
+        # TLS-Warning für externe Hosts
+        if self._host not in ("127.0.0.1", "localhost", "::1") and not self._ssl_certfile:
+            log.warning("webui_no_tls", host=self._host, message="WARNUNG: WebUI auf externem Host ohne TLS!")
+
         log.info("webui_channel_starting", host=self._host, port=self._port)
 
     async def stop(self) -> None:
@@ -550,6 +573,15 @@ class WebUIChannel(Channel):
         if not audio_b64:
             return None
 
+        # Geschätzte Dateigrösse prüfen
+        estimated_size = len(audio_b64) * 3 // 4
+        if estimated_size > MAX_UPLOAD_SIZE:
+            await self._ws_send(ws, {
+                "type": WSMessageType.ERROR,
+                "error": f"Audiodatei zu gross ({estimated_size // 1_048_576} MB, max {MAX_UPLOAD_SIZE // 1_048_576} MB)",
+            })
+            return None
+
         # Benachrichtigung: Transkription läuft
         await self._ws_send(ws, {
             "type": WSMessageType.TOOL_START,
@@ -654,6 +686,15 @@ class WebUIChannel(Channel):
         file_type = metadata.get("file_type", "")
 
         if not file_b64:
+            return None
+
+        # Geschätzte Dateigrösse prüfen (Base64 → ~75% Originalgrösse)
+        estimated_size = len(file_b64) * 3 // 4
+        if estimated_size > MAX_UPLOAD_SIZE:
+            await self._ws_send(ws, {
+                "type": WSMessageType.ERROR,
+                "error": f"Datei zu gross ({estimated_size // 1_048_576} MB, max {MAX_UPLOAD_SIZE // 1_048_576} MB)",
+            })
             return None
 
         try:

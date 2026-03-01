@@ -32,6 +32,7 @@ from jarvis.channels.interactive import (
     SlackMessageBuilder,
 )
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
+from jarvis.security.token_store import get_token_store
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,11 @@ class SlackChannel(Channel):
         app_token: str = "",
         default_channel: str | None = None,
     ) -> None:
-        self.token = token
-        self.app_token = app_token
+        self._token_store = get_token_store()
+        self._token_store.store("slack_bot_token", token)
+        if app_token:
+            self._token_store.store("slack_app_token", app_token)
+        self._has_app_token = bool(app_token)
         self.default_channel = default_channel
         self._client: Any | None = None
         self._socket_handler: Any | None = None
@@ -62,6 +66,18 @@ class SlackChannel(Channel):
         self._approval_lock = asyncio.Lock()
         self._stream_buffers: dict[str, list[str]] = {}
         self._bot_user_id: str = ""
+
+    @property
+    def token(self) -> str:
+        """Bot-Token (entschlüsselt bei Zugriff)."""
+        return self._token_store.retrieve("slack_bot_token")
+
+    @property
+    def app_token(self) -> str:
+        """App-Token für Socket Mode (entschlüsselt bei Zugriff)."""
+        if self._has_app_token:
+            return self._token_store.retrieve("slack_app_token")
+        return ""
 
     @property
     def name(self) -> str:

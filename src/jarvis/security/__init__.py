@@ -70,6 +70,11 @@ from jarvis.security.capabilities import (
     STANDARD,
     PERMISSIVE,
 )
+from jarvis.security.token_store import (
+    SecureTokenStore,
+    create_ssl_context,
+    get_token_store,
+)
 
 __all__ = [
     "AdversarialFuzzer",
@@ -110,4 +115,7 @@ __all__ = [
     "RESTRICTIVE",
     "STANDARD",
     "PERMISSIVE",
+    "SecureTokenStore",
+    "create_ssl_context",
+    "get_token_store",
 ]

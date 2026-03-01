@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from jarvis.config import JarvisConfig, SecurityConfig, ensure_directory_structure
-from jarvis.mcp.code_tools import CodeTools, register_code_tools
+from jarvis.mcp.code_tools import MAX_CODE_SIZE, CodeTools, register_code_tools
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -194,3 +194,26 @@ class TestRegistration:
         mock_client = MagicMock()
         result = register_code_tools(mock_client, config)
         assert isinstance(result, CodeTools)
+
+
+# =============================================================================
+# File-Size-Limits (Security Hardening)
+# =============================================================================
+
+
+class TestCodeSizeLimits:
+    """Tests für Code-Größen-Limits."""
+
+    @pytest.mark.asyncio()
+    async def test_run_python_code_too_large(self, code_tools: CodeTools) -> None:
+        """Code über MAX_CODE_SIZE wird abgelehnt."""
+        huge_code = "x = 1\n" * (MAX_CODE_SIZE // 6 + 1)
+        assert len(huge_code.encode("utf-8")) > MAX_CODE_SIZE
+        result = await code_tools.run_python(huge_code)
+        assert "zu gross" in result.lower() or "too large" in result.lower() or "gross" in result.lower()
+
+    @pytest.mark.asyncio()
+    async def test_run_python_within_limit(self, code_tools: CodeTools) -> None:
+        """Code innerhalb des Limits wird normal ausgeführt."""
+        result = await code_tools.run_python('print("ok")')
+        assert "ok" in result

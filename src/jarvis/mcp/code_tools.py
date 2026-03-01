@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 
+# Maximale Code-Groesse (1 MB)
+MAX_CODE_SIZE = 1_048_576
+
 __all__ = [
     "CodeTools",
     "register_code_tools",
@@ -90,6 +93,10 @@ class CodeTools:
         """
         if not code.strip():
             return "Kein Code angegeben."
+
+        code_size = len(code.encode("utf-8"))
+        if code_size > MAX_CODE_SIZE:
+            return f"Code zu gross ({code_size / 1_048_576:.1f} MB, max 1 MB)"
 
         cwd = working_dir or str(self._workspace)
 

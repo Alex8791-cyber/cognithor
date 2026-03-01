@@ -1067,6 +1067,9 @@ class SecurityConfig(BaseModel):
             r"api_key\s*[:=]\s*\S+",
         ]
     )
+    # TLS-Konfiguration für Webhook-Server und API
+    ssl_certfile: str = Field(default="", description="Pfad zum SSL-Zertifikat (PEM)")
+    ssl_keyfile: str = Field(default="", description="Pfad zum SSL-Privat-Key (PEM)")
 
 
 # ============================================================================

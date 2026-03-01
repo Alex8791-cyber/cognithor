@@ -177,6 +177,13 @@ def main() -> None:
             except Exception as exc:
                 log.warning("control_center_api_failed", error=str(exc))
 
+            # SessionStore-Referenz für Channel-Persistenz
+            _session_store = getattr(gateway, "_session_store", None)
+
+            # SSL-Config für TLS-fähige Channels
+            _ssl_cert = config.security.ssl_certfile
+            _ssl_key = config.security.ssl_keyfile
+
             # CLI-Channel registrieren und starten
             if config.channels.cli_enabled and not args.no_cli:
                 cli = CliChannel(version=__version__)
@@ -188,7 +195,11 @@ def main() -> None:
                 from jarvis.channels.telegram import TelegramChannel
 
                 allowed = [int(u) for u in os.environ.get("JARVIS_TELEGRAM_ALLOWED_USERS", "").split(",") if u]
-                gateway.register_channel(TelegramChannel(token=telegram_token, allowed_users=allowed))
+                gateway.register_channel(TelegramChannel(
+                    token=telegram_token,
+                    allowed_users=allowed,
+                    session_store=_session_store,
+                ))
                 log.info("telegram_channel_registered", allowed_users=len(allowed))
 
             # Slack-Channel (auto-detect: token + channel in env → start)
@@ -223,7 +234,11 @@ def main() -> None:
                     channel_id_int = 0
                 if channel_id_int:
                     gateway.register_channel(
-                        DiscordChannel(token=discord_token, channel_id=channel_id_int)
+                        DiscordChannel(
+                            token=discord_token,
+                            channel_id=channel_id_int,
+                            session_store=_session_store,
+                        )
                     )
                 else:
                     log.warning("discord_token_found_but_no_channel_id")
@@ -250,6 +265,9 @@ def main() -> None:
                             verify_token=verify_token,
                             webhook_port=config.channels.whatsapp_webhook_port,
                             allowed_numbers=allowed,
+                            ssl_certfile=_ssl_cert,
+                            ssl_keyfile=_ssl_key,
+                            session_store=_session_store,
                         )
                     )
                 else:
@@ -285,26 +303,31 @@ def main() -> None:
                 if homeserver and user_id:
                     gateway.register_channel(
                         MatrixChannel(
-                            token=matrix_token, homeserver=homeserver, user_id=user_id
+                            access_token=matrix_token, homeserver=homeserver, user_id=user_id
                         )
                     )
                 else:
                     log.warning("matrix_token_found_but_no_homeserver_or_user_id")
 
-            # Teams-Channel (auto-detect: token + channel → start)
-            teams_token = os.environ.get("JARVIS_TEAMS_TOKEN")
-            if teams_token:
+            # Teams-Channel (auto-detect: app_id + app_password → start)
+            teams_app_id = os.environ.get("JARVIS_TEAMS_APP_ID", "")
+            teams_app_pw = os.environ.get("JARVIS_TEAMS_TOKEN") or os.environ.get("JARVIS_TEAMS_APP_PASSWORD", "")
+            if teams_app_id or teams_app_pw:
                 from jarvis.channels.teams import TeamsChannel
 
-                default_channel = config.channels.teams_default_channel or os.environ.get(
-                    "JARVIS_TEAMS_DEFAULT_CHANNEL", ""
-                )
-                if default_channel:
-                    gateway.register_channel(
-                        TeamsChannel(token=teams_token, default_channel=default_channel)
+                teams_host = os.environ.get("JARVIS_TEAMS_WEBHOOK_HOST", "127.0.0.1")
+                teams_port = int(os.environ.get("JARVIS_TEAMS_WEBHOOK_PORT", "3978"))
+                gateway.register_channel(
+                    TeamsChannel(
+                        app_id=teams_app_id,
+                        app_password=teams_app_pw,
+                        webhook_host=teams_host,
+                        webhook_port=teams_port,
+                        ssl_certfile=_ssl_cert,
+                        ssl_keyfile=_ssl_key,
+                        session_store=_session_store,
                     )
-                else:
-                    log.warning("teams_token_found_but_no_channel")
+                )
 
             # iMessage-Channel
             if getattr(config.channels, "imessage_enabled", False):

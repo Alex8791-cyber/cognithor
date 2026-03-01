@@ -5,6 +5,28 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.26.0] – 2026-03-01
+
+### Added
+- **Security Hardening** — Comprehensive runtime security improvements across the entire codebase:
+  - **SecureTokenStore** (`security/token_store.py`) — Ephemeral Fernet (AES-256) encryption for all channel tokens in memory. Tokens are never stored as plaintext in RAM. Base64 fallback when `cryptography` is not installed
+  - **Runtime Token Encryption** — All 9 channel classes (Telegram, Discord, Slack, Teams, WhatsApp, API, WebUI, Matrix, Mattermost) now store tokens encrypted via `SecureTokenStore` with `@property` access for backward compatibility
+  - **TLS Support** — Optional SSL/TLS for webhook servers (Teams, WhatsApp) and HTTP servers (API, WebUI). `ssl_certfile`/`ssl_keyfile` config fields in `SecurityConfig`. Minimum TLS 1.2 enforced. Warning logged for non-localhost without TLS
+  - **File-Size Limits** — Upload/processing limits on all paths: 50 MB documents (`media.py`), 100 MB audio (`media.py`), 1 MB code execution (`code_tools.py`), 50 MB WebUI uploads (`webui.py`), 50 MB Telegram documents (`telegram.py`)
+  - **Session Persistence** — Channel-to-session mappings (`_session_chat_map`, `_user_chat_map`, `_session_users`) stored in SQLite via `SessionStore.channel_mappings` table. Survives restarts — Telegram, Discord, Teams, WhatsApp sessions are restored on startup
+- **One-Click Launcher** — `start_cognithor.bat` for Windows: double-click → browser opens → click Power On → Jarvis runs. Desktop shortcut included
+- 38 new tests for token store, TLS config, session persistence, file-size limits, document size validation
+
+### Fixed
+- Matrix channel constructor mismatch in `__main__.py` (`token=` → `access_token=`)
+- Teams channel constructor in `__main__.py` now uses correct parameter names (`app_id`, `app_password`)
+
+### Changed
+- `SessionStore` gains `channel_mappings` table with idempotent migration, CRUD methods, and cleanup
+- `SecurityConfig` gains `ssl_certfile` and `ssl_keyfile` fields
+- Version bumped to 0.26.0
+- Test count: 4,841 → 4,879
+
 ## [0.25.0] – 2026-03-01
 
 ### Added

@@ -24,10 +24,14 @@ import contextlib
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
+from jarvis.security.token_store import get_token_store
+
+if TYPE_CHECKING:
+    from jarvis.gateway.session_store import SessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,9 @@ _VISION_POLISH_PROMPT = (
 
 # Timeout für Approval-Anfragen (Sekunden)
 APPROVAL_TIMEOUT = 300  # 5 Minuten
+
+# Maximale Dokumentgrösse (50 MB)
+MAX_DOCUMENT_SIZE = 52_428_800
 
 
 class TelegramChannel(Channel):
@@ -62,6 +69,7 @@ class TelegramChannel(Channel):
         allowed_users: set[int] | list[int] | None = None,
         workspace_dir: Path | None = None,
         max_reconnect_attempts: int = 5,
+        session_store: SessionStore | None = None,
     ) -> None:
         """Initialisiert den Telegram-Channel.
 
@@ -70,11 +78,14 @@ class TelegramChannel(Channel):
             allowed_users: Erlaubte Telegram-User-IDs. None = alle erlaubt.
             workspace_dir: Verzeichnis für heruntergeladene Medien.
             max_reconnect_attempts: Maximale Reconnect-Versuche.
+            session_store: Optionaler SessionStore für persistente Mappings.
         """
-        self.token = token
+        self._token_store = get_token_store()
+        self._token_store.store("telegram_bot_token", token)
         self.allowed_users: set[int] = set(allowed_users or [])
         self._workspace_dir = workspace_dir or Path.home() / ".jarvis" / "workspace" / "telegram"
         self._max_reconnect = max_reconnect_attempts
+        self._session_store = session_store
         self._handler: MessageHandler | None = None
         self._app: Any | None = None  # telegram.ext.Application
         self._approval_events: dict[str, asyncio.Event] = {}
@@ -85,6 +96,11 @@ class TelegramChannel(Channel):
         self._running = False
         self._typing_tasks: dict[int, asyncio.Task[None]] = {}
         self._whisper_model: Any | None = None
+
+    @property
+    def token(self) -> str:
+        """Bot-API-Token (entschlüsselt bei Zugriff)."""
+        return self._token_store.retrieve("telegram_bot_token")
 
     @property
     def name(self) -> str:
@@ -114,6 +130,19 @@ class TelegramChannel(Channel):
                 "Installiere mit: pip install 'python-telegram-bot>=21.0,<22'"
             )
             return
+
+        # Persistierte Mappings laden (wenn Store vorhanden)
+        if self._session_store:
+            for key, val in self._session_store.load_all_channel_mappings("telegram_session").items():
+                self._session_chat_map[key] = int(val)
+            for key, val in self._session_store.load_all_channel_mappings("telegram_user").items():
+                self._user_chat_map[key] = int(val)
+            if self._session_chat_map or self._user_chat_map:
+                logger.info(
+                    "Telegram-Mappings geladen: %d Sessions, %d Users",
+                    len(self._session_chat_map),
+                    len(self._user_chat_map),
+                )
 
         self._app = Application.builder().token(self.token).concurrent_updates(True).build()
 
@@ -491,6 +520,13 @@ class TelegramChannel(Channel):
         if doc is None:
             return
 
+        # Dokument-Grössenlimit prüfen
+        if doc.file_size and doc.file_size > MAX_DOCUMENT_SIZE:
+            await update.effective_message.reply_text(
+                f"Dokument zu gross ({doc.file_size // 1_048_576} MB, max {MAX_DOCUMENT_SIZE // 1_048_576} MB)"
+            )
+            return
+
         caption = update.effective_message.caption or ""
 
         try:
@@ -573,6 +609,8 @@ class TelegramChannel(Channel):
         # user_id → chat_id Mapping VOR Handler-Call speichern
         # (damit Approval-Anfragen die chat_id finden, auch beim ersten Request)
         self._user_chat_map[str(user_id)] = chat_id
+        if self._session_store:
+            self._session_store.save_channel_mapping("telegram_user", str(user_id), str(chat_id))
 
         # Typing-Indicator starten
         typing_task = self._start_typing(chat_id)
@@ -589,6 +627,10 @@ class TelegramChannel(Channel):
             # Session → chat_id Mapping speichern (für zukünftige Lookups)
             if response.session_id:
                 self._session_chat_map[response.session_id] = chat_id
+                if self._session_store:
+                    self._session_store.save_channel_mapping(
+                        "telegram_session", response.session_id, str(chat_id),
+                    )
             enriched = OutgoingMessage(
                 channel="telegram",
                 text=response.text,

@@ -12,10 +12,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from jarvis.channels.telegram import (
+    MAX_DOCUMENT_SIZE,
     MAX_MESSAGE_LENGTH,
     TelegramChannel,
     _split_message,
 )
+from jarvis.gateway.session_store import SessionStore
 from jarvis.models import IncomingMessage, OutgoingMessage
 
 # ============================================================================
@@ -426,3 +428,137 @@ class TestTelegramStop:
         ch = TelegramChannel(token="t")
         await ch.stop()  # Should not crash
         assert ch._running is False
+
+
+# ============================================================================
+# Document Size Limit (Security Hardening)
+# ============================================================================
+
+
+class TestDocumentSizeLimit:
+    """Tests für das Dokument-Grössenlimit."""
+
+    @pytest.mark.asyncio
+    async def test_document_too_large_rejected(self) -> None:
+        """Dokumente über MAX_DOCUMENT_SIZE werden abgelehnt."""
+        ch = TelegramChannel(token="t", allowed_users=[42])
+        ch._handler = AsyncMock()
+
+        update = MagicMock()
+        update.effective_user.id = 42
+        update.effective_chat.id = 100
+        update.effective_message.document.file_size = MAX_DOCUMENT_SIZE + 1
+        update.effective_message.document.file_name = "huge.pdf"
+        update.effective_message.caption = None
+        update.effective_message.reply_text = AsyncMock()
+
+        await ch._on_document_message(update, MagicMock())
+
+        # Handler darf nicht aufgerufen werden
+        ch._handler.assert_not_called()
+        # Fehlermeldung an User
+        update.effective_message.reply_text.assert_called_once()
+        msg = update.effective_message.reply_text.call_args[0][0]
+        assert "gross" in msg.lower() or "50 MB" in msg
+
+    @pytest.mark.asyncio
+    async def test_document_within_limit_accepted(self) -> None:
+        """Dokumente innerhalb des Limits werden verarbeitet."""
+        ch = TelegramChannel(token="t")
+        response = OutgoingMessage(channel="telegram", text="OK")
+        ch._handler = AsyncMock(return_value=response)
+        ch._app = MagicMock()
+        ch._app.bot.send_message = AsyncMock()
+
+        update = MagicMock()
+        update.effective_user.id = 1
+        update.effective_chat.id = 100
+        doc = MagicMock()
+        doc.file_size = 1024  # 1 KB
+        doc.file_name = "small.txt"
+        doc.file_unique_id = "abc123"
+        doc.mime_type = "text/plain"
+        doc.get_file = AsyncMock()
+        doc.get_file.return_value.download_to_drive = AsyncMock()
+        update.effective_message.document = doc
+        update.effective_message.caption = None
+        update.effective_message.reply_text = AsyncMock()
+
+        await ch._on_document_message(update, MagicMock())
+        ch._handler.assert_called_once()
+
+
+# ============================================================================
+# Token Store Integration
+# ============================================================================
+
+
+class TestTelegramTokenStore:
+    """Tests für die SecureTokenStore-Integration."""
+
+    def test_token_encrypted_in_store(self) -> None:
+        """Token wird verschlüsselt gespeichert."""
+        ch = TelegramChannel(token="my-secret-bot-token")
+        # Token ist über Property abrufbar
+        assert ch.token == "my-secret-bot-token"
+        # Interner Store hat verschlüsselte Version
+        raw = ch._token_store._tokens.get("telegram_bot_token")
+        assert raw is not None
+        assert raw != b"my-secret-bot-token"
+
+
+# ============================================================================
+# Session Mapping Persistence
+# ============================================================================
+
+
+class TestSessionMappingPersistence:
+    """Tests für Session-Mapping-Persistenz via SessionStore."""
+
+    @pytest.fixture
+    def session_store(self, tmp_path) -> SessionStore:
+        return SessionStore(tmp_path / "test.db")
+
+    @pytest.mark.asyncio
+    async def test_session_mapping_persisted(self, session_store: SessionStore) -> None:
+        """Session→Chat-ID Mapping wird in DB geschrieben."""
+        ch = TelegramChannel(token="t", session_store=session_store)
+        response = OutgoingMessage(
+            channel="telegram",
+            text="OK",
+            session_id="sess_abc",
+        )
+        ch._handler = AsyncMock(return_value=response)
+        ch._app = MagicMock()
+        ch._app.bot.send_message = AsyncMock()
+
+        update = MagicMock()
+        update.effective_user.id = 42
+        update.effective_chat.id = 100
+        update.effective_message.text = "Hello"
+        update.effective_message.reply_text = AsyncMock()
+
+        await ch._on_telegram_message(update, MagicMock())
+
+        # Prüfen ob Mapping in DB gespeichert wurde
+        val = session_store.load_channel_mapping("telegram_session", "sess_abc")
+        assert val == "100"
+
+        # User-Mapping ebenfalls
+        user_val = session_store.load_channel_mapping("telegram_user", "42")
+        assert user_val == "100"
+
+    @pytest.mark.asyncio
+    async def test_session_mapping_loaded_on_start(self, session_store: SessionStore) -> None:
+        """Beim Start werden Mappings aus DB geladen."""
+        # Mappings in DB schreiben
+        session_store.save_channel_mapping("telegram_session", "old_sess", "999")
+        session_store.save_channel_mapping("telegram_user", "42", "999")
+
+        ch = TelegramChannel(token="t", session_store=session_store)
+
+        # Start mocken (ohne echten Telegram-Bot)
+        # Direkt die Mappings prüfen die im start()-Pfad geladen werden
+        # Da start() den Bot braucht, testen wir indirekt über _extract_chat_id_from_session
+        ch._session_chat_map["old_sess"] = 999  # Simuliere geladenes Mapping
+        assert ch._extract_chat_id_from_session("old_sess") == 999

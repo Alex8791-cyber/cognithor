@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from jarvis.mcp.media import (
+    MAX_AUDIO_FILE_SIZE,
+    MAX_EXTRACT_FILE_SIZE,
     MEDIA_TOOL_SCHEMAS,
     MAX_EXTRACT_LENGTH,
     MediaPipeline,
@@ -369,3 +371,42 @@ class TestMediaToolSchemas:
         assert "input_path" in MEDIA_TOOL_SCHEMAS["media_convert_audio"]["inputSchema"]["required"]
         assert "image_path" in MEDIA_TOOL_SCHEMAS["media_resize_image"]["inputSchema"]["required"]
         assert "text" in MEDIA_TOOL_SCHEMAS["media_tts"]["inputSchema"]["required"]
+
+
+# ============================================================================
+# File-Size-Limits (Security Hardening)
+# ============================================================================
+
+
+class TestFileSizeLimits:
+    """Tests für Dateigrößen-Limits."""
+
+    async def test_extract_text_file_too_large(self, pipeline: MediaPipeline, tmp_path: Path) -> None:
+        """extract_text lehnt Dateien > MAX_EXTRACT_FILE_SIZE ab."""
+        large_file = tmp_path / "huge.txt"
+        # Erstelle eine Datei die das Limit überschreitet (sparse/truncated)
+        large_file.write_bytes(b"x" * 1024)  # Klein erstellen
+        # Mock st_size um die Datei als zu gross erscheinen zu lassen
+        with patch.object(Path, "stat") as mock_stat:
+            mock_stat.return_value = MagicMock(st_size=MAX_EXTRACT_FILE_SIZE + 1)
+            result = await pipeline.extract_text(str(large_file))
+        assert not result.success
+        assert "zu gross" in result.error.lower() or "too large" in result.error.lower() or "gross" in result.error.lower()
+
+    async def test_transcribe_audio_file_too_large(self, pipeline: MediaPipeline, tmp_path: Path) -> None:
+        """transcribe_audio lehnt Dateien > MAX_AUDIO_FILE_SIZE ab."""
+        audio_file = tmp_path / "huge.wav"
+        audio_file.write_bytes(b"\x00" * 1024)
+        with patch.object(Path, "stat") as mock_stat:
+            mock_stat.return_value = MagicMock(st_size=MAX_AUDIO_FILE_SIZE + 1)
+            result = await pipeline.transcribe_audio(str(audio_file))
+        assert not result.success
+        assert "gross" in result.error.lower() or "large" in result.error.lower()
+
+    async def test_extract_text_within_limit(self, pipeline: MediaPipeline, tmp_path: Path) -> None:
+        """Dateien innerhalb des Limits werden normal verarbeitet."""
+        small_file = tmp_path / "small.txt"
+        small_file.write_text("Kleiner Text", encoding="utf-8")
+        result = await pipeline.extract_text(str(small_file))
+        assert result.success
+        assert "Kleiner Text" in result.text

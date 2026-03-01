@@ -98,10 +98,22 @@ Der First-Boot-Test prüft:
   12/12 Checks bestanden
 
   Jarvis ist bereit!
-  Starte mit: python -m jarvis
+  Starte mit: start_cognithor.bat (oder: python -m jarvis)
 ```
 
 ## Schritt 4: Erster Start
+
+### Option A: One-Click (empfohlen)
+
+```
+Doppelklick auf  start_cognithor.bat  →  Browser öffnet sich  →  "Power On" klicken  →  Fertig.
+```
+
+Das Vite-Dev-Server startet automatisch den Python-Backend-Prozess. Du musst kein Terminal öffnen.
+
+> **Desktop-Shortcut:** Eine Verknüpfung namens **Cognithor** liegt auf dem Desktop.
+
+### Option B: CLI
 
 ```bash
 python -m jarvis
@@ -253,6 +265,6 @@ jarvis> Was weißt du über Firma Müller?
 ## Nächste Schritte
 
 1. **Kundendaten einspeisen** — Bestehende Kunden-Notizen in `~/.jarvis/memory/knowledge/kunden/` ablegen
-2. **Telegram einrichten** — Für mobile Nutzung: `~/.jarvis/config.yaml` → `telegram_enabled: true`
+2. **Telegram einrichten** — Für mobile Nutzung: Token in `~/.jarvis/.env` → `JARVIS_TELEGRAM_TOKEN=...`
 3. **Cron aktivieren** — Automatisches Morgen-Briefing: `~/.jarvis/cron/jobs.yaml`
 4. **Eigene Prozeduren** — Wiederkehrende Workflows als Prozeduren in `~/.jarvis/memory/procedures/`

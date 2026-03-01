@@ -31,10 +31,14 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
+from jarvis.security.token_store import get_token_store
+
+if TYPE_CHECKING:
+    from jarvis.gateway.session_store import SessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +60,20 @@ class TeamsChannel(Channel):
         app_password: str = "",
         webhook_host: str = "127.0.0.1",
         webhook_port: int = 3978,
+        ssl_certfile: str = "",
+        ssl_keyfile: str = "",
+        session_store: SessionStore | None = None,
     ) -> None:
         self._app_id = app_id
-        self._app_password = app_password
+        self._token_store = get_token_store()
+        if app_password:
+            self._token_store.store("teams_app_password", app_password)
+        self._has_app_password = bool(app_password)
         self._webhook_host = webhook_host
         self._webhook_port = webhook_port
+        self._ssl_certfile = ssl_certfile
+        self._ssl_keyfile = ssl_keyfile
+        self._session_store = session_store
 
         self._handler: MessageHandler | None = None
         self._running = False
@@ -84,6 +97,13 @@ class TeamsChannel(Channel):
         self._stream_buffers: dict[str, list[str]] = {}
 
     @property
+    def _app_password(self) -> str:
+        """App-Passwort (entschlüsselt bei Zugriff)."""
+        if self._has_app_password:
+            return self._token_store.retrieve("teams_app_password")
+        return ""
+
+    @property
     def name(self) -> str:
         return "teams"
 
@@ -92,6 +112,11 @@ class TeamsChannel(Channel):
     async def start(self, handler: MessageHandler) -> None:
         """Startet den Teams Bot mit Webhook-Server."""
         self._handler = handler
+
+        # Persistierte Mappings laden
+        if self._session_store:
+            for key, val in self._session_store.load_all_channel_mappings("teams_sessions").items():
+                self._sessions[key] = val
 
         try:
             from botbuilder.core import (  # type: ignore[import-untyped]
@@ -145,14 +170,25 @@ class TeamsChannel(Channel):
 
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, self._webhook_host, self._webhook_port)
+
+        # TLS-Support
+        ssl_ctx = None
+        if self._ssl_certfile and self._ssl_keyfile:
+            from jarvis.security.token_store import create_ssl_context
+            ssl_ctx = create_ssl_context(self._ssl_certfile, self._ssl_keyfile)
+
+        if not ssl_ctx and self._webhook_host not in ("127.0.0.1", "localhost", "::1"):
+            logger.warning("WARNUNG: Teams-Webhook auf %s ohne TLS gestartet!", self._webhook_host)
+
+        site = web.TCPSite(runner, self._webhook_host, self._webhook_port, ssl_context=ssl_ctx)
         await site.start()
 
         self._webhook_runner = runner
         logger.info(
-            "Teams: Webhook-Server gestartet auf %s:%d",
+            "Teams: Webhook-Server gestartet auf %s:%d (TLS=%s)",
             self._webhook_host,
             self._webhook_port,
+            ssl_ctx is not None,
         )
 
     async def _handle_health(self, request: Any) -> Any:
@@ -286,6 +322,10 @@ class TeamsChannel(Channel):
                 response = await self._handler(incoming)
                 if response.session_id:
                     self._sessions[conversation_id] = response.session_id
+                    if self._session_store:
+                        self._session_store.save_channel_mapping(
+                            "teams_sessions", conversation_id, response.session_id,
+                        )
 
                 # Antwort senden (mit Splitting)
                 chunks = _split_message(response.text)

@@ -11,7 +11,7 @@
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C841%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C879%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   </p>
@@ -32,7 +32,7 @@
 - **5-Tier Cognitive Memory** — Core identity, episodic logs, semantic knowledge graph, procedural skills, working memory
 - **3-Channel Hybrid Search** — BM25 full-text + vector embeddings + knowledge graph traversal with score fusion
 - **PGE Architecture** — Planner (LLM) → Gatekeeper (deterministic policy engine) → Executor (sandboxed)
-- **Enterprise Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance, credential vault, red-teaming
+- **Enterprise Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance, credential vault, red-teaming, runtime token encryption (Fernet AES-256), TLS support, file-size limits
 - **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
 - **Model Context Protocol (MCP)** — 18+ tool servers (filesystem, shell, memory, web, browser, media, vault, synthesis)
@@ -41,9 +41,11 @@
 - **Auto-Detect Channels** — Channels activate automatically when tokens are present in `.env` — no manual config flags needed
 - **Knowledge Synthesis** — Meta-analysis across Memory + Vault + Web with LLM fusion: `knowledge_synthesize` (full synthesis with confidence ratings), `knowledge_contradictions` (fact-checking), `knowledge_timeline` (causal chains), `knowledge_gaps` (completeness score + research suggestions)
 - **Adaptive Context Pipeline** — Automatic context enrichment before every Planner call: BM25 memory search + vault full-text search + recent episodes, injected into WorkingMemory in <50ms
+- **Security Hardening** — Runtime token encryption (Fernet AES-256) across all 9 channels, TLS support for webhook servers, file-size limits on all upload/processing paths, persistent session mappings in SQLite
+- **One-Click Start** — Double-click `start_cognithor.bat` → browser opens → click **Power On** → done
 - **Enhanced Web Research** — 4-provider search fallback (SearXNG → Brave → Google CSE → DuckDuckGo), Jina AI Reader for JS-heavy sites, domain filtering, source cross-checking
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
-- **4,841 tests** · **89% coverage** · **0 lint errors**
+- **4,879 tests** · **89% coverage** · **0 lint errors**
 
 ## Architecture
 
@@ -221,6 +223,7 @@ cognithor/
 │   ├── security/
 │   │   ├── audit.py               # Append-only audit trail (SHA-256 chain)
 │   │   ├── credentials.py         # Credential store (Fernet encrypted)
+│   │   ├── token_store.py         # Runtime token encryption (ephemeral Fernet) + TLS helper
 │   │   ├── sandbox.py             # Multi-level sandbox (L0–L2)
 │   │   ├── policies.py            # Security policies (path, command, network)
 │   │   └── sanitizer.py           # Input sanitization (injection protection)
@@ -252,6 +255,7 @@ cognithor/
 ├── scripts/                       # Backup, deployment, utilities
 ├── deploy/                        # Docker, systemd, nginx configs
 ├── apps/                          # PWA app (legacy)
+├── start_cognithor.bat             # One-click launcher (Windows)
 ├── config.yaml.example            # Example configuration
 ├── pyproject.toml                 # Python project metadata
 ├── Makefile                       # Build, test, lint commands
@@ -301,7 +305,19 @@ ollama pull qwen3-coder:32b     # Code tasks (20 GB VRAM)
 ollama pull nomic-embed-text    # Embeddings (300 MB VRAM)
 ```
 
-### Start
+### Start — One Click
+
+The fastest way to start Cognithor:
+
+```
+Double-click  start_cognithor.bat  →  Browser opens  →  Click "Power On"  →  Done.
+```
+
+That's it. The batch file launches the Control Center UI, which automatically manages the Python backend (start, stop, health checks, orphan cleanup). No terminal knowledge required.
+
+> **Windows users:** A desktop shortcut named **Cognithor** is included for convenience.
+
+### Alternative: CLI Start
 
 ```bash
 # Interactive CLI
@@ -315,9 +331,7 @@ python -m jarvis --no-cli
 JARVIS_HOME=~/my-cognithor cognithor
 ```
 
-### Control Center UI
-
-The React-based Control Center provides a full web dashboard for managing Cognithor:
+### Control Center UI (Development)
 
 ```bash
 cd ui
@@ -425,6 +439,10 @@ Cognithor implements enterprise-grade security:
 | **Sandbox** | 4 isolation levels: Process → Linux Namespaces (nsjail) → Docker → Windows Job Objects |
 | **Audit Trail** | Append-only JSONL with SHA-256 chain. Tamper-evident. Credentials masked before logging |
 | **Credential Vault** | Fernet-encrypted, per-agent secret storage |
+| **Runtime Token Encryption** | All channel tokens (Telegram, Discord, Slack, ...) encrypted in memory with ephemeral Fernet keys (AES-256). Never stored as plaintext in RAM |
+| **TLS Support** | Optional SSL/TLS for all webhook servers (Teams, WhatsApp, API, WebUI). Minimum TLS 1.2 enforced. Warning logged for non-localhost without TLS |
+| **File-Size Limits** | Upload/processing limits on all paths: 50 MB documents, 100 MB audio, 1 MB code execution, 50 MB WebUI uploads |
+| **Session Persistence** | Channel-to-session mappings stored in SQLite (WAL mode). Survives restarts — no lost Telegram/Discord sessions |
 | **Input Sanitization** | Injection protection for shell commands and file paths |
 | **EU AI Act** | Compliance module, impact assessments, transparency reports |
 | **Red-Teaming** | Automated offensive security tests (1,425 LOC) |
@@ -457,18 +475,20 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **4,841 tests** · **100% pass rate** · **89% coverage**
+Current status: **4,879 tests** · **100% pass rate** · **89% coverage**
 
 | Area | Tests | Description |
 |------|-------|-------------|
-| Core | 239 | Planner, Gatekeeper, Executor, Config, Models, Reflector |
-| Memory | 187 | All 5 tiers, indexer, hybrid search, chunker, watcher |
-| MCP | 177 | Client, filesystem, shell, memory server, web tools |
-| Channels | 163 | CLI, Telegram, Discord, Slack, WhatsApp, API, WebUI, Voice |
-| Security | 133 | Audit, credentials, policies, sandbox, sanitizer |
+| Core | 774 | Planner, Gatekeeper, Executor, Config, Models, Reflector |
+| Integration | 1,308 | End-to-end tests, phase wiring, entrypoint |
+| Channels | 550 | CLI, Telegram, Discord, Slack, WhatsApp, API, WebUI, Voice |
+| Memory | 404 | All 5 tiers, indexer, hybrid search, chunker, watcher |
+| MCP | 348 | Client, filesystem, shell, memory server, web, media, synthesis |
+| Security | 333 | Audit, credentials, token store, TLS, policies, sandbox, sanitizer |
+| Skills | 322 | Skill registry, generator, marketplace, procedures |
+| Gateway | 197 | Session management, agent loop, context pipeline |
 | UI API | 55 | Control Center endpoints (config, agents, prompts, cron, MCP, A2A) |
-| Cron | 57 | Engine, job store, scheduling |
-| Integration | 46 | End-to-end tests, entrypoint |
+| Cron | 63 | Engine, job store, scheduling |
 
 ## Code Quality
 
@@ -547,9 +567,10 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 | **Phase 6** | Web UI & voice | Done |
 | **Phase 7** | Control Center UI, API integration, channel auto-detect | Done |
 | **Phase 8** | UI integration into repo, backend launcher, orphan management | Done |
-| **Deploy** | Installer, systemd, Docker, backup, smoke test | Done |
+| **Phase 9** | Security hardening: token encryption, TLS, file-size limits, session persistence | Done |
+| **Deploy** | Installer, systemd, Docker, backup, smoke test, one-click launcher | Done |
 
-**Metrics:** ~85,000 LOC source · 53,000+ LOC tests · 4,841 tests · 89% coverage · 0 lint errors
+**Metrics:** ~86,000 LOC source · 53,000+ LOC tests · 4,879 tests · 89% coverage · 0 lint errors
 
 ## License
 

@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.22.x  | Yes       |
+| 0.26.x  | Yes       |
+| 0.22–0.25 | Security fixes only |
 | < 0.22  | No        |
 
 ## Reporting a Vulnerability
@@ -32,6 +33,35 @@ Cognithor implements defense-in-depth with multiple security layers:
 - **Input Sanitization** — Protection against shell injection, path traversal, and prompt injection attacks.
 - **Path Sandbox** — File operations restricted to explicitly allowed directories.
 - **Red-Teaming** — Automated offensive security test suite (1,425 LOC).
+
+## Runtime Token Protection (v0.26.0+)
+
+All channel tokens (Telegram, Discord, Slack, Teams, WhatsApp, API, WebUI, Matrix, Mattermost) are encrypted in memory using ephemeral Fernet keys (AES-256). Tokens are never stored as plaintext in RAM after initialization.
+
+- **Encryption**: `SecureTokenStore` generates a random Fernet key at startup. All tokens are encrypted immediately upon channel construction.
+- **Access**: Tokens are decrypted on-demand via `@property` accessors. External callers see plaintext — internal storage is always ciphertext.
+- **Fallback**: Without the `cryptography` package, Base64 obfuscation is used with a logged warning.
+- **Scope**: Runtime protection against memory dumps. Does not replace disk-level encryption for config files.
+
+## TLS Support (v0.26.0+)
+
+Webhook servers (Teams, WhatsApp) and HTTP servers (API, WebUI) support optional TLS:
+
+- Configure `ssl_certfile` and `ssl_keyfile` in `security` section of `config.yaml`
+- Minimum TLS 1.2 enforced (`ssl.TLSVersion.TLSv1_2`)
+- Non-localhost servers without TLS log a `WARNING` at startup
+
+## File-Size Limits (v0.26.0+)
+
+All upload and processing paths enforce size limits to prevent resource exhaustion:
+
+| Path | Limit | Constant |
+|------|-------|----------|
+| Document extraction (`media.py`) | 50 MB | `MAX_EXTRACT_FILE_SIZE` |
+| Audio transcription (`media.py`) | 100 MB | `MAX_AUDIO_FILE_SIZE` |
+| Code execution (`code_tools.py`) | 1 MB | `MAX_CODE_SIZE` |
+| WebUI file upload (`webui.py`) | 50 MB | `MAX_UPLOAD_SIZE` |
+| Telegram document download (`telegram.py`) | 50 MB | `MAX_DOCUMENT_SIZE` |
 
 ## Credential Handling
 

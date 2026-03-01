@@ -37,6 +37,7 @@ from typing import Any
 
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
+from jarvis.security.token_store import get_token_store
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +65,13 @@ class MatrixChannel(Channel):
     ) -> None:
         self._homeserver = homeserver
         self._user_id = user_id
-        self._access_token = access_token
-        self._password = password
+        self._token_store = get_token_store()
+        if access_token:
+            self._token_store.store("matrix_access_token", access_token)
+        self._has_access_token = bool(access_token)
+        if password:
+            self._token_store.store("matrix_password", password)
+        self._has_password = bool(password)
         self._allowed_rooms = set(allowed_rooms or [])
         self._store_path = store_path or Path.home() / ".jarvis" / "matrix_store"
         self._workspace_dir = workspace_dir or Path.home() / ".jarvis" / "workspace" / "matrix"
@@ -91,6 +97,20 @@ class MatrixChannel(Channel):
 
         # Voice-Transkription
         self._whisper: Any | None = None
+
+    @property
+    def _access_token(self) -> str:
+        """Access-Token (entschlüsselt bei Zugriff)."""
+        if self._has_access_token:
+            return self._token_store.retrieve("matrix_access_token")
+        return ""
+
+    @property
+    def _password(self) -> str:
+        """Passwort (entschlüsselt bei Zugriff)."""
+        if self._has_password:
+            return self._token_store.retrieve("matrix_password")
+        return ""
 
     @property
     def name(self) -> str:

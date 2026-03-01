@@ -25,6 +25,7 @@ from uuid import uuid4
 from jarvis.channels.base import Channel, MessageHandler
 from jarvis.models import IncomingMessage, OutgoingMessage, PlannedAction
 from jarvis.security.rate_limiter import RateLimiter
+from jarvis.security.token_store import get_token_store
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -112,11 +113,18 @@ class APIChannel(Channel):
         port: int = 8741,
         api_token: str | None = None,
         cors_origins: list[str] | None = None,
+        ssl_certfile: str = "",
+        ssl_keyfile: str = "",
     ) -> None:
         self._host = host
         self._port = port
-        self._api_token = api_token
+        self._token_store = get_token_store()
+        if api_token:
+            self._token_store.store("api_channel_token", api_token)
+        self._has_api_token = bool(api_token)
         self._cors_origins = cors_origins or []
+        self._ssl_certfile = ssl_certfile
+        self._ssl_keyfile = ssl_keyfile
         self._handler: MessageHandler | None = None
         self._app: Any = None
         self._server: Any = None
@@ -127,6 +135,13 @@ class APIChannel(Channel):
         self._rate_limiter = RateLimiter()
 
     @property
+    def _api_token(self) -> str | None:
+        """API-Token (entschlüsselt bei Zugriff)."""
+        if self._has_api_token:
+            return self._token_store.retrieve("api_channel_token")
+        return None
+
+    @property
     def name(self) -> str:
         return "api"
 
@@ -135,6 +150,11 @@ class APIChannel(Channel):
         self._handler = handler
         self._start_time = time.monotonic()
         self._app = self._create_app()
+
+        # TLS-Warning für externe Hosts
+        if self._host not in ("127.0.0.1", "localhost", "::1") and not self._ssl_certfile:
+            log.warning("api_no_tls", host=self._host, message="WARNUNG: API auf externem Host ohne TLS!")
+
         log.info("api_channel_starting", host=self._host, port=self._port)
 
     async def stop(self) -> None:

@@ -57,6 +57,16 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_channel
 _MIGRATIONS = [
     "ALTER TABLE sessions ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'jarvis';",
     "CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id, user_id, channel);",
+    # Migration 3: Channel-Mappings für persistente Session→Chat-ID Zuordnungen
+    """\
+    CREATE TABLE IF NOT EXISTS channel_mappings (
+        channel       TEXT NOT NULL,
+        mapping_key   TEXT NOT NULL,
+        mapping_value TEXT NOT NULL,
+        updated_at    REAL NOT NULL,
+        PRIMARY KEY (channel, mapping_key)
+    );
+    """,
 ]
 
 
@@ -297,6 +307,76 @@ class SessionStore:
         if count > 0:
             logger.info(
                 "Alte Sessions deaktiviert: %d (älter als %d Tage)",
+                count,
+                max_age_days,
+            )
+        return count
+
+    # ========================================================================
+    # Channel-Mappings (persistente Session→Chat-ID Zuordnungen)
+    # ========================================================================
+
+    def save_channel_mapping(self, channel: str, key: str, value: str) -> None:
+        """Speichert ein Channel-Mapping (z.B. session_id → chat_id).
+
+        Args:
+            channel: Channel-Namespace (z.B. 'telegram_session', 'discord_user').
+            key: Mapping-Key (z.B. Session-ID).
+            value: Mapping-Value (z.B. Chat-ID als String).
+        """
+        now = datetime.now(tz=UTC).timestamp()
+        self.conn.execute(
+            """
+            INSERT INTO channel_mappings (channel, mapping_key, mapping_value, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(channel, mapping_key) DO UPDATE SET
+                mapping_value = excluded.mapping_value,
+                updated_at = excluded.updated_at
+            """,
+            (channel, key, value, now),
+        )
+        self.conn.commit()
+
+    def load_channel_mapping(self, channel: str, key: str) -> str | None:
+        """Lädt ein einzelnes Channel-Mapping.
+
+        Returns:
+            Mapping-Value oder None wenn nicht vorhanden.
+        """
+        row = self.conn.execute(
+            "SELECT mapping_value FROM channel_mappings WHERE channel = ? AND mapping_key = ?",
+            (channel, key),
+        ).fetchone()
+        return row["mapping_value"] if row else None
+
+    def load_all_channel_mappings(self, channel: str) -> dict[str, str]:
+        """Lädt alle Mappings für einen Channel-Namespace.
+
+        Returns:
+            Dict von key → value.
+        """
+        rows = self.conn.execute(
+            "SELECT mapping_key, mapping_value FROM channel_mappings WHERE channel = ?",
+            (channel,),
+        ).fetchall()
+        return {row["mapping_key"]: row["mapping_value"] for row in rows}
+
+    def cleanup_channel_mappings(self, max_age_days: int = 30) -> int:
+        """Löscht veraltete Channel-Mappings.
+
+        Returns:
+            Anzahl gelöschter Einträge.
+        """
+        cutoff = datetime.now(tz=UTC).timestamp() - (max_age_days * 86400)
+        cursor = self.conn.execute(
+            "DELETE FROM channel_mappings WHERE updated_at < ?",
+            (cutoff,),
+        )
+        self.conn.commit()
+        count = cursor.rowcount
+        if count > 0:
+            logger.info(
+                "Alte Channel-Mappings gelöscht: %d (älter als %d Tage)",
                 count,
                 max_age_days,
             )
