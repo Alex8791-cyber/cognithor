@@ -7,7 +7,7 @@
     <em>Cognition + Thor — Intelligence with Power</em>
   </p>
   <p align="center">
-    <a href="#llm-providers">15 LLM Providers</a> · <a href="#channels">17 Channels</a> · <a href="#5-tier-cognitive-memory">5-Tier Memory</a> · <a href="#security">Enterprise Security</a> · <a href="LICENSE">Apache 2.0</a>
+    <a href="#llm-providers">15 LLM Providers</a> · <a href="#channels">17 Channels</a> · <a href="#5-tier-cognitive-memory">5-Tier Memory</a> · <a href="#knowledge-vault">Knowledge Vault</a> · <a href="#security">Enterprise Security</a> · <a href="LICENSE">Apache 2.0</a>
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
@@ -33,10 +33,13 @@
 - **3-Channel Hybrid Search** — BM25 full-text + vector embeddings + knowledge graph traversal with score fusion
 - **PGE Architecture** — Planner (LLM) → Gatekeeper (deterministic policy engine) → Executor (sandboxed)
 - **Enterprise Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance, credential vault, red-teaming
-- **Model Context Protocol (MCP)** — 13+ tool servers (filesystem, shell, memory, web, browser, media)
+- **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
+- **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
+- **Model Context Protocol (MCP)** — 15+ tool servers (filesystem, shell, memory, web, browser, media, vault)
 - **Agent-to-Agent Protocol (A2A)** — Linux Foundation RC v1.0 for inter-agent communication
 - **React Control Center** — Full web dashboard (React 19 + Vite 7) with integrated backend launcher, live config editing, agent management, prompt editing, cron jobs, MCP servers, and A2A settings
 - **Auto-Detect Channels** — Channels activate automatically when tokens are present in `.env` — no manual config flags needed
+- **Enhanced Web Research** — 4-provider search fallback (SearXNG → Brave → Google CSE → DuckDuckGo), Jina AI Reader for JS-heavy sites, domain filtering, source cross-checking
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
 - **4,746 tests** · **89% coverage** · **0 lint errors**
 
@@ -59,8 +62,8 @@
 │  Planner   │  Gatekeeper  │  Executor                        │
 │  (LLM)     │  (Policy)    │  (Sandbox)                       │
 ├────────────┴──────────────┴──────────────────────────────────┤
-│                  MCP Tool Layer (13+)                         │
-│  Filesystem · Shell · Memory · Web · Browser · Media          │
+│                  MCP Tool Layer (15+)                         │
+│  Filesystem · Shell · Memory · Web · Browser · Media · Vault  │
 ├──────────────────────────────────────────────────────────────┤
 │              Multi-LLM Backend Layer (15)                     │
 │  Ollama · OpenAI · Anthropic · Gemini · Groq · DeepSeek      │
@@ -90,6 +93,15 @@ Every user request passes through three stages:
 | 5 | **Working** | RAM (volatile) | Active session context |
 
 Memory search uses a 3-channel hybrid approach: **BM25** (full-text search with FTS5, optimized for German compound words) + **Vector Search** (Ollama embeddings, cosine similarity) + **Graph Traversal** (entity relations). Score fusion with configurable weights and recency decay.
+
+### Knowledge Vault
+
+In addition to the 5-tier memory, Cognithor includes an **Obsidian-compatible Knowledge Vault** (`~/.jarvis/vault/`) for persistent, human-readable notes:
+
+- **Folder structure**: `recherchen/`, `meetings/`, `wissen/`, `projekte/`, `daily/`
+- **Obsidian format**: YAML frontmatter (title, tags, sources, dates), `[[backlinks]]`
+- **6 tools**: `vault_save`, `vault_search`, `vault_list`, `vault_read`, `vault_update`, `vault_link`
+- Open the vault folder directly in [Obsidian](https://obsidian.md) for graph visualization
 
 ### Reflection & Procedural Learning
 
@@ -186,9 +198,10 @@ cognithor/
 │   │   ├── filesystem.py          # File tools (path sandbox)
 │   │   ├── shell.py               # Shell execution (timeout, sandbox)
 │   │   ├── memory_server.py       # Memory as 10 MCP tools
-│   │   ├── web.py                 # Web search and URL fetch
+│   │   ├── web.py                 # Enhanced web search (4 providers) and URL fetch (Jina fallback)
+│   │   ├── vault.py               # Knowledge Vault (Obsidian-compatible, 6 tools)
 │   │   ├── browser.py             # Browser automation (Playwright, 6 tools)
-│   │   └── media.py               # Media pipeline (STT, TTS, image, PDF, 6 tools)
+│   │   └── media.py               # Media pipeline (STT, TTS, image, PDF, document analysis, 8 tools)
 │   ├── gateway/
 │   │   └── gateway.py             # Agent loop, session management, subsystem init
 │   ├── channels/                  # 17 communication channels + Control Center API
@@ -335,6 +348,13 @@ On first start, Cognithor automatically creates the directory structure under `~
 │   ├── knowledge/       # Knowledge graph files
 │   ├── procedures/      # Learned skills
 │   └── sessions/        # Session snapshots
+├── vault/               # Knowledge Vault (Obsidian-compatible)
+│   ├── recherchen/      # Web research results
+│   ├── meetings/        # Meeting notes
+│   ├── wissen/          # Knowledge articles
+│   ├── projekte/        # Project notes
+│   ├── daily/           # Daily notes
+│   └── _index.json      # Quick lookup index
 ├── index/
 │   └── cognithor.db     # SQLite index (FTS5 + vectors + entities)
 ├── mcp/
@@ -361,6 +381,21 @@ owner_name: "Alex"
 ollama:
   base_url: "http://localhost:11434"
   timeout_seconds: 120
+
+web:
+  # Search providers (all optional, fallback chain: SearXNG → Brave → Google CSE → DDG)
+  # searxng_url: "http://localhost:8888"
+  # brave_api_key: "BSA..."
+  # google_cse_api_key: "AIza..."
+  # google_cse_cx: "a1b2c3..."
+  # jina_api_key: ""              # Optional, free tier works without key
+  # domain_blocklist: []          # Blocked domains
+  # domain_allowlist: []          # If set, ONLY these domains allowed
+
+vault:
+  enabled: true
+  path: "~/.jarvis/vault"
+  # auto_save_research: false     # Auto-save web research results
 
 channels:
   cli_enabled: true
@@ -395,9 +430,10 @@ Cognithor implements enterprise-grade security:
 | **Filesystem** | read, write, edit, list, delete | Path-sandboxed file operations |
 | **Shell** | exec_command | Sandboxed command execution with timeout |
 | **Memory** | search, save, get_entity, add_entity, ... | 10 memory tools across all 5 tiers |
-| **Web** | web_search, web_fetch | Web search and URL fetching |
+| **Web** | web_search, web_fetch, search_and_read, web_news_search | 4-provider search (SearXNG → Brave → Google CSE → DDG), Jina Reader fallback, domain filtering, cross-check |
 | **Browser** | navigate, screenshot, click, fill_form, execute_js, get_page_content | Playwright-based browser automation |
-| **Media** | transcribe_audio, analyze_image, extract_text, convert_audio, resize_image, tts | Multimodal pipeline (all local) |
+| **Media** | transcribe_audio, analyze_image, extract_text, analyze_document, convert_audio, resize_image, tts, document_export | Multimodal pipeline + LLM-powered document analysis (all local) |
+| **Vault** | vault_save, vault_search, vault_list, vault_read, vault_update, vault_link | Obsidian-compatible Knowledge Vault with frontmatter, tags, backlinks |
 
 ## Tests
 

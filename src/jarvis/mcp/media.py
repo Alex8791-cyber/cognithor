@@ -67,6 +67,28 @@ class MediaPipeline:
     def __init__(self, workspace_dir: Path | None = None) -> None:
         self._workspace = workspace_dir or Path.home() / ".jarvis" / "workspace" / "media"
         self._workspace.mkdir(parents=True, exist_ok=True)
+        # LLM + Vault injection (gesetzt via _set_llm_fn / _set_vault)
+        self._llm_fn: Any = None
+        self._llm_model: str = ""
+        self._vault: Any = None
+
+    def _set_llm_fn(self, llm_fn: Any, model_name: str = "") -> None:
+        """Injiziert eine LLM-Funktion für Dokument-Analyse.
+
+        Args:
+            llm_fn: Async-Funktion mit Signatur (prompt: str, model: str) -> str
+            model_name: Name des zu verwendenden Modells.
+        """
+        self._llm_fn = llm_fn
+        self._llm_model = model_name
+
+    def _set_vault(self, vault: Any) -> None:
+        """Injiziert VaultTools-Referenz für optionales Speichern.
+
+        Args:
+            vault: VaultTools-Instanz mit vault_save-Methode.
+        """
+        self._vault = vault
 
     def _validate_input_path(self, file_path: str) -> Path | None:
         """Validates input file path against path traversal.
@@ -332,6 +354,90 @@ class MediaPipeline:
         # Mehrfach-Whitespace normalisieren
         text = re.sub(r"\s+", " ", text).strip()
         return text
+
+    # ========================================================================
+    # Dokument-Analyse (LLM-gestützt)
+    # ========================================================================
+
+    async def analyze_document(
+        self,
+        path: str,
+        analysis_type: str = "full",
+        language: str = "de",
+        save_to_vault: bool = False,
+    ) -> str:
+        """Analysiert ein Dokument strukturiert mit LLM-Unterstützung.
+
+        Extrahiert Text, sendet ihn an das LLM mit einem strukturierten
+        Analyse-Prompt und liefert eine Analyse mit 6 Abschnitten.
+
+        Args:
+            path: Pfad zum Dokument (PDF, DOCX, TXT, HTML, etc.).
+            analysis_type: Art der Analyse:
+                'full' = vollständige Analyse (6 Abschnitte)
+                'summary' = nur Zusammenfassung
+                'risks' = nur Risiken & Bedenken
+                'todos' = nur Handlungsbedarf / To-Dos
+            language: Sprache der Analyse ('de' oder 'en').
+            save_to_vault: Wenn True, Analyse im Vault speichern.
+
+        Returns:
+            Strukturierte Analyse als Markdown-Text.
+        """
+        if self._llm_fn is None:
+            return (
+                "Fehler: Dokument-Analyse nicht verfügbar. "
+                "Kein LLM konfiguriert. Verwende stattdessen media_extract_text."
+            )
+
+        # 1. Text extrahieren
+        extract_result = await self.extract_text(path)
+        if not extract_result.success:
+            return f"Fehler bei Text-Extraktion: {extract_result.error}"
+
+        text = extract_result.text
+        if not text.strip():
+            return "Fehler: Kein Text im Dokument gefunden. Möglicherweise ein gescanntes PDF (OCR erforderlich)."
+
+        # Hinweis bei sehr kurzem Text
+        ocr_warning = ""
+        if len(text.strip()) < 100:
+            ocr_warning = (
+                "\n\n⚠ **Hinweis**: Sehr wenig Text extrahiert. "
+                "Falls es sich um ein gescanntes PDF handelt, wird OCR-Software benötigt."
+            )
+
+        # 2. Analyse-Prompt bauen
+        filename = Path(path).name
+        prompt = _build_analysis_prompt(text, analysis_type, language, filename)
+
+        # 3. LLM aufrufen
+        try:
+            analysis = await self._llm_fn(prompt, self._llm_model)
+        except Exception as exc:
+            log.error("document_analysis_llm_failed", path=path, error=str(exc))
+            return f"Fehler bei LLM-Analyse: {exc}"
+
+        result = analysis + ocr_warning
+
+        # 4. Optional im Vault speichern
+        if save_to_vault and self._vault is not None:
+            try:
+                vault_title = f"Analyse: {filename}"
+                await self._vault.vault_save(
+                    title=vault_title,
+                    content=result,
+                    tags="analyse, dokument",
+                    folder="research",
+                    sources=path,
+                )
+                result += f"\n\n✓ Analyse im Vault gespeichert als '{vault_title}'."
+            except Exception as vault_exc:
+                log.warning("vault_save_failed_during_analysis", error=str(vault_exc))
+                result += f"\n\n⚠ Vault-Speicherung fehlgeschlagen: {vault_exc}"
+
+        log.info("document_analyzed", path=path, type=analysis_type, chars=len(result))
+        return result
 
     # ========================================================================
     # Audio-Konvertierung (ffmpeg)
@@ -704,6 +810,77 @@ class MediaPipeline:
 
 
 # ============================================================================
+# Analyse-Prompt-Builder
+# ============================================================================
+
+
+def _build_analysis_prompt(
+    text: str,
+    analysis_type: str,
+    language: str,
+    filename: str,
+) -> str:
+    """Baut den LLM-Prompt für die Dokument-Analyse.
+
+    Args:
+        text: Extrahierter Dokumenttext.
+        analysis_type: full/summary/risks/todos.
+        language: Sprache der Analyse.
+        filename: Name der Quelldatei.
+
+    Returns:
+        Fertiger LLM-Prompt.
+    """
+    lang_instruction = "Antworte auf Deutsch." if language == "de" else "Answer in English."
+
+    if analysis_type == "summary":
+        task = (
+            "Erstelle eine prägnante Zusammenfassung des Dokuments in 2-3 Sätzen. "
+            "Nenne die wichtigsten Kernaussagen (max. 5 Punkte)."
+        )
+    elif analysis_type == "risks":
+        task = (
+            "Identifiziere alle Risiken und Bedenken im Dokument. "
+            "Bewerte jedes Risiko als HOCH, MITTEL oder NIEDRIG mit Begründung."
+        )
+    elif analysis_type == "todos":
+        task = (
+            "Extrahiere alle Handlungspunkte, To-Dos und offenen Aufgaben aus dem Dokument. "
+            "Ordne jedem Punkt eine Priorität zu (Hoch/Mittel/Niedrig)."
+        )
+    else:  # full
+        task = (
+            "Erstelle eine vollständige strukturierte Analyse mit genau diesen 6 Abschnitten:\n\n"
+            "## Zusammenfassung\n"
+            "2-3 Sätze, die den Kern des Dokuments erfassen.\n\n"
+            "## Kernaussagen\n"
+            "Maximal 7 priorisierte Punkte.\n\n"
+            "## Risiken & Bedenken\n"
+            "Bewertung: HOCH / MITTEL / NIEDRIG mit Begründung.\n\n"
+            "## Handlungsbedarf / To-Dos\n"
+            "Konkrete Aktionspunkte mit Priorität.\n\n"
+            "## Entscheidungsprotokoll\n"
+            "- Bereits getroffene Entscheidungen\n"
+            "- Offene Entscheidungen\n\n"
+            "## Metadaten\n"
+            "- Dokumenttyp (Vertrag/Angebot/Bericht/Protokoll/Rechnung/Sonstiges)\n"
+            "- Datum (falls erkennbar)\n"
+            "- Beteiligte Parteien\n"
+            "- Umfang"
+        )
+
+    return (
+        f"Du bist ein Experte für Dokumentenanalyse. {lang_instruction}\n\n"
+        f"Analysiere das folgende Dokument (Datei: {filename}).\n\n"
+        f"AUFGABE:\n{task}\n\n"
+        "Falls es sich um ein Rechtsdokument (Vertrag, AGB, etc.) handelt, "
+        "füge am Ende diesen Disclaimer an: "
+        '"Dies ist eine automatische Analyse und ersetzt keine rechtliche Beratung."\n\n'
+        f"DOKUMENT-INHALT:\n---\n{text}\n---"
+    )
+
+
+# ============================================================================
 # MCP-Tool-Schemas
 # ============================================================================
 
@@ -820,6 +997,36 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
             "required": ["text"],
         },
     },
+    "analyze_document": {
+        "description": (
+            "Analysiert ein Dokument (PDF, DOCX, TXT, HTML) strukturiert mit LLM. "
+            "Liefert Zusammenfassung, Kernaussagen, Risiken, To-Dos, Entscheidungen und Metadaten. "
+            "Optional im Knowledge Vault speichern."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Pfad zum Dokument"},
+                "analysis_type": {
+                    "type": "string",
+                    "enum": ["full", "summary", "risks", "todos"],
+                    "description": "Art der Analyse: full (vollständig), summary, risks, todos",
+                    "default": "full",
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Sprache der Analyse (de/en)",
+                    "default": "de",
+                },
+                "save_to_vault": {
+                    "type": "boolean",
+                    "description": "Analyse im Knowledge Vault speichern",
+                    "default": False,
+                },
+            },
+            "required": ["path"],
+        },
+    },
     "document_export": {
         "description": (
             "Exportiert Text als PDF- oder DOCX-Dokument (Briefform, Schreiben, etc.). "
@@ -900,6 +1107,19 @@ def register_media_tools(mcp_client: Any, config: Any = None) -> MediaPipeline:
         result = await pipeline.text_to_speech(text, voice=voice)
         return result.text if result.success else f"Fehler: {result.error}"
 
+    async def _analyze_document(
+        path: str,
+        analysis_type: str = "full",
+        language: str = "de",
+        save_to_vault: bool = False,
+        **_: Any,
+    ) -> str:
+        result = await pipeline.analyze_document(
+            path, analysis_type=analysis_type, language=language,
+            save_to_vault=save_to_vault,
+        )
+        return result
+
     async def _export_document(
         content: str,
         format: str = "pdf",
@@ -922,6 +1142,7 @@ def register_media_tools(mcp_client: Any, config: Any = None) -> MediaPipeline:
         "media_convert_audio": _convert_audio,
         "media_resize_image": _resize_image,
         "media_tts": _tts,
+        "analyze_document": _analyze_document,
         "document_export": _export_document,
     }
 

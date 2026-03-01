@@ -1,7 +1,7 @@
 """PGE phase: Planner, Gate (executor), Reflector -- the PGE trinity.
 
 Attributes handled:
-  _planner, _executor, _reflector
+  _planner, _executor, _reflector, _skill_generator
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ def declare_pge_attrs(config: Any) -> PhaseResult:
         "planner": None,
         "executor": None,
         "reflector": None,
+        "skill_generator": None,
         "task_profiler": None,
         "task_telemetry": None,
         "error_clusterer": None,
@@ -104,11 +105,61 @@ async def init_pge(
     except Exception:
         log.debug("reward_calculator_init_skipped")
 
-    # Executor (with retry/backoff + security + profiling + telemetry)
+    # SkillGenerator (Self-Learning Pipeline)
+    # NOTE: SkillGenerator creates its own internal GapDetector.
+    # We pass that SAME instance to the Executor so gaps flow into one place.
+    skill_generator = None
+    gap_detector = None
+    try:
+        from jarvis.skills.generator import SkillGenerator
+
+        skills_dir = config.jarvis_home / "skills" / "generated"
+        skills_dir.mkdir(parents=True, exist_ok=True)
+
+        # LLM wrapper: SkillGenerator expects async (prompt: str) -> str
+        async def _skill_llm_fn(prompt: str) -> str:
+            model = model_router.select_model("coding", "medium")
+            model_config = model_router.get_model_config(model)
+            response = await llm.chat(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=model_config.get("temperature", 0.3),
+            )
+            return response.get("message", {}).get("content", "")
+
+        # SandboxExecutor for testing generated skills
+        sandbox_executor = None
+        try:
+            from jarvis.core.sandbox import SandboxExecutor
+            sandbox_executor = SandboxExecutor(config)
+        except Exception:
+            log.debug("skill_sandbox_init_skipped")
+
+        skill_generator = SkillGenerator(
+            skills_dir=skills_dir,
+            sandbox_executor=sandbox_executor,
+            llm_fn=_skill_llm_fn,
+            require_approval=getattr(config.gatekeeper, "auto_approve_threshold", 0.7) < 0.5,
+            audit_logger=audit_logger,
+        )
+        # Use the SkillGenerator's internal GapDetector for the Executor too
+        gap_detector = skill_generator.gap_detector
+        log.info("skill_generator_initialized", skills_dir=str(skills_dir))
+    except Exception:
+        log.debug("skill_generator_init_skipped", exc_info=True)
+        # Standalone GapDetector even without SkillGenerator (for telemetry)
+        try:
+            from jarvis.skills.generator import GapDetector
+            gap_detector = GapDetector()
+        except Exception:
+            pass
+
+    # Executor (with retry/backoff + security + profiling + telemetry + gap detection)
     try:
         result["executor"] = Executor(
             config,
             mcp_client,
+            gap_detector=gap_detector,
             runtime_monitor=runtime_monitor,
             audit_logger=audit_logger,
             task_profiler=task_profiler,
@@ -147,10 +198,11 @@ async def init_pge(
         log.error("reflector_init_failed", exc_info=True)
         raise
 
-    # Store profiler + telemetry for gateway access
+    # Store profiler + telemetry + skill generator for gateway access
     result["task_profiler"] = task_profiler
     result["task_telemetry"] = task_telemetry
     result["error_clusterer"] = error_clusterer
     result["causal_analyzer"] = causal_analyzer
+    result["skill_generator"] = skill_generator
 
     return result

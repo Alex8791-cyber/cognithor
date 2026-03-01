@@ -86,10 +86,11 @@ class WebError(Exception):
 class WebTools:
     """Web-Recherche und URL-Fetch-Tools. [B§5.3]
 
-    Unterstützt drei Such-Backends (Fallback-Kette):
+    Unterstützt vier Such-Backends (Fallback-Kette):
       1. SearXNG (self-hosted, bevorzugt)
       2. Brave Search API
-      3. DuckDuckGo via ddgs (kostenlos, Multi-Backend, mit Cache)
+      3. Google Custom Search Engine (100 Anfragen/Tag kostenlos)
+      4. DuckDuckGo via ddgs (kostenlos, Multi-Backend, mit Cache)
 
     DuckDuckGo-Optimierungen:
       - Multi-Backend-Fallback (duckduckgo → bing → google → brave)
@@ -119,6 +120,17 @@ class WebTools:
         self._brave_api_key = brave_api_key
         self._duckduckgo_enabled = True
 
+        # Google CSE
+        self._google_cse_api_key = ""
+        self._google_cse_cx = ""
+
+        # Jina AI Reader
+        self._jina_api_key = ""
+
+        # Domain-Filtering
+        self._domain_blocklist: list[str] = []
+        self._domain_allowlist: list[str] = []
+
         # DuckDuckGo-Optimierung: State
         self._ddg_last_search: float = 0.0
         self._ddg_cache_dir: Path | None = None
@@ -129,7 +141,12 @@ class WebTools:
             if web_cfg is not None:
                 self._searxng_url = self._searxng_url or getattr(web_cfg, "searxng_url", None) or ""
                 self._brave_api_key = self._brave_api_key or getattr(web_cfg, "brave_api_key", None) or ""
+                self._google_cse_api_key = getattr(web_cfg, "google_cse_api_key", "") or ""
+                self._google_cse_cx = getattr(web_cfg, "google_cse_cx", "") or ""
+                self._jina_api_key = getattr(web_cfg, "jina_api_key", "") or ""
                 self._duckduckgo_enabled = getattr(web_cfg, "duckduckgo_enabled", True)
+                self._domain_blocklist = list(getattr(web_cfg, "domain_blocklist", []))
+                self._domain_allowlist = list(getattr(web_cfg, "domain_allowlist", []))
 
             # Cache-Verzeichnis: ~/.jarvis/cache/web_search/
             jarvis_home = getattr(config, "jarvis_home", None)
@@ -183,6 +200,41 @@ class WebTools:
 
         return url
 
+    def _check_domain_allowed(self, hostname: str) -> None:
+        """Prüft ob eine Domain durch die Blocklist/Allowlist erlaubt ist.
+
+        Args:
+            hostname: Der zu prüfende Hostname.
+
+        Raises:
+            WebError: Wenn die Domain blockiert ist.
+        """
+        hostname = hostname.lower().strip()
+        if not hostname:
+            return
+
+        # Allowlist-Modus: Wenn gesetzt, NUR diese Domains erlauben
+        if self._domain_allowlist:
+            allowed = any(
+                hostname == d.lower() or hostname.endswith("." + d.lower())
+                for d in self._domain_allowlist
+            )
+            if not allowed:
+                raise WebError(
+                    f"Domain {hostname} nicht in der Allowlist. "
+                    f"Erlaubte Domains: {', '.join(self._domain_allowlist)}"
+                )
+            return
+
+        # Blocklist: Diese Domains blockieren
+        if self._domain_blocklist:
+            blocked = any(
+                hostname == d.lower() or hostname.endswith("." + d.lower())
+                for d in self._domain_blocklist
+            )
+            if blocked:
+                raise WebError(f"Domain {hostname} ist blockiert (Domain-Blocklist).")
+
     # ── web_search ─────────────────────────────────────────────────────────
 
     async def web_search(
@@ -209,12 +261,14 @@ class WebTools:
             return "Keine Suchanfrage angegeben."
 
         num_results = min(max(num_results, 1), MAX_SEARCH_RESULTS)
+        provider_errors: list[str] = []
 
         # SearXNG versuchen
         if self._searxng_url:
             try:
                 return await self._search_searxng(query, num_results, language)
             except Exception as exc:
+                provider_errors.append(f"SearXNG: {exc}")
                 log.warning("SearXNG-Suche fehlgeschlagen: %s", exc)
 
         # Brave Search versuchen
@@ -222,14 +276,33 @@ class WebTools:
             try:
                 return await self._search_brave(query, num_results, language)
             except Exception as exc:
+                provider_errors.append(f"Brave: {exc}")
                 log.warning("Brave-Suche fehlgeschlagen: %s", exc)
+
+        # Google Custom Search Engine versuchen
+        if self._google_cse_api_key and self._google_cse_cx:
+            try:
+                return await self._search_google_cse(query, num_results, language)
+            except Exception as exc:
+                provider_errors.append(f"Google CSE: {exc}")
+                log.warning("Google-CSE-Suche fehlgeschlagen: %s", exc)
 
         # DuckDuckGo mit Multi-Backend-Fallback, Cache und Rate-Limiting
         if self._duckduckgo_enabled:
             try:
                 return await self._search_duckduckgo(query, num_results, language, timelimit)
             except Exception as exc:
+                provider_errors.append(f"DuckDuckGo: {exc}")
                 log.warning("DuckDuckGo-Suche fehlgeschlagen: %s", exc)
+
+        # Alle Provider fehlgeschlagen → detaillierte Fehlermeldung
+        if provider_errors:
+            error_details = "\n".join(f"  • {e}" for e in provider_errors)
+            return (
+                f"Websuche für '{query}' fehlgeschlagen. "
+                f"Alle Such-Provider haben Fehler gemeldet:\n{error_details}\n\n"
+                "Mögliche Ursachen: Netzwerkprobleme, ungültige API-Keys, Rate-Limits."
+            )
 
         return (
             "Keine Suchengine konfiguriert.\n"
@@ -302,6 +375,42 @@ class WebTools:
                 "content": r.get("description", ""),
             }
             for r in web_results
+        ]
+        return _format_search_results(results, query)
+
+    async def _search_google_cse(
+        self,
+        query: str,
+        num_results: int,
+        language: str,
+    ) -> str:
+        """Suche über Google Custom Search Engine API."""
+        url = "https://www.googleapis.com/customsearch/v1"
+        params = {
+            "key": self._google_cse_api_key,
+            "cx": self._google_cse_cx,
+            "q": query,
+            "num": str(min(num_results, 10)),
+            "lr": f"lang_{language}",
+        }
+
+        async with httpx.AsyncClient(timeout=SEARCH_TIMEOUT) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+
+        items = data.get("items", [])[:num_results]
+        if not items:
+            return f"Keine Ergebnisse für: {query}"
+
+        # Google-CSE-Format → einheitliches Format konvertieren
+        results = [
+            {
+                "title": r.get("title", ""),
+                "url": r.get("link", ""),
+                "content": r.get("snippet", ""),
+            }
+            for r in items
         ]
         return _format_search_results(results, query)
 
@@ -599,6 +708,7 @@ class WebTools:
         url: str,
         extract_text: bool = True,
         max_chars: int | None = None,
+        reader_mode: str = "auto",
     ) -> str:
         """Ruft eine URL ab und extrahiert den Text.
 
@@ -606,6 +716,10 @@ class WebTools:
             url: Die abzurufende URL.
             extract_text: Text extrahieren (True) oder Raw-HTML (False).
             max_chars: Maximale Zeichenanzahl (Default: MAX_TEXT_CHARS).
+            reader_mode: Extraktions-Modus:
+                'auto' = trafilatura, bei <200 Zeichen Fallback auf Jina
+                'trafilatura' = nur trafilatura
+                'jina' = nur Jina AI Reader
 
         Returns:
             Extrahierter Text oder HTML-Inhalt.
@@ -613,19 +727,37 @@ class WebTools:
         validated = self._validate_url(url)
         max_chars = max_chars or MAX_TEXT_CHARS
 
-        async with httpx.AsyncClient(
-            timeout=FETCH_TIMEOUT,
-            follow_redirects=True,
-            max_redirects=5,
-            headers={"User-Agent": DEFAULT_USER_AGENT},
-        ) as client:
-            try:
+        # Domain-Filter prüfen
+        parsed = urlparse(validated)
+        hostname = (parsed.hostname or "").lower()
+        self._check_domain_allowed(hostname)
+
+        # Jina-only Modus
+        if reader_mode == "jina":
+            text = await self._fetch_via_jina(validated)
+            return _truncate_text(text, max_chars, url)
+
+        # Standard-Fetch
+        fetch_failed = False
+        try:
+            async with httpx.AsyncClient(
+                timeout=FETCH_TIMEOUT,
+                follow_redirects=True,
+                max_redirects=5,
+                headers={"User-Agent": DEFAULT_USER_AGENT},
+            ) as client:
                 resp = await client.get(validated)
                 resp.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                raise WebError(f"HTTP {exc.response.status_code} für {url}") from exc
-            except httpx.RequestError as exc:
-                raise WebError(f"Verbindungsfehler für {url}: {exc}") from exc
+        except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+            if reader_mode == "trafilatura":
+                raise WebError(f"Fetch fehlgeschlagen für {url}: {exc}") from exc
+            # auto-Modus: Bei Fehler Jina als Fallback versuchen
+            log.warning("web_fetch_failed_trying_jina", url=url, error=str(exc))
+            fetch_failed = True
+
+        if fetch_failed:
+            text = await self._fetch_via_jina(validated)
+            return _truncate_text(text, max_chars, url)
 
         content_type = resp.headers.get("content-type", "")
         raw = resp.content
@@ -645,7 +777,51 @@ class WebTools:
 
         # Text-Extraktion mit trafilatura
         text = _extract_text_from_html(html, url)
+
+        # Auto-Modus: Bei wenig Inhalt (<200 Zeichen) Jina-Fallback
+        if reader_mode == "auto" and len(text.strip()) < 200:
+            log.info("trafilatura_short_trying_jina", url=url, chars=len(text.strip()))
+            try:
+                jina_text = await self._fetch_via_jina(validated)
+                if len(jina_text.strip()) > len(text.strip()):
+                    text = jina_text
+            except Exception as jina_exc:
+                log.debug("jina_fallback_failed", url=url, error=str(jina_exc))
+
         return _truncate_text(text, max_chars, url)
+
+    async def _fetch_via_jina(self, url: str) -> str:
+        """Fetcht eine URL über den Jina AI Reader Service.
+
+        Jina Reader extrahiert sauber formatierten Inhalt, besonders
+        gut für JS-heavy/SPA-Seiten wo trafilatura versagt.
+
+        Args:
+            url: Die abzurufende URL.
+
+        Returns:
+            Extrahierter Text.
+        """
+        jina_url = f"https://r.jina.ai/{url}"
+        headers: dict[str, str] = {
+            "Accept": "text/plain",
+        }
+        if self._jina_api_key:
+            headers["Authorization"] = f"Bearer {self._jina_api_key}"
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                resp = await client.get(jina_url, headers=headers)
+                resp.raise_for_status()
+                text = resp.text
+                if text.strip():
+                    log.info("jina_fetch_ok", url=url, chars=len(text))
+                    return text
+                raise WebError(f"Jina Reader: Leere Antwort für {url}")
+            except httpx.HTTPStatusError as exc:
+                raise WebError(f"Jina Reader HTTP {exc.response.status_code} für {url}") from exc
+            except httpx.RequestError as exc:
+                raise WebError(f"Jina Reader Verbindungsfehler für {url}: {exc}") from exc
 
     # ── Kombination: Suche + Fetch ─────────────────────────────────────────
 
@@ -654,6 +830,7 @@ class WebTools:
         query: str,
         num_results: int = 3,
         language: str = "de",
+        cross_check: bool = False,
     ) -> str:
         """Sucht im Web und liest die Top-Ergebnisse.
 
@@ -663,6 +840,7 @@ class WebTools:
             query: Suchanfrage.
             num_results: Anzahl der zu lesenden Seiten.
             language: Suchsprache.
+            cross_check: Wenn True, wird ein Quellenvergleich angehängt.
 
         Returns:
             Zusammengefasste Inhalte der Top-Ergebnisse.
@@ -675,13 +853,32 @@ class WebTools:
             return search_results
 
         parts = [f"## Suchergebnisse für: {query}\n"]
+        fetched_contents: list[dict[str, str]] = []
 
         for i, url in enumerate(urls[:num_results], 1):
             try:
                 content = await self.web_fetch(url, max_chars=5000)
                 parts.append(f"\n### [{i}] {url}\n{content}\n")
+                fetched_contents.append({"url": url, "content": content})
             except WebError as exc:
                 parts.append(f"\n### [{i}] {url}\nFehler: {exc}\n")
+
+        # Quellenvergleich anhängen
+        if cross_check and len(fetched_contents) >= 2:
+            parts.append("\n---\n## Quellenvergleich\n")
+            parts.append(
+                "Die folgenden Quellen wurden abgerufen. "
+                "Übereinstimmungen und Widersprüche sollten beachtet werden:\n"
+            )
+            for i, fc in enumerate(fetched_contents, 1):
+                domain = urlparse(fc["url"]).hostname or fc["url"]
+                # Erste 200 Zeichen als Kurzfassung
+                preview = fc["content"][:200].replace("\n", " ").strip()
+                parts.append(f"- **Quelle {i}** ({domain}): {preview}...")
+            parts.append(
+                "\n*Hinweis: Automatischer Quellenvergleich. "
+                "Bei widersprüchlichen Angaben die Primärquelle bevorzugen.*"
+            )
 
         return "\n".join(parts)
 
@@ -979,7 +1176,8 @@ def register_web_tools(
         web.web_fetch,
         description=(
             "URL abrufen und Haupttext extrahieren. "
-            "Nutzt trafilatura für saubere Text-Extraktion aus HTML."
+            "Nutzt trafilatura für saubere Text-Extraktion, mit automatischem "
+            "Jina AI Reader Fallback für JS-heavy Seiten."
         ),
         input_schema={
             "type": "object",
@@ -998,6 +1196,12 @@ def register_web_tools(
                     "description": "Maximale Zeichenanzahl (Default: 20000)",
                     "default": 20000,
                 },
+                "reader_mode": {
+                    "type": "string",
+                    "enum": ["auto", "trafilatura", "jina"],
+                    "description": "Extraktions-Modus: auto (Standard, Jina-Fallback bei wenig Inhalt), trafilatura, jina",
+                    "default": "auto",
+                },
             },
             "required": ["url"],
         },
@@ -1008,7 +1212,8 @@ def register_web_tools(
         web.search_and_read,
         description=(
             "Kombinierte Websuche + Fetch: Sucht im Web und liest "
-            "die Top-Ergebnisse. Ideal für tiefere Recherche."
+            "die Top-Ergebnisse. Ideal für tiefere Recherche. "
+            "Mit cross_check=true werden Quellen verglichen."
         ),
         input_schema={
             "type": "object",
@@ -1026,6 +1231,11 @@ def register_web_tools(
                     "type": "string",
                     "description": "Sprachcode (Default: de)",
                     "default": "de",
+                },
+                "cross_check": {
+                    "type": "boolean",
+                    "description": "Quellenvergleich anhängen (Default: false)",
+                    "default": False,
                 },
             },
             "required": ["query"],

@@ -5,6 +5,26 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.23.0] – 2026-03-01
+
+### Added
+- **Knowledge Vault** — Obsidian-compatible Markdown vault (`~/.jarvis/vault/`) with YAML frontmatter, tags, `[[backlinks]]`, and full-text search. 6 new MCP tools: `vault_save`, `vault_search`, `vault_list`, `vault_read`, `vault_update`, `vault_link`
+- **Document Analysis Pipeline** — LLM-powered structured analysis of PDF/DOCX/TXT/HTML documents via `analyze_document` tool. Analysis modes: full (6 sections), summary, risks, todos. Optional vault storage
+- **Google Custom Search Engine** — 3rd search provider in the fallback chain (SearXNG → Brave → **Google CSE** → DuckDuckGo). Config: `google_cse_api_key`, `google_cse_cx`
+- **Jina AI Reader Fallback** — Automatic fallback for JS-heavy sites where trafilatura extracts <200 chars. New `reader_mode` parameter (`auto`/`trafilatura`/`jina`) on `web_fetch`
+- **Domain Filtering** — `domain_blocklist` and `domain_allowlist` in WebConfig for controlled web access
+- **Source Cross-Check** — `cross_check` parameter on `search_and_read` appends a source comparison section
+- **Dokument-Analyse Skill** — New procedure (`data/procedures/dokument-analyse.md`) for structured document analysis workflow
+- **VaultConfig** — New Pydantic config model with `enabled`, `path`, `auto_save_research`, `default_folders`
+
+### Changed
+- Web search fallback chain now includes 4 providers (was 3)
+- `web_fetch` uses auto reader mode with Jina fallback by default
+- `search_and_read` supports optional source comparison
+- MediaPipeline supports LLM and Vault injection for document analysis
+- tools.py registers vault tools and wires LLM/vault into media pipeline
+- Detailed German error messages when all search providers fail (instead of empty results)
+
 ## [0.22.0] – 2026-02-28
 
 ### Added

@@ -133,11 +133,45 @@ async def init_tools(
     result["hitl_manager"] = hitl_manager
 
     # Media-Tools (Audio/Image/Document processing)
+    media_pipeline = None
     try:
         from jarvis.mcp.media import register_media_tools
-        register_media_tools(mcp_client, config)
+        media_pipeline = register_media_tools(mcp_client, config)
     except Exception:
         log.warning("media_tools_not_registered")
+
+    # Knowledge Vault (Obsidian-kompatible Notizen)
+    vault_tools = None
+    try:
+        from jarvis.mcp.vault import register_vault_tools
+        vault_tools = register_vault_tools(mcp_client, config)
+        log.info("vault_tools_registered")
+    except Exception:
+        log.warning("vault_tools_not_registered")
+
+    # LLM + Vault in MediaPipeline injizieren (für analyze_document)
+    if media_pipeline is not None and hasattr(media_pipeline, "_set_llm_fn"):
+        try:
+            from jarvis.core.unified_llm import UnifiedLLMClient
+            llm_client = UnifiedLLMClient.create(config)
+            model_name = getattr(getattr(config, "models", None), "planner", None)
+            model_name = getattr(model_name, "name", "") if model_name else ""
+
+            async def _llm_for_analysis(prompt: str, model: str = "") -> str:
+                resp = await llm_client.chat(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=model or model_name,
+                )
+                return resp.get("content", "") if isinstance(resp, dict) else str(resp)
+
+            media_pipeline._set_llm_fn(_llm_for_analysis, model_name)
+            log.info("media_llm_injected", model=model_name)
+        except Exception:
+            log.debug("media_llm_injection_skipped", exc_info=True)
+
+    if media_pipeline is not None and vault_tools is not None and hasattr(media_pipeline, "_set_vault"):
+        media_pipeline._set_vault(vault_tools)
+        log.debug("media_vault_injected")
 
     # Memory tools
     register_memory_tools(mcp_client, memory_manager)

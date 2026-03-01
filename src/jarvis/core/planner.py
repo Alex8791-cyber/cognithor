@@ -164,6 +164,7 @@ Direkte Textantwort (Option A): „Eine API ist eine Programmierschnittstelle...
 | „speichern", „merken" | B | save_to_memory |
 | „Kontakt", „Entität" | B | get_entity / add_entity |
 | „Prozedur", „wie mache ich" | B | search_procedures |
+| „Skill", „Skills", „was kannst du", „welche Tools", „Fähigkeiten" | B | list_skills |
 | „PDF", „DOCX", „Brief", „Schreiben", „Dokument", „Kündigung", „Vertrag", „Bewerbung", „erstelle als" | B | document_export |
 | „Code", „Script", „Programm", „debugge", „programmiere" | B | run_python / write_file |
 | „analysiere Code", „Code-Review", „Code prüfen" | B | analyze_code |
@@ -214,6 +215,13 @@ Regeln für Coding:
 - Im Zweifel: OPTION A wählen und nachfragen.
 - Antworte ENTWEDER als Text ODER als JSON-Plan. Niemals beides vermischen.
 - Wenn dir eine Prozedur im Kontext angezeigt wird, folge deren Ablauf.
+- SELBSTAUSKUNFT: Wenn der User nach deinen Skills, Tools, Fähigkeiten oder \
+Können fragt, nutze IMMER list_skills (Option B). Beantworte solche Fragen \
+NIEMALS aus dem Gedächtnis -- du weißt nicht, welche Skills installiert sind, \
+ohne das Tool aufzurufen. Dein INVENTAR in der Core Memory zeigt den aktuellen Stand.
+- INVENTAR-PFLEGE: Wenn du einen neuen Skill erstellst (create_skill) oder eine \
+Prozedur speicherst, aktualisiere anschließend den INVENTAR-Abschnitt in CORE.md \
+via edit_file. Halte die Liste immer aktuell.
 - WICHTIG: Wenn im Kontext bereits "AKTUELLE FAKTEN AUS DEM INTERNET" oder \
 "Web-Suchergebnisse" stehen, nutze diese Informationen DIREKT in deiner Antwort \
 (Option A). Du brauchst dann KEINEN neuen Such-Plan. Die Suchergebnisse sind AKTUELL \
@@ -320,6 +328,44 @@ class Planner:
         self._causal_analyzer = causal_analyzer
         self._task_profiler = task_profiler
         self._cost_tracker = cost_tracker
+
+        # Prompts von Disk laden (mit Fallback auf hardcoded Konstanten)
+        self._system_prompt_template = self._load_prompt_from_file(
+            "SYSTEM_PROMPT.md", SYSTEM_PROMPT)
+        self._replan_prompt_template = self._load_prompt_from_file(
+            "REPLAN_PROMPT.md", REPLAN_PROMPT, fallback_txt="REPLAN_PROMPT.txt")
+        self._escalation_prompt_template = self._load_prompt_from_file(
+            "ESCALATION_PROMPT.md", ESCALATION_PROMPT, fallback_txt="ESCALATION_PROMPT.txt")
+
+    def _load_prompt_from_file(self, filename: str, fallback: str, fallback_txt: str = "") -> str:
+        """Lädt einen Prompt von Disk (.md bevorzugt, .txt als Migration-Fallback)."""
+        try:
+            prompts_dir = self._config.jarvis_home / "prompts"
+            path = prompts_dir / filename
+            if path.exists():
+                content = path.read_text(encoding="utf-8").strip()
+                if content and isinstance(content, str):
+                    return content
+            # Migration: alte .txt-Datei als Fallback prüfen
+            if fallback_txt:
+                txt_path = prompts_dir / fallback_txt
+                if txt_path.exists():
+                    content = txt_path.read_text(encoding="utf-8").strip()
+                    if content and isinstance(content, str):
+                        return content
+        except Exception:
+            pass
+        return fallback
+
+    def reload_prompts(self) -> None:
+        """Lädt alle Prompt-Templates neu von Disk."""
+        self._system_prompt_template = self._load_prompt_from_file(
+            "SYSTEM_PROMPT.md", SYSTEM_PROMPT)
+        self._replan_prompt_template = self._load_prompt_from_file(
+            "REPLAN_PROMPT.md", REPLAN_PROMPT, fallback_txt="REPLAN_PROMPT.txt")
+        self._escalation_prompt_template = self._load_prompt_from_file(
+            "ESCALATION_PROMPT.md", ESCALATION_PROMPT, fallback_txt="ESCALATION_PROMPT.txt")
+        log.info("planner_prompts_reloaded")
 
     def _record_cost(self, response: dict[str, Any], model: str, session_id: str = "") -> None:
         """Records LLM call cost if cost_tracker is available."""
@@ -440,7 +486,7 @@ class Planner:
             tool_schemas=tool_schemas,
         )
 
-        replan_text = REPLAN_PROMPT.format(
+        replan_text = self._replan_prompt_template.format(
             results_section=results_text,
             original_goal=original_goal,
         )
@@ -489,7 +535,7 @@ class Planner:
 
         messages = [
             {"role": "system", "content": "Du bist Jarvis. Erkläre höflich auf Deutsch."},
-            {"role": "user", "content": ESCALATION_PROMPT.format(tool=tool, reason=reason)},
+            {"role": "user", "content": self._escalation_prompt_template.format(tool=tool, reason=reason)},
         ]
 
         try:
@@ -694,7 +740,7 @@ class Planner:
         now = datetime.now()
         current_datetime = now.strftime("%A, %d. %B %Y, %H:%M Uhr")
 
-        return SYSTEM_PROMPT.format(
+        return self._system_prompt_template.format(
             tools_section=tools_section,
             context_section=context_section,
             current_datetime=current_datetime,

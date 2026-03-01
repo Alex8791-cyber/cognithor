@@ -128,6 +128,12 @@ class Gatekeeper:
             allowed_paths=[str(p) for p in self._allowed_paths],
         )
 
+    def reload_policies(self) -> None:
+        """Lädt Policies neu von Disk (Live-Reload vom UI)."""
+        self._policies = self._load_policies()
+        self._policies.sort(key=lambda r: r.priority, reverse=True)
+        log.info("gatekeeper_policies_reloaded", policy_count=len(self._policies))
+
     # --- Public Policy API (fuer ReplayEngine u.a.) ---
 
     def get_policies(self) -> list[PolicyRule]:
@@ -312,6 +318,7 @@ class Gatekeeper:
             "browse_page_info",
             "browse_screenshot",
             "analyze_code",
+            "list_skills",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
@@ -331,6 +338,7 @@ class Gatekeeper:
             "shell_exec",
             "shell",
             "run_python",
+            "create_skill",
         }
         if tool in yellow_tools:
             return RiskLevel.YELLOW

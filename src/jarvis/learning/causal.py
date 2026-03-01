@@ -52,11 +52,20 @@ class CausalAnalyzer:
         """)
         conn.commit()
 
+        # Schema-Migration: model_used Spalte hinzufuegen (fuer Cognithor-Learning)
+        try:
+            conn.execute("ALTER TABLE causal_sequences ADD COLUMN model_used TEXT DEFAULT ''")
+            conn.commit()
+        except sqlite3.OperationalError:
+            # Spalte existiert bereits -- ignorieren
+            pass
+
     def record_sequence(
         self,
         session_id: str,
         tool_sequence: list[str],
         success_score: float,
+        model_used: str = "",
     ) -> None:
         """Zeichnet eine Tool-Sequenz mit ihrem Erfolgs-Score auf."""
         if not tool_sequence:
@@ -64,13 +73,14 @@ class CausalAnalyzer:
 
         conn = self._get_conn()
         conn.execute(
-            """INSERT INTO causal_sequences (session_id, timestamp, tool_sequence, success_score)
-               VALUES (?, ?, ?, ?)""",
+            """INSERT INTO causal_sequences (session_id, timestamp, tool_sequence, success_score, model_used)
+               VALUES (?, ?, ?, ?, ?)""",
             (
                 session_id,
                 datetime.now(UTC).isoformat(),
                 json.dumps(tool_sequence),
                 success_score,
+                model_used,
             ),
         )
         conn.commit()
@@ -200,6 +210,35 @@ class CausalAnalyzer:
         conn = self._get_conn()
         row = conn.execute("SELECT COUNT(*) as cnt FROM causal_sequences").fetchone()
         return row["cnt"] if row else 0
+
+    def get_model_performance(self, min_records: int = 5) -> dict[str, dict[str, Any]]:
+        """Gibt Erfolgsstatistiken pro Modell zurueck.
+
+        Cognithor kann diese Daten nutzen um die Modellwahl zu optimieren.
+
+        Args:
+            min_records: Mindestanzahl Datensaetze pro Modell fuer Auswertung.
+
+        Returns:
+            {"gpt-5.3-codex-spark": {"avg_score": 0.85, "count": 42}, ...}
+        """
+        conn = self._get_conn()
+        rows = conn.execute(
+            """SELECT model_used, AVG(success_score) as avg_score, COUNT(*) as cnt
+               FROM causal_sequences
+               WHERE model_used != ''
+               GROUP BY model_used
+               HAVING cnt >= ?""",
+            (min_records,),
+        ).fetchall()
+
+        result: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            result[row["model_used"]] = {
+                "avg_score": round(row["avg_score"], 4),
+                "count": row["cnt"],
+            }
+        return result
 
     def close(self) -> None:
         """Schliesst die DB-Verbindung."""

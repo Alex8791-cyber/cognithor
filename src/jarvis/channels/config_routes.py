@@ -65,7 +65,7 @@ def create_config_routes(
         return _hub_holder["hub"]
 
     _register_system_routes(app, deps, config_manager, gateway)
-    _register_config_routes(app, deps, config_manager)
+    _register_config_routes(app, deps, config_manager, gateway)
     _register_session_routes(app, deps, gateway)
     _register_memory_routes(app, deps, gateway)
     _register_skill_routes(app, deps, gateway)
@@ -441,6 +441,7 @@ def _register_config_routes(
     app: Any,
     deps: list[Any],
     config_manager: ConfigManager,
+    gateway: Any = None,
 ) -> None:
     """Config CRUD, presets, reload."""
 
@@ -482,7 +483,10 @@ def _register_config_routes(
     async def reload_config() -> dict[str, Any]:
         """Lädt die Konfiguration neu aus der Datei."""
         config_manager.reload()
-        return {"status": "ok", "message": "Konfiguration neu geladen"}
+        if gateway is not None and hasattr(gateway, "reload_components"):
+            gateway.reload_components(prompts=True, policies=True,
+                                       core_memory=True, config=True)
+        return {"status": "ok", "message": "Konfiguration und Komponenten neu geladen"}
 
     # -- Presets (BEFORE {section} routes to avoid path parameter conflict) --
 
@@ -2050,12 +2054,17 @@ def _register_ui_routes(
         except Exception:
             result["coreMd"] = ""
 
-        # plannerSystem (fallback to Python constant if file missing or empty)
+        # plannerSystem (.md bevorzugt, .txt als Migration-Fallback)
         try:
-            sys_path = prompts_dir / "SYSTEM_PROMPT.txt"
-            content = sys_path.read_text(encoding="utf-8").strip() if sys_path.exists() else ""
+            from jarvis.core.planner import SYSTEM_PROMPT
+            content = ""
+            for fname in ("SYSTEM_PROMPT.md", "SYSTEM_PROMPT.txt"):
+                sys_path = prompts_dir / fname
+                if sys_path.exists():
+                    content = sys_path.read_text(encoding="utf-8").strip()
+                    if content:
+                        break
             if not content:
-                from jarvis.core.planner import SYSTEM_PROMPT
                 content = SYSTEM_PROMPT
             result["plannerSystem"] = content
         except Exception:
@@ -2063,10 +2072,15 @@ def _register_ui_routes(
 
         # replanPrompt
         try:
-            replan_path = prompts_dir / "REPLAN_PROMPT.txt"
-            content = replan_path.read_text(encoding="utf-8").strip() if replan_path.exists() else ""
+            from jarvis.core.planner import REPLAN_PROMPT
+            content = ""
+            for fname in ("REPLAN_PROMPT.md", "REPLAN_PROMPT.txt"):
+                rp_path = prompts_dir / fname
+                if rp_path.exists():
+                    content = rp_path.read_text(encoding="utf-8").strip()
+                    if content:
+                        break
             if not content:
-                from jarvis.core.planner import REPLAN_PROMPT
                 content = REPLAN_PROMPT
             result["replanPrompt"] = content
         except Exception:
@@ -2074,10 +2088,15 @@ def _register_ui_routes(
 
         # escalationPrompt
         try:
-            esc_path = prompts_dir / "ESCALATION_PROMPT.txt"
-            content = esc_path.read_text(encoding="utf-8").strip() if esc_path.exists() else ""
+            from jarvis.core.planner import ESCALATION_PROMPT
+            content = ""
+            for fname in ("ESCALATION_PROMPT.md", "ESCALATION_PROMPT.txt"):
+                ep_path = prompts_dir / fname
+                if ep_path.exists():
+                    content = ep_path.read_text(encoding="utf-8").strip()
+                    if content:
+                        break
             if not content:
-                from jarvis.core.planner import ESCALATION_PROMPT
                 content = ESCALATION_PROMPT
             result["escalationPrompt"] = content
         except Exception:
@@ -2116,15 +2135,15 @@ def _register_ui_routes(
                 written.append("coreMd")
 
             if "plannerSystem" in body:
-                (prompts_dir / "SYSTEM_PROMPT.txt").write_text(body["plannerSystem"], encoding="utf-8")
+                (prompts_dir / "SYSTEM_PROMPT.md").write_text(body["plannerSystem"], encoding="utf-8")
                 written.append("plannerSystem")
 
             if "replanPrompt" in body:
-                (prompts_dir / "REPLAN_PROMPT.txt").write_text(body["replanPrompt"], encoding="utf-8")
+                (prompts_dir / "REPLAN_PROMPT.md").write_text(body["replanPrompt"], encoding="utf-8")
                 written.append("replanPrompt")
 
             if "escalationPrompt" in body:
-                (prompts_dir / "ESCALATION_PROMPT.txt").write_text(body["escalationPrompt"], encoding="utf-8")
+                (prompts_dir / "ESCALATION_PROMPT.md").write_text(body["escalationPrompt"], encoding="utf-8")
                 written.append("escalationPrompt")
 
             if "policyYaml" in body:
@@ -2137,6 +2156,18 @@ def _register_ui_routes(
                 hb_path.parent.mkdir(parents=True, exist_ok=True)
                 hb_path.write_text(body["heartbeatMd"], encoding="utf-8")
                 written.append("heartbeatMd")
+
+            # Live-Reload: Gateway-Komponenten sofort aktualisieren
+            if gateway is not None and hasattr(gateway, "reload_components") and written:
+                reload_flags: dict[str, bool] = {}
+                if any(k in written for k in ("plannerSystem", "replanPrompt", "escalationPrompt")):
+                    reload_flags["prompts"] = True
+                if "policyYaml" in written:
+                    reload_flags["policies"] = True
+                if "coreMd" in written:
+                    reload_flags["core_memory"] = True
+                if reload_flags:
+                    gateway.reload_components(**reload_flags)
 
             return {"status": "ok", "written": written}
         except Exception as exc:

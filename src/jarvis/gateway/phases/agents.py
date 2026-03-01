@@ -98,6 +98,14 @@ async def init_agents(
             skill_dirs.insert(0, repo_procedures)
         skill_count = skill_registry.load_from_directories(skill_dirs)
         log.info("skill_registry_ready", skills=skill_count)
+
+        # Skill-Management-Tools registrieren (create_skill, list_skills)
+        try:
+            from jarvis.mcp.skill_tools import register_skill_tools
+            register_skill_tools(mcp_client, skill_registry, skill_dirs)
+        except Exception as exc_tools:
+            log.warning("skill_tools_registration_failed", error=str(exc_tools))
+
     except Exception as exc:
         log.warning("skill_registry_init_error", error=str(exc))
     result["skill_registry"] = skill_registry

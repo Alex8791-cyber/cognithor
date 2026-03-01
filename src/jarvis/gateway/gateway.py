@@ -204,6 +204,76 @@ class Gateway:
                 description=f"Jarvis gestartet (LLM={llm_ok}, Tools={len(self._mcp_client.get_tool_list())})",
             )
 
+        # CORE.md: Tool/Skill-Inventar aktualisieren
+        try:
+            self._sync_core_inventory()
+        except Exception:
+            log.debug("core_inventory_sync_failed", exc_info=True)
+
+    def _sync_core_inventory(self) -> None:
+        """Aktualisiert den INVENTAR-Abschnitt in CORE.md mit aktuellen Tools/Skills."""
+        core_path = self._config.core_memory_file
+        if not core_path or not core_path.exists():
+            return
+
+        content = core_path.read_text(encoding="utf-8")
+
+        # Tool-Liste zusammenstellen
+        tools = sorted(self._mcp_client.get_tool_list()) if self._mcp_client else []
+        tool_lines = [f"- `{t}`" for t in tools]
+
+        # Skill-Liste zusammenstellen
+        skill_lines = []
+        if hasattr(self, "_skill_registry") and self._skill_registry:
+            try:
+                for slug, skill in self._skill_registry._skills.items():
+                    status = "aktiv" if skill.enabled else "inaktiv"
+                    skill_lines.append(f"- **{skill.name}** (`{slug}`) — {status}")
+            except Exception:
+                pass
+        if not skill_lines:
+            skill_lines = ["- (keine Skills registriert)"]
+
+        # Prozedur-Liste
+        proc_lines = []
+        if self._memory_manager:
+            try:
+                procedural = self._memory_manager.procedural
+                for meta in procedural.list_procedures():
+                    uses = f"{meta.total_uses}x" if meta.total_uses else "0x"
+                    kw = ", ".join(meta.trigger_keywords[:3]) if meta.trigger_keywords else ""
+                    suffix = f" [{kw}]" if kw else ""
+                    proc_lines.append(f"- `{meta.name}` ({uses} genutzt){suffix}")
+            except Exception:
+                pass
+        if not proc_lines:
+            proc_lines = ["- (keine Prozeduren gespeichert)"]
+
+        inventory = (
+            "## INVENTAR (auto-aktualisiert)\n\n"
+            f"### Registrierte Tools ({len(tools)})\n"
+            + "\n".join(tool_lines)
+            + "\n\n"
+            f"### Installierte Skills ({len(skill_lines)})\n"
+            + "\n".join(skill_lines)
+            + "\n\n"
+            f"### Gelernte Prozeduren ({len(proc_lines)})\n"
+            + "\n".join(proc_lines)
+        )
+
+        # Bestehenden INVENTAR-Abschnitt ersetzen oder am Ende anhängen
+        marker_start = "## INVENTAR (auto-aktualisiert)"
+        if marker_start in content:
+            # Alles von marker_start bis zum nächsten ## oder Dateiende ersetzen
+            import re
+            pattern = re.escape(marker_start) + r".*?(?=\n## (?!INVENTAR)|\Z)"
+            content = re.sub(pattern, inventory, content, flags=re.DOTALL)
+        else:
+            content = content.rstrip() + "\n\n---\n\n" + inventory + "\n"
+
+        core_path.write_text(content, encoding="utf-8")
+        log.info("core_inventory_synced", tools=len(tools), skills=len(skill_lines), procedures=len(proc_lines))
+
     def register_channel(self, channel: Channel) -> None:
         """Registriert einen Kommunikationskanal."""
         self._channels[channel.name] = channel
@@ -364,6 +434,42 @@ class Gateway:
 
         log.info("gateway_shutdown_complete")
 
+    def reload_components(self, *, prompts: bool = False, policies: bool = False,
+                          config: bool = False, core_memory: bool = False,
+                          skills: bool = False) -> dict:
+        """Reload-Koordinator für Live-Updates vom UI."""
+        reloaded = []
+        if prompts and self._planner:
+            self._planner.reload_prompts()
+            reloaded.append("prompts")
+        if policies and self._gatekeeper:
+            self._gatekeeper.reload_policies()
+            reloaded.append("policies")
+        if core_memory:
+            core_path = self._config.core_memory_path
+            if core_path.exists():
+                try:
+                    text = core_path.read_text(encoding="utf-8")
+                    for wm in self._working_memories.values():
+                        wm.core_memory_text = text
+                    reloaded.append("core_memory")
+                except Exception:
+                    pass
+        if skills and self._skill_registry:
+            try:
+                skill_dirs = [
+                    self._config.jarvis_home / "data" / "procedures",
+                    self._config.jarvis_home / self._config.plugins.skills_dir,
+                ]
+                self._skill_registry.load_from_directories(skill_dirs)
+                reloaded.append("skills")
+            except Exception:
+                log.warning("skills_reload_failed", exc_info=True)
+        if config:
+            reloaded.append("config")
+        log.info("gateway_components_reloaded", components=reloaded)
+        return {"reloaded": reloaded}
+
     async def handle_message(self, msg: IncomingMessage) -> OutgoingMessage:
         """Verarbeitet eine eingehende Nachricht. [B§3.4]
 
@@ -394,7 +500,23 @@ class Gateway:
         if self._planner is None or self._gatekeeper is None or self._executor is None:
             raise RuntimeError("Gateway.initialize() must be called before handle_message()")
 
-        # Phase 2.5: Automatische Vor-Suche für Faktenfragen
+        # Phase 2.5a: Task-Klassifizierung -- Coding-Modell waehlen wenn noetig
+        is_coding = False
+        coding_model = ""
+        coding_complexity = "simple"
+        try:
+            is_coding, coding_complexity = await self._classify_coding_task(msg.text)
+            if is_coding and self._model_router:
+                if coding_complexity == "complex":
+                    coding_model = self._model_router._config.models.coder.name
+                else:
+                    coding_model = self._model_router._config.models.coder_fast.name
+                self._model_router.set_coding_override(coding_model)
+                log.info("coding_task_detected", complexity=coding_complexity, model=coding_model)
+        except Exception:
+            log.debug("coding_classification_skipped", exc_info=True)
+
+        # Phase 2.5b: Automatische Vor-Suche für Faktenfragen
         # Wenn die Nachricht eine Faktenfrage ist, suchen wir VORAB im Web
         # und generieren die Antwort DIREKT aus den Suchergebnissen.
         # Der Planner wird komplett umgangen, damit das LLM nicht auf
@@ -421,6 +543,10 @@ class Gateway:
                 msg, session, wm, tool_schemas, route_decision, agent_workspace, run_id,
             )
 
+        # Coding-Override aufraeumen
+        if self._model_router:
+            self._model_router.clear_coding_override()
+
         # User- und Antwort-Nachricht in Working Memory speichern (nach PGE-Loop)
         wm.add_message(Message(role=MessageRole.USER, content=msg.text, channel=msg.channel))
 
@@ -438,9 +564,11 @@ class Gateway:
             audit_entries=all_audit,
             total_iterations=session.iteration_count,
             total_duration_ms=int((time.monotonic() - _handle_start) * 1000),
-            model_used=self._model_router.select_model("planning", "high")
-            if self._model_router
-            else "",
+            model_used=coding_model if is_coding else (
+                self._model_router.select_model("planning", "high")
+                if self._model_router
+                else ""
+            ),
             success=not any(r.is_error for r in all_results) if all_results else True,
         )
         await self._run_post_processing(session, wm, agent_result, active_skill, run_id)
@@ -514,6 +642,22 @@ class Gateway:
                 channel=msg.channel,
             ))
 
+        # Gap Detection: Erkennung expliziter Tool-/Skill-Erstellungswünsche
+        if hasattr(self, "_skill_generator") and self._skill_generator:
+            _lower = msg.text.lower()
+            _tool_request_triggers = (
+                "erstelle ein tool", "erstelle einen skill", "baue ein tool",
+                "create a tool", "build a tool", "neues tool", "neuer skill",
+                "tool erstellen", "skill erstellen", "ich brauche ein tool",
+                "kannst du ein tool", "mach ein tool",
+            )
+            for trigger in _tool_request_triggers:
+                if trigger in _lower:
+                    self._skill_generator.gap_detector.report_user_request(
+                        msg.text[:200], context=msg.text,
+                    )
+                    break
+
         active_skill = None
         if self._skill_registry is not None:
             try:
@@ -521,6 +665,9 @@ class Gateway:
                 active_skill = self._skill_registry.inject_into_working_memory(
                     msg.text, wm, available_tools=tool_list,
                 )
+                # Gap Detection: Melde wenn kein Skill zur Anfrage passt
+                if active_skill is None and hasattr(self, "_skill_generator") and self._skill_generator:
+                    self._skill_generator.gap_detector.report_no_skill_match(msg.text)
             except Exception as exc:
                 log.debug("skill_match_error", error=str(exc))
 
@@ -782,6 +929,19 @@ class Gateway:
                     session=session.session_id[:8],
                     score=reflection.success_score,
                 )
+                # Apply reflection to memory tiers (episodic, semantic, procedural)
+                if self._memory_manager:
+                    try:
+                        counts = await self._reflector.apply(reflection, self._memory_manager)
+                        log.info(
+                            "reflection_applied",
+                            session=session.session_id[:8],
+                            episodic=counts.get("episodic", 0),
+                            semantic=counts.get("semantic", 0),
+                            procedural=counts.get("procedural", 0),
+                        )
+                    except Exception as apply_exc:
+                        log.error("reflection_apply_error", error=str(apply_exc))
                 if run_id and self._run_recorder:
                     try:
                         self._run_recorder.record_reflection(run_id, reflection)
@@ -801,6 +961,18 @@ class Gateway:
                 self._skill_registry.record_usage(
                     active_skill.skill.slug, success=success, score=score,
                 )
+                # Gap Detection: Melde niedrige Erfolgsrate
+                if not success and hasattr(self, "_skill_generator") and self._skill_generator:
+                    try:
+                        skill_obj = active_skill.skill
+                        if skill_obj.total_uses >= 3 and skill_obj.total_uses > 0:
+                            success_rate = skill_obj.success_count / skill_obj.total_uses
+                            if success_rate < 0.4:
+                                self._skill_generator.gap_detector.report_low_success_rate(
+                                    skill_obj.slug, success_rate,
+                                )
+                    except Exception:
+                        pass
             except Exception:
                 log.debug("skill_usage_tracking_skipped", exc_info=True)
 
@@ -849,6 +1021,31 @@ class Gateway:
                 )
             except Exception:
                 log.debug("run_recorder_finish_failed", exc_info=True)
+
+        # Self-Learning: Process actionable skill gaps (auto-generate new tools)
+        if hasattr(self, "_skill_generator") and self._skill_generator:
+            try:
+                generated = await self._skill_generator.process_all_gaps(
+                    skill_registry=self._skill_registry if hasattr(self, "_skill_registry") else None,
+                )
+                newly_registered = False
+                for skill in generated:
+                    log.info(
+                        "skill_auto_generated",
+                        name=skill.name,
+                        status=skill.status.value,
+                        version=skill.version,
+                    )
+                    if skill.status.value == "registered":
+                        newly_registered = True
+                # CORE.md aktualisieren wenn neue Skills registriert wurden
+                if newly_registered:
+                    try:
+                        self._sync_core_inventory()
+                    except Exception:
+                        pass
+            except Exception:
+                log.debug("skill_gap_processing_failed", exc_info=True)
 
     async def _persist_session(
         self, session: "SessionContext", wm: "WorkingMemory",
@@ -1149,6 +1346,54 @@ class Gateway:
                 return True
 
         return False
+
+    async def _classify_coding_task(self, user_message: str) -> tuple[bool, str]:
+        """Klassifiziert ob eine Nachricht eine Coding-Aufgabe ist und deren Komplexitaet.
+
+        Nutzt einen schnellen LLM-Call mit dem Executor-Modell.
+
+        Returns:
+            (is_coding, complexity) -- complexity ist "simple" oder "complex"
+        """
+        if not self._model_router or not self._llm:
+            return False, "simple"
+
+        classify_prompt = (
+            "Klassifiziere die folgende Nachricht:\n"
+            "1. Ist es eine Coding/Programmier-Aufgabe? (ja/nein)\n"
+            "2. Wenn ja: Ist es einfach (einzelne Funktion, kleines Fix, Snippet)\n"
+            "   oder komplex (Multi-File, Architektur, Refactoring, neues Feature)?\n\n"
+            'Antworte NUR mit einem JSON: {"coding": true/false, "complexity": "simple"/"complex"}'
+        )
+
+        model = self._model_router.select_model("simple_tool_call", "low")
+
+        try:
+            response = await self._llm.chat(
+                model=model,
+                messages=[
+                    {"role": "system", "content": classify_prompt},
+                    {"role": "user", "content": user_message[:500]},
+                ],
+                temperature=0.1,
+                format_json=True,
+            )
+
+            text = response.get("message", {}).get("content", "")
+            # JSON aus Antwort extrahieren
+            import json as _json_mod
+            # <think>...</think> Bloecke entfernen (qwen3)
+            text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL)
+            data = _json_mod.loads(text)
+            is_coding = bool(data.get("coding", False))
+            complexity = data.get("complexity", "simple")
+            if complexity not in ("simple", "complex"):
+                complexity = "simple"
+            return is_coding, complexity
+
+        except Exception as exc:
+            log.debug("coding_classify_failed", error=str(exc)[:200])
+            return False, "simple"
 
     @staticmethod
     def _resolve_relative_dates(text: str) -> str:

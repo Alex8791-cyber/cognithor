@@ -55,8 +55,12 @@ class TestModelSelection:
         model = router.select_model("reflection")
         assert model == config.models.planner.name
 
-    def test_code_uses_coder_model(self, router: ModelRouter, config: JarvisConfig) -> None:
+    def test_code_uses_coder_fast_by_default(self, router: ModelRouter, config: JarvisConfig) -> None:
         model = router.select_model("code")
+        assert model == config.models.coder_fast.name
+
+    def test_code_high_complexity_uses_coder(self, router: ModelRouter, config: JarvisConfig) -> None:
+        model = router.select_model("code", "high")
         assert model == config.models.coder.name
 
     def test_simple_uses_executor_model(self, router: ModelRouter, config: JarvisConfig) -> None:

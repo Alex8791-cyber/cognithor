@@ -67,6 +67,15 @@ class ModelsConfig(BaseModel):
             speed="medium",
         )
     )
+    coder_fast: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            name="qwen2.5-coder:7b",
+            context_window=32768,
+            vram_gb=5.0,
+            strengths=["code-generation", "real-time-coding"],
+            speed="fast",
+        )
+    )
     embedding: ModelConfig = Field(
         default_factory=lambda: ModelConfig(
             name="nomic-embed-text",
@@ -98,9 +107,10 @@ class PlannerConfig(BaseModel):
 class WebConfig(BaseModel):
     """Web-Tools Konfiguration. [B§5.3]
 
-    Suchbackends (Priorität: SearXNG > Brave > DuckDuckGo):
+    Suchbackends (Priorität: SearXNG > Brave > Google CSE > DuckDuckGo):
       - SearXNG: Self-hosted, keine API-Keys nötig
       - Brave Search: Schnell, 2000 Anfragen/Monat kostenlos
+      - Google CSE: Custom Search Engine, 100 Anfragen/Tag kostenlos
       - DuckDuckGo: Immer verfügbar, kein API-Key nötig (Standard-Fallback)
     """
 
@@ -110,8 +120,50 @@ class WebConfig(BaseModel):
     brave_api_key: str = ""
     """Brave Search API Key (https://brave.com/search/api/)."""
 
+    google_cse_api_key: str = ""
+    """Google Custom Search Engine API Key (https://developers.google.com/custom-search)."""
+
+    google_cse_cx: str = ""
+    """Google Custom Search Engine ID (cx Parameter)."""
+
+    jina_api_key: str = ""
+    """Jina AI Reader API Key (optional, Free-Tier funktioniert ohne Key)."""
+
     duckduckgo_enabled: bool = True
     """DuckDuckGo als kostenloser Fallback wenn kein anderes Backend konfiguriert."""
+
+    domain_blocklist: list[str] = Field(default_factory=list)
+    """Liste blockierter Domains (z.B. ['example.com']). Fetch wird verweigert."""
+
+    domain_allowlist: list[str] = Field(default_factory=list)
+    """Wenn nicht leer: NUR diese Domains sind erlaubt (Whitelist-Modus)."""
+
+
+class VaultConfig(BaseModel):
+    """Knowledge Vault Konfiguration — Obsidian-kompatibles Markdown-Vault.
+
+    Persistente Wissensablage für Recherchen, Meeting-Notizen, Projektnotizen
+    und tägliche Zusammenfassungen. Notizen verwenden Obsidian-kompatibles
+    YAML-Frontmatter und [[Backlinks]].
+    """
+
+    enabled: bool = True
+    """Aktiviert oder deaktiviert das Vault-System."""
+
+    path: str = "~/.jarvis/vault"
+    """Pfad zum Vault-Verzeichnis. Wird bei Bedarf automatisch erstellt."""
+
+    auto_save_research: bool = False
+    """Wenn True, werden Web-Recherche-Ergebnisse automatisch im Vault gespeichert."""
+
+    default_folders: dict[str, str] = Field(default_factory=lambda: {
+        "research": "recherchen",
+        "meetings": "meetings",
+        "knowledge": "wissen",
+        "projects": "projekte",
+        "daily": "daily",
+    })
+    """Mapping von logischen Ordnernamen zu Verzeichnisnamen im Vault."""
 
 
 class MemoryConfig(BaseModel):
@@ -268,6 +320,7 @@ _OLLAMA_DEFAULT_MODEL_NAMES = {
     "qwen3:32b",
     "qwen3:8b",
     "qwen2.5-coder:32b",
+    "qwen2.5-coder:7b",
     "nomic-embed-text",
     "llava:13b",
     "openbmb/minicpm-v4.5",
@@ -294,11 +347,18 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "speed": "fast",
         },
         "coder": {
-            "name": "gpt-5.1-codex",
+            "name": "gpt-5.3-codex",
             "context_window": 400000,
             "vram_gb": 0.0,
-            "strengths": ["code-generation", "debugging", "testing"],
+            "strengths": ["code-generation", "debugging", "testing", "architecture"],
             "speed": "medium",
+        },
+        "coder_fast": {
+            "name": "gpt-5.3-codex-spark",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
         },
         "embedding": {
             "name": "text-embedding-3-large",
@@ -334,6 +394,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
         },
+        "coder_fast": {
+            "name": "claude-haiku-4-5-20251001",
+            "context_window": 200000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
         # Anthropic hat keine Embedding-API → Ollama-Fallback bleibt
         "embedding": {
             "name": "nomic-embed-text",
@@ -367,6 +434,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
+        },
+        "coder_fast": {
+            "name": "gemini-2.5-flash",
+            "context_window": 1000000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
         },
         "embedding": {
             "name": "gemini-embedding-001",
@@ -402,6 +476,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
         },
+        "coder_fast": {
+            "name": "llama-3.1-8b-instant",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
         # Groq has no embedding API -> Ollama fallback
         "embedding": {
             "name": "nomic-embed-text",
@@ -435,6 +516,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
+        },
+        "coder_fast": {
+            "name": "deepseek-chat",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
         },
         # DeepSeek has no embedding API -> Ollama fallback
         "embedding": {
@@ -471,6 +559,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
         },
+        "coder_fast": {
+            "name": "codestral-latest",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
         "embedding": {
             "name": "mistral-embed",
             "context_window": 8192,
@@ -504,6 +599,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
+        },
+        "coder_fast": {
+            "name": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
         },
         # Together has no embedding API -> Ollama fallback
         "embedding": {
@@ -539,6 +641,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
         },
+        "coder_fast": {
+            "name": "google/gemini-2.5-flash",
+            "context_window": 1000000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
         # OpenRouter hat keine Embedding-API → Ollama-Fallback bleibt
         "embedding": {
             "name": "nomic-embed-text",
@@ -572,6 +681,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
+        },
+        "coder_fast": {
+            "name": "grok-code-fast-1",
+            "context_window": 256000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
         },
         # xAI has no embedding API -> Ollama fallback
         "embedding": {
@@ -607,6 +723,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "fast",
         },
+        "coder_fast": {
+            "name": "llama3.1-8b",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
         "embedding": {
             "name": "nomic-embed-text",
             "context_window": 8192,
@@ -639,6 +762,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
+        },
+        "coder_fast": {
+            "name": "gpt-4.1-mini",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
         },
         "embedding": {
             "name": "text-embedding-3-large",
@@ -674,6 +804,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
         },
+        "coder_fast": {
+            "name": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "context_window": 200000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
         "embedding": {
             "name": "amazon.titan-embed-text-v2:0",
             "context_window": 8192,
@@ -708,6 +845,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
         },
+        "coder_fast": {
+            "name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
         "embedding": {
             "name": "nomic-embed-text",
             "context_window": 8192,
@@ -740,6 +884,13 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "vram_gb": 0.0,
             "strengths": ["code-generation", "debugging", "testing"],
             "speed": "medium",
+        },
+        "coder_fast": {
+            "name": "kimi-k2-turbo-preview",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
         },
         "embedding": {
             "name": "nomic-embed-text",
@@ -919,7 +1070,7 @@ class JarvisConfig(BaseModel):
     """
 
     # Meta
-    version: str = "0.22.0"
+    version: str = "0.23.0"
     owner_name: str = Field(
         default="User",
         description="Name des Besitzers/Benutzers. Wird in Prompts und CORE.md verwendet.",
@@ -974,6 +1125,7 @@ class JarvisConfig(BaseModel):
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     channels: ChannelConfig = Field(default_factory=ChannelConfig)
     web: WebConfig = Field(default_factory=WebConfig)
+    vault: VaultConfig = Field(default_factory=VaultConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
@@ -1084,7 +1236,7 @@ class JarvisConfig(BaseModel):
         provider_defaults = _PROVIDER_MODEL_DEFAULTS[backend]
 
         # Jede Modell-Rolle prüfen und ggf. anpassen
-        for role in ("planner", "executor", "coder", "embedding"):
+        for role in ("planner", "executor", "coder", "coder_fast", "embedding"):
             current_model: ModelConfig = getattr(self.models, role)
             if current_model.name in _OLLAMA_DEFAULT_MODEL_NAMES:
                 role_defaults = provider_defaults.get(role)

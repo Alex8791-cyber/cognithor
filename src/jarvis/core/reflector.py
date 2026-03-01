@@ -19,9 +19,11 @@ from typing import TYPE_CHECKING, Any
 from jarvis.core.model_router import ModelRouter, OllamaClient, OllamaError
 from jarvis.models import (
     AgentResult,
+    Entity,
     ExtractedFact,
     GateStatus,
     ProcedureCandidate,
+    Relation,
     ReflectionResult,
     SessionContext,
     SessionSummary,
@@ -529,6 +531,7 @@ class Reflector:
                     session_id=session.session_id,
                     tool_sequence=tool_sequence,
                     success_score=reward_score,
+                    model_used=agent_result.model_used,
                 )
             except Exception as exc:
                 log.debug("causal_record_failed", error=str(exc))
@@ -860,9 +863,7 @@ Regeln:
         if not summary:
             return
 
-        today_str = date.today().isoformat()
         lines: list[str] = []
-        lines.append(f"## Session {result.session_id[:8]}")
         lines.append(f"- **Ziel:** {_sanitize_memory_text(summary.goal)}")
         lines.append(f"- **Ergebnis:** {_sanitize_memory_text(summary.outcome)}")
         lines.append(f"- **Score:** {result.success_score:.1f}")
@@ -874,12 +875,13 @@ Regeln:
         if summary.tools_used:
             lines.append("- **Tools:** " + ", ".join(summary.tools_used))
 
-        text = "\n".join(lines)
+        content = "\n".join(lines)
+        topic = f"Session {result.session_id[:8]}"
 
         episodic = memory_manager.episodic
-        episodic.add_entry(today_str, text)
+        episodic.append_entry(topic, content)
 
-        log.debug("reflection_wrote_episodic", date=today_str)
+        log.debug("reflection_wrote_episodic", date=date.today().isoformat())
 
     async def _write_semantic(
         self,
@@ -890,50 +892,66 @@ Regeln:
         indexer = memory_manager.index
         written = 0
 
+        def _find_entity_by_name(name: str) -> Entity | None:
+            """Sucht eine Entität per Name (exakter Match bevorzugt)."""
+            results = indexer.search_entities(name=name)
+            # Exakten Match bevorzugen
+            for e in results:
+                if e.name.lower() == name.lower():
+                    return e
+            return results[0] if results else None
+
+        def _ensure_entity(name: str, entity_type: str, source: str, attrs: dict | None = None) -> str:
+            """Erstellt oder findet eine Entität, gibt die ID zurück."""
+            existing = _find_entity_by_name(name)
+            if existing:
+                return existing.id
+            entity = Entity(
+                type=entity_type,
+                name=name,
+                attributes=attrs or {},
+                source_file=source,
+            )
+            indexer.upsert_entity(entity)
+            return entity.id
+
         for fact in facts:
             # Sanitize fact fields before storage
             fact_entity_name = _sanitize_memory_text(fact.entity_name, max_len=500)
             fact_attr_value = _sanitize_memory_text(fact.attribute_value, max_len=2000) if fact.attribute_value else fact.attribute_value
+            source_ref = f"reflection:{fact.source_session}"
+
             # Entität anlegen/finden
-            existing = indexer.find_entity(fact_entity_name)
+            existing = _find_entity_by_name(fact_entity_name)
             if existing:
                 entity_id = existing.id
                 # Attribute updaten wenn vorhanden
                 if fact.attribute_key and fact_attr_value:
                     attrs = dict(existing.attributes)
                     attrs[fact.attribute_key] = fact_attr_value
-                    indexer.update_entity(entity_id, attributes=attrs)
+                    updated = existing.model_copy(update={"attributes": attrs})
+                    indexer.upsert_entity(updated)
                     written += 1
             else:
                 attrs = {}
                 if fact.attribute_key and fact_attr_value:
                     attrs[fact.attribute_key] = fact_attr_value
-                entity_id = indexer.add_entity(
-                    name=fact_entity_name,
-                    entity_type=fact.entity_type,
-                    attributes=attrs,
-                    source_file=f"reflection:{fact.source_session}",
+                entity_id = _ensure_entity(
+                    fact_entity_name, fact.entity_type, source_ref, attrs,
                 )
                 written += 1
 
             # Relation anlegen wenn vorhanden
             if fact.relation_type and fact.relation_target:
-                target = indexer.find_entity(fact.relation_target)
-                target_id = (
-                    target.id
-                    if target
-                    else indexer.add_entity(
-                        name=fact.relation_target,
-                        entity_type="unknown",
-                        source_file=f"reflection:{fact.source_session}",
-                    )
-                )
-                indexer.add_relation(
-                    source_id=entity_id,
+                safe_target = _sanitize_memory_text(fact.relation_target, max_len=500)
+                target_id = _ensure_entity(safe_target, "unknown", source_ref)
+                relation = Relation(
+                    source_entity=entity_id,
                     relation_type=fact.relation_type,
-                    target_id=target_id,
-                    source_file=f"reflection:{fact.source_session}",
+                    target_entity=target_id,
+                    source_file=source_ref,
                 )
+                indexer.upsert_relation(relation)
                 written += 1
 
         log.debug("reflection_wrote_semantic", count=written)

@@ -334,6 +334,7 @@ class ModelRouter:
         self._client = client
         self._backend: Any | None = None  # Optional: LLMBackend-Instanz
         self._available_models: set[str] = set()
+        self._coding_override: str | None = None
 
     @classmethod
     def from_backend(cls, config: JarvisConfig, backend: Any) -> "ModelRouter":
@@ -356,6 +357,22 @@ class ModelRouter:
     def backend(self) -> Any | None:
         """Gibt das konfigurierte LLMBackend zurück (None wenn legacy-Modus)."""
         return self._backend
+
+    def set_coding_override(self, model_name: str) -> None:
+        """Setzt einen temporaeren Modell-Override fuer den gesamten PGE-Zyklus.
+
+        Wird vom Gateway gesetzt wenn eine Coding-Aufgabe erkannt wird.
+        Alle select_model()-Aufrufe (planning, reflection, etc.) liefern
+        dann das Coding-Modell zurueck.
+        """
+        self._coding_override = model_name
+        log.info("coding_override_set", model=model_name)
+
+    def clear_coding_override(self) -> None:
+        """Entfernt den Coding-Override nach dem PGE-Zyklus."""
+        if self._coding_override:
+            log.info("coding_override_cleared", model=self._coding_override)
+        self._coding_override = None
 
     async def initialize(self) -> None:
         """Prüft welche Modelle verfügbar sind.
@@ -387,6 +404,12 @@ class ModelRouter:
         Returns:
             Ollama-Modellname (z.B. "qwen3:32b")
         """
+        # Coding-Override: Wenn gesetzt, wird fuer ALLE task_types das
+        # Coding-Modell verwendet (gesamter PGE-Zyklus bei Coding-Aufgaben).
+        # Ausnahme: Embeddings bleiben beim Embedding-Modell.
+        if self._coding_override and task_type != "embedding":
+            return self._coding_override
+
         # Prüfe zunächst, ob ein Override für den gegebenen task_type existiert.
         # Der Schlüssel in model_overrides.skill_models kann den task_type
         # (z. B. "planning", "reflection", "code") überschreiben. So können
@@ -406,7 +429,10 @@ class ModelRouter:
                 case "planning" | "reflection":
                     model_name = self._config.models.planner.name
                 case "code":
-                    model_name = self._config.models.coder.name
+                    if complexity == "high":
+                        model_name = self._config.models.coder.name
+                    else:
+                        model_name = self._config.models.coder_fast.name
                 case "simple_tool_call" | "summarization":
                     model_name = self._config.models.executor.name
                 case "embedding":
@@ -457,6 +483,7 @@ class ModelRouter:
             self._config.models.planner.name: self._config.models.planner,
             self._config.models.executor.name: self._config.models.executor,
             self._config.models.coder.name: self._config.models.coder,
+            self._config.models.coder_fast.name: self._config.models.coder_fast,
             self._config.models.embedding.name: self._config.models.embedding,
         }
         config = configs.get(model_name)

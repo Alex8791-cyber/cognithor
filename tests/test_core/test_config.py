@@ -278,7 +278,8 @@ class TestModelAutoAdaptation:
         )
         assert config.models.planner.name == "gpt-5.2"
         assert config.models.executor.name == "gpt-5-mini"
-        assert config.models.coder.name == "gpt-5.1-codex"
+        assert config.models.coder.name == "gpt-5.3-codex"
+        assert config.models.coder_fast.name == "gpt-5.3-codex-spark"
         assert config.models.embedding.name == "text-embedding-3-large"
         assert config.models.planner.context_window == 400000
 
