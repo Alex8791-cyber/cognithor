@@ -5,6 +5,19 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.25.0] – 2026-03-01
+
+### Added
+- **Adaptive Context Pipeline** — Automatic pre-Planner context enrichment from Memory (BM25), Vault (full-text search), and Episodes (recent days). Injects relevant knowledge into WorkingMemory before the Planner runs, so Jarvis no longer "forgets" between sessions.
+- **ContextPipelineConfig** — New configuration model with `enabled`, `memory_top_k`, `vault_top_k`, `episode_days`, `min_query_length`, `max_context_chars`, `smalltalk_patterns`
+- Smalltalk detection to skip unnecessary context searches for greetings and short messages
+- `vault_tools` exposed in tools.py PhaseResult for dependency injection into Context Pipeline
+
+### Changed
+- Gateway initializes Context Pipeline after tools phase and calls `enrich()` before PGE loop
+- Architecture diagram updated with Context Pipeline layer
+- Version bumped to 0.25.0
+
 ## [0.24.0] – 2026-03-01
 
 ### Added

@@ -26,6 +26,7 @@ def declare_tools_attrs(config: Any) -> PhaseResult:
         "hitl_manager": None,
         "a2a_adapter": None,
         "cost_tracker": None,
+        "vault_tools": None,
     }
 
 
@@ -148,6 +149,7 @@ async def init_tools(
         log.info("vault_tools_registered")
     except Exception:
         log.warning("vault_tools_not_registered")
+    result["vault_tools"] = vault_tools
 
     # LLM + Vault in MediaPipeline injizieren (für analyze_document)
     if media_pipeline is not None and hasattr(media_pipeline, "_set_llm_fn"):

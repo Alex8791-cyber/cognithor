@@ -40,6 +40,7 @@
 - **React Control Center** — Full web dashboard (React 19 + Vite 7) with integrated backend launcher, live config editing, agent management, prompt editing, cron jobs, MCP servers, and A2A settings
 - **Auto-Detect Channels** — Channels activate automatically when tokens are present in `.env` — no manual config flags needed
 - **Knowledge Synthesis** — Meta-analysis across Memory + Vault + Web with LLM fusion: `knowledge_synthesize` (full synthesis with confidence ratings), `knowledge_contradictions` (fact-checking), `knowledge_timeline` (causal chains), `knowledge_gaps` (completeness score + research suggestions)
+- **Adaptive Context Pipeline** — Automatic context enrichment before every Planner call: BM25 memory search + vault full-text search + recent episodes, injected into WorkingMemory in <50ms
 - **Enhanced Web Research** — 4-provider search fallback (SearXNG → Brave → Google CSE → DuckDuckGo), Jina AI Reader for JS-heavy sites, domain filtering, source cross-checking
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
 - **4,746 tests** · **89% coverage** · **0 lint errors**
@@ -59,6 +60,8 @@
 ├──────────────────────────────────────────────────────────────┤
 │                    Gateway Layer                              │
 │            Session Management · Agent Loop                    │
+├──────────────────────────────────────────────────────────────┤
+│          Context Pipeline (Memory · Vault · Episodes)         │
 ├────────────┬──────────────┬──────────────────────────────────┤
 │  Planner   │  Gatekeeper  │  Executor                        │
 │  (LLM)     │  (Policy)    │  (Sandbox)                       │

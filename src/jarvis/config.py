@@ -166,6 +166,34 @@ class VaultConfig(BaseModel):
     """Mapping von logischen Ordnernamen zu Verzeichnisnamen im Vault."""
 
 
+class ContextPipelineConfig(BaseModel):
+    """Adaptive Context Pipeline — automatische Kontext-Anreicherung vor dem Planner."""
+
+    enabled: bool = True
+    """Pipeline aktivieren/deaktivieren."""
+
+    memory_top_k: int = 4
+    """Anzahl Memory-Ergebnisse (BM25-only, sync, ~5-20ms)."""
+
+    vault_top_k: int = 3
+    """Anzahl Vault-Suchergebnisse (~10-50ms)."""
+
+    episode_days: int = 2
+    """Anzahl Tage für Episoden-Kontext (heute + gestern)."""
+
+    min_query_length: int = 8
+    """Mindestlänge der User-Nachricht für Kontext-Suche."""
+
+    max_context_chars: int = 3000
+    """Maximale Zeichenzahl des injizierten Kontexts."""
+
+    smalltalk_patterns: list[str] = [
+        "hallo", "hi", "hey", "guten morgen", "guten tag", "guten abend",
+        "danke", "tschüss", "bye", "ok", "ja", "nein", "alles klar",
+    ]
+    """Patterns die als Smalltalk erkannt werden (keine Kontext-Suche)."""
+
+
 class MemoryConfig(BaseModel):
     """Memory-System Konfiguration. [B§4]"""
 
@@ -1070,7 +1098,7 @@ class JarvisConfig(BaseModel):
     """
 
     # Meta
-    version: str = "0.24.0"
+    version: str = "0.25.0"
     owner_name: str = Field(
         default="User",
         description="Name des Besitzers/Benutzers. Wird in Prompts und CORE.md verwendet.",
@@ -1126,6 +1154,7 @@ class JarvisConfig(BaseModel):
     channels: ChannelConfig = Field(default_factory=ChannelConfig)
     web: WebConfig = Field(default_factory=WebConfig)
     vault: VaultConfig = Field(default_factory=VaultConfig)
+    context_pipeline: ContextPipelineConfig = Field(default_factory=ContextPipelineConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)

@@ -82,6 +82,7 @@ class Gateway:
         self._session_last_accessed: dict[str, float] = {}
         self._last_session_cleanup: float = time.monotonic()
         self._running = False
+        self._context_pipeline = None
 
         # Declare all subsystem attributes via phase modules
         apply_phase(self, declare_core_attrs(self._config))
@@ -140,6 +141,23 @@ class Gateway:
             handle_message=self.handle_message,
         )
         apply_phase(self, tools_result)
+
+        # --- Phase D.1: Context Pipeline (depends on memory + tools) ---
+        try:
+            from jarvis.core.context_pipeline import ContextPipeline
+
+            cp_config = getattr(self._config, "context_pipeline", None)
+            if cp_config is None:
+                from jarvis.config import ContextPipelineConfig
+                cp_config = ContextPipelineConfig()
+            if cp_config.enabled:
+                self._context_pipeline = ContextPipeline(cp_config)
+                self._context_pipeline.set_memory_manager(self._memory_manager)
+                if hasattr(self, "_vault_tools") and self._vault_tools:
+                    self._context_pipeline.set_vault_tools(self._vault_tools)
+                log.info("context_pipeline_initialized")
+        except Exception:
+            log.debug("context_pipeline_init_skipped", exc_info=True)
 
         # --- Phase E: PGE + Agents in parallel (both depend on phases A-D) ---
         pge_coro = init_pge(
@@ -490,6 +508,21 @@ class Gateway:
         )
         if budget_response is not None:
             return budget_response
+
+        # Phase 2.3: Adaptive Context Pipeline — Memory/Vault/Episoden injizieren
+        if self._context_pipeline is not None:
+            try:
+                ctx_result = await self._context_pipeline.enrich(msg.text, wm)
+                if not ctx_result.skipped:
+                    log.info(
+                        "context_enriched",
+                        memories=len(ctx_result.memory_results),
+                        vault=len(ctx_result.vault_snippets),
+                        episodes=len(ctx_result.episode_snippets),
+                        ms=f"{ctx_result.duration_ms:.1f}",
+                    )
+            except Exception:
+                log.debug("context_pipeline_failed", exc_info=True)
 
         # Tool-Schemas (gefiltert nach Agent-Rechten)
         tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
