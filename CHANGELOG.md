@@ -5,6 +5,24 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.24.0] – 2026-03-01
+
+### Added
+- **Knowledge Synthesis** — Meta-analysis engine that orchestrates Memory, Vault, Web and LLM to build coherent understanding. 4 new MCP tools:
+  - `knowledge_synthesize` — Full synthesis with confidence-rated findings (★★★), source comparison, contradiction detection, timeline, gap analysis
+  - `knowledge_contradictions` — Compares stored knowledge (Memory + Vault) with current web information, identifies outdated facts and discrepancies
+  - `knowledge_timeline` — Builds chronological timelines with causal chains (X → Y → Z) and trend analysis
+  - `knowledge_gaps` — Completeness scoring (1–10), prioritized research suggestions with concrete search terms
+- **Wissens-Synthese Skill** — New procedure (`data/procedures/wissens-synthese.md`) for guided knowledge synthesis workflow
+- 3 depth levels: `quick` (Memory + Vault only), `standard` (+ 3 web results), `deep` (+ 5 web results, detailed analysis)
+- Synthesis results can be saved directly to Knowledge Vault (`save_to_vault: true`)
+
+### Changed
+- tools.py captures return values from `register_web_tools` and `register_memory_tools` for dependency injection into synthesizer
+- tools.py registers synthesis tools and wires LLM, Memory, Vault, and Web dependencies
+- MCP Tool Layer expanded from 15+ to 18+ tools
+- Version bumped to 0.24.0
+
 ## [0.23.0] – 2026-03-01
 
 ### Added

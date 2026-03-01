@@ -35,10 +35,11 @@
 - **Enterprise Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance, credential vault, red-teaming
 - **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
-- **Model Context Protocol (MCP)** — 15+ tool servers (filesystem, shell, memory, web, browser, media, vault)
+- **Model Context Protocol (MCP)** — 18+ tool servers (filesystem, shell, memory, web, browser, media, vault, synthesis)
 - **Agent-to-Agent Protocol (A2A)** — Linux Foundation RC v1.0 for inter-agent communication
 - **React Control Center** — Full web dashboard (React 19 + Vite 7) with integrated backend launcher, live config editing, agent management, prompt editing, cron jobs, MCP servers, and A2A settings
 - **Auto-Detect Channels** — Channels activate automatically when tokens are present in `.env` — no manual config flags needed
+- **Knowledge Synthesis** — Meta-analysis across Memory + Vault + Web with LLM fusion: `knowledge_synthesize` (full synthesis with confidence ratings), `knowledge_contradictions` (fact-checking), `knowledge_timeline` (causal chains), `knowledge_gaps` (completeness score + research suggestions)
 - **Enhanced Web Research** — 4-provider search fallback (SearXNG → Brave → Google CSE → DuckDuckGo), Jina AI Reader for JS-heavy sites, domain filtering, source cross-checking
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
 - **4,746 tests** · **89% coverage** · **0 lint errors**
@@ -62,8 +63,9 @@
 │  Planner   │  Gatekeeper  │  Executor                        │
 │  (LLM)     │  (Policy)    │  (Sandbox)                       │
 ├────────────┴──────────────┴──────────────────────────────────┤
-│                  MCP Tool Layer (15+)                         │
+│                  MCP Tool Layer (18+)                         │
 │  Filesystem · Shell · Memory · Web · Browser · Media · Vault  │
+│  Synthesis                                                     │
 ├──────────────────────────────────────────────────────────────┤
 │              Multi-LLM Backend Layer (15)                     │
 │  Ollama · OpenAI · Anthropic · Gemini · Groq · DeepSeek      │
@@ -200,6 +202,7 @@ cognithor/
 │   │   ├── memory_server.py       # Memory as 10 MCP tools
 │   │   ├── web.py                 # Enhanced web search (4 providers) and URL fetch (Jina fallback)
 │   │   ├── vault.py               # Knowledge Vault (Obsidian-compatible, 6 tools)
+│   │   ├── synthesis.py           # Knowledge Synthesis (4 tools: synthesize, contradictions, timeline, gaps)
 │   │   ├── browser.py             # Browser automation (Playwright, 6 tools)
 │   │   └── media.py               # Media pipeline (STT, TTS, image, PDF, document analysis, 8 tools)
 │   ├── gateway/
@@ -434,6 +437,7 @@ Cognithor implements enterprise-grade security:
 | **Browser** | navigate, screenshot, click, fill_form, execute_js, get_page_content | Playwright-based browser automation |
 | **Media** | transcribe_audio, analyze_image, extract_text, analyze_document, convert_audio, resize_image, tts, document_export | Multimodal pipeline + LLM-powered document analysis (all local) |
 | **Vault** | vault_save, vault_search, vault_list, vault_read, vault_update, vault_link | Obsidian-compatible Knowledge Vault with frontmatter, tags, backlinks |
+| **Synthesis** | knowledge_synthesize, knowledge_contradictions, knowledge_timeline, knowledge_gaps | Meta-analysis across Memory + Vault + Web with LLM fusion, confidence scoring, fact-checking |
 
 ## Tests
 

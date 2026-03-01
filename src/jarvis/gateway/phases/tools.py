@@ -60,7 +60,7 @@ async def init_tools(
     # Register built-in MCP tools
     register_fs_tools(mcp_client, config)
     register_shell_tools(mcp_client, config)
-    register_web_tools(mcp_client, config)
+    web_tools = register_web_tools(mcp_client, config)
     register_code_tools(mcp_client, config)
 
     # Browser-Use v17: Autonomous browser automation (optional)
@@ -174,7 +174,58 @@ async def init_tools(
         log.debug("media_vault_injected")
 
     # Memory tools
-    register_memory_tools(mcp_client, memory_manager)
+    memory_tools = register_memory_tools(mcp_client, memory_manager)
+
+    # Knowledge Synthesis (orchestrates Memory + Vault + Web + LLM)
+    synthesizer = None
+    try:
+        from jarvis.mcp.synthesis import register_synthesis_tools
+        synthesizer = register_synthesis_tools(mcp_client, config)
+        log.info("synthesis_tools_registered")
+    except Exception:
+        log.warning("synthesis_tools_not_registered", exc_info=True)
+
+    # Inject dependencies into synthesizer
+    if synthesizer is not None:
+        # LLM (reuse the closure already created for media pipeline)
+        if hasattr(synthesizer, "_set_llm_fn"):
+            try:
+                # Ensure LLM client + closure exist (may have been created above for media)
+                if media_pipeline is not None and hasattr(media_pipeline, "_llm_fn") and media_pipeline._llm_fn is not None:
+                    # Reuse existing LLM function from media pipeline
+                    synthesizer._set_llm_fn(media_pipeline._llm_fn, media_pipeline._llm_model)
+                else:
+                    from jarvis.core.unified_llm import UnifiedLLMClient
+                    llm_client_synth = UnifiedLLMClient.create(config)
+                    model_name_synth = getattr(getattr(config, "models", None), "planner", None)
+                    model_name_synth = getattr(model_name_synth, "name", "") if model_name_synth else ""
+
+                    async def _llm_for_synthesis(prompt: str, model: str = "") -> str:
+                        resp = await llm_client_synth.chat(
+                            messages=[{"role": "user", "content": prompt}],
+                            model=model or model_name_synth,
+                        )
+                        return resp.get("content", "") if isinstance(resp, dict) else str(resp)
+
+                    synthesizer._set_llm_fn(_llm_for_synthesis, model_name_synth)
+                log.info("synthesis_llm_injected")
+            except Exception:
+                log.debug("synthesis_llm_injection_skipped", exc_info=True)
+
+        # Memory tools
+        if memory_tools is not None and hasattr(synthesizer, "_set_memory_tools"):
+            synthesizer._set_memory_tools(memory_tools)
+            log.debug("synthesis_memory_injected")
+
+        # Vault tools
+        if vault_tools is not None and hasattr(synthesizer, "_set_vault_tools"):
+            synthesizer._set_vault_tools(vault_tools)
+            log.debug("synthesis_vault_injected")
+
+        # Web tools
+        if web_tools is not None and hasattr(synthesizer, "_set_web_tools"):
+            synthesizer._set_web_tools(web_tools)
+            log.debug("synthesis_web_injected")
 
     # MCP-Server mode (optional, only if enabled in config)
     mcp_bridge = None
