@@ -7,7 +7,7 @@
     <em>Cognition + Thor — Intelligence with Power</em>
   </p>
   <p align="center">
-    <a href="#llm-providers">15 LLM Providers</a> · <a href="#channels">17 Channels</a> · <a href="#5-tier-cognitive-memory">5-Tier Memory</a> · <a href="#knowledge-vault">Knowledge Vault</a> · <a href="#security">Enterprise Security</a> · <a href="LICENSE">Apache 2.0</a>
+    <a href="#llm-providers">16 LLM Providers</a> · <a href="#channels">17 Channels</a> · <a href="#5-tier-cognitive-memory">5-Tier Memory</a> · <a href="#knowledge-vault">Knowledge Vault</a> · <a href="#security">Enterprise Security</a> · <a href="LICENSE">Apache 2.0</a>
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
@@ -27,7 +27,7 @@
 
 ## Highlights
 
-- **15 LLM Providers** — Ollama (local), OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, Together AI, OpenRouter, xAI (Grok), Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot/Kimi
+- **16 LLM Providers** — Ollama (local), LM Studio (local), OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, Together AI, OpenRouter, xAI (Grok), Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot/Kimi
 - **17 Communication Channels** — CLI, Web UI, REST API, Telegram, Discord, Slack, WhatsApp, Signal, iMessage, Microsoft Teams, Matrix, Google Chat, Mattermost, Feishu/Lark, IRC, Twitch, Voice (STT/TTS)
 - **5-Tier Cognitive Memory** — Core identity, episodic logs, semantic knowledge graph, procedural skills, working memory
 - **3-Channel Hybrid Search** — BM25 full-text + vector embeddings + knowledge graph traversal with score fusion
@@ -72,7 +72,7 @@
 │  Filesystem · Shell · Memory · Web · Browser · Media · Vault  │
 │  Synthesis                                                     │
 ├──────────────────────────────────────────────────────────────┤
-│              Multi-LLM Backend Layer (15)                     │
+│              Multi-LLM Backend Layer (16)                     │
 │  Ollama · OpenAI · Anthropic · Gemini · Groq · DeepSeek      │
 │  Mistral · Together · OpenRouter · xAI · Cerebras · ...       │
 ├──────────────────────────────────────────────────────────────┤
@@ -121,6 +121,7 @@ Cognithor auto-detects your backend from API keys. Set one key and models are co
 | Provider | Backend Type | Config Key | Models (Planner / Executor) |
 |----------|-------------|------------|----------------------------|
 | **Ollama** (local) | `ollama` | *(none needed)* | qwen3:32b / qwen3:8b |
+| **LM Studio** (local) | `lmstudio` | *(none needed)* | *(your loaded models)* |
 | **OpenAI** | `openai` | `openai_api_key` | gpt-5.2 / gpt-5-mini |
 | **Anthropic** | `anthropic` | `anthropic_api_key` | claude-opus-4-6 / claude-haiku-4-5 |
 | **Google Gemini** | `gemini` | `gemini_api_key` | gemini-2.5-pro / gemini-2.5-flash |
@@ -140,6 +141,10 @@ Cognithor auto-detects your backend from API keys. Set one key and models are co
 # ~/.cognithor/config.yaml — just set one key, everything else is auto-configured
 gemini_api_key: "AIza..."
 # That's it. Backend, models, and operation mode are auto-detected.
+
+# Or use LM Studio (local, no API key needed):
+llm_backend_type: "lmstudio"
+# lmstudio_base_url: "http://localhost:1234/v1"  # default
 ```
 
 ## Channels
@@ -184,7 +189,7 @@ cognithor/
 │   │   ├── gatekeeper.py          # Deterministic policy engine (no LLM)
 │   │   ├── executor.py            # Sandboxed tool executor with audit trail
 │   │   ├── model_router.py        # Model selection by task type
-│   │   ├── llm_backend.py         # Multi-provider LLM abstraction (15 backends)
+│   │   ├── llm_backend.py         # Multi-provider LLM abstraction (16 backends)
 │   │   ├── orchestrator.py        # High-level agent orchestration
 │   │   └── reflector.py           # Reflection, fact extraction, skill synthesis
 │   ├── memory/
@@ -272,6 +277,7 @@ cognithor/
 - Python >= 3.12
 - **LLM Backend** (one of):
   - [Ollama](https://ollama.ai) — local, free, GDPR-compliant (recommended)
+  - [LM Studio](https://lmstudio.ai) — local, OpenAI-compatible API on port 1234
   - Any of the 14 cloud providers listed above
 - Optional: `playwright` for browser automation, `faster-whisper` for voice
 
@@ -398,6 +404,7 @@ owner_name: "Alex"
 # gemini_api_key: "AIza..."
 # groq_api_key: "gsk_..."
 # xai_api_key: "xai-..."
+# Or: llm_backend_type: "lmstudio"  # Local, no key needed
 
 ollama:
   base_url: "http://localhost:11434"

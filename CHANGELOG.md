@@ -5,6 +5,21 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.26.2] – 2026-03-02
+
+### Added
+- **LM Studio Backend** — Full support for LM Studio as a local LLM provider (OpenAI-compatible API on `localhost:1234`). Like Ollama, no API key required, operation mode stays OFFLINE. Includes:
+  - `LLMBackendType.LMSTUDIO` enum value and `create_backend()` factory case
+  - `lmstudio_api_key` and `lmstudio_base_url` config fields
+  - Vision dispatch for OpenAI-compatible image format (`_OPENAI_VISION_BACKENDS` frozenset)
+  - Startup banner shows LM Studio URL
+  - Specific warning when LM Studio server is unreachable
+  - 5 new tests (factory, config, operation mode)
+
+### Changed
+- LLM Provider count: 15 → 16 (Ollama, LM Studio, OpenAI, Anthropic, Gemini, Groq, DeepSeek, Mistral, Together, OpenRouter, xAI, Cerebras, GitHub, Bedrock, Hugging Face, Moonshot)
+- Vision `format_for_backend()` now uses a `_OPENAI_VISION_BACKENDS` frozenset instead of hardcoded `"openai"` check — all OpenAI-compatible backends (including LM Studio) get proper image support
+
 ## [0.26.1] – 2026-03-01
 
 ### Added

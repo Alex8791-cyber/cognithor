@@ -16,7 +16,7 @@ Dateien verwaltet und individuelle Workflows unterstützt.
 | CPU | 8 Kerne | Ryzen 9 9950X3D |
 | RAM | 16 GB | 64 GB+ |
 | Python | 3.12+ | 3.12+ |
-| Ollama | 0.3+ | Aktuellste Version |
+| Ollama oder LM Studio | 0.3+ / 0.3+ | Aktuellste Version |
 | Disk | 50 GB frei | 100 GB+ (für Modelle) |
 
 ## Schritt 1: Installation
@@ -35,7 +35,9 @@ source .venv/bin/activate
 pip install -e ".[all,dev]"
 ```
 
-## Schritt 2: Ollama vorbereiten
+## Schritt 2: LLM-Backend vorbereiten
+
+### Option A: Ollama (empfohlen)
 
 ```bash
 # Ollama starten (falls nicht als Service)
@@ -51,6 +53,18 @@ ollama pull nomic-embed-text    # Embeddings — 300 MB, ~5 Sek
 **RTX 5090 Tipp:** Planner (20 GB) + Executor (6 GB) = 26 GB → passen gleichzeitig
 in 32 GB VRAM. Qwen3-Coder teilt sich den Speicher mit dem Planner (Ollama
 entlädt automatisch).
+
+### Option B: LM Studio
+
+1. Modelle in der LM Studio GUI herunterladen und laden (z.B. `qwen/qwen3-32b`)
+2. Server starten (läuft standardmäßig auf `http://localhost:1234`)
+3. In `~/.jarvis/config.yaml` setzen:
+
+```yaml
+llm_backend_type: "lmstudio"
+```
+
+LM Studio braucht keinen API-Key und bleibt komplett lokal.
 
 ## Schritt 3: First Boot
 

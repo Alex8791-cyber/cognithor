@@ -5,7 +5,9 @@ Diese Anleitung bringt Jarvis in 10 Minuten zum Laufen.
 ## 1. Voraussetzungen
 
 - **Python 3.12+** — `python3 --version`
-- **Ollama** — [ollama.ai](https://ollama.ai) installieren
+- **LLM-Backend** (eines von):
+  - **Ollama** — [ollama.ai](https://ollama.ai) (empfohlen, CLI-basiert)
+  - **LM Studio** — [lmstudio.ai](https://lmstudio.ai) (GUI, OpenAI-kompatible API auf Port 1234)
 - **GPU empfohlen** — RTX 3090+ (24 GB VRAM) oder RTX 5090 (32 GB VRAM)
 
 ## 2. Installation
@@ -46,6 +48,17 @@ Ollama starten (falls nicht automatisch):
 ```bash
 ollama serve
 ```
+
+### Alternative: LM Studio statt Ollama
+
+Wenn du LM Studio bevorzugst, lade deine Modelle in der LM Studio GUI und setze in `~/.jarvis/config.yaml`:
+
+```yaml
+llm_backend_type: "lmstudio"
+# lmstudio_base_url: "http://localhost:1234/v1"  # Default
+```
+
+LM Studio braucht keinen API-Key und läuft komplett lokal (wie Ollama).
 
 ## 4. First Boot — System validieren
 
