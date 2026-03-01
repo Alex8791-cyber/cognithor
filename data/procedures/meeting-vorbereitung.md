@@ -2,6 +2,8 @@
 name: meeting-vorbereitung
 trigger_keywords: [Meeting, Besprechung, Termin, vorbereiten, Agenda, Teilnehmer, Gesprächsvorbereitung]
 tools_required: [search_memory, web_search, write_file]
+category: productivity
+priority: 5
 success_count: 0
 failure_count: 0
 total_uses: 0

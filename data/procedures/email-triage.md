@@ -2,6 +2,8 @@
 name: email-triage
 trigger_keywords: [Email, E-Mail, Postfach, sortieren, triage, Eingang, Inbox]
 tools_required: [read_file, write_file]
+category: productivity
+priority: 5
 success_count: 0
 failure_count: 0
 total_uses: 0

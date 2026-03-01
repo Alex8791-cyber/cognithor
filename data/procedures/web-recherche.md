@@ -2,6 +2,8 @@
 name: web-recherche
 trigger_keywords: [Recherche, recherchieren, Zusammenfassung, Internet, Web-Suche, Suche]
 tools_required: [web_search, write_file]
+category: research
+priority: 5
 success_count: 0
 failure_count: 0
 total_uses: 0

@@ -515,13 +515,13 @@ class TestApply:
 
         # Episodic Mock
         manager.episodic = MagicMock()
-        manager.episodic.add_entry = MagicMock()
+        manager.episodic.append_entry = MagicMock()
 
         # Index Mock (für Semantic)
         manager.index = MagicMock()
-        manager.index.find_entity.return_value = None
-        manager.index.add_entity.return_value = "entity-123"
-        manager.index.add_relation.return_value = "rel-123"
+        manager.index.search_entities.return_value = []
+        manager.index.upsert_entity = MagicMock()
+        manager.index.upsert_relation = MagicMock()
 
         # Procedural Mock
         manager.procedural = MagicMock()
@@ -564,7 +564,7 @@ class TestApply:
         assert counts["episodic"] == 1
         assert counts["semantic"] >= 1
         assert counts["procedural"] == 1
-        mock_manager.episodic.add_entry.assert_called_once()
+        mock_manager.episodic.append_entry.assert_called_once()
         mock_manager.procedural.save_procedure.assert_called_once()
 
     @pytest.mark.asyncio
@@ -575,7 +575,7 @@ class TestApply:
         counts = await reflector.apply(result, mock_manager)
 
         assert counts == {"episodic": 0, "semantic": 0, "procedural": 0}
-        mock_manager.episodic.add_entry.assert_not_called()
+        mock_manager.episodic.append_entry.assert_not_called()
         mock_manager.procedural.save_procedure.assert_not_called()
 
     @pytest.mark.asyncio
@@ -613,8 +613,8 @@ class TestApply:
         counts = await reflector.apply(result, mock_manager)
 
         assert counts["semantic"] >= 2  # Entity + Relation
-        mock_manager.index.add_entity.assert_called()
-        mock_manager.index.add_relation.assert_called()
+        mock_manager.index.upsert_entity.assert_called()
+        mock_manager.index.upsert_relation.assert_called()
 
     @pytest.mark.asyncio
     async def test_apply_semantic_updates_existing_entity(
@@ -628,7 +628,7 @@ class TestApply:
             attributes={"alter": "35"},
             source_file="old.md",
         )
-        mock_manager.index.find_entity.return_value = existing
+        mock_manager.index.search_entities.return_value = [existing]
 
         result = ReflectionResult(
             session_id="sess-5",
@@ -643,12 +643,11 @@ class TestApply:
 
         await reflector.apply(result, mock_manager)
 
-        mock_manager.index.update_entity.assert_called_once()
-        call_args = mock_manager.index.update_entity.call_args
-        assert call_args[0][0] == "ent-existing"
-        attrs = call_args[1]["attributes"]
-        assert attrs["beruf"] == "Entwickler"
-        assert attrs["alter"] == "35"  # Alte Attribute bleiben erhalten
+        mock_manager.index.upsert_entity.assert_called_once()
+        call_args = mock_manager.index.upsert_entity.call_args
+        updated_entity = call_args[0][0]
+        assert updated_entity.attributes["beruf"] == "Entwickler"
+        assert updated_entity.attributes["alter"] == "35"  # Alte Attribute bleiben erhalten
 
     @pytest.mark.asyncio
     async def test_apply_procedure_update(

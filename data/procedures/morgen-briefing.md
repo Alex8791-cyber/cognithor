@@ -2,6 +2,8 @@
 name: morgen-briefing
 trigger_keywords: [Briefing, Morgen, Tagesplan, Überblick, Zusammenfassung, was steht an]
 tools_required: [get_recent_episodes, search_memory, list_directory, search_procedures]
+category: productivity
+priority: 4
 success_count: 0
 failure_count: 0
 total_uses: 0

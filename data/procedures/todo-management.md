@@ -2,6 +2,8 @@
 name: todo-management
 trigger_keywords: [To-Do, Aufgaben, ToDo, Liste, Aufgabenliste, organisieren, Planung]
 tools_required: [search_memory, write_file]
+category: productivity
+priority: 5
 success_count: 0
 failure_count: 0
 total_uses: 0

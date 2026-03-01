@@ -2,6 +2,8 @@
 name: projekt-setup
 trigger_keywords: [Projekt, Setup, neues Projekt, anlegen, Projektstruktur, Ordner, initialisieren]
 tools_required: [write_file, list_directory, save_to_memory]
+category: development
+priority: 5
 success_count: 0
 failure_count: 0
 total_uses: 0

@@ -2,6 +2,8 @@
 name: kontakt-recherche
 trigger_keywords: [Kontakt, Recherche, Person, Firma, Hintergrund, Gesprächspartner, nachschlagen]
 tools_required: [search_memory, web_search, add_entity, save_to_memory, write_file]
+category: research
+priority: 5
 success_count: 0
 failure_count: 0
 total_uses: 0
