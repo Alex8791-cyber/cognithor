@@ -28,7 +28,7 @@ What actually happened.
 
 - **OS:** (e.g., Windows 11, Ubuntu 24.04, macOS 15)
 - **Python:** (e.g., 3.12.4)
-- **Cognithor version:** (e.g., 0.22.0)
+- **Cognithor version:** (e.g., 0.25.0)
 - **LLM backend:** (e.g., Ollama, OpenAI, Anthropic)
 - **Channel:** (e.g., CLI, Telegram, Discord)
 

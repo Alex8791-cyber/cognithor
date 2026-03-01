@@ -11,7 +11,7 @@
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C746%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-4%2C841%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   </p>
@@ -43,7 +43,7 @@
 - **Adaptive Context Pipeline** — Automatic context enrichment before every Planner call: BM25 memory search + vault full-text search + recent episodes, injected into WorkingMemory in <50ms
 - **Enhanced Web Research** — 4-provider search fallback (SearXNG → Brave → Google CSE → DuckDuckGo), Jina AI Reader for JS-heavy sites, domain filtering, source cross-checking
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
-- **4,746 tests** · **89% coverage** · **0 lint errors**
+- **4,841 tests** · **89% coverage** · **0 lint errors**
 
 ## Architecture
 
@@ -239,7 +239,7 @@ cognithor/
 │       ├── CognithorControlCenter.jsx  # Main dashboard (1,700 LOC)
 │       ├── App.jsx                # App shell
 │       └── main.jsx               # React entry
-├── tests/                         # 4,746 tests
+├── tests/                         # 4,841 tests
 │   ├── test_core/                 # Planner, Gatekeeper, Executor
 │   ├── test_memory/               # All 5 memory tiers
 │   ├── test_mcp/                  # MCP tools and client
@@ -457,7 +457,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **4,746 tests** · **100% pass rate** · **89% coverage**
+Current status: **4,841 tests** · **100% pass rate** · **89% coverage**
 
 | Area | Tests | Description |
 |------|-------|-------------|
@@ -549,7 +549,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 | **Phase 8** | UI integration into repo, backend launcher, orphan management | Done |
 | **Deploy** | Installer, systemd, Docker, backup, smoke test | Done |
 
-**Metrics:** ~85,000 LOC source · 53,000+ LOC tests · 4,746 tests · 89% coverage · 0 lint errors
+**Metrics:** ~85,000 LOC source · 53,000+ LOC tests · 4,841 tests · 89% coverage · 0 lint errors
 
 ## License
 
