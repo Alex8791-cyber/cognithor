@@ -10,6 +10,7 @@ innerhalb des Jarvis-Home abgelegt und beim Start automatisch geladen.
 erstellt oder installiert werden.
 """
 
+from .base import BaseSkill, SkillError  # noqa: F401
 from .manager import list_skills, create_skill  # noqa: F401
 from .registry import SkillRegistry  # noqa: F401
 from .circles import CircleManager, TrustedCircle  # noqa: F401

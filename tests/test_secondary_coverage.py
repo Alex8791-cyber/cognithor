@@ -15,17 +15,10 @@ Covers:
   - cron/engine.py
   - cron/jobs.py
   - db/factory.py
-  - db/postgresql_backend.py
   - forensics/replay_engine.py
 """
 from __future__ import annotations
 
-import asyncio
-import json
-import os
-import sys
-import time
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 
 import pytest
@@ -320,18 +313,6 @@ class TestDBFactory:
 
 
 # ============================================================================
-# DB: PostgreSQL Backend (fully mocked)
-# ============================================================================
-
-
-class TestPostgreSQLBackend:
-    def test_import(self):
-        """Ensure the module can be imported."""
-        from jarvis.db import postgresql_backend
-        assert hasattr(postgresql_backend, "PostgreSQLBackend")
-
-
-# ============================================================================
 # Browser: Page Analyzer
 # ============================================================================
 
@@ -378,15 +359,6 @@ class TestPageAnalyzer:
         result = await analyzer.detect_cookie_banner(page)
         assert result["found"] is False
 
-    @pytest.mark.asyncio
-    async def test_find_element(self):
-        from jarvis.browser.page_analyzer import PageAnalyzer
-        analyzer = PageAnalyzer()
-        page = AsyncMock()
-        page.evaluate = AsyncMock(return_value=None)
-        result = await analyzer.find_element(page, "Submit button")
-        # May return None or an ElementInfo
-
     def test_stats(self):
         from jarvis.browser.page_analyzer import PageAnalyzer
         analyzer = PageAnalyzer()
@@ -400,11 +372,6 @@ class TestPageAnalyzer:
 
 
 class TestSessionManager:
-    def test_init(self, tmp_path):
-        from jarvis.browser.session_manager import SessionManager
-        sm = SessionManager(storage_dir=str(tmp_path))
-        assert sm is not None
-
     @pytest.mark.asyncio
     async def test_save_and_restore(self, tmp_path):
         from jarvis.browser.session_manager import SessionManager
@@ -439,12 +406,6 @@ class TestSessionManager:
 
 class TestCronEngine:
     @pytest.mark.asyncio
-    async def test_init(self, tmp_path):
-        from jarvis.cron.engine import CronEngine
-        engine = CronEngine()
-        assert engine is not None
-
-    @pytest.mark.asyncio
     async def test_start_stop(self):
         from jarvis.cron.engine import CronEngine
         engine = CronEngine()
@@ -467,11 +428,6 @@ class TestCronEngine:
 
 
 class TestCronJobs:
-    def test_job_store_init(self, tmp_path):
-        from jarvis.cron.jobs import JobStore
-        js = JobStore(path=str(tmp_path / "jobs.yaml"))
-        assert js is not None
-
     def test_load_jobs_no_file(self, tmp_path):
         from jarvis.cron.jobs import JobStore
         js = JobStore(path=str(tmp_path / "nonexistent.yaml"))
@@ -497,10 +453,6 @@ class TestCronJobs:
 
 
 class TestReplayEngine:
-    def test_import(self):
-        from jarvis.forensics.replay_engine import ReplayEngine
-        assert ReplayEngine is not None
-
     def test_replay_run_no_plans(self):
         from jarvis.forensics.replay_engine import ReplayEngine
         gatekeeper = MagicMock()

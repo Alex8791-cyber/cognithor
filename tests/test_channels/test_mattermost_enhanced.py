@@ -245,3 +245,127 @@ class TestMattermostStart:
         handler = AsyncMock()
         await ch.start(handler)
         assert ch._running is False
+
+    @pytest.mark.asyncio
+    async def test_start_httpx_not_installed(self) -> None:
+        ch = MattermostChannel(url="http://x", token="t")
+        handler = AsyncMock()
+        with patch.dict("sys.modules", {"httpx": None}):
+            await ch.start(handler)
+        assert ch._running is False
+
+    @pytest.mark.asyncio
+    async def test_start_success(self) -> None:
+        ch = MattermostChannel(url="https://mm.test.com", token="valid-token")
+        handler = AsyncMock()
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "bot1", "username": "JarvisBot"}
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(return_value=mock_resp)
+
+        with patch("jarvis.channels.mattermost.httpx.AsyncClient", return_value=mock_http):
+            with patch.object(ch, "_websocket_loop", new_callable=AsyncMock):
+                await ch.start(handler)
+
+        assert ch._running is True
+        assert ch._bot_user_id == "bot1"
+
+    @pytest.mark.asyncio
+    async def test_start_auth_failure(self) -> None:
+        ch = MattermostChannel(url="https://mm.test.com", token="bad-token")
+        handler = AsyncMock()
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 401
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(return_value=mock_resp)
+
+        with patch("jarvis.channels.mattermost.httpx.AsyncClient", return_value=mock_http):
+            with patch.object(ch, "_websocket_loop", new_callable=AsyncMock):
+                await ch.start(handler)
+
+        assert ch._running is True  # continues even with auth failure
+
+    @pytest.mark.asyncio
+    async def test_start_auth_exception(self) -> None:
+        ch = MattermostChannel(url="https://mm.test.com", token="token")
+        handler = AsyncMock()
+
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(side_effect=RuntimeError("connection refused"))
+
+        with patch("jarvis.channels.mattermost.httpx.AsyncClient", return_value=mock_http):
+            with patch.object(ch, "_websocket_loop", new_callable=AsyncMock):
+                await ch.start(handler)
+
+        assert ch._running is True  # continues with warning
+
+
+class TestMattermostWebsocketLoop:
+    @pytest.mark.asyncio
+    async def test_websocket_loop_no_websockets(self, ch: MattermostChannel) -> None:
+        ch._running = True
+        with patch.dict("sys.modules", {"websockets": None}):
+            await ch._websocket_loop()
+
+    @pytest.mark.asyncio
+    async def test_websocket_loop_connection_error(self, ch: MattermostChannel) -> None:
+        ch._running = True
+        call_count = 0
+
+        mock_ws_module = MagicMock()
+
+        async def fake_connect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                ch._running = False
+            raise ConnectionError("refused")
+
+        mock_ws_module.connect = fake_connect
+
+        with patch.dict("sys.modules", {"websockets": mock_ws_module}):
+            with patch("jarvis.channels.mattermost.asyncio.sleep", new_callable=AsyncMock):
+                await ch._websocket_loop()
+
+        assert ch._running is False
+
+
+class TestMattermostApprovalFlow:
+    @pytest.mark.asyncio
+    async def test_approval_success_flow(self, ch: MattermostChannel) -> None:
+        ch._http_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 201
+        mock_resp.json.return_value = {"id": "post123"}
+        ch._http_client.post = AsyncMock(return_value=mock_resp)
+
+        action = PlannedAction(tool="email", params={"to": "test@test.com"})
+
+        async def resolve_future():
+            await asyncio.sleep(0.05)
+            async with ch._approval_lock:
+                for aid, future in ch._approval_futures.items():
+                    if not future.done():
+                        future.set_result(True)
+                        break
+
+        task = asyncio.create_task(resolve_future())
+        result = await ch.request_approval("s1", action, "reason")
+        await task
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_approval_timeout(self, ch: MattermostChannel) -> None:
+        ch._http_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 201
+        mock_resp.json.return_value = {"id": "post456"}
+        ch._http_client.post = AsyncMock(return_value=mock_resp)
+
+        action = PlannedAction(tool="test", params={})
+        with patch("jarvis.channels.mattermost.asyncio.wait_for", side_effect=asyncio.TimeoutError):
+            result = await ch.request_approval("s1", action, "reason")
+        assert result is False

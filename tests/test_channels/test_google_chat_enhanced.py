@@ -169,3 +169,240 @@ class TestGoogleChatStart:
         handler = AsyncMock()
         await ch.start(handler)
         assert ch._running is False
+
+    @pytest.mark.asyncio
+    async def test_start_google_auth_not_installed(self, tmp_path) -> None:
+        creds = tmp_path / "creds.json"
+        creds.write_text("{}")
+        ch = GoogleChatChannel(credentials_path=str(creds))
+        handler = AsyncMock()
+        with patch.dict("sys.modules", {
+            "google": None,
+            "google.oauth2": None,
+            "google.oauth2.service_account": None,
+        }):
+            await ch.start(handler)
+        assert ch._running is False
+
+    @pytest.mark.asyncio
+    async def test_start_creds_file_not_found(self) -> None:
+        ch = GoogleChatChannel(credentials_path="/nonexistent/creds.json")
+        handler = AsyncMock()
+
+        mock_sa = MagicMock()
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.oauth2": MagicMock(),
+            "google.oauth2.service_account": mock_sa,
+        }):
+            await ch.start(handler)
+        assert ch._running is False
+
+    @pytest.mark.asyncio
+    async def test_start_success(self, tmp_path) -> None:
+        creds = tmp_path / "creds.json"
+        creds.write_text("{}")
+        ch = GoogleChatChannel(credentials_path=str(creds))
+        handler = AsyncMock()
+
+        mock_creds = MagicMock()
+        mock_sa = MagicMock()
+        mock_sa.Credentials.from_service_account_file.return_value = mock_creds
+        mock_oauth2 = MagicMock()
+        mock_oauth2.service_account = mock_sa
+
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.oauth2": mock_oauth2,
+            "google.oauth2.service_account": mock_sa,
+        }):
+            await ch.start(handler)
+
+        assert ch._running is True
+        assert ch._credentials is mock_creds
+
+    @pytest.mark.asyncio
+    async def test_start_auth_exception(self, tmp_path) -> None:
+        creds = tmp_path / "creds.json"
+        creds.write_text("{}")
+        ch = GoogleChatChannel(credentials_path=str(creds))
+        handler = AsyncMock()
+
+        mock_sa = MagicMock()
+        mock_sa.Credentials.from_service_account_file.side_effect = RuntimeError("bad key")
+        mock_oauth2 = MagicMock()
+        mock_oauth2.service_account = mock_sa
+
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.oauth2": mock_oauth2,
+            "google.oauth2.service_account": mock_sa,
+        }):
+            await ch.start(handler)
+
+        assert ch._running is False
+
+
+class TestGetAuthHeaders:
+    @pytest.mark.asyncio
+    async def test_no_credentials(self, ch: GoogleChatChannel) -> None:
+        ch._credentials = None
+        headers = await ch._get_auth_headers()
+        assert headers == {}
+
+    @pytest.mark.asyncio
+    async def test_refresh_success(self, ch: GoogleChatChannel) -> None:
+        ch._credentials = MagicMock()
+        ch._credentials.token = "test-token"
+
+        mock_request = MagicMock()
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.auth": MagicMock(),
+            "google.auth.transport": MagicMock(),
+            "google.auth.transport.requests": MagicMock(Request=mock_request),
+        }):
+            headers = await ch._get_auth_headers()
+        assert headers["Authorization"] == "Bearer test-token"
+
+    @pytest.mark.asyncio
+    async def test_refresh_failure(self, ch: GoogleChatChannel) -> None:
+        ch._credentials = MagicMock()
+        ch._credentials.refresh.side_effect = RuntimeError("refresh failed")
+
+        mock_request = MagicMock()
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.auth": MagicMock(),
+            "google.auth.transport": MagicMock(),
+            "google.auth.transport.requests": MagicMock(Request=mock_request),
+        }):
+            headers = await ch._get_auth_headers()
+        assert headers == {}
+
+
+class TestGoogleChatSendSuccess:
+    @pytest.mark.asyncio
+    async def test_send_success(self, ch: GoogleChatChannel) -> None:
+        ch._http_client = AsyncMock()
+        ch._credentials = MagicMock()
+        ch._credentials.token = "token123"
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        ch._http_client.post = AsyncMock(return_value=mock_resp)
+
+        mock_request = MagicMock()
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.auth": MagicMock(),
+            "google.auth.transport": MagicMock(),
+            "google.auth.transport.requests": MagicMock(Request=mock_request),
+        }):
+            msg = OutgoingMessage(
+                channel="google_chat", text="Hello",
+                metadata={"space_name": "spaces/abc"},
+            )
+            await ch.send(msg)
+        ch._http_client.post.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_with_thread(self, ch: GoogleChatChannel) -> None:
+        ch._http_client = AsyncMock()
+        ch._credentials = MagicMock()
+        ch._credentials.token = "token123"
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        ch._http_client.post = AsyncMock(return_value=mock_resp)
+
+        mock_request = MagicMock()
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.auth": MagicMock(),
+            "google.auth.transport": MagicMock(),
+            "google.auth.transport.requests": MagicMock(Request=mock_request),
+        }):
+            msg = OutgoingMessage(
+                channel="google_chat", text="Reply",
+                metadata={"space_name": "spaces/abc", "thread_name": "thread1"},
+            )
+            await ch.send(msg)
+        call_kwargs = ch._http_client.post.call_args[1]
+        assert "thread" in call_kwargs["json"]
+
+    @pytest.mark.asyncio
+    async def test_send_error_response(self, ch: GoogleChatChannel) -> None:
+        ch._http_client = AsyncMock()
+        ch._credentials = MagicMock()
+        ch._credentials.token = "token123"
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_resp.text = "Forbidden"
+        ch._http_client.post = AsyncMock(return_value=mock_resp)
+
+        mock_request = MagicMock()
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.auth": MagicMock(),
+            "google.auth.transport": MagicMock(),
+            "google.auth.transport.requests": MagicMock(Request=mock_request),
+        }):
+            msg = OutgoingMessage(
+                channel="google_chat", text="Hello",
+                metadata={"space_name": "spaces/abc"},
+            )
+            await ch.send(msg)  # logs error but no crash
+
+    @pytest.mark.asyncio
+    async def test_send_exception(self, ch: GoogleChatChannel) -> None:
+        ch._http_client = AsyncMock()
+        ch._credentials = MagicMock()
+        ch._credentials.token = "token123"
+        ch._http_client.post = AsyncMock(side_effect=RuntimeError("network error"))
+
+        mock_request = MagicMock()
+        with patch.dict("sys.modules", {
+            "google": MagicMock(),
+            "google.auth": MagicMock(),
+            "google.auth.transport": MagicMock(),
+            "google.auth.transport.requests": MagicMock(Request=mock_request),
+        }):
+            msg = OutgoingMessage(
+                channel="google_chat", text="Hello",
+                metadata={"space_name": "spaces/abc"},
+            )
+            await ch.send(msg)  # no crash
+
+
+class TestGoogleChatApprovalFlow:
+    @pytest.mark.asyncio
+    async def test_approval_timeout(self, ch: GoogleChatChannel) -> None:
+        ch._http_client = AsyncMock()
+        ch._credentials = MagicMock()
+
+        action = PlannedAction(tool="test", params={})
+        with patch("jarvis.channels.google_chat.asyncio.wait_for", side_effect=asyncio.TimeoutError):
+            result = await ch.request_approval("s1", action, "reason")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_approval_success(self, ch: GoogleChatChannel) -> None:
+        ch._http_client = AsyncMock()
+        ch._credentials = MagicMock()
+
+        action = PlannedAction(tool="email", params={"to": "test@test.com"})
+
+        async def resolve_future():
+            await asyncio.sleep(0.05)
+            async with ch._approval_lock:
+                for aid, future in ch._approval_futures.items():
+                    if not future.done():
+                        future.set_result(True)
+                        break
+
+        task = asyncio.create_task(resolve_future())
+        result = await ch.request_approval("s1", action, "reason")
+        await task
+        assert result is True

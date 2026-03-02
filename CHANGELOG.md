@@ -5,6 +5,32 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.26.4] – 2026-03-02
+
+### Added — Coverage & Skills Infrastructure
+
+**Skills Infrastructure**
+- **BaseSkill Abstract Class** (`skills/base.py`) — Abstract base class for all Jarvis skills with `NAME`, `DESCRIPTION`, `VERSION`, `CRON`, `REQUIRES_NETWORK`, `API_BASE` class attributes and abstract `execute()` method. Properties: `name`, `description`, `version`, `is_automated`, `is_network_skill`, `validate_params()`. Exported from `jarvis.skills` package
+- **Skill `__init__.py` Files** — Added package init files to all 5 skill directories (test, test_skill, backup, gmail_sync, wetter_abfrage) enabling correct relative imports
+- **Fixed `wetter_abfrage` Manifest** — Added missing `network` permission and `weather`/`api` tags
+
+**Test Coverage Deep Push (+255 tests, 8,051 → 8,306)**
+- **Planner Tests** (7 → 32) — LLM error handling, native tool_calls parsing, replan with multiple/error results, formulate_response with search vs. non-search results, core_memory injection, OllamaError fallbacks, cost tracking (with/without tracker, exception handling), prompt loading from .md/.txt files, JSON sanitization, _try_parse_json 4-strategy fallback, _format_results truncation
+- **LLM Backend Tests** (24 → 63) — OllamaBackend: chat, tool_calls, HTTP errors, timeouts, embed, is_available, list_models, close. GeminiBackend: chat, functionCall, HTTP errors, embed, is_available, list_models, multi-part content. AnthropicBackend: tool_use blocks, HTTP errors, is_available, close. Factory: mistral, together, openrouter, xai, cerebras
+- **Executor Tests** (10 → 25) — Retry/backoff with retryable errors (ConnectionError, TimeoutError), non-retryable errors (ValueError), all retries exhausted, output truncation, MASK/INFORM gate status, no MCP client, RuntimeMonitor security block, audit logger success/failure, gap detector (unknown tool, repeated failure), workspace injection
+- **Reflector Tests** (14 → 27) — apply() with session summary (episodic), extracted facts (semantic), procedure candidate (procedural), all types combined, memory manager errors. _write_semantic with entities, relations, injection sanitization. reflect() with episodic_store, causal_analyzer. _extract_json with markdown fences, raw JSON, no JSON
+- **Shell Tests** (9 → 19) — Timeout behavior, truncated output, stderr handling, successful execution, sandbox overrides, multiple path traversals, safe file commands, different sandbox levels
+
+**Coverage Consolidation**
+- Removed 6 trivial tests (pure `is not None`/`hasattr` checks) from `test_secondary_coverage.py`
+- Cleaned unused imports across `test_final_coverage.py`, `test_deep_coverage.py`, `test_secondary_coverage.py`
+
+### Changed
+- Test count: 8,051 → 8,306 (+255 new tests)
+- LOC tests: ~77,000 → ~79,000
+- Coverage estimate: 87% → 89%
+- `skills/__init__.py` now exports `BaseSkill` and `SkillError`
+
 ## [0.26.3] – 2026-03-02
 
 ### Added — Scaling & Quality

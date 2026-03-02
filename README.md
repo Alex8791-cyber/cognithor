@@ -11,8 +11,8 @@
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-8%2C051%20passing-brightgreen?style=flat-square" alt="Tests"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/coverage-87%25-brightgreen?style=flat-square" alt="Coverage"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-8%2C306%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/lint-0%20errors-brightgreen?style=flat-square" alt="Lint"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   </p>
@@ -24,7 +24,7 @@
 
 - **Your data never leaves your machine.** Runs 100% locally with Ollama or LM Studio — no cloud, no API keys required, full GDPR compliance. Cloud providers are optional, not mandatory.
 - **One system, not twenty tools.** 17 channels, 18+ MCP tool servers, 5-tier memory, knowledge vault, cron, voice, browser automation, distributed locking, durable message queues — integrated from day one. No glue code, no plugin hell.
-- **Production-grade, not a demo.** 8,051 tests, 87% coverage, 4-level sandbox, SHA-256 audit chain, runtime token encryption, Prometheus metrics, and battle-tested deployment options from one-click Windows launcher to Docker Compose to bare-metal servers.
+- **Production-grade, not a demo.** 8,306 tests, 89% coverage, 4-level sandbox, SHA-256 audit chain, runtime token encryption, Prometheus metrics, and battle-tested deployment options from one-click Windows launcher to Docker Compose to bare-metal servers.
 
 ---
 
@@ -66,7 +66,7 @@ This release focuses on **production scaling** and **operational maturity**:
 - **Prometheus /metrics Endpoint** — Full Prometheus-compatible metrics export: request counts, latency histograms, memory usage, queue depths, LLM token consumption. Ships with a ready-made Grafana dashboard JSON.
 - **Skill Marketplace Persistence** — Skill marketplace now backed by SQLite with full CRUD, ratings, search, and a REST API for marketplace operations.
 - **Auto-Dependency Loading** — On startup, Cognithor inspects enabled features and installs missing optional dependencies automatically, eliminating manual `pip install` steps for feature groups.
-- **2,700+ new tests** covering all scaling features, security hardening, and comprehensive coverage improvements, bringing the total to **8,051 tests** at **87% coverage**.
+- **2,700+ new tests** covering all scaling features, security hardening, and comprehensive coverage improvements, bringing the total to **8,306 tests** at **89% coverage**.
 - **LM Studio Support** — LM Studio als zweites lokales Backend neben Ollama. OpenAI-kompatible API auf `localhost:1234`, kein API-Key nötig. Einfach `llm_backend_type: "lmstudio"` setzen.
 
 ---
@@ -97,7 +97,7 @@ This release focuses on **production scaling** and **operational maturity**:
 - **One-Click Start** — Double-click `start_cognithor.bat` -> browser opens -> click **Power On** -> done
 - **Enhanced Web Research** — 4-provider search fallback (SearXNG -> Brave -> Google CSE -> DuckDuckGo), Jina AI Reader for JS-heavy sites, domain filtering, source cross-checking
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
-- **8,051 tests** · **87% coverage** · **0 lint errors**
+- **8,306 tests** · **89% coverage** · **0 lint errors**
 
 ## Architecture
 
@@ -460,17 +460,17 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **8,051 tests** · **100% pass rate** · **87% coverage** · **~97,000 LOC source** · **~77,000 LOC tests**
+Current status: **8,306 tests** · **100% pass rate** · **89% coverage** · **~97,000 LOC source** · **~79,000 LOC tests**
 
 | Area | Tests | Description |
 |------|-------|-------------|
-| Core | 1,320 | Planner, Gatekeeper, Executor, Config, Models, Reflector, Distributed Lock, Model Router, Unified LLM |
+| Core | 1,422 | Planner, Gatekeeper, Executor, Config, Models, Reflector, Distributed Lock, Model Router, Unified LLM, LLM Backend |
 | Integration | 1,314 | End-to-end tests, phase wiring, entrypoint, A2A protocol |
 | Channels | 1,360 | CLI, Telegram (incl. Webhook), Discord, Slack, WhatsApp, API, WebUI, Voice, iMessage, Signal, Teams |
-| MCP | 815 | Client, filesystem, shell, memory server, web, media, synthesis, vault, browser, bridge, resources |
+| MCP | 825 | Client, filesystem, shell, memory server, web, media, synthesis, vault, browser, bridge, resources |
 | Memory | 658 | All 5 tiers, indexer, hybrid search, chunker, watcher, token estimation, integrity, hygiene |
-| Skills | 498 | Skill registry, generator, marketplace, persistence, API, CLI tools, scaffolder, linter |
-| Security | 333 | Audit, credentials, token store, TLS, policies, sandbox, sanitizer, agent vault |
+| Skills | 498 | Skill registry, generator, marketplace, persistence, API, CLI tools, scaffolder, linter, BaseSkill |
+| Security | 327 | Audit, credentials, token store, TLS, policies, sandbox, sanitizer, agent vault |
 | Gateway | 252 | Session management, agent loop, context pipeline, phase init, approval flow |
 | A2A | 158 | Agent-to-Agent protocol, client, HTTP handler, streaming |
 | Telemetry | 120 | Cost tracking, metrics, tracing, Prometheus export, instrumentation |
@@ -565,7 +565,7 @@ cognithor/
 │       ├── CognithorControlCenter.jsx  # Main dashboard (1,700 LOC)
 │       ├── App.jsx                # App shell
 │       └── main.jsx               # React entry
-├── tests/                         # 8,051 tests, ~77,000 LOC
+├── tests/                         # 8,306 tests, ~77,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
 │   ├── test_mcp/                  # MCP tools and client
@@ -696,7 +696,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 
 ---
 
-**Metrics:** ~97,000 LOC source · ~77,000 LOC tests · 8,051 tests · 87% coverage · 0 lint errors
+**Metrics:** ~97,000 LOC source · ~79,000 LOC tests · 8,306 tests · 89% coverage · 0 lint errors
 
 ## License
 

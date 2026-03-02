@@ -4,6 +4,6 @@
   "author": "alex",
   "description": "Jarvis Skill: Wetter Abfrage",
   "min_jarvis": "0.13.0",
-  "permissions": [],
-  "tags": []
+  "permissions": ["network"],
+  "tags": ["weather", "api"]
 }}
