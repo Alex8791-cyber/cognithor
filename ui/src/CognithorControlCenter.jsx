@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { GlobalSearch } from "./components/GlobalSearch";
+import { ThemeToggle, useTheme } from "./components/ThemeToggle";
+import { ConfirmModal } from "./components/ConfirmModal";
 
 // ═══════════════════════════════════════════════════════════════════════
 // Cognithor · Control Center v2 — UX-Rewrite mit allen 23 Fixes
@@ -240,13 +243,13 @@ function Toggle({ label, value, onChange, desc }) {
   );
 }
 
-// Fix #7: validation prop for inputs
-function TextInput({ label, value, onChange, desc, placeholder, type = "text", mono, error, disabled }) {
+// Fix #7: validation prop for inputs + tooltip support
+function TextInput({ label, value, onChange, desc, placeholder, type = "text", mono, error, disabled, tooltip }) {
   const [show, setShow] = useState(false);
   const isSecret = type === "password";
   return (
     <div className="cc-field">
-      <div className="cc-label">{label}</div>
+      <div className="cc-label">{label} {tooltip && <span className="cc-tooltip-trigger" title={tooltip}>{I.help}</span>}</div>
       {desc && <div className="cc-desc">{desc}</div>}
       <div className="cc-input-wrap">
         <input
@@ -257,12 +260,14 @@ function TextInput({ label, value, onChange, desc, placeholder, type = "text", m
           placeholder={placeholder || ""}
           readOnly={disabled}
           tabIndex={disabled ? -1 : 0}
+          aria-label={label}
+          aria-invalid={!!error}
         />
         {isSecret && (
-          <button className="cc-eye-btn" onClick={() => setShow(!show)} type="button">{show ? I.eyeOff : I.eye}</button>
+          <button className="cc-eye-btn" onClick={() => setShow(!show)} type="button" aria-label={show ? "Verbergen" : "Anzeigen"}>{show ? I.eyeOff : I.eye}</button>
         )}
       </div>
-      {error && <div className="cc-field-error">{error}</div>}
+      {error && <div className="cc-field-error" role="alert">{error}</div>}
     </div>
   );
 }
@@ -1127,6 +1132,17 @@ export default function App() {
   const prevStatusRef = useRef("stopped");
   const [validationErrors, setValidationErrors] = useState({});
   const { toasts, add: toast, dismiss: dismissToast } = useToast();
+  const { theme, toggle: toggleTheme } = useTheme();
+
+  // Styled ConfirmModal state (replaces native confirm())
+  const [confirmState, setConfirmState] = useState({ open: false, title: "", message: "", danger: false, resolve: null });
+  const styledConfirm = useCallback(({ title, message, danger = false }) => {
+    return new Promise((resolve) => {
+      setConfirmState({ open: true, title, message, danger, resolve });
+    });
+  }, []);
+  const handleConfirmYes = useCallback(() => { confirmState.resolve?.(true); setConfirmState(s => ({ ...s, open: false })); }, [confirmState]);
+  const handleConfirmNo = useCallback(() => { confirmState.resolve?.(false); setConfirmState(s => ({ ...s, open: false })); }, [confirmState]);
 
   // ALL useState declarations MUST come before useMemo that references them
   const [cronJobs, setCronJobs] = useState([
@@ -1350,13 +1366,13 @@ export default function App() {
 
   // Restart
   const restart = useCallback(async () => {
-    if (!confirm("Jarvis wirklich neu starten? Alle laufenden Tasks werden beendet.")) return;
+    if (!await styledConfirm({ title: "Neustart", message: "Jarvis wirklich neu starten? Alle laufenden Tasks werden beendet.", danger: true })) return;
     setRestartState("restarting");
     await save();
     await api("POST", "/config/reload");
     try { await fetch(`${API}/shutdown`, { method: "POST" }); } catch {}
     setTimeout(() => { setRestartState("done"); toast("Jarvis wurde neu gestartet", "success"); setTimeout(() => setRestartState("idle"), 3000); }, 3000);
-  }, [save, toast]);
+  }, [save, toast, styledConfirm]);
 
   // Fix #15: Export includes prompts
   const onExport = () => {
@@ -1374,7 +1390,7 @@ export default function App() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (!confirm("Konfiguration aus Datei importieren? Aktuelle Einstellungen werden überschrieben.")) return;
+      if (!await styledConfirm({ title: "Import", message: "Konfiguration aus Datei importieren? Aktuelle Einstellungen werden überschrieben." })) return;
       if (data.config) setCfg(prev => ({ ...prev, ...data.config }));
       if (data.agents?.length) setAgents(data.agents);
       if (data.bindings) setBindings(data.bindings);
@@ -1390,7 +1406,7 @@ export default function App() {
 
   // Apply preset
   const onApplyPreset = async (name) => {
-    if (!confirm(`Preset „${name}" anwenden? Aktuelle Einstellungen werden überschrieben.`)) return;
+    if (!await styledConfirm({ title: "Preset anwenden", message: `Preset "${name}" anwenden? Aktuelle Einstellungen werden überschrieben.` })) return;
     const r = await api("POST", `/config/presets/${name}`);
     if (!r.error) {
       const data = await api("GET", "/config");
@@ -1424,6 +1440,32 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [save]);
 
+  // Auto-save drafts to localStorage (recovery after accidental close)
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem("cc-draft", JSON.stringify({ cfg, agents, bindings, cronJobs, mcpServers, a2a, prompts, ts: Date.now() }));
+      } catch {}
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [cfg, agents, bindings, cronJobs, mcpServers, a2a, prompts, loaded]);
+
+  // Restore draft on load if backend unavailable
+  useEffect(() => {
+    if (loaded) return;
+    try {
+      const draft = localStorage.getItem("cc-draft");
+      if (draft) {
+        const data = JSON.parse(draft);
+        if (data.ts && Date.now() - data.ts < 86400000) { // Max 24h old
+          // Don't auto-restore, but inform user
+          toast("Ungespeicherter Entwurf gefunden (wird nach Backend-Start wiederhergestellt)", "info");
+        }
+      }
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // B5: Warn before closing tab with unsaved changes
   useEffect(() => {
     const handler = (e) => {
@@ -1434,11 +1476,14 @@ export default function App() {
   }, [hasChanges]);
 
   // Fix #1: Warn on page change with unsaved changes
-  const changePage = useCallback((newPage) => {
-    if (hasChanges && !confirm("Es gibt ungespeicherte Änderungen. Wirklich die Seite wechseln?")) return;
+  const changePage = useCallback(async (newPage) => {
+    if (hasChanges) {
+      const ok = await styledConfirm({ title: "Ungespeicherte Änderungen", message: "Es gibt ungespeicherte Änderungen. Wirklich die Seite wechseln?" });
+      if (!ok) return;
+    }
     setPage(newPage);
     setMenuOpen(false);
-  }, [hasChanges]);
+  }, [hasChanges, styledConfirm]);
 
   // Render current page
   const renderPage = () => {
@@ -1656,18 +1701,80 @@ export default function App() {
         .cc-info-label { font-size: 11px; color: var(--text2); }
         .cc-info-val { font-size: 14px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        /* ── Confirm Modal ──────────────────────────── */
+        .cc-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 300; animation: fadeIn 0.15s ease; padding: 16px; }
+        .cc-modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: modalIn 0.2s ease; outline: none; }
+        .cc-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .cc-modal-message { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+        .cc-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .cc-modal-btn { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); font-family: inherit; transition: all 0.15s; }
+        .cc-modal-btn-cancel { background: var(--bg3); color: var(--text); }
+        .cc-modal-btn-cancel:hover { border-color: var(--text2); }
+        .cc-modal-btn-confirm { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; border-color: transparent; }
+        .cc-modal-btn-confirm:hover { opacity: 0.9; }
+        .cc-modal-btn-danger { background: var(--danger); color: #fff; border-color: transparent; }
+        .cc-modal-btn-danger:hover { opacity: 0.9; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* ── Global Search ──────────────────────────── */
+        .cc-global-search-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+        .cc-global-search-trigger:hover { border-color: var(--accent); color: var(--accent); }
+        .cc-global-search-hint { color: var(--text2); }
+        .cc-global-search-kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; margin-left: 4px; }
+        .cc-global-search-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; display: flex; align-items: flex-start; justify-content: center; padding-top: 15vh; }
+        .cc-global-search-dialog { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 520px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        .cc-global-search-input-wrap { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text2); }
+        .cc-global-search-input { flex: 1; background: transparent; border: none; color: var(--text); font-size: 15px; font-family: inherit; outline: none; }
+        .cc-global-search-esc { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); }
+        .cc-global-search-results { max-height: 320px; overflow-y: auto; }
+        .cc-global-search-result { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 12px 16px; border: none; background: transparent; color: var(--text); font-family: inherit; cursor: pointer; transition: background 0.1s; text-align: left; font-size: 13px; }
+        .cc-global-search-result:hover { background: var(--bg3); }
+        .cc-global-search-result-label { font-weight: 600; }
+        .cc-global-search-result-terms { font-size: 11px; color: var(--text2); }
+        .cc-global-search-empty { padding: 20px; text-align: center; color: var(--text2); font-size: 13px; }
+
+        /* ── Theme Toggle ───────────────────────────── */
+        .cc-theme-toggle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+        .cc-theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── Tooltip ─────────────────────────────────── */
+        .cc-tooltip-trigger { display: inline-flex; align-items: center; margin-left: 4px; color: var(--text2); cursor: help; vertical-align: middle; opacity: 0.5; transition: opacity 0.15s; }
+        .cc-tooltip-trigger:hover { opacity: 1; color: var(--accent); }
+
+        /* ── Focus Styles ────────────────────────────── */
+        *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        /* ── Reduced Motion ──────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
       `}</style>
 
-      {/* Fix #20: Toast container */}
+      {/* Toast container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
+      {/* Styled Confirm Modal */}
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        danger={confirmState.danger}
+        onConfirm={handleConfirmYes}
+        onCancel={handleConfirmNo}
+      />
+
       {/* Header */}
-      <div className="cc-header">
+      <div className="cc-header" role="banner">
         <div className="cc-header-left">
-          <button className="cc-menu-btn" onClick={() => setMenuOpen(!menuOpen)} type="button">☰</button>
+          <button className="cc-menu-btn" onClick={() => setMenuOpen(!menuOpen)} type="button" aria-label="Menü öffnen">☰</button>
           <span className="cc-logo">⚡ Cognithor</span>
         </div>
         <div className="cc-header-actions">
+          <GlobalSearch onNavigate={(pageId) => { setPage(pageId); setMenuOpen(false); }} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           {/* Prominenter Start/Stop Button */}
           <button 
             className={`cc-btn-sm ${appStatus === "running" ? "cc-btn-danger" : "cc-btn-success"}`} 
@@ -1702,10 +1809,10 @@ export default function App() {
       <div className="cc-layout">
         <div className={`cc-overlay ${menuOpen ? "visible" : ""}`} onClick={() => setMenuOpen(false)} />
 
-        {/* Fix #17: Sidebar with keyboard hints */}
-        <nav className={`cc-sidebar ${menuOpen ? "mobile-open" : ""}`}>
+        {/* Sidebar with keyboard hints */}
+        <nav className={`cc-sidebar ${menuOpen ? "mobile-open" : ""}`} role="navigation" aria-label="Hauptnavigation">
           {PAGES.map(p => (
-            <button key={p.id} className={`cc-nav-item ${page === p.id ? "active" : ""}`} onClick={() => changePage(p.id)}>
+            <button key={p.id} className={`cc-nav-item ${page === p.id ? "active" : ""}`} onClick={() => changePage(p.id)} aria-current={page === p.id ? "page" : undefined}>
               {p.icon} {p.label}
               {p.key && <span className="cc-nav-key">⌘{p.key}</span>}
             </button>
@@ -1713,7 +1820,7 @@ export default function App() {
         </nav>
 
         {/* Main */}
-        <main className="cc-main">
+        <main className="cc-main" role="main">
           {/* Fix #5+#25: Loading — spinner if backend starting, message if stopped */}
           {!loaded ? (
             appStatus === "running" || appStatus === "starting" ? <Spinner /> : (

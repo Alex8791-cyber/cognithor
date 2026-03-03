@@ -1,43 +1,81 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { connectWebSocket, sendMessage } from '../services/api';
-import { sessionStore } from '../stores/session';
-
-interface Message {
-  role: 'user' | 'assistant';
-  text: string;
-  timestamp: string;
-}
+import { JarvisAPI, JarvisMessage } from '../services/api';
+import { addMessage, getState, subscribe, appendStreamToken, flushStream } from '../stores/session';
 
 interface ChatProps {
+  api: JarvisAPI;
   onCanvasUpdate: (html: string) => void;
+  onApproval: (request: { id: string; tool: string; reason: string; params: string }) => void;
 }
 
-export function Chat({ onCanvasUpdate }: ChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export function Chat({ api, onCanvasUpdate, onApproval }: ChatProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [streamText, setStreamText] = useState('');
+  const [statusText, setStatusText] = useState('');
+  const [messages, setMessages] = useState(getState().messages);
   const messagesEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ws = connectWebSocket(sessionStore.sessionId, {
-      onMessage: (text: string) => {
-        setMessages(prev => [...prev, { role: 'assistant', text, timestamp: new Date().toISOString() }]);
-        setIsLoading(false);
-        setStreamText('');
-      },
-      onStreamToken: (token: string) => {
-        setStreamText(prev => prev + token);
-      },
-      onCanvasPush: (html: string) => {
-        onCanvasUpdate(html);
-      },
-      onCanvasReset: () => {
-        onCanvasUpdate('');
-      },
+    const unsub = subscribe((state) => {
+      setMessages(state.messages);
+      setStreamText(state.streamBuffer);
     });
-    return () => ws?.close();
+    return unsub;
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = api.onMessage((msg: JarvisMessage) => {
+      switch (msg.type) {
+        case 'message':
+          if (msg.text) {
+            addMessage('assistant', msg.text);
+          }
+          setIsLoading(false);
+          setStatusText('');
+          flushStream();
+          break;
+
+        case 'streaming_token':
+          if (msg.text) {
+            appendStreamToken(msg.text);
+          }
+          break;
+
+        case 'canvas_push':
+          if (msg.html) {
+            onCanvasUpdate(msg.html);
+          }
+          break;
+
+        case 'canvas_reset':
+          onCanvasUpdate('');
+          break;
+
+        case 'approval_request':
+          if (msg.approval_id && msg.tool && msg.reason) {
+            onApproval({
+              id: msg.approval_id,
+              tool: msg.tool,
+              reason: msg.reason,
+              params: msg.params || '',
+            });
+          }
+          break;
+
+        case 'system':
+          if (msg.text) {
+            setStatusText(msg.text);
+          }
+          break;
+      }
+    });
+
+    api.connect();
+    return () => {
+      unsubscribe();
+    };
+  }, [api]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,50 +86,84 @@ export function Chat({ onCanvasUpdate }: ChatProps) {
     if (!text || isLoading) return;
     setInput('');
     setIsLoading(true);
-    setMessages(prev => [...prev, { role: 'user', text, timestamp: new Date().toISOString() }]);
-    sendMessage(sessionStore.sessionId, text);
+    setStatusText('');
+    addMessage('user', text);
+    api.send(text, getState().sessionId);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
-        {messages.map((msg, i) => (
-          <div key={i} style={{
-            marginBottom: '12px', padding: '10px 14px', borderRadius: '12px',
-            maxWidth: '85%', wordBreak: 'break-word',
-            marginLeft: msg.role === 'user' ? 'auto' : '0',
-            background: msg.role === 'user' ? '#00d4ff22' : '#1a1a2e',
-            border: `1px solid ${msg.role === 'user' ? '#00d4ff44' : '#333'}`,
-          }}>
-            <div style={{ fontSize: '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+    <div class="chat-container">
+      <div class="chat-messages">
+        {messages.length === 0 && !isLoading && (
+          <div class="chat-empty">
+            <div class="chat-empty-icon">J</div>
+            <p>Hallo! Wie kann ich dir helfen?</p>
+          </div>
+        )}
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            class={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}`}
+          >
+            <div class="chat-bubble-text">{msg.text}</div>
+            <div class="chat-bubble-time">
+              {new Date(msg.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+            </div>
           </div>
         ))}
         {streamText && (
-          <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '12px',
-                        background: '#1a1a2e', border: '1px solid #333' }}>
-            <div style={{ fontSize: '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{streamText}</div>
+          <div class="chat-bubble chat-bubble-assistant">
+            <div class="chat-bubble-text">{streamText}</div>
+          </div>
+        )}
+        {isLoading && !streamText && (
+          <div class="chat-bubble chat-bubble-assistant chat-typing">
+            <span class="dot" /><span class="dot" /><span class="dot" />
           </div>
         )}
         <div ref={messagesEnd} />
       </div>
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #333', display: 'flex', gap: '8px' }}>
-        <input
+
+      {statusText && (
+        <div class="chat-status" role="status" aria-live="polite">
+          {statusText}
+        </div>
+      )}
+
+      <div class="chat-input-bar">
+        <textarea
           value={input}
           onInput={(e: any) => setInput(e.target.value)}
-          onKeyDown={(e: any) => e.key === 'Enter' && handleSend()}
+          onKeyDown={handleKeyDown}
           placeholder="Nachricht an Jarvis..."
-          style={{
-            flex: 1, padding: '10px 14px', background: '#1a1a2e', color: '#e0e0e0',
-            border: '1px solid #333', borderRadius: '8px', fontSize: '14px', outline: 'none',
-          }}
+          class="chat-input"
+          rows={1}
+          aria-label="Nachricht eingeben"
         />
-        <button onClick={handleSend} disabled={isLoading}
-          style={{
-            padding: '10px 20px', background: isLoading ? '#555' : '#00d4ff',
-            color: isLoading ? '#999' : '#000', border: 'none', borderRadius: '8px',
-            cursor: isLoading ? 'default' : 'pointer', fontWeight: 600,
-          }}>
-          {isLoading ? '...' : 'Senden'}
+        <button
+          onClick={handleSend}
+          disabled={isLoading || !input.trim()}
+          class="chat-send-btn"
+          aria-label="Senden"
+        >
+          {isLoading ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10">
+                <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+              </circle>
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" />
+            </svg>
+          )}
         </button>
       </div>
     </div>
