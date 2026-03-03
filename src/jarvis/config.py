@@ -597,8 +597,8 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "speed": "medium",
         },
         "coder_fast": {
-            "name": "gpt-5.3-codex-spark",
-            "context_window": 128000,
+            "name": "gpt-5-mini",
+            "context_window": 1000000,
             "vram_gb": 0.0,
             "strengths": ["code-generation", "real-time-coding"],
             "speed": "fast",

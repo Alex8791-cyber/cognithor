@@ -206,17 +206,21 @@ class MediaPipeline:
         prompt: str = DEFAULT_IMAGE_PROMPT,
         model: str = _DEFAULT_VISION_MODEL,
         ollama_url: str = "http://localhost:11434",
+        openai_api_key: str = "",
+        openai_base_url: str = "https://api.openai.com/v1",
     ) -> MediaResult:
-        """Analysiert ein Bild mit einem multimodalen LLM (Ollama).
+        """Analysiert ein Bild mit einem multimodalen LLM.
 
         Unterstützt: JPG, PNG, GIF, WEBP, BMP
-        Backend: LLaVA, Moondream oder ähnliches via Ollama
+        Backend: Automatisch erkannt — OpenAI für gpt-*/o*-Modelle, sonst Ollama.
 
         Args:
             image_path: Pfad zum Bild.
             prompt: Analyseanweisung für das LLM.
-            model: Multimodales Ollama-Modell.
+            model: Vision-Modell (OpenAI oder Ollama).
             ollama_url: Ollama API-URL.
+            openai_api_key: OpenAI API-Key (nötig für gpt-* Modelle).
+            openai_base_url: OpenAI base URL.
         """
         import base64
 
@@ -242,30 +246,63 @@ class MediaPipeline:
             # Bild als Base64 laden
             image_data = base64.b64encode(path.read_bytes()).decode("utf-8")
 
+            # Backend-Erkennung: gpt-* und o*-Modelle → OpenAI, sonst Ollama
+            _is_openai = openai_api_key and (
+                model.startswith("gpt-") or model.startswith("o1") or model.startswith("o3") or model.startswith("o4")
+            )
+
             async with httpx.AsyncClient(timeout=180.0, trust_env=False) as client:
-                resp = await client.post(
-                    f"{ollama_url}/api/chat",
-                    json={
-                        "model": model,
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": prompt,
-                                "images": [image_data],
-                            }
-                        ],
-                        "stream": False,
-                    },
-                )
-
-                if resp.status_code != 200:
-                    return MediaResult(
-                        success=False,
-                        error=f"Ollama HTTP {resp.status_code}: {resp.text[:300]}",
+                if _is_openai:
+                    # OpenAI Chat Completions mit Vision
+                    suffix = path.suffix.lower().lstrip(".")
+                    mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png", "gif": "gif", "webp": "webp", "bmp": "bmp"}.get(suffix, "jpeg")
+                    resp = await client.post(
+                        f"{openai_base_url}/chat/completions",
+                        headers={"Authorization": f"Bearer {openai_api_key}"},
+                        json={
+                            "model": model,
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "text", "text": prompt},
+                                        {"type": "image_url", "image_url": {"url": f"data:image/{mime};base64,{image_data}"}},
+                                    ],
+                                }
+                            ],
+                            "max_tokens": 2000,
+                        },
                     )
-
-                data = resp.json()
-                description = data.get("message", {}).get("content", "")
+                    if resp.status_code != 200:
+                        return MediaResult(
+                            success=False,
+                            error=f"OpenAI HTTP {resp.status_code}: {resp.text[:300]}",
+                        )
+                    data = resp.json()
+                    description = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                else:
+                    # Ollama /api/chat mit images-Array
+                    resp = await client.post(
+                        f"{ollama_url}/api/chat",
+                        json={
+                            "model": model,
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": prompt,
+                                    "images": [image_data],
+                                }
+                            ],
+                            "stream": False,
+                        },
+                    )
+                    if resp.status_code != 200:
+                        return MediaResult(
+                            success=False,
+                            error=f"Ollama HTTP {resp.status_code}: {resp.text[:300]}",
+                        )
+                    data = resp.json()
+                    description = data.get("message", {}).get("content", "")
 
                 log.info("image_analyzed", path=image_path, model=model)
                 return MediaResult(

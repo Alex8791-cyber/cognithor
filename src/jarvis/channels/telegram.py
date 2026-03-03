@@ -596,9 +596,13 @@ class TelegramChannel(Channel):
                 _cfg = load_config()
                 _vision_model = _cfg.vision_model
                 _ollama_url = _cfg.ollama.base_url
+                _openai_key = _cfg.openai_api_key or ""
+                _openai_base = _cfg.openai_base_url or "https://api.openai.com/v1"
             except Exception:
                 _vision_model = "openbmb/minicpm-v4.5"
                 _ollama_url = "http://localhost:11434"
+                _openai_key = ""
+                _openai_base = "https://api.openai.com/v1"
 
             pipeline = MediaPipeline()
             result = await pipeline.analyze_image(
@@ -606,6 +610,8 @@ class TelegramChannel(Channel):
                 prompt=user_question,
                 model=_vision_model,
                 ollama_url=_ollama_url,
+                openai_api_key=_openai_key,
+                openai_base_url=_openai_base,
             )
 
             if result.success and result.text:
