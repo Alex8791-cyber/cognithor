@@ -24,7 +24,7 @@ import pytest
 
 from jarvis.config import JarvisConfig
 
-_SRC_ROOT = Path("D:/Jarvis/jarvis complete v20/src/jarvis")
+_SRC_ROOT = Path(__file__).resolve().parent.parent / "src" / "jarvis"
 
 
 # ============================================================================

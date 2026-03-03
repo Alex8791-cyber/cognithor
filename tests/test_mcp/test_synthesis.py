@@ -701,7 +701,7 @@ class TestToolsWiring:
 class TestWissensSyntheseSkill:
     """Tests dass die Skill-Prozedur existiert und gültig ist."""
 
-    SKILL_PATH = Path("D:/Jarvis/jarvis complete v20/data/procedures/wissens-synthese.md")
+    SKILL_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "procedures" / "wissens-synthese.md"
 
     def test_skill_file_exists(self) -> None:
         assert self.SKILL_PATH.exists(), "wissens-synthese.md existiert nicht"
