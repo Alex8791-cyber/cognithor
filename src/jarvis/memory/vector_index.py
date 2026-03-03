@@ -21,9 +21,12 @@ Architektur-Bibel: §4.7 (Vector Search)
 from __future__ import annotations
 
 import logging
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:  # numpy is optional ([memory] extra)
+    np = None  # type: ignore[assignment]
 
 logger = logging.getLogger("jarvis.memory.vector_index")
 
@@ -58,36 +61,62 @@ class VectorIndex(Protocol):
         ...
 
 
-def _l2_normalize(vec: np.ndarray) -> np.ndarray:
-    """L2-Normalisierung eines Vektors."""
-    norm = np.linalg.norm(vec)
+def _l2_normalize_np(vec: "np.ndarray") -> "np.ndarray":
+    """L2-Normalisierung eines Vektors (numpy)."""
+    norm = np.linalg.norm(vec)  # type: ignore[union-attr]
     if norm > 0:
         return vec / norm
     return vec
+
+
+def _l2_normalize_py(vec: list[float]) -> list[float]:
+    """L2-Normalisierung — Pure Python Fallback."""
+    import math
+
+    norm = math.sqrt(sum(x * x for x in vec))
+    if norm > 0:
+        return [x / norm for x in vec]
+    return vec
+
+
+def _dot_py(a: list[float], b: list[float]) -> float:
+    """Dot Product — Pure Python Fallback."""
+    return sum(x * y for x, y in zip(a, b))
 
 
 class BruteForceIndex:
     """Pure-Python Brute-Force Vector Index (Fallback).
 
     O(N×D) pro Suche. Funktioniert immer, keine Dependencies.
+    Nutzt numpy wenn verfuegbar, sonst Pure Python.
     """
 
     def __init__(self) -> None:
-        self._vectors: dict[str, np.ndarray] = {}
+        self._vectors: dict[str, Any] = {}  # np.ndarray or list[float]
+        self._use_np = np is not None
 
     def add(self, key: str, vector: list[float]) -> None:
-        self._vectors[key] = _l2_normalize(np.array(vector, dtype=np.float32))
+        if self._use_np:
+            self._vectors[key] = _l2_normalize_np(np.array(vector, dtype=np.float32))  # type: ignore[union-attr]
+        else:
+            self._vectors[key] = _l2_normalize_py(vector)
 
     def search(self, query_vector: list[float], top_k: int = 10) -> list[tuple[str, float]]:
         if not self._vectors:
             return []
 
-        query = _l2_normalize(np.array(query_vector, dtype=np.float32))
-        scores: list[tuple[str, float]] = []
-
-        for key, vec in self._vectors.items():
-            sim = float(np.dot(query, vec))
-            scores.append((key, sim))
+        if self._use_np:
+            query = _l2_normalize_np(np.array(query_vector, dtype=np.float32))  # type: ignore[union-attr]
+            scores = [
+                (key, float(np.dot(query, vec)))  # type: ignore[union-attr]
+                for key, vec in self._vectors.items()
+            ]
+        else:
+            query = _l2_normalize_py(query_vector)
+            scores = [
+                (key, _dot_py(query, vec))
+                for key, vec in self._vectors.items()
+            ]
 
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
@@ -149,7 +178,7 @@ class FAISSIndex:
             raise ValueError(
                 f"Dimension mismatch: expected {self._dimension}, got {len(vector)}"
             )
-        vec = _l2_normalize(np.array(vector, dtype=np.float32))
+        vec = _l2_normalize_np(np.array(vector, dtype=np.float32))
 
         # Deduplikation: wenn Key existiert, als geloescht markieren
         if key in self._key_to_pos:
@@ -176,7 +205,7 @@ class FAISSIndex:
         if self._index.ntotal == 0:
             return []
 
-        query = _l2_normalize(np.array(query_vector, dtype=np.float32))
+        query = _l2_normalize_np(np.array(query_vector, dtype=np.float32))
         live_count = len(self._key_to_pos)
 
         # Mehr Ergebnisse holen um geloeschte rauszufiltern

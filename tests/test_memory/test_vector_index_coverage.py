@@ -2,7 +2,7 @@
 
 Schwerpunkt: BruteForceIndex (add, search, remove, rebuild, size),
 FAISSIndex (mock-basiert), create_vector_index factory,
-_l2_normalize, Tombstone-basiertes Delete, Auto-Rebuild.
+_l2_normalize_np, Tombstone-basiertes Delete, Auto-Rebuild.
 """
 
 from __future__ import annotations
@@ -14,31 +14,31 @@ import pytest
 
 from jarvis.memory.vector_index import (
     BruteForceIndex,
-    _l2_normalize,
+    _l2_normalize_np,
     create_vector_index,
 )
 
 
 # ============================================================================
-# _l2_normalize
+# _l2_normalize_np
 # ============================================================================
 
 
 class TestL2Normalize:
     def test_normal_vector(self) -> None:
         vec = np.array([3.0, 4.0], dtype=np.float32)
-        result = _l2_normalize(vec)
+        result = _l2_normalize_np(vec)
         norm = np.linalg.norm(result)
         assert abs(norm - 1.0) < 1e-5
 
     def test_zero_vector(self) -> None:
         vec = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-        result = _l2_normalize(vec)
+        result = _l2_normalize_np(vec)
         assert np.allclose(result, vec)
 
     def test_already_normalized(self) -> None:
         vec = np.array([1.0, 0.0, 0.0], dtype=np.float32)
-        result = _l2_normalize(vec)
+        result = _l2_normalize_np(vec)
         assert np.allclose(result, vec)
 
 

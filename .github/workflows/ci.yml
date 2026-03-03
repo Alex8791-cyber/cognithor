@@ -44,10 +44,51 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install core + dev dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[all,dev]" || pip install -e ".[dev]"
+          pip install -e ".[dev]"
+
+      - name: Install optional dependency groups
+        run: |
+          echo "::group::memory"
+          pip install -e ".[memory]" || echo "::warning::memory extras failed"
+          echo "::endgroup::"
+
+          echo "::group::search"
+          pip install -e ".[search]" || echo "::warning::search extras failed"
+          echo "::endgroup::"
+
+          echo "::group::mcp"
+          pip install -e ".[mcp]" || echo "::warning::mcp extras failed"
+          echo "::endgroup::"
+
+          echo "::group::telegram"
+          pip install -e ".[telegram]" || echo "::warning::telegram extras failed"
+          echo "::endgroup::"
+
+          echo "::group::web"
+          pip install -e ".[web]" || echo "::warning::web extras failed"
+          echo "::endgroup::"
+
+          echo "::group::documents"
+          pip install -e ".[documents]" || echo "::warning::documents extras failed"
+          echo "::endgroup::"
+
+          echo "::group::cron"
+          pip install -e ".[cron]" || echo "::warning::cron extras failed"
+          echo "::endgroup::"
+
+          echo "::group::vector"
+          pip install -e ".[vector]" || echo "::warning::vector extras failed (faiss-cpu)"
+          echo "::endgroup::"
+
+          echo "::group::postgresql"
+          pip install -e ".[postgresql]" || echo "::warning::postgresql extras failed"
+          echo "::endgroup::"
+
+      - name: Show installed packages
+        run: pip list --format=columns | head -60
 
       - name: Run tests
         run: python -m pytest tests/ -x -q --tb=short --ignore=tests/test_channels/test_voice_ws_bridge.py
