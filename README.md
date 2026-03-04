@@ -11,7 +11,7 @@
   </p>
   <p align="center">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-8%2C411%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-9%2C251%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/lint-0%20errors-brightgreen?style=flat-square" alt="Lint"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
@@ -24,7 +24,7 @@
 
 - **Your data never leaves your machine.** Runs 100% locally with Ollama or LM Studio — no cloud, no API keys required, full GDPR compliance. Cloud providers are optional, not mandatory.
 - **One system, not twenty tools.** 17 channels, 18+ MCP tool servers, 5-tier memory, knowledge vault, cron, voice, browser automation, distributed locking, durable message queues — integrated from day one. No glue code, no plugin hell.
-- **Production-grade, not a demo.** 8,411 tests, 89% coverage, 4-level sandbox, SHA-256 audit chain, runtime token encryption, Prometheus metrics, and battle-tested deployment options from one-click Windows launcher to Docker Compose to bare-metal servers.
+- **Production-grade, not a demo.** 9,251 tests, 89% coverage, 4-level sandbox, SHA-256 audit chain, runtime token encryption, Prometheus metrics, and battle-tested deployment options from one-click Windows launcher to Docker Compose to bare-metal servers.
 
 ---
 
@@ -56,26 +56,43 @@
 
 ---
 
-## What's New in v1.0
+## What's New
+
+### v1.1.0 — Agent Infrastructure (15 New Subsystems)
+
+Major infrastructure release adding **840 new tests** (9,251 total) and 15 enterprise-grade subsystems:
+
+- **DAG Workflow Engine** — Directed Acyclic Graph execution with parallel branches, conditional edges, cycle detection
+- **Distributed Worker Runtime** — Capability-based job routing (4 strategies), health monitoring, failover with dead-letter queue
+- **Multi-Agent Collaboration** — Debate, voting, and pipeline patterns for agent teams
+- **Policy-as-Code Governance** — Versioned policy store with simulation, rollback, and audit trail
+- **Tool Sandbox Hardening** — Per-tool resource limits, network guards, 8-category escape detection
+- **GDPR Compliance Toolkit** — Data processing logs (Art. 30), retention enforcement, right-to-erasure (Art. 17), audit export
+- **Agent Benchmark Suite** — 14 tasks across 7 categories, composite scoring, regression detection
+- **Deterministic Replay** — Record and replay agent executions with what-if analysis
+- **Plugin Marketplace Remote Registry** — Remote manifests, dependency resolution, install/update/rollback
+- **Agent SDK** — Decorator-based agent registration, scaffolding, capability discovery
+- **Knowledge Graph Layer** — NER, entity deduplication, graph visualization
+- **Memory Consolidation** — Importance scoring, deduplication, configurable retention
+- **Execution Graph UI** — Real-time visualization data with Mermaid export
+- **Agent Delegation Engine** — Typed contracts with SLA guarantees
+- **Installer Modernization** — uv auto-detection (10x faster installs), `--use-uv` flag
 
 ### v1.0.0 — Chat, Voice Mode, TTS (Major Release)
 
-Cognithor graduates from beta to **v1.0.0 Production/Stable**:
-
-- **Integrated Chat** — Full chat page in the Control Center with WebSocket streaming, tool execution indicators, canvas side-panel, and inline approval banners. Chat is now the default start page.
-- **Voice Mode** — Wake word detection ("Jarvis") with Levenshtein distance + phonetic normalization for robust matching. Konversationsmodus: continuous listening until "Jarvis Ende".
-- **Piper TTS (Thorsten Emotional)** — German speech synthesis with `de_DE-thorsten_emotional-medium`, multi-speaker support, automatic model download.
-- **Natural Language Responses** — System prompt tuned for spoken, human responses — flowing sentences instead of bullet points when in voice mode.
-- **9 new UI files**: ChatPage, MessageList, ChatInput, ChatCanvas, ToolIndicator, ApprovalBanner, VoiceIndicator, useJarvisChat, useVoiceMode
+- **Integrated Chat** — Full chat page in the Control Center with WebSocket streaming, tool indicators, canvas panel, approval banners
+- **Voice Mode** — Wake word ("Jarvis") with Levenshtein + phonetic matching, Konversationsmodus
+- **Piper TTS (Thorsten Emotional)** — German speech synthesis, automatic model download
+- **Natural Language Responses** — System prompt for spoken, human responses
 
 ### Previous Releases (v0.26.x)
 
 - **v0.26.5** — Human Feel: Personality Engine, sentiment detection, user preferences, status callbacks, friendly error messages
 - **v0.26.4** — Coverage & Skills: 255 new tests, BaseSkill, skill package init
-- **v0.26.3** — Scaling: distributed locking, durable message queue, Prometheus metrics, Telegram webhook, skill marketplace, auto-dependency loading, LM Studio
+- **v0.26.3** — Scaling: distributed locking, durable message queue, Prometheus metrics, Telegram webhook, skill marketplace, auto-dependency loading
 - **v0.26.2** — LM Studio backend
 - **v0.26.1** — Docker prod, bare-metal installer, Nginx/Caddy, health endpoints
-- **v0.26.0** — Security hardening: token encryption, TLS, file-size limits, session persistence, one-click launcher
+- **v0.26.0** — Security hardening: token encryption, TLS, file-size limits, session persistence
 
 ---
 
@@ -107,7 +124,17 @@ Cognithor graduates from beta to **v1.0.0 Production/Stable**:
 - **One-Click Start** — Double-click `start_cognithor.bat` -> browser opens -> click **Power On** -> done
 - **Enhanced Web Research** — 4-provider search fallback (SearXNG -> Brave -> Google CSE -> DuckDuckGo), Jina AI Reader for JS-heavy sites, domain filtering, source cross-checking
 - **Procedural Learning** — Reflector auto-synthesizes reusable skills from successful sessions
-- **8,411 tests** · **89% coverage** · **0 lint errors**
+- **DAG Workflow Engine** — Directed acyclic graph execution with parallel branches, conditional edges, cycle detection, automatic retry
+- **Distributed Workers** — Capability-based job routing, health monitoring, failover, dead-letter queue
+- **Multi-Agent Collaboration** — Debate, voting, and pipeline patterns for agent teams
+- **Tool Sandbox Hardening** — Per-tool resource limits, network guards, escape detection (8 attack categories)
+- **GDPR Compliance Toolkit** — Data processing logs (Art. 30), retention enforcement, right-to-erasure (Art. 17), audit export
+- **Agent Benchmark Suite** — 14 standardized tasks, composite scoring, regression detection across versions
+- **Deterministic Replay** — Record and replay agent executions with what-if analysis and diff comparison
+- **Agent SDK** — Decorator-based agent registration (`@agent`, `@tool`, `@hook`), project scaffolding
+- **Plugin Remote Registry** — Remote manifests with SHA-256 checksums, dependency resolution, install/update/rollback
+- **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
+- **9,251 tests** · **89% coverage** · **0 lint errors**
 
 ## Architecture
 
@@ -135,9 +162,11 @@ Cognithor graduates from beta to **v1.0.0 Production/Stable**:
 │  Planner    │  Gatekeeper  │  Executor                            │
 │  (LLM)      │  (Policy)    │  (Sandbox)                           │
 ├─────────────┴──────────────┴──────────────────────────────────────┤
+│       DAG Workflow Engine · Agent Benchmark Suite                     │
+├───────────────────────────────────────────────────────────────────┤
 │                   MCP Tool Layer (18+)                              │
 │   Filesystem · Shell · Memory · Web · Browser · Media · Vault      │
-│   Synthesis · Skills Marketplace                                    │
+│   Synthesis · Skills Marketplace · Remote Registry                  │
 ├───────────────────────────────────────────────────────────────────┤
 │               Multi-LLM Backend Layer (16)                         │
 │   Ollama · OpenAI · Anthropic · Gemini · Groq · DeepSeek           │
@@ -148,6 +177,7 @@ Cognithor graduates from beta to **v1.0.0 Production/Stable**:
 ├───────────────────────────────────────────────────────────────────┤
 │         Infrastructure: Redis/File Distributed Lock                 │
 │         SQLite Durable Queue · Prometheus Telemetry                 │
+│         Worker Pool · GDPR Compliance · Deterministic Replay        │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -276,7 +306,7 @@ pip install -e ".[all,dev]"
 pip install -e ".[telegram,voice,web,cron]"
 ```
 
-The installer offers four modes: `--minimal` (core only), `--full` (all features), `--systemd` (+ service installation), `--uninstall` (removal). Without flags, it starts in interactive mode.
+The installer offers five modes: `--minimal` (core only), `--full` (all features), `--use-uv` (10x faster installs with [uv](https://docs.astral.sh/uv/)), `--systemd` (+ service installation), `--uninstall` (removal). Without flags, it starts in interactive mode. If `uv` is installed, it is auto-detected and preferred over pip.
 
 ### Step 2: Pull an LLM (~2 min)
 
@@ -479,23 +509,24 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **8,411 tests** · **100% pass rate** · **89% coverage** · **~98,000 LOC source** · **~80,000 LOC tests**
+Current status: **9,251 tests** · **100% pass rate** · **89% coverage** · **~106,000 LOC source** · **~90,000 LOC tests**
 
 | Area | Tests | Description |
 |------|-------|-------------|
-| Core | 1,491 | Planner, Gatekeeper, Executor, Config, Models, Reflector, Distributed Lock, Model Router, Unified LLM, LLM Backend, Personality, Sentiment, User Preferences |
+| Core | 1,893 | Planner, Gatekeeper, Executor, Config, Models, Reflector, Distributed Lock, Model Router, DAG Engine, Delegation, Collaboration, Agent SDK, Workers, Personality, Sentiment |
 | Integration | 1,314 | End-to-end tests, phase wiring, entrypoint, A2A protocol |
 | Channels | 1,360 | CLI, Telegram (incl. Webhook), Discord, Slack, WhatsApp, API, WebUI, Voice, iMessage, Signal, Teams |
 | MCP | 825 | Client, filesystem, shell, memory server, web, media, synthesis, vault, browser, bridge, resources |
 | Memory | 658 | All 5 tiers, indexer, hybrid search, chunker, watcher, token estimation, integrity, hygiene |
-| Skills | 498 | Skill registry, generator, marketplace, persistence, API, CLI tools, scaffolder, linter, BaseSkill |
-| Security | 327 | Audit, credentials, token store, TLS, policies, sandbox, sanitizer, agent vault |
+| Skills | 534 | Skill registry, generator, marketplace, persistence, API, CLI tools, scaffolder, linter, BaseSkill, remote registry |
+| Security | 469 | Audit, credentials, token store, TLS, policies, sandbox, sanitizer, agent vault, resource limits, GDPR |
 | Gateway | 252 | Session management, agent loop, context pipeline, phase init, approval flow |
 | A2A | 158 | Agent-to-Agent protocol, client, HTTP handler, streaming |
-| Telemetry | 120 | Cost tracking, metrics, tracing, Prometheus export, instrumentation |
+| Telemetry | 175 | Cost tracking, metrics, tracing, Prometheus export, instrumentation, recorder, replay |
 | Other | 247 | HITL, governance, learning, proactive, config manager |
 | Tools | 103 | Refactoring agent, code analyzer, skill CLI developer tools |
-| Utils | 90 | Logging, helper functions, error messages |
+| Utils | 126 | Logging, helper functions, error messages, installer |
+| Benchmark | 48 | Agent benchmark suite, scoring, regression detection |
 | Cron | 63 | Engine, job store, scheduling |
 | UI API | 55 | Control Center endpoints (config, agents, prompts, cron, MCP, A2A) |
 
@@ -527,6 +558,12 @@ cognithor/
 │   │   ├── orchestrator.py        # High-level agent orchestration
 │   │   ├── reflector.py           # Reflection, fact extraction, skill synthesis
 │   │   ├── distributed_lock.py    # Redis/file-based distributed locking
+│   │   ├── dag_engine.py          # DAG Workflow Engine (parallel execution)
+│   │   ├── execution_graph.py     # Execution Graph UI (Mermaid export)
+│   │   ├── delegation.py          # Agent Delegation Engine (typed contracts)
+│   │   ├── collaboration.py       # Multi-Agent Collaboration (debate/voting/pipeline)
+│   │   ├── agent_sdk.py           # Agent SDK (decorators, registry, scaffolding)
+│   │   ├── worker.py              # Distributed Worker Runtime (job routing, failover)
 │   │   ├── personality.py         # Personality Engine (warmth, humor, greetings)
 │   │   ├── sentiment.py           # Keyword/regex sentiment detection (German)
 │   │   └── user_preferences.py    # SQLite user preference store (auto-learn)
@@ -571,14 +608,22 @@ cognithor/
 │   │   ├── token_store.py         # Runtime token encryption (ephemeral Fernet) + TLS helper
 │   │   ├── sandbox.py             # Multi-level sandbox (L0-L2)
 │   │   ├── policies.py            # Security policies (path, command, network)
+│   │   ├── policy_store.py        # Versioned policy store (simulation, rollback)
+│   │   ├── resource_limits.py     # Tool sandbox hardening (per-tool profiles, escape detection)
+│   │   ├── gdpr.py                # GDPR Compliance Toolkit (Art. 15-17, 30)
 │   │   └── sanitizer.py           # Input sanitization (injection protection)
 │   ├── cron/                      # Cron engine with APScheduler
 │   ├── a2a/                       # Agent-to-Agent protocol (Linux Foundation RC v1.0)
 │   ├── skills/                    # Skill registry, generator, marketplace (SQLite persistence)
 │   ├── graph/                     # Knowledge graph engine
 │   ├── telemetry/                 # Cost tracking, metrics, tracing, Prometheus export
+│   │   ├── recorder.py            # Execution recorder (13 event types, JSONL export)
+│   │   └── replay.py              # Deterministic replay engine (what-if analysis)
+│   ├── benchmark/                 # Agent Benchmark Suite
+│   │   └── suite.py               # 14 tasks, scoring, runner, reports, regression detection
 │   └── utils/
 │       ├── logging.py             # Structured logging (structlog + Rich)
+│       ├── installer.py           # uv/pip detection and command abstraction
 │       └── error_messages.py      # User-friendly German error templates
 ├── ui/                            # Control Center (React 19 + Vite 7)
 │   ├── vite.config.js             # Dev server with backend launcher plugin
@@ -600,7 +645,7 @@ cognithor/
 │       │   └── useVoiceMode.js    # Voice mode hook (wake word, STT, TTS)
 │       ├── App.jsx                # App shell
 │       └── main.jsx               # React entry
-├── tests/                         # 8,411 tests, ~77,000 LOC
+├── tests/                         # 9,251 tests, ~90,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
 │   ├── test_mcp/                  # MCP tools and client
@@ -707,12 +752,15 @@ See [`deploy/README.md`](deploy/README.md) for full deployment documentation (Do
 
 | **Phase 12** | Human Feel: personality engine, sentiment detection, user preferences, status callbacks, friendly error messages | Done |
 | **Phase 13** | Voice & Chat Integration: integrated chat page, voice conversation mode, Piper TTS (Thorsten Emotional), natural language responses | Done |
+| **Phase 14** | Agent Infrastructure: DAG workflows, execution graphs, delegation, policy-as-code, knowledge graph, memory consolidation | Done |
+| **Phase 15** | Multi-Agent & SDK: collaboration (debate/voting/pipeline), agent SDK, plugin remote registry | Done |
+| **Phase 16** | Security & Ops: tool sandbox hardening, distributed workers, deterministic replay, benchmarks, uv installer, GDPR toolkit | Done |
 
 ### What's Next
 
-- **Phase 14** — Horizontal scaling: multi-node Gateway with Redis Streams, auto-sharding of memory tiers, load-balanced LLM backend pools
-- **Phase 15** — Advanced agents: multi-agent collaboration workflows, shared memory spaces, agent specialization profiles
-- **Phase 16** — Mobile: native Android/iOS apps via Capacitor, push notifications, offline mode with local LLM
+- **Phase 17** — Mobile: native Android/iOS apps via Capacitor, push notifications, offline mode with local LLM
+- **Phase 18** — Horizontal scaling: multi-node Gateway with Redis Streams, auto-sharding of memory tiers
+- **Phase 19** — Advanced governance: federated policy management, cross-organization compliance
 
 ## Recording a Demo
 
@@ -734,7 +782,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 
 ---
 
-**Metrics:** ~98,000 LOC source · ~80,000 LOC tests · 8,411 tests · 89% coverage · 0 lint errors
+**Metrics:** ~106,000 LOC source · ~90,000 LOC tests · 9,251 tests · 89% coverage · 0 lint errors
 
 ## License
 
