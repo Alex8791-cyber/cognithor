@@ -934,7 +934,6 @@ class TestGlobalTimeout:
             _tool("b", depends_on=["a"]),
         ], global_timeout_seconds=1)
 
-        import asyncio
         run = await engine.execute(wf)
         # At least some nodes should be SKIPPED due to timeout
         statuses = {nr.status for nr in run.node_results.values()}
