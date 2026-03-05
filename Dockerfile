@@ -34,7 +34,7 @@ FROM python:3.12-slim AS runtime
 
 LABEL maintainer="Alexander Söllner"
 LABEL description="Jarvis Agent OS – Lokales autonomes Agent-Betriebssystem"
-LABEL version="1.0.0"
+LABEL version="0.26.6"
 
 # Nicht als root laufen
 RUN groupadd -r jarvis && useradd -r -g jarvis -m -s /bin/bash jarvis

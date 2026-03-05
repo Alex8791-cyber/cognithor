@@ -232,6 +232,8 @@ class DiscordChannel(Channel):
                 return
             future, requester_id = entry
             if future.done():
+                # Stale entry — clean up
+                del self._approval_messages[msg_id]
                 return
             # Nur der ursprüngliche Anfragesteller darf genehmigen/ablehnen
             if requester_id and user.id != requester_id:
@@ -254,6 +256,12 @@ class DiscordChannel(Channel):
     async def stop(self) -> None:
         self._running = False
         self._bidirectional = False
+        # Cancel all pending approval futures to prevent memory leaks
+        async with self._approval_lock:
+            for msg_id, (future, _) in list(self._approval_messages.items()):
+                if not future.done():
+                    future.cancel()
+            self._approval_messages.clear()
         if self._client:
             try:
                 await self._client.close()

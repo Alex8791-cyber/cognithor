@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -91,14 +92,21 @@ class SessionStore:
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection | None = None
+        self._conn_lock = threading.Lock()
 
     @property
     def conn(self) -> sqlite3.Connection:
-        """Lazy-initialisiert die DB-Verbindung und Schema."""
-        if self._conn is None:
+        """Lazy-initialisiert die DB-Verbindung und Schema (thread-safe)."""
+        if self._conn is not None:
+            return self._conn
+        with self._conn_lock:
+            # Double-check after acquiring lock
+            if self._conn is not None:
+                return self._conn
             self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA busy_timeout=5000")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(_SCHEMA)
             # Migrationen ausführen (idempotent)

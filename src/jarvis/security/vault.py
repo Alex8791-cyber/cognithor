@@ -170,7 +170,8 @@ class EncryptedVault:
                 agent_id,
             )
             master_key = os.urandom(32)
-        agent_key = master_key + agent_id.encode()
+        # Derive agent-specific key via HMAC (prevents ambiguity from concatenation)
+        agent_key = hmac.new(master_key, agent_id.encode(), hashlib.sha256).digest()
         self._encryptor = _SimpleEncryptor(agent_key)
         self._entries: dict[str, VaultEntry] = {}  # "service:key" → VaultEntry
 

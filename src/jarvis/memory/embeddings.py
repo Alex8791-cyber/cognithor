@@ -482,7 +482,7 @@ class EmbeddingClient:
         content_hashes: list[str] | None = None,
         *,
         batch_size: int = 32,
-    ) -> list[EmbeddingResult]:
+    ) -> list[EmbeddingResult | None]:
         """Generiert Embeddings für mehrere Texte.
 
         Nutzt Cache wo möglich, batcht API-Calls.
@@ -494,6 +494,7 @@ class EmbeddingClient:
 
         Returns:
             Liste von EmbeddingResults (gleiche Reihenfolge wie Input).
+            Einträge können None sein wenn der API-Call fehlgeschlagen ist.
         """
         if content_hashes is None:
             content_hashes = [""] * len(texts)
@@ -546,8 +547,14 @@ class EmbeddingClient:
                 logger.error("Batch-Embedding-Fehler: %s", e)
                 # Fehlende Ergebnisse bleiben None (kein Zero-Vektor)
 
-        # None-Eintraege bleiben None -- Aufrufer muss filtern
-        return results  # type: ignore[return-value]
+        # Log warning if some entries failed (remain None)
+        failed = sum(1 for r in results if r is None)
+        if failed:
+            logger.warning(
+                "embed_batch: %d/%d Embeddings fehlgeschlagen (None)",
+                failed, len(texts),
+            )
+        return results
 
     async def close(self) -> None:
         """Schließt den HTTP-Client."""

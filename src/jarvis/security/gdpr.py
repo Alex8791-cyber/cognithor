@@ -837,6 +837,6 @@ class GDPRComplianceManager:
             "erasure_requests_total": erasure_count,
             "erasure_requests_completed": completed,
             "has_retention_policies": policy_count > 0,
-            "has_processing_log": proc_count > 0 or True,
-            "has_model_usage_log": usage_count > 0 or True,
+            "has_processing_log": proc_count > 0,
+            "has_model_usage_log": usage_count > 0,
         }

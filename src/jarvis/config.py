@@ -1369,7 +1369,7 @@ class JarvisConfig(BaseModel):
     """
 
     # Meta
-    version: str = "1.2.0"
+    version: str = "0.26.6"
     language: Literal["de", "en"] = Field(
         default="de",
         description="UI language for error messages, greetings, and status texts. "

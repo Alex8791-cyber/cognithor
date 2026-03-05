@@ -310,10 +310,10 @@ class ConsolidationPipeline:
             return result
 
         # Phase 1: Deduplication
+        dup_ids: set[str] = set()  # Init before try — used in Phase 4
         try:
             groups = self.deduplicator.find_duplicates(entries)
             result.duplicates_found = sum(len(g.duplicate_ids) for g in groups)
-            dup_ids = set()
             for group in groups:
                 dup_ids.update(group.duplicate_ids)
             result.duplicates_merged = len(dup_ids)
@@ -365,7 +365,7 @@ class ConsolidationPipeline:
         result.tokens_freed += sum(
             e.get("token_count", 100)
             for e in entries
-            if e["id"] in (dup_ids if 'dup_ids' in dir() else set())
+            if e["id"] in dup_ids
         )
 
         result.duration_ms = (time.monotonic() - start) * 1000

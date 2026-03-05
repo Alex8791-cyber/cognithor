@@ -137,22 +137,23 @@ class CircuitBreaker:
                     )
                 self._half_open_inflight += 1
 
+        # Track whether we incremented inflight (only in HALF_OPEN)
+        _was_half_open = False
+        async with self._lock:
+            _was_half_open = self._state == CircuitState.half_open
+
         try:
             result = await coro
         except BaseException as exc:
-            if isinstance(exc, self._excluded_exceptions):
-                async with self._lock:
-                    if self._state == CircuitState.half_open:
-                        self._half_open_inflight = max(0, self._half_open_inflight - 1)
-                raise
             async with self._lock:
-                if self._state == CircuitState.half_open:
+                if _was_half_open:
                     self._half_open_inflight = max(0, self._half_open_inflight - 1)
-                self._record_failure()
+                if not isinstance(exc, self._excluded_exceptions):
+                    self._record_failure()
             raise
         else:
             async with self._lock:
-                if self._state == CircuitState.half_open:
+                if _was_half_open:
                     self._half_open_inflight = max(0, self._half_open_inflight - 1)
                 self._record_success()
             return result

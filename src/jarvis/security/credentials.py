@@ -112,7 +112,10 @@ class CredentialStore:
     def _init_fernet(self) -> Any:
         """Initialisiert Fernet-Verschlüsselung."""
         if not self._passphrase:
-            log.warning("credential_store_no_passphrase")
+            log.warning(
+                "credential_store_no_passphrase: Credentials are NOT encrypted! "
+                "Set JARVIS_CREDENTIAL_KEY env var for encryption."
+            )
             return None
         if not _HAS_CRYPTO:
             raise RuntimeError(

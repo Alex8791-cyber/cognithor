@@ -234,7 +234,7 @@ class TestJarvisConfigExtended:
     """Tests für erweiterte JarvisConfig Properties und Methoden."""
 
     def test_version(self, config: JarvisConfig) -> None:
-        assert config.version == "1.2.0"
+        assert config.version == "0.26.6"
 
     def test_log_level(self, config: JarvisConfig) -> None:
         assert config.log_level == "INFO"

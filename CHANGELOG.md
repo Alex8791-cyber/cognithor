@@ -5,232 +5,64 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.26.6] – 2026-03-05
 
-### Changed
-- **Beta/Experimental label** — README now clearly marks Cognithor as Beta software
-  with a maturity matrix, deployment cautions, and honest scope of test coverage (#4)
-- **Internationalization (i18n)** — Error messages, tool names, and gatekeeper messages
-  now support English via `JARVIS_LANGUAGE=en` env var or `language: "en"` in config.yaml (#4)
-- **Language documentation** — New "Language & Internationalization" section in README
-  documents German-first strings and how to customize/translate them (#4)
-- **Status & Maturity section** — README now includes a maturity matrix per component
-  (Core: Stable, Voice: Alpha, Enterprise: Alpha, etc.) (#4)
+### Chat, Voice, Agent Infrastructure & Security Hardening
 
-### Fixed
-- **Shutdown audit data loss** — Gatekeeper now registers `atexit` handler to flush
-  pending audit buffer entries on process exit (weakref-safe)
-- **ContextVar gateway propagation** — Removed redundant `set_coding_override()` call
-  inside `asyncio.create_task()` where ContextVar changes are invisible; override is
-  now only applied in the parent context after task completion
-- **Version sync** — `__init__.py` version now matches `pyproject.toml` and `config.py` (1.2.0)
-
-## [1.2.0] – 2026-03-05
-
-### Security & Performance Hardening — 10 Critical Fixes
-
-Deep-analysis release addressing 10 security vulnerabilities and performance issues
-discovered through comprehensive line-by-line code review. 107 new tests added,
-full suite at 9,356 tests (0 failures).
-
-### Fixed
-
-**Security**
-- **Path Traversal Prevention** — `vault.py`, `memory_server.py`, `code_tools.py` now validate
-  all file paths with `.resolve()` + `.relative_to()`, blocking `../../` traversal attacks
-- **run_python Gatekeeper Bypass** — 14 dangerous Python patterns (os.system, subprocess, eval,
-  exec, shutil.rmtree, etc.) are now detected and blocked before execution
-- **WebSocket Authentication** — API WebSocket endpoint now validates `?token=` against
-  `JARVIS_API_TOKEN` env var; session collision handling added
-- **ModelRouter Race Condition** — Coding override now uses `contextvars.ContextVar` for
-  per-async-task isolation, preventing cross-request model contamination
-
-**Performance**
-- **Embedding Memory Explosion** — `get_all_embeddings()` replaced with targeted
-  `get_embeddings_by_hashes()` using batched SQL queries (max 900 params per batch)
-- **Graph Traversal Cycle Guard** — Recursive CTE replaced with iterative BFS using
-  `visited` set, preventing infinite loops on cyclic entity graphs
-- **Blocking I/O in Async Context** — `UserPreferenceStore` uses persistent SQLite connection
-  with WAL mode; Gatekeeper uses buffered audit writes; MCP Server wraps sync handlers in
-  `run_in_executor`
-
-**Reliability**
-- **Session Lock Unused** — `asyncio.Lock()` replaced with `threading.Lock()` and applied to
-  `_get_or_create_session()`, `_get_or_create_working_memory()`, `_cleanup_stale_sessions()`
-- **recency_decay Formula** — Changed from `e^(-x)` (gives 0.368 at half-life) to `2^(-x)`
-  (gives exact 0.5 at half-life) for correct half-life decay behavior
-- **CircuitBreaker HALF_OPEN Race** — Added inflight counter with admission control limiting
-  concurrent probe calls to `half_open_max_calls`
-
-### Added
-- 10 new test files with 107 tests covering all fixes
-- `get_embeddings_by_hashes()` and `get_embedding_hashes()` methods on `MemoryIndex`
-- `_validate_vault_path()` method on `VaultTools`
-- `_check_python_code()` method on `Gatekeeper` with 14 compiled regex patterns
-- `_flush_audit_buffer()` for batched audit I/O
-
----
-
-## [1.1.0] – 2026-03-05
-
-### Agent Infrastructure Release — 15 New Subsystems
-
-Major infrastructure release adding 15 new subsystems with 1,000+ new tests,
-bringing Cognithor from a production-ready agent to a full enterprise Agent OS
-with distributed workers, policy governance, benchmarking, and GDPR compliance.
+Comprehensive release bringing integrated chat, voice mode, 15 new enterprise subsystems,
+and deep security hardening. Full suite at 9,357 tests (0 failures).
 
 ### Added
 
-**DAG Workflow Engine** (`core/dag_engine.py`)
-- Directed Acyclic Graph workflow execution with topological sort
-- 4 node states (PENDING, RUNNING, COMPLETED, FAILED), parallel branch execution
-- Cycle detection, conditional edges, automatic retry on failure
-- 53 tests
+**Chat & Voice**
+- **ChatPage** (`ui/src/pages/ChatPage.jsx`) — Full chat integration in the React UI with WebSocket streaming
+- **MessageList**, **ChatInput**, **ChatCanvas**, **ToolIndicator**, **ApprovalBanner** — Chat UI components
+- **VoiceIndicator** + **useVoiceMode** — Voice mode with wake word ("Jarvis"), Levenshtein matching, Konversationsmodus
+- **Piper TTS (Thorsten Emotional)** — German speech synthesis, automatic model download
+- **Natural Language Responses** — System prompt for spoken, human responses
 
-**Execution Graph UI** (`core/execution_graph.py`)
-- Real-time visualization data for agent execution flows
-- Node types: PLAN, GATE, TOOL, REPLAN, RESPONSE, ERROR
-- Mermaid diagram export for documentation
-- 37 tests
+**Agent Infrastructure (15 Subsystems)**
+- **DAG Workflow Engine** — Parallel branch execution, conditional edges, cycle detection (53 tests)
+- **Execution Graph UI** — Real-time visualization data with Mermaid export (37 tests)
+- **Agent Delegation Engine** — Typed contracts with SLA guarantees (44 tests)
+- **Policy-as-Code Governance** — Versioned policy store, simulation, rollback (41 tests)
+- **Knowledge Graph Layer** — NER, entity deduplication, graph visualization (46 tests)
+- **Memory Consolidation** — Importance scoring, deduplication, retention (48 tests)
+- **Multi-Agent Collaboration** — Debate, voting, pipeline patterns (52 tests)
+- **Agent SDK** — Decorator-based registration, scaffolding (38 tests)
+- **Plugin Marketplace Remote Registry** — Remote manifests, dependency resolution (36 tests)
+- **Tool Sandbox Hardening** — Per-tool resource limits, escape detection (93 tests)
+- **Distributed Worker Runtime** — Job routing, failover, dead-letter queue (64 tests)
+- **Deterministic Replay** — Record/replay with what-if analysis (55 tests)
+- **Agent Benchmark Suite** — 14 tasks, composite scoring, regression detection (48 tests)
+- **Installer Modernization** — uv auto-detection, 10x faster installs (36 tests)
+- **GDPR Compliance Toolkit** — Art. 15-17, 30, retention enforcement (49 tests)
 
-**Agent Delegation Engine** (`core/delegation.py`)
-- Typed contracts for inter-agent task delegation
-- DelegationContract with SLA guarantees, timeout, priority
-- Result aggregation and escalation on failure
-- 44 tests
-
-**Policy-as-Code Governance** (`security/policy_store.py`)
-- Versioned policy store with YAML persistence
-- Policy simulation (dry-run), rollback to any version
-- Diff between versions, audit trail for all changes
-- 41 tests
-
-**Knowledge Graph Layer** (`graph/`)
-- Named Entity Recognition with configurable extractors
-- Entity deduplication with fuzzy matching
-- Graph serialization for UI visualization
-- 46 tests
-
-**Memory Consolidation Pipeline** (`memory/consolidation.py`)
-- Importance scoring for memory entries (recency, frequency, emotional weight)
-- Automatic deduplication with similarity detection
-- Configurable retention thresholds and decay functions
-- 48 tests
-
-**Multi-Agent Collaboration** (`core/collaboration.py`)
-- Debate pattern: agents argue positions, moderator synthesizes
-- Voting pattern: democratic decision-making with quorum
-- Pipeline pattern: sequential agent processing with context passing
-- 52 tests
-
-**Agent SDK** (`core/agent_sdk.py`)
-- Decorator-based agent registration (`@agent`, `@tool`, `@hook`)
-- Agent registry with capability discovery
-- Project scaffolding (generate agent boilerplate)
-- 38 tests
-
-**Plugin Marketplace Remote Registry** (`skills/remote_registry.py`)
-- Remote plugin manifests with SHA-256 checksums and signatures
-- Dependency resolver with topological sort and circular detection
-- Install, update, rollback, uninstall with local JSON persistence
-- 36 tests
-
-**Tool Sandbox Hardening** (`security/resource_limits.py`)
-- Per-tool sandbox profiles with CPU, memory, disk, network limits
-- ResourceWatchdog for runtime monitoring (timeout, output size)
-- NetworkGuard with per-tool allow/block/restrict rules
-- EscapeDetector with 8 attack categories (path traversal, command injection, etc.)
-- 93 tests
-
-**Distributed Worker Runtime** (`core/worker.py`)
-- WorkerNode with capability-based job assignment
-- 4 routing strategies: round-robin, least-loaded, capability-based, random
-- HealthMonitor with heartbeat-based failure detection
-- FailoverManager with automatic re-queue and dead-letter handling
-- 64 tests
-
-**Deterministic Replay System** (`telemetry/recorder.py`, `telemetry/replay.py`)
-- ExecutionRecorder capturing full agent runs (13 event types)
-- ReplayEngine with override support for what-if analysis
-- Replay from specific iterations, diff computation, match rate metrics
-- JSONL export/import
-- 55 tests
-
-**Agent Benchmark Suite** (`benchmark/suite.py`)
-- 14 builtin tasks across 7 categories (research, automation, knowledge, policy, collaboration, reasoning, tool_use)
-- BenchmarkScorer with composite scoring (keywords 40%, tools 30%, efficiency 15%, latency 15%)
-- BenchmarkRunner with category/difficulty/tag filtering
-- BenchmarkReport (JSON + Markdown), RegressionDetector
-- 48 tests
-
-**Installer Modernization** (`utils/installer.py`)
-- uv auto-detection with transparent pip fallback (10x faster installs)
-- `install.sh --use-uv` flag with auto-install of uv
-- `bootstrap_windows.py` auto-detects and prefers uv
-- Command abstraction for both pip and uv backends
-- 36 tests
-
-**GDPR Compliance Toolkit** (`security/gdpr.py`)
-- Data Processing Log per Art. 30 (who, what, when, why, legal basis)
-- Model Usage Records (LLM invocation tracking with PII flags)
-- 6 default retention policies with configurable enforcement
-- Right-to-Erasure (Art. 17) with pluggable external handlers
-- Data Subject Access Reports (Art. 15)
-- Audit export as JSON + Markdown
-- GDPRComplianceManager orchestrating all functions
-- 49 tests
+**Security & Performance Hardening**
+- Path traversal prevention in vault.py, memory_server.py, code_tools.py
+- run_python Gatekeeper bypass protection (14 pattern regex)
+- WebSocket authentication with token validation
+- ModelRouter race condition fix (ContextVar per-task isolation)
+- Embedding memory optimization (batched SQL queries)
+- Graph traversal cycle guard (iterative BFS)
+- Blocking I/O elimination (WAL mode, buffered audit, run_in_executor)
+- CircuitBreaker HALF_OPEN race fix with inflight counter
+- Unicode normalization (NFKC) + zero-width stripping for injection defense
+- HMAC-based vault key derivation (replaces simple concatenation)
+- 3 new credential masking patterns (AWS AKIA, PEM keys, generic secrets)
+- Atomic policy rollback with backup/restore mechanism
+- Thread-safe session store with double-check locking
+- SQLite synchronous=NORMAL for WAL mode performance
 
 ### Changed
-- Version: 1.0.0 → **1.1.0**
-- Test count: 8,411 → **9,251** (+840 new tests across 15 new test files)
-- `install.sh`: Added `--use-uv` flag, `detect_installer()` function, uv-aware venv creation
-- `bootstrap_windows.py`: Added `_detect_python_installer()` with uv fast-path
-- LOC source: ~98,000 → ~106,000
-- LOC tests: ~80,000 → ~90,000
-
----
-
-## [1.0.0] – 2026-03-04
-
-### 🎉 Major Release — Chat, Voice Mode, TTS
-
-Cognithor graduates from beta to **v1.0.0**. This release adds a fully integrated chat experience
-with voice conversation mode, German TTS, and natural language responses — completing the
-transition from a CLI-first tool to a full Agent OS.
-
-### Added
-
-**Chat-Seite im Control Center**
-- **ChatPage** (`ui/src/pages/ChatPage.jsx`) — Full chat integration in the React UI with WebSocket streaming, auto-scroll, session management
-- **MessageList** (`ui/src/components/chat/MessageList.jsx`) — Threaded message display with Markdown rendering, timestamps, sender avatars
-- **ChatInput** (`ui/src/components/chat/ChatInput.jsx`) — Rich input bar with send button, Enter-to-submit, multiline support
-- **ChatCanvas** (`ui/src/components/chat/ChatCanvas.jsx`) — Side panel for canvas artifacts (code, tables, diagrams)
-- **ToolIndicator** (`ui/src/components/chat/ToolIndicator.jsx`) — Real-time tool execution indicators during agent processing
-- **ApprovalBanner** (`ui/src/components/chat/ApprovalBanner.jsx`) — Inline approval/deny banner for ORANGE-risk actions
-- **useJarvisChat** (`ui/src/hooks/useJarvisChat.js`) — React hook for WebSocket connection, message state, streaming
-- Chat is now the default start page in the Control Center
-
-**Voice Mode**
-- **VoiceIndicator** (`ui/src/components/chat/VoiceIndicator.jsx`) — Visual feedback for listening/speaking/processing states
-- **useVoiceMode** (`ui/src/hooks/useVoiceMode.js`) — React hook for wake word detection, STT, TTS playback
-- **Wake Word** — "Jarvis" detection with Levenshtein distance + phonetic normalization for robust matching despite Chrome STT errors
-- **Konversationsmodus** — Continuous listening after wake word until "Jarvis Ende" dismissal
-- **TTS-Wiedergabe** — Automatic text-to-speech playback of agent responses in voice mode
-
-**Piper TTS (Thorsten Emotional)**
-- German speech synthesis with `de_DE-thorsten_emotional-medium` voice model
-- Multi-speaker support for future voice variants
-- Automatic model download on first use (~80 MB)
-
-**Natürliche Sprache**
-- System prompt tuned for spoken, human responses (no bullet points, flowing sentences)
-- Adapted `formulate_response()` in Planner for voice-optimized output
-
-### Changed
-- 16 existing files modified (planner.py, config.py, __main__.py, CognithorControlCenter.jsx, vite.config.js, gateway.py, executor.py, telegram.py, indexer.py, memory manager, search, ttl_dict, bootstrap_windows.py, icons.jsx, test_search_coverage.py, pyproject.toml)
-- ~776 lines added, ~118 removed
-- Version: 0.26.6 → **1.0.0**
-- Development Status: Beta → **Production/Stable**
+- **Beta/Experimental label** — README clearly marks Cognithor as Beta (#4)
+- **Internationalization (i18n)** — Error messages support English via `JARVIS_LANGUAGE=en` (#4)
+- **Status & Maturity** — README includes component maturity matrix (#4)
+- **Shutdown audit** — Gatekeeper registers `atexit` handler for audit buffer flush
+- **ContextVar propagation** — Fixed redundant set_coding_override() in create_task()
+- Test count: 4,879 → **9,357** (+4,478 tests across all features)
+- LOC source: ~53,000 → ~106,000
+- LOC tests: ~56,000 → ~90,000
 
 ---
 

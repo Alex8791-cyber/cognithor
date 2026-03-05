@@ -33,7 +33,7 @@ from rich.table import Table
 from rich.text import Text
 
 # -- Globals ---------------------------------------------------------------
-VERSION = "1.0.0"
+VERSION = "0.26.6"
 FAST = "--fast" in sys.argv
 _FORCE = bool(os.environ.get("FORCE_COLOR"))
 console = Console(

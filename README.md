@@ -12,14 +12,14 @@
   <p align="center">
     <img src="https://img.shields.io/badge/status-Beta%20%2F%20Experimental-orange?style=flat-square" alt="Status: Beta">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-9%2C356%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-9%2C357%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/lint-0%20errors-brightgreen?style=flat-square" alt="Lint"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   </p>
 </p>
 
-> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (9,356 tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
+> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (9,357 tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
 
 ---
 
@@ -27,7 +27,7 @@
 
 - **Your data never leaves your machine.** Runs 100% locally with Ollama or LM Studio — no cloud, no API keys required, full GDPR compliance. Cloud providers are optional, not mandatory.
 - **One system, not twenty tools.** 17 channels, 18+ MCP tool servers, 5-tier memory, knowledge vault, cron, voice, browser automation, distributed locking, durable message queues — integrated from day one. No glue code, no plugin hell.
-- **Extensively tested.** 9,356 tests, 89% coverage, 4-level sandbox, SHA-256 audit chain, runtime token encryption, Prometheus metrics, and multiple deployment options from one-click Windows launcher to Docker Compose to bare-metal servers. See [Status & Maturity](#status--maturity) for what this does and does not guarantee.
+- **Extensively tested.** 9,357 tests, 89% coverage, 4-level sandbox, SHA-256 audit chain, runtime token encryption, Prometheus metrics, and multiple deployment options from one-click Windows launcher to Docker Compose to bare-metal servers. See [Status & Maturity](#status--maturity) for what this does and does not guarantee.
 
 ---
 
@@ -47,7 +47,7 @@
 | **Deployment (Docker, bare-metal)** | Beta — tested on limited configurations |
 | **Enterprise features** (GDPR, A2A, Governance) | Alpha — implemented but not audited for compliance |
 
-**What the test suite covers:** Unit tests, integration tests, and mocked end-to-end tests for all modules. The 9,356 tests verify code correctness in controlled environments.
+**What the test suite covers:** Unit tests, integration tests, and mocked end-to-end tests for all modules. The 9,357 tests verify code correctness in controlled environments.
 
 **What the test suite does NOT cover:** Real-world deployment scenarios, network edge cases, long-running stability, multi-user load, hardware-specific voice/GPU issues, or actual LLM response quality.
 
@@ -92,38 +92,30 @@
 
 ## What's New
 
-### v1.2.0 — Security & Performance Hardening (10 Fixes)
+### v0.26.6 — Chat, Voice, Agent Infrastructure & Security Hardening
 
-Focused on hardening and correctness: path traversal prevention, gatekeeper bypass protection, WebSocket auth, race condition fixes, memory optimization, and blocking I/O elimination. **107 new tests** (9,356 total). See [CHANGELOG.md](CHANGELOG.md) for full details.
+This release brings Cognithor from a CLI-first tool to a full Agent OS with integrated chat, voice mode, 15 new enterprise subsystems, and deep security hardening. **9,357 tests** with 0 failures.
 
-### v1.1.0 — Agent Infrastructure (15 New Subsystems)
-
-Major infrastructure release adding **840 new tests** (9,251 total) and 15 enterprise-grade subsystems:
-
-- **DAG Workflow Engine** — Directed Acyclic Graph execution with parallel branches, conditional edges, cycle detection
-- **Distributed Worker Runtime** — Capability-based job routing (4 strategies), health monitoring, failover with dead-letter queue
-- **Multi-Agent Collaboration** — Debate, voting, and pipeline patterns for agent teams
-- **Policy-as-Code Governance** — Versioned policy store with simulation, rollback, and audit trail
-- **Tool Sandbox Hardening** — Per-tool resource limits, network guards, 8-category escape detection
-- **GDPR Compliance Toolkit** — Data processing logs (Art. 30), retention enforcement, right-to-erasure (Art. 17), audit export
-- **Agent Benchmark Suite** — 14 tasks across 7 categories, composite scoring, regression detection
-- **Deterministic Replay** — Record and replay agent executions with what-if analysis
-- **Plugin Marketplace Remote Registry** — Remote manifests, dependency resolution, install/update/rollback
-- **Agent SDK** — Decorator-based agent registration, scaffolding, capability discovery
-- **Knowledge Graph Layer** — NER, entity deduplication, graph visualization
-- **Memory Consolidation** — Importance scoring, deduplication, configurable retention
-- **Execution Graph UI** — Real-time visualization data with Mermaid export
-- **Agent Delegation Engine** — Typed contracts with SLA guarantees
-- **Installer Modernization** — uv auto-detection (10x faster installs), `--use-uv` flag
-
-### v1.0.0 — Chat, Voice Mode, TTS (Major Release)
-
+**Chat & Voice**
 - **Integrated Chat** — Full chat page in the Control Center with WebSocket streaming, tool indicators, canvas panel, approval banners
-- **Voice Mode** — Wake word ("Jarvis") with Levenshtein + phonetic matching, Konversationsmodus
+- **Voice Mode** — Wake word ("Jarvis") with Levenshtein + phonetic matching, Konversationsmodus (continuous listening)
 - **Piper TTS (Thorsten Emotional)** — German speech synthesis, automatic model download
 - **Natural Language Responses** — System prompt for spoken, human responses
 
-### Previous Releases (v0.26.x)
+**Agent Infrastructure (15 Subsystems)**
+- DAG Workflow Engine, Distributed Worker Runtime, Multi-Agent Collaboration (debate/voting/pipeline)
+- Policy-as-Code Governance, Tool Sandbox Hardening, GDPR Compliance Toolkit
+- Agent Benchmark Suite, Deterministic Replay, Plugin Marketplace Remote Registry
+- Agent SDK, Knowledge Graph Layer, Memory Consolidation, Execution Graph UI
+- Agent Delegation Engine, Installer Modernization (uv support)
+
+**Security & Performance Hardening**
+- Path traversal prevention, Gatekeeper bypass protection, WebSocket authentication
+- Race condition fixes (ContextVar, CircuitBreaker), memory optimization, blocking I/O elimination
+- Unicode normalization for prompt injection defense, HMAC-based vault key derivation
+- Credential pattern masking (AWS, PEM, generic secrets), atomic policy rollback
+
+**Previous Releases (v0.26.0–v0.26.5)**
 
 - **v0.26.5** — Human Feel: Personality Engine, sentiment detection, user preferences, status callbacks, friendly error messages
 - **v0.26.4** — Coverage & Skills: 255 new tests, BaseSkill, skill package init
@@ -172,7 +164,7 @@ Major infrastructure release adding **840 new tests** (9,251 total) and 15 enter
 - **Agent SDK** — Decorator-based agent registration (`@agent`, `@tool`, `@hook`), project scaffolding
 - **Plugin Remote Registry** — Remote manifests with SHA-256 checksums, dependency resolution, install/update/rollback
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
-- **9,356 tests** · **89% coverage** · **0 lint errors**
+- **9,357 tests** · **89% coverage** · **0 lint errors**
 
 ## Architecture
 
@@ -548,7 +540,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **9,356 tests** · **100% pass rate** · **89% coverage** · **~106,000 LOC source** · **~90,000 LOC tests**
+Current status: **9,357 tests** · **100% pass rate** · **89% coverage** · **~106,000 LOC source** · **~90,000 LOC tests**
 
 | Area | Tests | Description |
 |------|-------|-------------|
@@ -684,7 +676,7 @@ cognithor/
 │       │   └── useVoiceMode.js    # Voice mode hook (wake word, STT, TTS)
 │       ├── App.jsx                # App shell
 │       └── main.jsx               # React entry
-├── tests/                         # 9,356 tests, ~90,000 LOC
+├── tests/                         # 9,357 tests, ~90,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
 │   ├── test_mcp/                  # MCP tools and client
@@ -842,7 +834,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 
 ---
 
-**Metrics:** ~106,000 LOC source · ~90,000 LOC tests · 9,356 tests · 89% coverage · 0 lint errors · **Status: Beta**
+**Metrics:** ~106,000 LOC source · ~90,000 LOC tests · 9,357 tests · 89% coverage · 0 lint errors · **Status: Beta**
 
 ## License
 

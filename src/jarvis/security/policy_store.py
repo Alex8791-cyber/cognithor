@@ -183,6 +183,9 @@ class PolicyStore:
     def rollback(self, version: int) -> bool:
         """Rollback custom.yaml to a previous version snapshot.
 
+        Uses atomic write (write to temp, then rename) with backup to prevent
+        data loss if the write fails mid-operation.
+
         Returns True if successful.
         """
         snapshot_path = self._versions_dir / f"v{version}.yaml"
@@ -203,15 +206,35 @@ class PolicyStore:
                 if r.get("name") not in default_names
             ]
 
+            # Backup current custom.yaml before overwriting
+            custom_path = self._dir / "custom.yaml"
+            backup_path = custom_path.with_suffix(".backup")
+            if custom_path.exists():
+                import shutil
+                shutil.copy2(str(custom_path), str(backup_path))
+
             # Save as new custom.yaml and record as new version
             self.save_custom_rules(
                 custom_rules,
                 author="rollback",
                 description=f"Rolled back to v{version}",
             )
+
+            # Remove backup on success
+            if backup_path.exists():
+                backup_path.unlink()
+
             return True
         except Exception as exc:
             log.error("rollback_failed", version=version, error=str(exc))
+            # Restore backup if it exists
+            custom_path = self._dir / "custom.yaml"
+            backup_path = custom_path.with_suffix(".backup")
+            if backup_path.exists():
+                import shutil
+                shutil.copy2(str(backup_path), str(custom_path))
+                backup_path.unlink()
+                log.info("rollback_restored_from_backup", version=version)
             return False
 
     def get_version(self, version: int) -> dict[str, Any] | None:

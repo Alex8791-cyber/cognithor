@@ -6,7 +6,7 @@ Append-only: Einträge werden nie geändert, nur hinzugefügt.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 
@@ -98,8 +98,6 @@ class EpisodicMemory:
         Returns:
             Liste von (datum, inhalt) Tupeln, neueste zuerst.
         """
-        from datetime import timedelta
-
         results: list[tuple[date, str]] = []
         today = date.today()
 
@@ -148,8 +146,6 @@ class EpisodicMemory:
         Returns:
             Anzahl der gelöschten Dateien.
         """
-        from datetime import date, timedelta
-
         if retention_days <= 0:
             return 0
         if not self._dir.exists():

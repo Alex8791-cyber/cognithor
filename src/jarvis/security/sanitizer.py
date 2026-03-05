@@ -169,7 +169,14 @@ class InputSanitizer:
             )
 
         found_patterns: list[str] = []
-        sanitized = text
+
+        # 0. Unicode normalization — prevents bypass via zero-width chars,
+        #    homoglyphs, and NFKD decomposition tricks
+        import unicodedata
+        sanitized = unicodedata.normalize("NFKC", text)
+        # Strip zero-width characters that could hide injection payloads
+        sanitized = sanitized.replace("\u200b", "").replace("\u200c", "").replace(
+            "\u200d", "").replace("\ufeff", "").replace("\u00ad", "")
 
         # 1. Injection-Patterns prüfen
         for ip in self._patterns:

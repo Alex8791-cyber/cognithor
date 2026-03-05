@@ -43,8 +43,10 @@ class SecureTokenStore:
             self._fernet = Fernet(Fernet.generate_key())
         else:
             self._fernet = None
-            logger.warning(
-                "cryptography nicht installiert -- Token-Store nutzt Base64-Fallback. "
+            logger.error(
+                "SECURITY DEGRADATION: cryptography nicht installiert -- "
+                "Token-Store nutzt Base64-Fallback (NICHT verschlüsselt!). "
+                "Tokens sind im RAM als Klartext les­bar. "
                 "Installiere mit: pip install cryptography"
             )
         self._tokens: dict[str, bytes] = {}  # name → ciphertext/encoded
