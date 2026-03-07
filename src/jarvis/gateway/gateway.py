@@ -822,7 +822,7 @@ class Gateway:
                             ms=f"{ctx_result.duration_ms:.1f}",
                         )
                 except Exception:
-                    log.debug("context_pipeline_failed", exc_info=True)
+                    log.warning("context_pipeline_failed", exc_info=True)
 
         async def _run_coding_classification():
             _is_coding = False
@@ -899,21 +899,47 @@ class Gateway:
         all_plans: list[ActionPlan] = []
         all_audit: list[AuditEntry] = []
 
-        if presearch_results:
-            # Direktantwort aus Suchergebnissen generieren (PGE-Bypass)
-            final_response = await self._answer_from_presearch(msg.text, presearch_results)
-            if final_response:
-                log.info("presearch_bypass_used", response_chars=len(final_response))
+        # Hilfsfunktion: ToolEnforcer-State sicher aufraemen
+        def _cleanup_skill_state() -> None:
+            """Setzt active_skill und ToolEnforcer Call-Counter zurueck."""
+            if hasattr(self._gatekeeper, "set_active_skill"):
+                self._gatekeeper.set_active_skill(None)
+            if (
+                active_skill is not None
+                and hasattr(self._gatekeeper, "_tool_enforcer")
+                and self._gatekeeper._tool_enforcer is not None
+                and hasattr(active_skill, "skill")
+                and active_skill.skill is not None
+            ):
+                self._gatekeeper._tool_enforcer.reset_call_count(active_skill.skill.slug)
+
+        try:
+            if presearch_results:
+                # Direktantwort aus Suchergebnissen generieren (PGE-Bypass)
+                final_response = await self._answer_from_presearch(msg.text, presearch_results)
+                if not final_response:
+                    # Fallback: normaler PGE-Loop wenn Antwort-Generierung fehlschlug
+                    if active_skill is not None and hasattr(self._gatekeeper, "set_active_skill"):
+                        self._gatekeeper.set_active_skill(
+                            active_skill.skill if hasattr(active_skill, "skill") else None,
+                        )
+                    final_response, all_results, all_plans, all_audit = await self._run_pge_loop(
+                        msg, session, wm, tool_schemas, route_decision, agent_workspace, run_id,
+                    )
+                else:
+                    log.info("presearch_bypass_used", response_chars=len(final_response))
             else:
-                # Fallback: normaler PGE-Loop wenn Antwort-Generierung fehlschlug
+                # Phase 3: PGE-Loop (regulaerer Ablauf)
+                # Community-Skill ToolEnforcer: Aktiven Skill an Gatekeeper weiterreichen
+                if active_skill is not None and hasattr(self._gatekeeper, "set_active_skill"):
+                    self._gatekeeper.set_active_skill(
+                        active_skill.skill if hasattr(active_skill, "skill") else None,
+                    )
                 final_response, all_results, all_plans, all_audit = await self._run_pge_loop(
                     msg, session, wm, tool_schemas, route_decision, agent_workspace, run_id,
                 )
-        else:
-            # Phase 3: PGE-Loop (regulärer Ablauf)
-            final_response, all_results, all_plans, all_audit = await self._run_pge_loop(
-                msg, session, wm, tool_schemas, route_decision, agent_workspace, run_id,
-            )
+        finally:
+            _cleanup_skill_state()
 
         # Coding-Override aufraeumen
         if self._model_router:
@@ -1322,12 +1348,23 @@ class Gateway:
             has_errors = any(r.is_error for r in results)
             has_success = any(r.success for r in results)
 
+            # Pruefen ob der Plan MEHRERE Schritte hatte (Multi-Step-Task)
+            _current_plan = all_plans[-1] if all_plans else None
+            _is_multi_step = (
+                _current_plan is not None
+                and hasattr(_current_plan, "steps")
+                and len(_current_plan.steps) > 1
+            )
+
             # Coding-Tools: Nicht sofort breaken -- Replan entscheidet
-            # ob weitere Schritte nötig sind (Code testen, analysieren, fixen)
+            # ob weitere Schritte noetig sind (Code testen, analysieren, fixen)
             _CODING_TOOLS = {"run_python", "exec_command", "write_file", "edit_file", "analyze_code"}
             used_coding_tool = any(r.tool_name in _CODING_TOOLS for r in results)
 
-            if has_success and not has_errors and not used_coding_tool:
+            # Multi-Step-Tasks: Nicht nach erstem Erfolg abbrechen, sondern
+            # Replan aufrufen um naechste Schritte zu planen.
+            # Nur bei Single-Step-Tasks (z.B. einfache Suche) sofort antworten.
+            if has_success and not has_errors and not used_coding_tool and not _is_multi_step:
                 await _status_cb("finishing", "Formuliere Antwort...")
                 final_response = await self._planner.formulate_response(
                     user_message=msg.text,
@@ -1336,7 +1373,10 @@ class Gateway:
                 )
                 break
 
-            if not has_success and session.iteration_count >= 5:
+            # Failure-Threshold: Erst bei Haelfte der max_iterations aufgeben,
+            # nicht schon nach 5 (gibt dem Planner Raum fuer Alternativstrategien)
+            _failure_threshold = max(5, session.max_iterations // 2)
+            if not has_success and session.iteration_count >= _failure_threshold:
                 await _status_cb("finishing", "Formuliere Antwort...")
                 final_response = await self._planner.formulate_response(
                     user_message=msg.text,
@@ -1830,8 +1870,9 @@ class Gateway:
 
     # Begriffe die KEINE Faktenfrage signalisieren (Smalltalk, Meinungen)
     _SKIP_PRESEARCH_PATTERNS: list[re.Pattern[str]] = [
-        re.compile(r"\b(meinst du|findest du|was denkst du|erkläre mir|was ist ein|definier)\b", re.IGNORECASE),
-        re.compile(r"\b(schreib|erstell|generier|mach|öffne|lösch|speicher|such im memory)\b", re.IGNORECASE),
+        re.compile(r"\b(meinst du|findest du|was denkst du|erkläre mir|was ist ein|definier)", re.IGNORECASE),
+        # Trailing \b entfernt: "erstell" muss auch "erstelle/erstellst/erstellen" matchen
+        re.compile(r"\b(schreib|erstell|generier|mach|öffne|lösch|speicher|such im memory)", re.IGNORECASE),
     ]
 
     def _is_fact_question(self, text: str) -> bool:
@@ -2006,13 +2047,13 @@ class Gateway:
 
             if result_text and _PRESEARCH_NO_RESULTS not in result_text and _PRESEARCH_NO_ENGINE not in result_text:
                 log.info("presearch_found", chars=len(result_text))
-                return result_text[:4000]
+                return result_text[:8000]
             else:
-                log.debug("presearch_no_results", query=query[:80])
+                log.info("presearch_no_results", query=query[:80])
                 return None
 
         except Exception as exc:
-            log.debug("presearch_failed", error=str(exc)[:200])
+            log.warning("presearch_failed", error=str(exc)[:200])
             return None
 
     async def _answer_from_presearch(self, user_message: str, search_results: str) -> str:

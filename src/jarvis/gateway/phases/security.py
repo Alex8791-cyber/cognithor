@@ -180,4 +180,15 @@ async def init_security(config: Any, llm_backend: Any = None) -> PhaseResult:
     gatekeeper.initialize()
     result["gatekeeper"] = gatekeeper
 
+    # Community-Skill ToolEnforcer
+    try:
+        from jarvis.skills.community.tool_enforcer import ToolEnforcer
+        cm_config = getattr(config, "community_marketplace", None)
+        max_calls = getattr(cm_config, "max_tool_calls_default", 10) if cm_config else 10
+        tool_enforcer = ToolEnforcer(max_tool_calls=max_calls)
+        result["tool_enforcer"] = tool_enforcer
+        log.info("community_tool_enforcer_initialized", max_tool_calls=max_calls)
+    except Exception:
+        log.debug("community_tool_enforcer_init_skipped", exc_info=True)
+
     return result

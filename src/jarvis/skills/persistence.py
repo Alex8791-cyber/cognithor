@@ -107,6 +107,42 @@ CREATE INDEX IF NOT EXISTS idx_listings_recalled
     ON listings(recalled) WHERE recalled = 1;
 """
 
+_MIGRATION_COMMUNITY = """\
+-- source-Spalte fuer Listings (builtin vs community)
+ALTER TABLE listings ADD COLUMN source TEXT NOT NULL DEFAULT 'builtin';
+
+CREATE INDEX IF NOT EXISTS idx_listings_source
+    ON listings(source) WHERE source IS NOT NULL;
+
+-- Publisher-Tabelle fuer Community-Marketplace
+CREATE TABLE IF NOT EXISTS publishers (
+    github_username TEXT PRIMARY KEY,
+    github_id       INTEGER NOT NULL DEFAULT 0,
+    display_name    TEXT NOT NULL DEFAULT '',
+    verified        INTEGER NOT NULL DEFAULT 0,
+    reputation_score REAL NOT NULL DEFAULT 50.0,
+    trust_level     TEXT NOT NULL DEFAULT 'untrusted',
+    skills_published INTEGER NOT NULL DEFAULT 0,
+    abuse_reports   INTEGER NOT NULL DEFAULT 0,
+    recalls         INTEGER NOT NULL DEFAULT 0,
+    registered_at   REAL NOT NULL,
+    updated_at      REAL NOT NULL
+);
+
+-- Remote-Recalls fuer Community-Skills
+CREATE TABLE IF NOT EXISTS recalls_remote (
+    recall_id       TEXT PRIMARY KEY,
+    skill_name      TEXT NOT NULL,
+    reason          TEXT NOT NULL DEFAULT '',
+    severity        TEXT NOT NULL DEFAULT 'high',
+    issued_at       REAL NOT NULL,
+    fetched_at      REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_recalls_remote_skill
+    ON recalls_remote(skill_name);
+"""
+
 
 def _now() -> float:
     """Current UTC timestamp as float."""
@@ -147,6 +183,7 @@ class MarketplaceStore:
             self._conn.execute("PRAGMA busy_timeout=5000")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(_SCHEMA)
+            self._migrate_community()
             log.info("marketplace_db_opened", path=str(self._db_path))
         return self._conn
 
@@ -581,6 +618,178 @@ class MarketplaceStore:
     # Internals
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # Community-Migration
+    # ------------------------------------------------------------------
+
+    def _migrate_community(self) -> None:
+        """Fuehrt Community-Marketplace-Migrationen durch (idempotent)."""
+        assert self._conn is not None
+        c = self._conn
+
+        # source-Spalte hinzufuegen (idempotent check)
+        cols = {
+            r[1] for r in c.execute("PRAGMA table_info(listings)").fetchall()
+        }
+        if "source" not in cols:
+            try:
+                c.executescript(_MIGRATION_COMMUNITY)
+                log.info("community_migration_applied")
+            except sqlite3.OperationalError as exc:
+                # Tabellen existieren bereits — ignorieren
+                if "already exists" not in str(exc) and "duplicate column" not in str(exc):
+                    log.warning("community_migration_warning", error=str(exc))
+        else:
+            # Sicherstellen dass publishers + recalls_remote existieren
+            try:
+                c.executescript(
+                    _MIGRATION_COMMUNITY.split("ALTER TABLE")[0]
+                    + """
+                    CREATE TABLE IF NOT EXISTS publishers (
+                        github_username TEXT PRIMARY KEY,
+                        github_id       INTEGER NOT NULL DEFAULT 0,
+                        display_name    TEXT NOT NULL DEFAULT '',
+                        verified        INTEGER NOT NULL DEFAULT 0,
+                        reputation_score REAL NOT NULL DEFAULT 50.0,
+                        trust_level     TEXT NOT NULL DEFAULT 'untrusted',
+                        skills_published INTEGER NOT NULL DEFAULT 0,
+                        abuse_reports   INTEGER NOT NULL DEFAULT 0,
+                        recalls         INTEGER NOT NULL DEFAULT 0,
+                        registered_at   REAL NOT NULL DEFAULT 0,
+                        updated_at      REAL NOT NULL DEFAULT 0
+                    );
+                    CREATE TABLE IF NOT EXISTS recalls_remote (
+                        recall_id       TEXT PRIMARY KEY,
+                        skill_name      TEXT NOT NULL,
+                        reason          TEXT NOT NULL DEFAULT '',
+                        severity        TEXT NOT NULL DEFAULT 'high',
+                        issued_at       REAL NOT NULL,
+                        fetched_at      REAL NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_recalls_remote_skill
+                        ON recalls_remote(skill_name);
+                    """
+                )
+            except sqlite3.OperationalError:
+                pass
+
+    # ------------------------------------------------------------------
+    # Publishers
+    # ------------------------------------------------------------------
+
+    def save_publisher(self, publisher: dict) -> str:
+        """Speichert oder aktualisiert einen Publisher.
+
+        Returns:
+            github_username des Publishers.
+        """
+        now = _now()
+        username = publisher.get("github_username", "")
+        self.conn.execute(
+            """
+            INSERT INTO publishers
+                (github_username, github_id, display_name, verified,
+                 reputation_score, trust_level, skills_published,
+                 abuse_reports, recalls, registered_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(github_username) DO UPDATE SET
+                github_id=excluded.github_id,
+                display_name=excluded.display_name,
+                verified=excluded.verified,
+                reputation_score=excluded.reputation_score,
+                trust_level=excluded.trust_level,
+                skills_published=excluded.skills_published,
+                abuse_reports=excluded.abuse_reports,
+                recalls=excluded.recalls,
+                updated_at=excluded.updated_at
+            """,
+            (
+                username,
+                publisher.get("github_id", 0),
+                publisher.get("display_name", ""),
+                int(publisher.get("verified", False)),
+                publisher.get("reputation_score", 50.0),
+                publisher.get("trust_level", "untrusted"),
+                publisher.get("skills_published", 0),
+                publisher.get("abuse_reports", 0),
+                publisher.get("recalls", 0),
+                publisher.get("registered_at", now),
+                now,
+            ),
+        )
+        self.conn.commit()
+        return username
+
+    def get_publisher(self, github_username: str) -> dict | None:
+        """Laedt einen Publisher."""
+        row = self.conn.execute(
+            "SELECT * FROM publishers WHERE github_username = ?",
+            (github_username,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "github_username": row["github_username"],
+            "github_id": row["github_id"],
+            "display_name": row["display_name"],
+            "verified": bool(row["verified"]),
+            "reputation_score": row["reputation_score"],
+            "trust_level": row["trust_level"],
+            "skills_published": row["skills_published"],
+            "abuse_reports": row["abuse_reports"],
+            "recalls": row["recalls"],
+            "registered_at": _iso(row["registered_at"]) if row["registered_at"] else "",
+            "updated_at": _iso(row["updated_at"]) if row["updated_at"] else "",
+        }
+
+    # ------------------------------------------------------------------
+    # Remote Recalls
+    # ------------------------------------------------------------------
+
+    def save_remote_recall(self, recall: dict) -> None:
+        """Speichert einen Remote-Recall."""
+        self.conn.execute(
+            """
+            INSERT OR REPLACE INTO recalls_remote
+                (recall_id, skill_name, reason, severity, issued_at, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                recall.get("recall_id", str(uuid.uuid4())),
+                recall.get("skill_name", ""),
+                recall.get("reason", ""),
+                recall.get("severity", "high"),
+                recall.get("issued_at", _now()),
+                _now(),
+            ),
+        )
+        self.conn.commit()
+
+    def get_remote_recalls(self) -> list[dict]:
+        """Gibt alle Remote-Recalls zurueck."""
+        rows = self.conn.execute(
+            "SELECT * FROM recalls_remote ORDER BY issued_at DESC",
+        ).fetchall()
+        return [
+            {
+                "recall_id": r["recall_id"],
+                "skill_name": r["skill_name"],
+                "reason": r["reason"],
+                "severity": r["severity"],
+                "issued_at": _iso(r["issued_at"]),
+                "fetched_at": _iso(r["fetched_at"]),
+            }
+            for r in rows
+        ]
+
+    def is_skill_recalled_remote(self, skill_name: str) -> bool:
+        """Prueft ob ein Skill remote recalled ist."""
+        row = self.conn.execute(
+            "SELECT 1 FROM recalls_remote WHERE skill_name = ? LIMIT 1",
+            (skill_name,),
+        ).fetchone()
+        return row is not None
+
     @staticmethod
     def _row_to_listing(row: sqlite3.Row) -> dict:
         """Konvertiert eine DB-Row in ein Listing-Dict."""
@@ -615,4 +824,5 @@ class MarketplaceStore:
             "featured_reason": row["featured_reason"],
             "recalled": bool(row["recalled"]),
             "recall_reason": row["recall_reason"],
+            "source": row["source"] if "source" in row.keys() else "builtin",
         }

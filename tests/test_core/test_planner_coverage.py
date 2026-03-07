@@ -426,7 +426,12 @@ class TestFormulateResponseExtended:
             working_memory=wm,
         )
         assert isinstance(response, str)
-        assert "nicht zusammenfassen" in response or "erneut" in response
+        # Nach Retry-Logik: Rohergebnisse als Fallback oder Fehlermeldung
+        assert (
+            "Ergebnisse" in response
+            or "nicht zusammenfassen" in response
+            or "erneut" in response
+        )
 
     @pytest.mark.asyncio
     async def test_formulate_with_core_memory(self, config: JarvisConfig) -> None:

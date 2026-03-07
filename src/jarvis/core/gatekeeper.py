@@ -43,6 +43,7 @@ from jarvis.utils.logging import get_logger
 if TYPE_CHECKING:
     from jarvis.audit import AuditLogger
     from jarvis.config import JarvisConfig
+    from jarvis.skills.registry import Skill
 
 log = get_logger(__name__)
 
@@ -109,6 +110,17 @@ class Gatekeeper:
         except Exception:
             pass
 
+        # Community-Skill ToolEnforcer
+        self._tool_enforcer: Any = None
+        try:
+            from jarvis.skills.community.tool_enforcer import ToolEnforcer
+            self._tool_enforcer = ToolEnforcer()
+        except Exception:
+            pass
+
+        # Aktiver Community-Skill (wird pro evaluate()-Aufruf gesetzt)
+        self._active_skill: Skill | None = None
+
     def initialize(self) -> None:
         """Lädt Policies und kompiliert Regex-Patterns.
 
@@ -134,6 +146,14 @@ class Gatekeeper:
         self._allowed_paths = [
             Path(p).expanduser().resolve() for p in self._config.security.allowed_paths
         ]
+
+        # Projekt-Verzeichnis automatisch hinzufuegen (allow_project_dir)
+        if getattr(self._config.security, "allow_project_dir", False):
+            project_dir = self._config.jarvis_home.parent
+            resolved = project_dir.resolve()
+            if resolved not in self._allowed_paths:
+                self._allowed_paths.append(resolved)
+                log.info("gatekeeper_project_dir_added", path=str(resolved))
 
         self._initialized = True
 
@@ -161,6 +181,15 @@ class Gatekeeper:
         """Ersetzt die Policy-Regeln (fuer Replay/Testing)."""
         self._policies = sorted(policies, key=lambda r: r.priority, reverse=True)
 
+    def set_active_skill(self, skill: Skill | None) -> None:
+        """Setzt den aktiven Skill fuer ToolEnforcer-Checks.
+
+        Wird vom Gateway/PGE-Loop aufgerufen, bevor Actions evaluiert
+        werden.  Wenn ein Community-Skill aktiv ist, werden nur die
+        in tools_required deklarierten Tools erlaubt.
+        """
+        self._active_skill = skill
+
     def evaluate(
         self,
         action: PlannedAction,
@@ -169,6 +198,7 @@ class Gatekeeper:
         """Prüft eine einzelne PlannedAction gegen alle Policies. [B§3.2]
 
         Reihenfolge der Prüfungen (first-match wins bei BLOCK):
+          0. ToolEnforcer (Community-Skills: nur tools_required)
           1. Credential-Scan → MASK wenn gefunden
           2. Explizite Policy-Regeln → Ergebnis der Regel
           3. Pfad-Validierung → BLOCK wenn außerhalb
@@ -184,6 +214,11 @@ class Gatekeeper:
         """
         if not self._initialized:
             self.initialize()
+
+        # --- Schritt -1: Community-Skill ToolEnforcer ---
+        skill_block = self._enforce_skill_tools(action, context)
+        if skill_block is not None:
+            return skill_block
 
         # --- Schritt 0: OperationMode-Enforcement ---
         if self._operation_mode == OperationMode.OFFLINE:
@@ -314,6 +349,42 @@ class Gatekeeper:
     # Private Methoden
     # =========================================================================
 
+    def _enforce_skill_tools(
+        self,
+        action: PlannedAction,
+        context: SessionContext,
+    ) -> GateDecision | None:
+        """Prueft ob ein Tool-Call fuer den aktiven Community-Skill erlaubt ist.
+
+        Wird VOR allen anderen Checks aufgerufen.  Wenn ein Community-Skill
+        aktiv ist und das Tool nicht in tools_required steht → BLOCK.
+
+        Returns:
+            GateDecision(BLOCK) wenn Tool nicht erlaubt, sonst None.
+        """
+        if self._tool_enforcer is None or self._active_skill is None:
+            return None
+
+        result = self._tool_enforcer.check(action, self._active_skill)
+        if not result.allowed:
+            decision = GateDecision(
+                status=GateStatus.BLOCK,
+                reason=f"ToolEnforcer: {result.reason}",
+                risk_level=RiskLevel.RED,
+                original_action=action,
+                policy_name="community_tool_enforcer",
+            )
+            self._write_audit(action, decision, context)
+            log.warning(
+                "community_tool_blocked",
+                tool=action.tool,
+                skill=result.skill_name,
+                declared_tools=result.declared_tools,
+            )
+            return decision
+
+        return None
+
     def _classify_risk(self, action: PlannedAction) -> RiskLevel:
         """Klassifiziert das Risiko einer Aktion nach Tool-Typ. [B§3.2]"""
         tool = action.tool.lower()
@@ -344,6 +415,7 @@ class Gatekeeper:
             "browse_screenshot",
             "analyze_code",
             "list_skills",
+            "search_community_skills",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
@@ -364,6 +436,8 @@ class Gatekeeper:
             "shell",
             "run_python",
             "create_skill",
+            "install_community_skill",
+            "report_skill",
         }
         if tool in yellow_tools:
             return RiskLevel.YELLOW
@@ -532,8 +606,16 @@ class Gatekeeper:
         (re.compile(r"\bos\.remove\s*\(", re.IGNORECASE), "os.remove()"),
         (re.compile(r"\bos\.unlink\s*\(", re.IGNORECASE), "os.unlink()"),
         (re.compile(r"\bos\.rmdir\s*\(", re.IGNORECASE), "os.rmdir()"),
-        # subprocess module
-        (re.compile(r"\bsubprocess\.", re.IGNORECASE), "subprocess"),
+        # subprocess — unsichere Varianten blockieren:
+        #   subprocess.Popen (Low-Level, schwer zu kontrollieren)
+        #   subprocess.call (Legacy, kein Timeout-Default)
+        #   subprocess.getoutput/getstatusoutput (Shell-Injection-Risiko)
+        # Sichere Varianten (subprocess.run, subprocess.check_output) sind erlaubt,
+        # da sie kontrollierter sind und bessere Defaults haben.
+        (re.compile(r"\bsubprocess\.Popen\s*\(", re.IGNORECASE), "subprocess.Popen()"),
+        (re.compile(r"\bsubprocess\.call\s*\(", re.IGNORECASE), "subprocess.call()"),
+        (re.compile(r"\bsubprocess\.getoutput\s*\(", re.IGNORECASE), "subprocess.getoutput()"),
+        (re.compile(r"\bsubprocess\.getstatusoutput\s*\(", re.IGNORECASE), "subprocess.getstatusoutput()"),
         # shutil destructive operations
         (re.compile(r"\bshutil\.rmtree\s*\(", re.IGNORECASE), "shutil.rmtree()"),
         (re.compile(r"\bshutil\.move\s*\(", re.IGNORECASE), "shutil.move()"),
@@ -545,8 +627,9 @@ class Gatekeeper:
         # Dangerous deserialization / native code
         (re.compile(r"\bpickle\.load", re.IGNORECASE), "pickle.load/loads()"),
         (re.compile(r"\bctypes\.", re.IGNORECASE), "ctypes"),
-        # Network access
-        (re.compile(r"\bsocket\.", re.IGNORECASE), "socket"),
+        # Network access (raw socket — urllib/aiohttp/requests sind erlaubt)
+        (re.compile(r"\bsocket\.socket\s*\(", re.IGNORECASE), "socket.socket()"),
+        (re.compile(r"\bsocket\.create_connection\s*\(", re.IGNORECASE), "socket.create_connection()"),
         # pathlib file deletion
         (re.compile(r"\.unlink\s*\(", re.IGNORECASE), "Path.unlink()"),
         # open() with write/append/create modes — match mode argument, not filename

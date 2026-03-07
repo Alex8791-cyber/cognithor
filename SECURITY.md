@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.26.x  | Yes       |
+| 0.27.x  | Yes       |
+| 0.26.x  | Security fixes only |
 | 0.22–0.25 | Security fixes only |
 | < 0.22  | No        |
 

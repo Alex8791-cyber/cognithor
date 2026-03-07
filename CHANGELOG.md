@@ -5,6 +5,56 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.27.1] – 2026-03-07
+
+### Community Skill Marketplace & Autonomy Hardening
+
+Introduces the Community Skill Marketplace with full trust chain, plus 13 autonomy fixes across the PGE loop.
+
+### Added
+
+- **Community Skill Marketplace** — Install, search, rate, and report community skills from a GitHub-hosted registry. Publisher verification with trust levels (unknown/community/verified/official). 5-check validation pipeline (syntax, injection, tools, safety, hash)
+- **ToolEnforcer** — Runtime tool-allowlist enforcement for community skills. Skills can only invoke tools declared in `tools_required`
+- **SkillValidator** — 5-stage validation: syntax check, prompt-injection scan, tool whitelist, safety audit, SHA-256 hash verification
+- **CommunityRegistryClient** — Async client for fetching, verifying, and installing skills from remote registries with aiohttp + urllib fallback
+- **RegistrySync** — Periodic background sync with recall checks for deactivated/recalled skills
+- **PublisherVerifier** — Publisher identity verification with 4 trust levels and GPG signature support
+- **Community REST API** — 5 endpoints: search, detail, install, report, publisher info (`/api/v1/skills/community/`)
+- **3 New MCP Tools** — `install_community_skill`, `search_community_skills`, `report_skill` (total: 5 in skill_tools.py)
+- **Thread-safe Caches** — `asyncio.Lock` protection on all community module caches (client, sync, publisher)
+- **aiohttp Fallback** — All HTTP clients gracefully fall back to `urllib` if aiohttp raises RuntimeError
+
+### Fixed
+
+- **Presearch Skip Patterns** — Removed trailing `\b` so "Erstelle/erstellst/erstellen" are recognized as action verbs (no longer misrouted to web search)
+- **subprocess Differentiation** — `subprocess.run()` and `subprocess.check_output()` now ALLOWED in run_python; `subprocess.Popen/call/getoutput/getstatusoutput` remain BLOCKED
+- **Socket Pattern Narrowing** — Changed from blanket `socket.` block to specific `socket.socket()` and `socket.create_connection()`
+- **Project Dir in allowed_paths** — `allow_project_dir: true` (default) auto-adds project root so Cognithor can write to its own codebase
+- **Multi-step Plan Early Exit** — PGE loop no longer breaks on first success for multi-step plans; coding tools always continue iteration
+- **Failure Threshold** — Smart exit at `max(5, max_iterations // 2)` consecutive failures instead of immediate abort
+- **Presearch Truncation** — Increased from 4000 to 8000 chars for better fact-question coverage
+- **Planner Circuit Breaker** — Tuned: `failure_threshold=3->5`, `recovery_timeout=30->15s`, `half_open_max_calls=1->2`
+- **Replan Retry** — 2 attempts with 1s pause before giving up on replan LLM calls
+- **formulate_response Fallback** — On LLM failure, returns raw tool results instead of empty error
+- **JSON Confidence** — Lowered from 0.8 to 0.5 for direct answers without JSON parsing
+- **try-finally Cleanup** — Skill state (ToolEnforcer, active_skill) cleaned up via single `_cleanup_skill_state()` in finally block
+- **Evidence Field Wiring** — Community skill reports now properly pass evidence to persistence layer
+- **API Error Handling** — All community endpoints wrapped in try-except with proper HTTPException and logging
+
+### Changed
+
+- `response_token_budget`: 3000 -> 4000
+- `memory_top_k`: 4 -> 8
+- `vault_top_k`: 3 -> 5
+- `max_context_chars`: 3000 -> 8000
+- `compaction_keep_last_n`: 4 -> 8
+- `budget_injected_memories`: 1500 -> 2500
+- Context pipeline failures now log as WARNING (was DEBUG)
+- Presearch failures now log as WARNING (was DEBUG)
+- Community skill exports: 13 public classes from `skills.community` package
+
+---
+
 ## [0.27.0] – 2026-03-07
 
 ### Installer & UX Overhaul

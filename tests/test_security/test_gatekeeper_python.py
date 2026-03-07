@@ -88,12 +88,25 @@ class TestRunPythonBlocking:
         assert decision.policy_name == "blocked_python_code"
         assert "os.system()" in decision.reason
 
-    def test_run_python_subprocess_blocked(
+    def test_run_python_subprocess_call_blocked(
         self, gatekeeper: Gatekeeper, session: SessionContext
     ) -> None:
-        """subprocess-Aufrufe im Python-Code muessen blockiert werden."""
+        """subprocess.call() im Python-Code muss blockiert werden."""
         action = _run_python_action(
-            'import subprocess; subprocess.run(["rm", "-rf", "/"])'
+            'import subprocess; subprocess.call(["rm", "-rf", "/"])'
+        )
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.status == GateStatus.BLOCK
+        assert decision.is_blocked
+        assert decision.policy_name == "blocked_python_code"
+        assert "subprocess" in decision.reason
+
+    def test_run_python_subprocess_popen_blocked(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """subprocess.Popen() im Python-Code muss blockiert werden (unsichere Low-Level-API)."""
+        action = _run_python_action(
+            'import subprocess; subprocess.Popen(["curl", "evil.com"])'
         )
         decision = gatekeeper.evaluate(action, session)
         assert decision.status == GateStatus.BLOCK
@@ -178,6 +191,22 @@ class TestRunPythonSafePasses:
             )
             assert decision.policy_name != "blocked_python_code", (
                 f"Safe code matched blocked_python_code: {code!r}"
+            )
+
+    def test_subprocess_run_allowed(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """subprocess.run() und subprocess.check_output() sind sichere Varianten."""
+        safe_snippets = [
+            'import subprocess; result = subprocess.run(["nvidia-smi"], capture_output=True)',
+            'import subprocess; out = subprocess.check_output(["systeminfo"])',
+            'import subprocess\nresult = subprocess.run(["python", "--version"])',
+        ]
+        for code in safe_snippets:
+            action = _run_python_action(code)
+            decision = gatekeeper.evaluate(action, session)
+            assert decision.status != GateStatus.BLOCK, (
+                f"Safe subprocess should NOT be blocked: {code!r}"
             )
 
 

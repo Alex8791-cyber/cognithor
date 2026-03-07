@@ -45,12 +45,31 @@ __all__ = [
     "SkillRegistry",
     "Skill",
     "SkillMatch",
+    "CommunitySkillManifest",
 ]
 
 
 # ============================================================================
 # Datenmodelle
 # ============================================================================
+
+
+@dataclass
+class CommunitySkillManifest:
+    """Maschinenlesbare Metadaten eines Community-Skills (manifest.json)."""
+
+    name: str = ""
+    version: str = "1.0.0"
+    description: str = ""
+    author_github: str = ""
+    license: str = "MIT"
+    category: str = "general"
+    trigger_keywords: list[str] = field(default_factory=list)
+    tools_required: list[str] = field(default_factory=list)
+    max_tool_calls: int = 10
+    content_hash: str = ""
+    min_jarvis_version: str = ""
+    security_scan: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -73,6 +92,12 @@ class Skill:
 
     # Inhalt (Markdown ohne Frontmatter)
     body: str = ""
+
+    # Herkunft: "builtin" (Standard) oder "community"
+    source: str = "builtin"
+
+    # Community-Manifest (nur wenn source == "community")
+    manifest: CommunitySkillManifest | None = None
 
     # Statistiken
     success_count: int = 0
@@ -168,6 +193,9 @@ class SkillRegistry:
                     except Exception as exc:
                         log.warning("p2p_skill_load_error", dir=str(sub_dir), error=str(exc))
 
+        # Community-Skills aus ~/.jarvis/skills/community/
+        count += self._load_community_skills(directories)
+
         self._rebuild_index()
         log.info(
             "skill_registry_loaded",
@@ -225,6 +253,91 @@ class SkillRegistry:
             avg_score=frontmatter.get("avg_score", 0.0),
             last_used=frontmatter.get("last_used"),
         )
+
+    def _load_community_skills(self, directories: list[Path]) -> int:
+        """Laedt Community-Skills aus ~/.jarvis/skills/community/.
+
+        Community-Skills haben:
+          - source="community"
+          - Ein optionales manifest.json neben der skill.md
+          - Strengere Sicherheitsanforderungen (ToolEnforcer)
+
+        Returns:
+            Anzahl geladener Community-Skills.
+        """
+        import json as _json
+
+        count = 0
+        for directory in directories:
+            community_dir = directory / "community"
+            if not community_dir.exists():
+                continue
+
+            for sub_dir in sorted(community_dir.iterdir()):
+                if not sub_dir.is_dir():
+                    continue
+                skill_md = sub_dir / "skill.md"
+                if not skill_md.exists():
+                    continue
+
+                try:
+                    skill = self._parse_skill_file(skill_md)
+                    if skill is None:
+                        continue
+
+                    # Community-Marker setzen
+                    skill.source = "community"
+
+                    # manifest.json laden (optional)
+                    manifest_path = sub_dir / "manifest.json"
+                    if manifest_path.exists():
+                        try:
+                            manifest_data = _json.loads(
+                                manifest_path.read_text(encoding="utf-8")
+                            )
+                            skill.manifest = CommunitySkillManifest(
+                                name=manifest_data.get("name", skill.name),
+                                version=manifest_data.get("version", "1.0.0"),
+                                description=manifest_data.get("description", ""),
+                                author_github=manifest_data.get("author_github", ""),
+                                license=manifest_data.get("license", "MIT"),
+                                category=manifest_data.get("category", "general"),
+                                trigger_keywords=manifest_data.get("trigger_keywords", []),
+                                tools_required=manifest_data.get("tools_required", []),
+                                max_tool_calls=manifest_data.get("max_tool_calls", 10),
+                                content_hash=manifest_data.get("content_hash", ""),
+                                min_jarvis_version=manifest_data.get("min_jarvis_version", ""),
+                                security_scan=manifest_data.get("security_scan", {}),
+                            )
+                            # tools_required aus Manifest uebernehmen wenn im
+                            # Frontmatter leer
+                            if not skill.tools_required and skill.manifest.tools_required:
+                                skill.tools_required = skill.manifest.tools_required
+                        except Exception as exc:
+                            log.warning(
+                                "community_manifest_error",
+                                dir=str(sub_dir),
+                                error=str(exc),
+                            )
+
+                    self._register(skill)
+                    count += 1
+                    log.debug(
+                        "community_skill_loaded",
+                        name=skill.name,
+                        source="community",
+                        path=str(sub_dir),
+                    )
+                except Exception as exc:
+                    log.warning(
+                        "community_skill_load_error",
+                        dir=str(sub_dir),
+                        error=str(exc),
+                    )
+
+        if count > 0:
+            log.info("community_skills_loaded", count=count)
+        return count
 
     @staticmethod
     def _parse_simple_frontmatter(text: str) -> dict[str, Any]:
@@ -502,9 +615,22 @@ class SkillRegistry:
 
         # Skill-Body in Working Memory injizieren
         if hasattr(working_memory, "injected_procedures"):
+            body = best.skill.body
+            # Community-Skills: Body durch InputSanitizer wrappen
+            if best.skill.source == "community":
+                try:
+                    from jarvis.security.sanitizer import InputSanitizer
+                    _sanitizer = InputSanitizer(strict=True)
+                    result = _sanitizer.sanitize_external(
+                        body, source=f"community_skill:{best.skill.slug}",
+                    )
+                    body = result.sanitized_text
+                except Exception as exc:
+                    log.warning("community_skill_sanitize_error", error=str(exc))
+
             # Nicht doppelt injizieren
-            if best.skill.body not in working_memory.injected_procedures:
-                working_memory.injected_procedures.append(best.skill.body)
+            if body not in working_memory.injected_procedures:
+                working_memory.injected_procedures.append(body)
 
         log.info(
             "skill_injected",

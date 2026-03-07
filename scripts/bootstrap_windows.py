@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # ── Version (muss mit pyproject.toml uebereinstimmen) ─────────────────────
-BOOTSTRAP_VERSION = "0.27.0"
+BOOTSTRAP_VERSION = "0.27.1"
 
 # ── Pfade ──────────────────────────────────────────────────────────────────
 JARVIS_HOME = Path(os.environ.get("JARVIS_HOME", Path.home() / ".jarvis"))

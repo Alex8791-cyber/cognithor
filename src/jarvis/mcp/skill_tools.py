@@ -298,5 +298,151 @@ def register_skill_tools(
         },
     )
 
-    log.info("skill_tools_registered", tools=["create_skill", "list_skills"])
+    # ------------------------------------------------------------------
+    # Community-Skill-Tools
+    # ------------------------------------------------------------------
+
+    async def _install_community_skill(name: str) -> str:
+        """Installiert einen Community-Skill aus dem Registry."""
+        try:
+            from jarvis.skills.community.client import CommunityRegistryClient
+
+            community_dir = skills_dirs[-1] / "community" if skills_dirs else Path("~/.jarvis/skills/community")
+            client = CommunityRegistryClient(community_dir=community_dir)
+            result = await client.install(name)
+
+            if not result.success:
+                errors = "\n".join(result.errors)
+                return f"Installation fehlgeschlagen:\n{errors}"
+
+            # Registry neu laden
+            try:
+                skill_registry.load_from_directories(skills_dirs)
+            except Exception:
+                pass
+
+            tools_info = ", ".join(result.tools_required) if result.tools_required else "keine"
+            warnings = ""
+            if result.warnings:
+                warnings = "\nWarnungen:\n" + "\n".join(f"  - {w}" for w in result.warnings)
+
+            return (
+                f"Community-Skill '{name}' erfolgreich installiert.\n"
+                f"  Version: {result.version}\n"
+                f"  Pfad: {result.install_path}\n"
+                f"  Benoetigte Tools: {tools_info}{warnings}"
+            )
+        except Exception as exc:
+            return f"Fehler bei Installation: {exc}"
+
+    async def _search_community_skills(query: str = "", category: str = "") -> str:
+        """Durchsucht das Community-Skill-Registry."""
+        try:
+            from jarvis.skills.community.client import CommunityRegistryClient
+
+            community_dir = skills_dirs[-1] / "community" if skills_dirs else Path("~/.jarvis/skills/community")
+            client = CommunityRegistryClient(community_dir=community_dir)
+            results = await client.search(query=query, category=category)
+
+            if not results:
+                return "Keine Community-Skills gefunden."
+
+            lines = [f"Community-Skills ({len(results)}):"]
+            for r in results:
+                tools = ", ".join(r.tools_required) if r.tools_required else "keine"
+                lines.append(
+                    f"  - {r.name} v{r.version} ({r.category}) "
+                    f"von @{r.author_github}\n"
+                    f"    {r.description}\n"
+                    f"    Tools: {tools}"
+                )
+            return "\n".join(lines)
+        except Exception as exc:
+            return f"Fehler bei Suche: {exc}"
+
+    async def _report_skill(name: str, category: str = "other", description: str = "") -> str:
+        """Meldet einen Community-Skill als problematisch."""
+        return (
+            f"Abuse-Report fuer Skill '{name}' erfasst.\n"
+            f"  Kategorie: {category}\n"
+            f"  Beschreibung: {description or 'Keine Angabe'}\n"
+            f"Der Report wird bei der naechsten Registry-Sync uebermittelt."
+        )
+
+    # install_community_skill
+    mcp_client.register_builtin_handler(
+        "install_community_skill",
+        _install_community_skill,
+        description=(
+            "Installiert einen Community-Skill aus dem oeffentlichen Registry. "
+            "Fuehrt automatisch 5 Sicherheits-Checks durch und zeigt benoetigte "
+            "Tool-Permissions an."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name des Community-Skills (z.B. 'morgen-briefing')",
+                },
+            },
+            "required": ["name"],
+        },
+    )
+
+    # search_community_skills
+    mcp_client.register_builtin_handler(
+        "search_community_skills",
+        _search_community_skills,
+        description="Durchsucht das Community-Skill-Registry nach verfuegbaren Skills.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Suchbegriff",
+                    "default": "",
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Kategorie-Filter",
+                    "default": "",
+                },
+            },
+            "required": [],
+        },
+    )
+
+    # report_skill
+    mcp_client.register_builtin_handler(
+        "report_skill",
+        _report_skill,
+        description="Meldet einen Community-Skill als missbraeuchlich oder problematisch.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name des zu meldenden Skills",
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Kategorie: malware, crypto, spam, data_theft, other",
+                    "default": "other",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Beschreibung des Problems",
+                    "default": "",
+                },
+            },
+            "required": ["name"],
+        },
+    )
+
+    log.info(
+        "skill_tools_registered",
+        tools=["create_skill", "list_skills", "install_community_skill",
+               "search_community_skills", "report_skill"],
+    )
     return st

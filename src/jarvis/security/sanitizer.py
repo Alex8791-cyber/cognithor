@@ -112,6 +112,23 @@ _INJECTION_PATTERNS: list[InjectionPattern] = [
         ),
         severity="high",
     ),
+    # Community-Skill-spezifisch: Tool-Override-Versuche
+    InjectionPattern(
+        name="tools_required_bypass",
+        pattern=re.compile(
+            r"(?:ignore|bypass|skip|disable)\s+(?:the\s+)?tools?_required",
+            re.IGNORECASE,
+        ),
+        severity="high",
+    ),
+    InjectionPattern(
+        name="gatekeeper_bypass",
+        pattern=re.compile(
+            r"(?:ignore|bypass|skip|disable)\s+(?:the\s+)?gatekeeper",
+            re.IGNORECASE,
+        ),
+        severity="high",
+    ),
 ]
 
 

@@ -254,5 +254,269 @@ def _build_router() -> Any:
     return router
 
 
-# Erstelle den Router beim Import (None falls FastAPI fehlt)
+def _build_community_router() -> Any:
+    """Erstellt den FastAPI APIRouter fuer Community-Marketplace-Endpoints."""
+    try:
+        from fastapi import APIRouter, HTTPException, Query
+    except ImportError:
+        log.warning("fastapi_not_available_for_community_api")
+        return None
+
+    from pydantic import BaseModel as _BaseModel
+
+    class CommunityInstallRequest(_BaseModel):
+        """Payload fuer Community-Skill-Installation."""
+        user_id: str = "default"
+
+    class ReportRequest(_BaseModel):
+        """Payload fuer Abuse-Report."""
+        reporter: str = "anonymous"
+        category: str = "other"
+        description: str = ""
+        evidence: str = ""
+
+    class CommunityReviewRequest(_BaseModel):
+        """Payload fuer Community-Skill-Review."""
+        rating: int
+        comment: str = ""
+        reviewer_id: str = "anonymous"
+
+    cr = APIRouter(prefix="/api/v1/skills/community", tags=["community-skills"])
+
+    # Lazy-initialisierter CommunityRegistryClient
+    _client_holder: dict[str, Any] = {"client": None}
+
+    def _get_client() -> Any:
+        if _client_holder["client"] is None:
+            from jarvis.skills.community.client import CommunityRegistryClient
+            try:
+                from jarvis.config import load_config
+                cfg = load_config()
+                cm = getattr(cfg, "community_marketplace", None)
+                registry_url = cm.registry_url if cm else ""
+                community_dir = cfg.jarvis_home / "skills" / "community"
+            except Exception:
+                registry_url = ""
+                community_dir = Path.home() / ".jarvis" / "skills" / "community"
+
+            _client_holder["client"] = CommunityRegistryClient(
+                community_dir=community_dir,
+                registry_url=registry_url,
+            )
+        return _client_holder["client"]
+
+    # ------------------------------------------------------------------
+    # Search (statische Route — muss VOR /{name} stehen)
+    # ------------------------------------------------------------------
+
+    @cr.get("/search")
+    async def search_community(
+        query: str = "",
+        category: str = "",
+        limit: int = Query(default=20, ge=1, le=100),
+    ) -> dict:
+        """Durchsucht das Community-Skill-Registry."""
+        try:
+            client = _get_client()
+            results = await client.search(query=query, category=category, limit=limit)
+        except Exception as exc:
+            log.error("community_search_failed", error=str(exc))
+            raise HTTPException(status_code=502, detail="Registry-Suche fehlgeschlagen") from exc
+        return {
+            "results": [
+                {
+                    "name": r.name,
+                    "version": r.version,
+                    "description": r.description,
+                    "author_github": r.author_github,
+                    "category": r.category,
+                    "tools_required": r.tools_required,
+                }
+                for r in results
+            ],
+            "count": len(results),
+        }
+
+    # ------------------------------------------------------------------
+    # Recalls (statische Route — muss VOR /{name} stehen)
+    # ------------------------------------------------------------------
+
+    @cr.get("/recalls")
+    async def get_community_recalls() -> dict:
+        """Aktive Remote-Recalls."""
+        try:
+            store = _get_store()
+            recalls = store.get_remote_recalls()
+        except Exception as exc:
+            log.error("community_recalls_fetch_failed", error=str(exc))
+            raise HTTPException(status_code=500, detail="Recalls konnten nicht geladen werden") from exc
+        return {"recalls": recalls, "count": len(recalls)}
+
+    # ------------------------------------------------------------------
+    # Publishers (statische Route — muss VOR /{name} stehen)
+    # ------------------------------------------------------------------
+
+    @cr.get("/publishers/{github}")
+    async def get_publisher_profile(github: str) -> dict:
+        """Publisher-Profil anhand des GitHub-Usernamens."""
+        store = _get_store()
+        publisher = store.get_publisher(github)
+        if publisher is None:
+            raise HTTPException(status_code=404, detail="Publisher nicht gefunden")
+        return publisher
+
+    # ------------------------------------------------------------------
+    # Sync (statische Route — muss VOR /{name} stehen)
+    # ------------------------------------------------------------------
+
+    @cr.post("/sync")
+    async def sync_registry() -> dict:
+        """Registry manuell synchronisieren."""
+        try:
+            from jarvis.skills.community.sync import RegistrySync
+            sync = RegistrySync(marketplace_store=_get_store())
+            result = await sync.sync_once()
+        except Exception as exc:
+            log.error("community_sync_failed", error=str(exc))
+            raise HTTPException(status_code=502, detail="Registry-Sync fehlgeschlagen") from exc
+        return {
+            "success": result.success,
+            "registry_skills": result.registry_skills,
+            "new_recalls": result.new_recalls,
+            "deactivated_skills": result.deactivated_skills,
+            "errors": result.errors,
+            "sync_time_ms": round(result.sync_time * 1000),
+        }
+
+    # ------------------------------------------------------------------
+    # Detail (catch-all /{name} — NACH allen statischen Routen)
+    # ------------------------------------------------------------------
+
+    @cr.get("/{name}")
+    async def get_community_skill(name: str) -> dict:
+        """Detail-Ansicht eines Community-Skills."""
+        try:
+            client = _get_client()
+            entry = await client.get_entry(name)
+        except Exception as exc:
+            log.error("community_skill_detail_failed", skill=name, error=str(exc))
+            raise HTTPException(status_code=502, detail="Registry nicht erreichbar") from exc
+        if entry is None:
+            raise HTTPException(status_code=404, detail="Community-Skill nicht gefunden")
+        return {
+            "name": entry.name,
+            "version": entry.version,
+            "description": entry.description,
+            "author_github": entry.author_github,
+            "category": entry.category,
+            "tools_required": entry.tools_required,
+            "content_hash": entry.content_hash,
+            "recalled": entry.recalled,
+        }
+
+    # ------------------------------------------------------------------
+    # Install / Uninstall
+    # ------------------------------------------------------------------
+
+    @cr.post("/{name}/install")
+    async def install_community_skill(
+        name: str, body: CommunityInstallRequest | None = None,
+    ) -> dict:
+        """Installiert einen Community-Skill."""
+        try:
+            client = _get_client()
+            result = await client.install(name)
+        except Exception as exc:
+            log.error("community_install_failed", skill=name, error=str(exc))
+            raise HTTPException(status_code=502, detail="Installation fehlgeschlagen") from exc
+
+        if not result.success:
+            import json as _json
+            raise HTTPException(status_code=400, detail=_json.dumps({
+                "errors": result.errors,
+                "warnings": result.warnings,
+            }, ensure_ascii=False))
+
+        # In MarketplaceStore tracken
+        try:
+            store = _get_store()
+            user_id = body.user_id if body else "default"
+            store.record_install(package_id=name, version=result.version, user_id=user_id)
+        except Exception as exc:
+            log.warning("community_install_tracking_failed", skill=name, error=str(exc))
+
+        return {
+            "status": "installed",
+            "skill_name": result.skill_name,
+            "version": result.version,
+            "install_path": result.install_path,
+            "tools_required": result.tools_required,
+            "warnings": result.warnings,
+        }
+
+    @cr.delete("/{name}")
+    async def uninstall_community_skill(name: str) -> dict:
+        """Deinstalliert einen Community-Skill."""
+        client = _get_client()
+        removed = await client.uninstall(name)
+        if not removed:
+            raise HTTPException(status_code=404, detail="Skill nicht installiert")
+        return {"status": "uninstalled", "skill_name": name}
+
+    # ------------------------------------------------------------------
+    # Report
+    # ------------------------------------------------------------------
+
+    @cr.post("/{name}/report")
+    async def report_community_skill(name: str, body: ReportRequest) -> dict:
+        """Meldet einen Community-Skill als missbraeuchlich."""
+        store = _get_store()
+        # Abuse im lokalen Store tracken
+        comment_parts = [f"[ABUSE-REPORT:{body.category}] {body.description}"]
+        if body.evidence:
+            comment_parts.append(f"[EVIDENCE] {body.evidence}")
+        report_id = store.save_review(
+            package_id=name,
+            reviewer_id=f"report:{body.reporter}",
+            rating=1,
+            comment=" ".join(comment_parts),
+        )
+        log.warning(
+            "community_skill_reported",
+            skill=name,
+            reporter=body.reporter,
+            category=body.category,
+            has_evidence=bool(body.evidence),
+        )
+        return {"status": "reported", "report_id": report_id}
+
+    # ------------------------------------------------------------------
+    # Reviews
+    # ------------------------------------------------------------------
+
+    @cr.post("/{name}/review")
+    async def review_community_skill(
+        name: str, body: CommunityReviewRequest,
+    ) -> dict:
+        """Review fuer einen Community-Skill abgeben."""
+        store = _get_store()
+        try:
+            review_id = store.save_review(
+                package_id=name,
+                reviewer_id=body.reviewer_id,
+                rating=body.rating,
+                comment=body.comment,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except sqlite3.IntegrityError:
+            raise HTTPException(status_code=409, detail="Bereits bewertet")
+
+        return {"status": "created", "review_id": review_id}
+
+    return cr
+
+
+# Erstelle die Router beim Import (None falls FastAPI fehlt)
 router = _build_router()
+community_router = _build_community_router()

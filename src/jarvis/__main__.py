@@ -327,6 +327,19 @@ def main() -> None:
                     except Exception as _skills_exc:
                         log.warning("skills_marketplace_api_failed", error=str(_skills_exc))
 
+                # Community Marketplace API Router einbinden
+                _cm_cfg = getattr(config, "community_marketplace", None)
+                if _cm_cfg and getattr(_cm_cfg, "enabled", False):
+                    try:
+                        from jarvis.skills.api import community_router
+                        if community_router is not None:
+                            api_app.include_router(community_router)
+                            log.info("community_marketplace_api_registered")
+                        else:
+                            log.warning("community_marketplace_router_none", hint="FastAPI nicht installiert?")
+                    except Exception as _cm_exc:
+                        log.warning("community_marketplace_api_failed", error=str(_cm_exc))
+
                 # ── WebSocket Chat-Endpoint ──────────────────────────────
                 import json as _json
                 _ws_connections: dict[str, WebSocket] = {}

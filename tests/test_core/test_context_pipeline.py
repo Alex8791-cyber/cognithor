@@ -162,7 +162,7 @@ class TestMemoryInjection:
 
         mm.search_memory_sync.assert_called_once_with(
             query="Wie funktioniert das Backup-System?",
-            top_k=4,  # default memory_top_k
+            top_k=8,  # default memory_top_k
         )
 
 

@@ -164,6 +164,79 @@ class ReputationEngine:
             },
         }
 
+    # ================================================================
+    # Community-Marketplace Integration
+    # ================================================================
+
+    def sync_from_publisher(
+        self,
+        github_username: str,
+        publisher_data: dict[str, Any],
+    ) -> ReputationScore:
+        """Synchronisiert den Reputation-Score mit einem PublisherIdentity-Dict.
+
+        Wird aufgerufen wenn ein Publisher-Profil aus dem Registry-Repo
+        geladen oder lokal aktualisiert wird.
+
+        Args:
+            github_username: GitHub-Username des Publishers.
+            publisher_data: Dict mit ``reputation_score``, ``abuse_reports``,
+                ``recalls``, ``skills_published``.
+
+        Returns:
+            Aktualisierter ReputationScore.
+        """
+        entity_id = f"github:{github_username}"
+        score = self.get_or_create(entity_id, entity_type="publisher")
+
+        # Score aus Publisher-Daten uebernehmen
+        remote_score = publisher_data.get("reputation_score")
+        if remote_score is not None:
+            score.score = max(0.0, min(100.0, float(remote_score)))
+
+        score.abuse_reports = publisher_data.get("abuse_reports", score.abuse_reports)
+        score.recalls = publisher_data.get("recalls", score.recalls)
+        score.skills_published = publisher_data.get("skills_published", score.skills_published)
+        score.last_updated = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+        return score
+
+    def apply_publisher_action(
+        self,
+        github_username: str,
+        action: str,
+    ) -> ReputationScore:
+        """Wendet eine Reputation-Aktion auf einen Publisher an.
+
+        Args:
+            github_username: GitHub-Username.
+            action: Eine der folgenden Aktionen:
+                - "positive_review", "negative_review"
+                - "abuse_report", "recall"
+                - "install", "security_pass", "security_fail"
+
+        Returns:
+            Aktualisierter ReputationScore.
+        """
+        entity_id = f"github:{github_username}"
+
+        action_map = {
+            "positive_review": lambda: self.add_review(entity_id, positive=True),
+            "negative_review": lambda: self.add_review(entity_id, positive=False),
+            "abuse_report": lambda: self.report_abuse(entity_id),
+            "recall": lambda: self.apply_recall(entity_id),
+            "install": lambda: self.record_install(entity_id),
+            "security_pass": lambda: self.apply_security_result(entity_id, passed=True),
+            "security_fail": lambda: self.apply_security_result(entity_id, passed=False),
+        }
+
+        handler = action_map.get(action)
+        if handler is None:
+            score = self.get_or_create(entity_id, entity_type="publisher")
+            return score
+
+        return handler()
+
 
 # ============================================================================
 # Skill Recall Manager

@@ -255,7 +255,10 @@ class TestRegisterSkillTools:
         reg._skills = {}
         st = register_skill_tools(mock_client, reg, [tmp_path])
         assert isinstance(st, SkillTools)
-        assert mock_client.register_builtin_handler.call_count == 2
+        assert mock_client.register_builtin_handler.call_count == 5
         names = [call.args[0] for call in mock_client.register_builtin_handler.call_args_list]
         assert "create_skill" in names
         assert "list_skills" in names
+        assert "install_community_skill" in names
+        assert "search_community_skills" in names
+        assert "report_skill" in names

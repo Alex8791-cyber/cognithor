@@ -102,7 +102,7 @@ class PlannerConfig(BaseModel):
     max_iterations: int = Field(default=25, ge=1, le=50)
     escalation_after: int = Field(default=3, ge=1, le=10)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    response_token_budget: int = Field(default=3000, ge=500, le=8000)
+    response_token_budget: int = Field(default=4000, ge=500, le=8000)
 
 
 class WebConfig(BaseModel):
@@ -349,10 +349,10 @@ class ContextPipelineConfig(BaseModel):
     enabled: bool = True
     """Pipeline aktivieren/deaktivieren."""
 
-    memory_top_k: int = 4
+    memory_top_k: int = 8
     """Anzahl Memory-Ergebnisse (BM25-only, sync, ~5-20ms)."""
 
-    vault_top_k: int = 3
+    vault_top_k: int = 5
     """Anzahl Vault-Suchergebnisse (~10-50ms)."""
 
     episode_days: int = 2
@@ -361,7 +361,7 @@ class ContextPipelineConfig(BaseModel):
     min_query_length: int = 8
     """Mindestlänge der User-Nachricht für Kontext-Suche."""
 
-    max_context_chars: int = 3000
+    max_context_chars: int = 8000
     """Maximale Zeichenzahl des injizierten Kontexts."""
 
     smalltalk_patterns: list[str] = [
@@ -385,12 +385,12 @@ class MemoryConfig(BaseModel):
     recency_half_life_days: int = Field(default=30, ge=1, le=365)
     # Working Memory [B§4.6]
     compaction_threshold: float = Field(default=0.80, ge=0.5, le=0.95)
-    compaction_keep_last_n: int = Field(default=4, ge=2, le=20)
+    compaction_keep_last_n: int = Field(default=8, ge=2, le=20)
     # Token-Budget Verteilung (statische Anteile, geschaetzte Tokens)
     budget_core_memory: int = Field(default=500, ge=100, le=5000)
     budget_system_prompt: int = Field(default=800, ge=200, le=5000)
     budget_procedures: int = Field(default=600, ge=100, le=5000)
-    budget_injected_memories: int = Field(default=1500, ge=200, le=10000)
+    budget_injected_memories: int = Field(default=2500, ge=200, le=10000)
     budget_tool_descriptions: int = Field(default=1200, ge=200, le=10000)
     budget_response_reserve: int = Field(default=3000, ge=500, le=15000)
 
@@ -531,6 +531,58 @@ class MarketplaceConfig(BaseModel):
     )
     """Wenn ``True`` und die Marketplace-DB leer ist, werden die
     Built-in-Prozeduren aus ``data/procedures/`` als Seed-Daten eingefuegt."""
+
+
+class CommunityMarketplaceConfig(BaseModel):
+    """Community Skill Marketplace Konfiguration.
+
+    Steuert den Zugriff auf das oeffentliche Community-Skill-Registry
+    (GitHub-Repo ``cognithor/skill-registry``).  Community-Skills sind
+    architektonisch malware-sicher: Skills sind Daten (Markdown), nicht Code.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Community Marketplace aktivieren",
+    )
+    """Aktiviert oder deaktiviert den Community Marketplace."""
+
+    registry_url: str = Field(
+        default="https://raw.githubusercontent.com/cognithor/skill-registry/main",
+        description="URL des Community-Skill-Registry (GitHub Raw Content)",
+    )
+    """Basis-URL fuer das Registry-Repo.  Kann auf einen Fork zeigen."""
+
+    auto_recall_check_interval: int = Field(
+        default=3600, ge=300, le=86400,
+        description="Intervall fuer automatische Recall-Checks (Sekunden)",
+    )
+    """Wie oft nach zurueckgerufenen Skills gesucht wird (Default: 1h)."""
+
+    min_publisher_reputation: float = Field(
+        default=0.0, ge=0.0, le=100.0,
+        description="Minimaler Publisher-Reputation-Score fuer Installation",
+    )
+    """Skills von Publishern unter diesem Score werden mit Warnung installiert."""
+
+    require_verified_publisher: bool = Field(
+        default=False,
+        description="Nur Skills von verifizierten Publishern installieren",
+    )
+    """Wenn True, werden nur Skills von Publishern mit TrustLevel >= VERIFIED
+    installiert.  Schraenkt die Auswahl stark ein."""
+
+    max_tool_calls_default: int = Field(
+        default=10, ge=1, le=100,
+        description="Default max Tool-Calls pro Community-Skill-Aufruf",
+    )
+    """Globaler Default fuer max_tool_calls wenn kein Manifest-Wert."""
+
+    auto_sync: bool = Field(
+        default=True,
+        description="Registry automatisch beim Start synchronisieren",
+    )
+    """Wenn True, wird die Registry beim Start und periodisch synchronisiert."""
 
 
 # --------------------------------------------------------------------------
@@ -1291,12 +1343,17 @@ class SecurityConfig(BaseModel):
     # Maximale Agent-Loop Iterationen pro Anfrage
     max_iterations: int = Field(default=25, ge=1, le=50)
     # Erlaubte Dateipfade (Gatekeeper prüft dagegen)
+    # Projekt-Verzeichnis wird automatisch in gatekeeper.initialize() hinzugefuegt
     allowed_paths: list[str] = Field(
         default_factory=lambda: [
             "~/.jarvis/",
             str(Path(tempfile.gettempdir()) / "jarvis") + os.sep,
         ]
     )
+    # Wenn True, wird das Projektverzeichnis (jarvis_home Parent) automatisch
+    # zu allowed_paths hinzugefuegt, damit Cognithor in seine eigene Codebase
+    # schreiben kann (z.B. Skripte erstellen, Code integrieren).
+    allow_project_dir: bool = True
     # Regex-Patterns für destruktive Shell-Befehle [B§3.2]
     blocked_commands: list[str] = Field(
         default_factory=lambda: [
@@ -1413,7 +1470,7 @@ class JarvisConfig(BaseModel):
     """
 
     # Meta
-    version: str = "0.27.0"
+    version: str = "0.27.1"
     language: Literal["de", "en"] = Field(
         default="de",
         description="UI language for error messages, greetings, and status texts. "
@@ -1491,6 +1548,7 @@ class JarvisConfig(BaseModel):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     queue: QueueConfig = Field(default_factory=QueueConfig)
     marketplace: MarketplaceConfig = Field(default_factory=MarketplaceConfig)
+    community_marketplace: CommunityMarketplaceConfig = Field(default_factory=CommunityMarketplaceConfig)
     improvement: ImprovementGovernanceConfig = Field(default_factory=ImprovementGovernanceConfig)
     prompt_evolution: PromptEvolutionConfig = Field(default_factory=PromptEvolutionConfig)
 

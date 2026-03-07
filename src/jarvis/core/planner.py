@@ -15,6 +15,7 @@ Bible reference: §3.1 (Planner), §3.4 (Cycle)
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -352,9 +353,9 @@ class Planner:
         from jarvis.utils.circuit_breaker import CircuitBreaker
         self._llm_circuit_breaker = CircuitBreaker(
             name="planner_llm",
-            failure_threshold=3,
-            recovery_timeout=30.0,
-            half_open_max_calls=1,
+            failure_threshold=5,
+            recovery_timeout=15.0,
+            half_open_max_calls=2,
         )
 
         # Prompts von Disk laden (mit Fallback auf hardcoded Konstanten)
@@ -559,24 +560,30 @@ class Planner:
             user_message=replan_text,
         )
 
-        try:
-            response = await self._ollama.chat(
-                model=model,
-                messages=messages,
-                temperature=model_config.get("temperature", 0.7),
-                top_p=model_config.get("top_p", 0.9),
-                options={"num_predict": getattr(self._config.planner, "response_token_budget", 3000)},
-            )
-        except OllamaError as exc:
-            log.error("planner_replan_error", error=str(exc))
-            return ActionPlan(
-                goal=original_goal,
-                direct_response=(
-                    "Entschuldigung, ich konnte den Plan leider nicht fortsetzen. "
-                    "Bitte versuch es erneut oder beschreib mir dein Ziel nochmal anders."
-                ),
-                confidence=0.0,
-            )
+        _replan_attempts = 2
+        response = None
+        for _attempt in range(_replan_attempts):
+            try:
+                response = await self._ollama.chat(
+                    model=model,
+                    messages=messages,
+                    temperature=model_config.get("temperature", 0.7),
+                    top_p=model_config.get("top_p", 0.9),
+                    options={"num_predict": getattr(self._config.planner, "response_token_budget", 3000)},
+                )
+                break
+            except OllamaError as exc:
+                log.warning("planner_replan_error", error=str(exc), attempt=_attempt + 1)
+                if _attempt + 1 >= _replan_attempts:
+                    return ActionPlan(
+                        goal=original_goal,
+                        direct_response=(
+                            "Entschuldigung, ich konnte den Plan leider nicht fortsetzen. "
+                            "Bitte versuch es erneut oder beschreib mir dein Ziel nochmal anders."
+                        ),
+                        confidence=0.0,
+                    )
+                await asyncio.sleep(1.0)  # Kurze Pause vor Retry
 
         self._record_cost(response, model, session_id=working_memory.session_id)
         assistant_text = response.get("message", {}).get("content", "")
@@ -718,18 +725,30 @@ class Planner:
 
         messages.append({"role": "user", "content": prompt})
 
-        try:
-            response = await self._ollama.chat(model=model, messages=messages)
-            self._record_cost(response, model, session_id=working_memory.session_id)
-            content: str = response.get("message", {}).get("content", "")
-            return content
-        except OllamaError as exc:
-            # Fallback: Fehlermeldung statt roher Ergebnisse (könnten HTML enthalten)
-            log.warning("formulate_response_llm_error", error=str(exc))
-            return (
-                "Ich konnte die Ergebnisse leider nicht zusammenfassen. "
-                "Bitte versuch es gleich noch einmal -- manchmal klappt es beim zweiten Anlauf."
-            )
+        for _fmt_attempt in range(2):
+            try:
+                response = await self._ollama.chat(model=model, messages=messages)
+                self._record_cost(response, model, session_id=working_memory.session_id)
+                content: str = response.get("message", {}).get("content", "")
+                return content
+            except OllamaError as exc:
+                log.warning("formulate_response_llm_error", error=str(exc), attempt=_fmt_attempt + 1)
+                if _fmt_attempt == 0:
+                    await asyncio.sleep(1.0)  # Retry nach kurzer Pause
+                    continue
+                # Zweiter Fehlschlag: Ergebnisse als Fallback direkt zurueckgeben
+                raw_results = "\n".join(
+                    f"[{r.tool_name}] {r.content[:300]}"
+                    for r in results
+                    if r.success
+                )
+                if raw_results:
+                    return f"Hier sind die Ergebnisse (Zusammenfassung fehlgeschlagen):\n\n{raw_results}"
+                return (
+                    "Ich konnte die Ergebnisse leider nicht zusammenfassen. "
+                    "Bitte versuch es gleich noch einmal."
+                )
+        return ""  # Unreachable, aber fuer Type-Checker
 
     # =========================================================================
     # Private Methoden
@@ -989,12 +1008,15 @@ class Planner:
             if data is not None and ("steps" in data or "goal" in data):
                 return self._parse_plan_json(data, goal)
 
-        # Kein JSON gefunden → direkte Antwort
+        # Kein JSON gefunden → direkte Antwort (reduzierte Confidence,
+        # da unklar ob das LLM tatsaechlich eine Antwort geben wollte
+        # oder ob die JSON-Generierung fehlgeschlagen ist)
+        log.debug("planner_no_json_found", text_len=len(text))
         return ActionPlan(
             goal=goal,
-            reasoning="Direkte Antwort (kein Tool-Call nötig)",
+            reasoning="Direkte Antwort (kein Tool-Call noetig)",
             direct_response=text.strip(),
-            confidence=0.8,
+            confidence=0.5,
         )
 
     def _parse_plan_json(self, data: dict[str, Any], goal: str) -> ActionPlan:

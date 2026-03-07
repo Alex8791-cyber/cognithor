@@ -92,23 +92,25 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 48 MCP
 
 ## What's New
 
-### v0.27.0 — Full Audit, Installer Overhaul & Hardening
+### v0.27.1 — Community Skill Marketplace & Autonomy Hardening
 
-A comprehensive 80-item audit of the entire codebase — every finding verified, every real issue fixed.
+Full Community Skill Marketplace with trust chain (publisher verification, 5-check validation, ToolEnforcer runtime sandboxing). 13 autonomy fixes across the PGE loop.
 
-- **Installer Overhaul** — `start_cognithor.bat` now auto-installs Python and Ollama via winget, ships a pre-built UI (Node.js no longer required), and bundles a preflight check
-- **XSS Fix** — `dangerouslySetInnerHTML` in MessageList.jsx now uses `escapeHtml()` before regex formatting
-- **CORS Fix** — `allow_credentials` is now conditional on explicit origins (no more `*` + credentials)
-- **React ErrorBoundary** — Uncaught errors show a dark-theme fallback instead of a white screen
-- **API Rate Limiting** — Configurable middleware (60 req/min default, `JARVIS_API_RATE_LIMIT`), health endpoint exempt
-- **Version Consistency** — All 7 version references aligned to 0.27.0
+- **Community Skill Marketplace** — Install, search, rate, and report community skills from a GitHub-hosted registry with publisher verification and trust levels
+- **ToolEnforcer** — Runtime tool-allowlist for community skills: skills can only invoke declared tools
+- **5-Check Validation Pipeline** — Syntax, injection scan, tool whitelist, safety audit, SHA-256 hash verification
+- **Autonomy Hardening** — Multi-step plans no longer exit early, smart failure threshold, replan retry with fallback, presearch skip patterns fixed
+- **subprocess Differentiation** — `subprocess.run()`/`check_output()` now allowed; `Popen`/`call` remain blocked
+- **Config Tuning** — Larger context budgets (`memory_top_k: 8`, `max_context_chars: 8000`, `response_token_budget: 4000`)
+- **Thread-safe Community Caches** — `asyncio.Lock` on all community module caches, aiohttp fallback to urllib
 
 **Previous Releases**
 
-- **v0.26.6** — Chat & Voice: Integrated chat page, voice mode with wake word, Piper TTS, 15 agent infrastructure subsystems (DAG engine, distributed workers, multi-agent collaboration, GDPR toolkit, agent SDK, benchmark suite, and more), deep security hardening
-- **v0.26.7** — Wiring: DAG-based parallel executor, http_request tool with SSRF protection, sub-agent depth guard, live config reload, workflow adapter
+- **v0.27.0** — Full Audit, Installer Overhaul: 80-item audit, XSS fix, CORS hardening, rate limiting, auto-install Python/Ollama
+- **v0.26.7** — Wiring: DAG-based parallel executor, http_request tool with SSRF protection, sub-agent depth guard, live config reload
+- **v0.26.6** — Chat & Voice: Integrated chat page, voice mode with wake word, Piper TTS, 15 agent infrastructure subsystems
 - **v0.26.5** — Human Feel: Personality Engine, sentiment detection, user preferences, status callbacks, friendly error messages
-- **v0.26.0–v0.26.4** — Security hardening, Docker prod, LM Studio backend, scaling (distributed locking, message queue, Prometheus), coverage & skills
+- **v0.26.0–v0.26.4** — Security hardening, Docker prod, LM Studio backend, scaling, coverage & skills
 
 ---
 
@@ -127,6 +129,7 @@ A comprehensive 80-item audit of the entire codebase — every finding verified,
 - **Durable Message Queue** — SQLite-backed persistent queue with priorities, DLQ, and automatic retry
 - **Prometheus Metrics** — /metrics endpoint with Grafana dashboard for production observability
 - **Skill Marketplace** — SQLite-persisted skill marketplace with ratings, search, and REST API
+- **Community Skill Marketplace** — GitHub-hosted registry with publisher verification (4 trust levels), 5-check validation pipeline, ToolEnforcer runtime sandboxing, async install/search/report
 - **Telegram Webhook** — Polling + webhook mode with sub-100ms latency
 - **Auto-Dependency Loading** — Missing optional packages detected and installed at startup
 - **Agent-to-Agent Protocol (A2A)** — Linux Foundation RC v1.0 for inter-agent communication

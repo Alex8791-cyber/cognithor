@@ -1,0 +1,560 @@
+"""SkillValidator: 5-stufige Sicherheitspruefung fuer Community-Skills.
+
+Fuehrt dieselben 5 Checks durch, die auch in der GitHub Actions CI laufen:
+
+  1. YAML/Markdown-Syntax (Pflichtfelder, tools_required gegen MCP-Tool-Set)
+  2. Prompt-Injection-Scan (InputSanitizer + Skill-spezifische Patterns)
+  3. Tool-Permission-Analyse (Body-Mentions vs. tools_required)
+  4. Content-Safety-Scan (FraudDetector: Name-Squatting, Malware-Domains)
+  5. Manifest-Integritaet (SHA-256 Hash, SemVer, keine Duplikate)
+
+Bible reference: §6.2 (Skills), §11 (Security)
+"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+from dataclasses import dataclass, field
+from typing import Any
+
+import yaml
+
+from jarvis.security.sanitizer import InputSanitizer, InjectionPattern
+from jarvis.utils.logging import get_logger
+
+log = get_logger(__name__)
+
+
+# ============================================================================
+# Bekannte Malware-Domains (Content-Safety-Check)
+# ============================================================================
+
+_MALWARE_DOMAINS: frozenset[str] = frozenset({
+    "coinhive.com", "cryptoloot.pro", "coin-hive.com",
+    "minero.cc", "authedmine.com",
+})
+
+
+# ============================================================================
+# Bekannte MCP-Tools (48 Tools ueber 10 Module)
+# ============================================================================
+
+KNOWN_MCP_TOOLS: frozenset[str] = frozenset({
+    # Filesystem
+    "read_file", "write_file", "edit_file", "list_directory", "delete_file",
+    # Shell
+    "exec_command", "shell_exec", "shell",
+    # Web
+    "web_search", "web_fetch", "web_news_search", "search_and_read",
+    "browse_url", "fetch_url", "http_request",
+    # Media
+    "media_analyze_image", "media_extract_text", "media_transcribe_audio",
+    "media_tts", "media_convert_audio", "media_resize_image",
+    "document_export",
+    # Memory
+    "save_to_memory", "search_memory", "get_core_memory",
+    "get_recent_episodes", "memory_stats",
+    # Vault
+    "get_entity", "add_entity", "add_relation", "search",
+    # Synthesis
+    # (synthesis tools handled via media/web)
+    # Code
+    "run_python", "analyze_code",
+    # Skills
+    "create_skill", "list_skills", "search_procedures", "record_procedure_usage",
+    # Browser
+    "browse_page_info", "browse_screenshot",
+    # Jobs
+    "schedule_job", "list_jobs",
+    # Email
+    "email_send",
+})
+
+# RED-Tools die in Community-Skills NIEMALS erlaubt sind
+RED_TOOLS: frozenset[str] = frozenset({
+    "email_send",
+    "delete_file",
+})
+
+# Tools die in Skill-Bodies als Referenz erkannt werden
+_TOOL_MENTION_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(t) for t in sorted(KNOWN_MCP_TOOLS)) + r")\b"
+)
+
+
+# ============================================================================
+# Skill-spezifische Injection-Patterns
+# ============================================================================
+
+_SKILL_INJECTION_PATTERNS: list[InjectionPattern] = [
+    InjectionPattern(
+        name="tool_override",
+        pattern=re.compile(
+            r"(?:use|call|invoke|execute)\s+(?:the\s+)?tool\s+(?:named?\s+)?"
+            r"(?!(?:" + "|".join(re.escape(t) for t in KNOWN_MCP_TOOLS) + r")\b)\w+",
+            re.IGNORECASE,
+        ),
+        severity="high",
+    ),
+    InjectionPattern(
+        name="system_prompt_override",
+        pattern=re.compile(
+            r"(?:override|replace|change|modify)\s+(?:the\s+)?(?:system\s+)?prompt",
+            re.IGNORECASE,
+        ),
+        severity="high",
+    ),
+    InjectionPattern(
+        name="tools_required_bypass",
+        pattern=re.compile(
+            r"(?:ignore|bypass|skip)\s+(?:the\s+)?tools?_required",
+            re.IGNORECASE,
+        ),
+        severity="high",
+    ),
+    InjectionPattern(
+        name="gatekeeper_bypass",
+        pattern=re.compile(
+            r"(?:ignore|bypass|skip|disable)\s+(?:the\s+)?gatekeeper",
+            re.IGNORECASE,
+        ),
+        severity="high",
+    ),
+]
+
+
+# ============================================================================
+# Datenmodelle
+# ============================================================================
+
+
+@dataclass
+class CheckResult:
+    """Ergebnis eines einzelnen Checks."""
+
+    check_name: str
+    passed: bool
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ValidationResult:
+    """Gesamtergebnis aller 5 Checks."""
+
+    valid: bool
+    checks: list[CheckResult] = field(default_factory=list)
+    skill_name: str = ""
+
+    @property
+    def errors(self) -> list[str]:
+        """Alle Fehler aller Checks."""
+        result: list[str] = []
+        for c in self.checks:
+            result.extend(f"[{c.check_name}] {e}" for e in c.errors)
+        return result
+
+    @property
+    def warnings(self) -> list[str]:
+        """Alle Warnungen aller Checks."""
+        result: list[str] = []
+        for c in self.checks:
+            result.extend(f"[{c.check_name}] {w}" for w in c.warnings)
+        return result
+
+
+# ============================================================================
+# SkillValidator
+# ============================================================================
+
+
+class SkillValidator:
+    """5-stufige Sicherheitspruefung fuer Community-Skills.
+
+    Usage::
+
+        validator = SkillValidator()
+        result = validator.validate(skill_md_content, manifest_dict)
+        if not result.valid:
+            for err in result.errors:
+                print(f"FEHLER: {err}")
+    """
+
+    # Pflichtfelder im YAML-Frontmatter
+    REQUIRED_FRONTMATTER_FIELDS: list[str] = [
+        "name", "description", "trigger_keywords", "tools_required",
+    ]
+
+    # Pflichtfelder im Manifest
+    REQUIRED_MANIFEST_FIELDS: list[str] = [
+        "name", "version", "description", "author_github",
+        "tools_required", "content_hash",
+    ]
+
+    # Name-Format: lowercase, Bindestriche erlaubt
+    NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{2,63}$")
+
+    # SemVer-Pattern
+    SEMVER_PATTERN = re.compile(
+        r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
+        r"(?:-(?:0|[1-9]\d*|[\da-zA-Z-]+)(?:\.(?:0|[1-9]\d*|[\da-zA-Z-]+))*)?$"
+    )
+
+    def __init__(
+        self,
+        *,
+        known_tools: frozenset[str] | None = None,
+        fraud_detector: Any | None = None,
+    ) -> None:
+        self._known_tools = known_tools or KNOWN_MCP_TOOLS
+        self._sanitizer = InputSanitizer(
+            extra_patterns=_SKILL_INJECTION_PATTERNS,
+            strict=True,
+        )
+        self._fraud_detector = fraud_detector
+
+    def validate(
+        self,
+        skill_md: str,
+        manifest: dict[str, Any] | None = None,
+        *,
+        existing_names: set[str] | None = None,
+    ) -> ValidationResult:
+        """Fuehrt alle 5 Checks durch.
+
+        Args:
+            skill_md: Inhalt der skill.md-Datei.
+            manifest: Inhalt der manifest.json (optional fuer Check 5).
+            existing_names: Bereits registrierte Skill-Namen (Duplikat-Check).
+
+        Returns:
+            ValidationResult mit allen Check-Ergebnissen.
+        """
+        # Frontmatter + Body parsen
+        frontmatter, body = self._parse_frontmatter(skill_md)
+        skill_name = frontmatter.get("name", "<unbekannt>")
+
+        checks: list[CheckResult] = []
+
+        # Check 1: YAML/Markdown Syntax
+        checks.append(self._check_syntax(frontmatter, skill_name))
+
+        # Check 2: Prompt Injection Scan
+        checks.append(self._check_injection(body, skill_name))
+
+        # Check 3: Tool Permission Analysis
+        tools_required = frontmatter.get("tools_required", [])
+        checks.append(self._check_tool_permissions(body, tools_required, skill_name))
+
+        # Check 4: Content Safety Scan
+        checks.append(self._check_content_safety(skill_name, body, frontmatter))
+
+        # Check 5: Manifest Integrity
+        if manifest is not None:
+            checks.append(
+                self._check_manifest_integrity(
+                    manifest, skill_md, existing_names or set()
+                )
+            )
+        else:
+            checks.append(CheckResult(
+                check_name="manifest_integrity",
+                passed=True,
+                warnings=["Kein Manifest vorhanden — Check uebersprungen"],
+            ))
+
+        all_passed = all(c.passed for c in checks)
+        result = ValidationResult(
+            valid=all_passed,
+            checks=checks,
+            skill_name=skill_name,
+        )
+
+        log.info(
+            "skill_validation_complete",
+            skill=skill_name,
+            valid=all_passed,
+            errors=len(result.errors),
+            warnings=len(result.warnings),
+        )
+
+        return result
+
+    # ====================================================================
+    # Check 1: YAML/Markdown Syntax
+    # ====================================================================
+
+    def _check_syntax(
+        self, frontmatter: dict[str, Any], skill_name: str,
+    ) -> CheckResult:
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        # Pflichtfelder pruefen
+        for field_name in self.REQUIRED_FRONTMATTER_FIELDS:
+            if field_name not in frontmatter:
+                errors.append(f"Pflichtfeld '{field_name}' fehlt")
+            elif not frontmatter[field_name]:
+                errors.append(f"Pflichtfeld '{field_name}' ist leer")
+
+        # Name-Format
+        name = frontmatter.get("name", "")
+        if name and not self.NAME_PATTERN.match(name):
+            errors.append(
+                f"Name '{name}' entspricht nicht dem Format "
+                f"(lowercase, 3-64 Zeichen, nur a-z, 0-9, -, _)"
+            )
+
+        # tools_required gegen bekannte Tools pruefen
+        tools = frontmatter.get("tools_required", [])
+        if isinstance(tools, list):
+            for tool in tools:
+                if tool not in self._known_tools:
+                    errors.append(f"Unbekanntes Tool in tools_required: '{tool}'")
+                if tool in RED_TOOLS:
+                    errors.append(
+                        f"RED-Tool '{tool}' ist in Community-Skills nicht erlaubt"
+                    )
+        elif tools:
+            errors.append("tools_required muss eine Liste sein")
+
+        # trigger_keywords Typ pruefen
+        triggers = frontmatter.get("trigger_keywords", [])
+        if triggers and not isinstance(triggers, list):
+            errors.append("trigger_keywords muss eine Liste sein")
+
+        # Description Laenge
+        desc = frontmatter.get("description", "")
+        if isinstance(desc, str) and len(desc) > 200:
+            warnings.append(
+                f"description ist {len(desc)} Zeichen lang (max 200 empfohlen)"
+            )
+
+        return CheckResult(
+            check_name="yaml_syntax",
+            passed=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+        )
+
+    # ====================================================================
+    # Check 2: Prompt Injection Scan
+    # ====================================================================
+
+    def _check_injection(self, body: str, skill_name: str) -> CheckResult:
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        if not body.strip():
+            warnings.append("Skill-Body ist leer")
+            return CheckResult(
+                check_name="injection_scan",
+                passed=True,
+                warnings=warnings,
+            )
+
+        # InputSanitizer (inkl. Skill-spezifische Patterns)
+        patterns_found = self._sanitizer.scan_only(body)
+        for pattern_info in patterns_found:
+            # Format: "pattern_name(severity)"
+            if "(high)" in pattern_info:
+                errors.append(f"Injection-Pattern erkannt: {pattern_info}")
+            else:
+                warnings.append(f"Verdaechtiges Pattern: {pattern_info}")
+
+        return CheckResult(
+            check_name="injection_scan",
+            passed=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+        )
+
+    # ====================================================================
+    # Check 3: Tool Permission Analysis
+    # ====================================================================
+
+    def _check_tool_permissions(
+        self,
+        body: str,
+        tools_required: list[str],
+        skill_name: str,
+    ) -> CheckResult:
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        if not body.strip():
+            return CheckResult(
+                check_name="tool_permissions",
+                passed=True,
+                warnings=["Leerer Body — keine Tool-Referenzen"],
+            )
+
+        # Alle im Body erwaehnten Tools finden
+        mentioned_tools = set(_TOOL_MENTION_PATTERN.findall(body))
+        declared_tools = set(tools_required) if tools_required else set()
+
+        # Erwaehnte Tools die NICHT in tools_required stehen
+        undeclared = mentioned_tools - declared_tools
+        for tool in sorted(undeclared):
+            if tool in RED_TOOLS:
+                errors.append(
+                    f"RED-Tool '{tool}' im Body erwaehnt aber nicht (und darf nicht) "
+                    f"in tools_required stehen"
+                )
+            else:
+                errors.append(
+                    f"Tool '{tool}' im Body erwaehnt aber nicht in tools_required deklariert"
+                )
+
+        # ORANGE/RED-Tools in tools_required brauchen Begruendung
+        for tool in declared_tools:
+            if tool in RED_TOOLS:
+                errors.append(
+                    f"RED-Tool '{tool}' darf in Community-Skills nicht genutzt werden"
+                )
+            elif tool in {"exec_command", "shell_exec", "shell", "run_python",
+                          "fetch_url", "http_request"}:
+                warnings.append(
+                    f"ORANGE/YELLOW-Tool '{tool}' in tools_required — "
+                    f"erfordert besonderen Review"
+                )
+
+        return CheckResult(
+            check_name="tool_permissions",
+            passed=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+        )
+
+    # ====================================================================
+    # Check 4: Content Safety Scan
+    # ====================================================================
+
+    def _check_content_safety(
+        self,
+        skill_name: str,
+        body: str,
+        frontmatter: dict[str, Any],
+    ) -> CheckResult:
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        # FraudDetector (wenn verfuegbar)
+        if self._fraud_detector is not None:
+            try:
+                signals = self._fraud_detector.scan(
+                    skill_id=skill_name,
+                    code=body,
+                    metadata=frontmatter,
+                )
+                for signal in signals:
+                    if signal.confidence > 0.8:
+                        errors.append(
+                            f"FraudDetector: {signal.signal_type} "
+                            f"(Konfidenz {signal.confidence:.0%}): {signal.evidence}"
+                        )
+                    elif signal.confidence > 0.5:
+                        warnings.append(
+                            f"FraudDetector: {signal.signal_type} "
+                            f"(Konfidenz {signal.confidence:.0%}): {signal.evidence}"
+                        )
+            except Exception as exc:
+                warnings.append(f"FraudDetector-Fehler: {exc}")
+
+        # Manuelle Checks: Bekannte Malware-Domains
+        full_text = body + " " + str(frontmatter)
+        for domain in _MALWARE_DOMAINS:
+            if domain in full_text.lower():
+                errors.append(f"Bekannte Malware-Domain erkannt: {domain}")
+
+        # Kodierte Payloads (Base64-Bloecke > 100 Zeichen)
+        b64_blocks = re.findall(r"[A-Za-z0-9+/]{100,}={0,2}", body)
+        if b64_blocks:
+            warnings.append(
+                f"{len(b64_blocks)} verdaechtige(r) Base64-Block(s) im Body"
+            )
+
+        return CheckResult(
+            check_name="content_safety",
+            passed=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+        )
+
+    # ====================================================================
+    # Check 5: Manifest Integrity
+    # ====================================================================
+
+    def _check_manifest_integrity(
+        self,
+        manifest: dict[str, Any],
+        skill_md: str,
+        existing_names: set[str],
+    ) -> CheckResult:
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        # Pflichtfelder
+        for field_name in self.REQUIRED_MANIFEST_FIELDS:
+            if field_name not in manifest:
+                errors.append(f"Manifest: Pflichtfeld '{field_name}' fehlt")
+
+        # content_hash verifizieren (SHA-256 von skill.md)
+        expected_hash = hashlib.sha256(skill_md.encode("utf-8")).hexdigest()
+        actual_hash = manifest.get("content_hash", "")
+        if actual_hash and actual_hash != expected_hash:
+            errors.append(
+                f"content_hash stimmt nicht ueberein: "
+                f"erwartet {expected_hash[:16]}..., "
+                f"gefunden {actual_hash[:16]}..."
+            )
+
+        # SemVer pruefen
+        version = manifest.get("version", "")
+        if version and not self.SEMVER_PATTERN.match(version):
+            errors.append(f"Version '{version}' ist kein gueltiges SemVer")
+
+        # Duplikat-Check
+        name = manifest.get("name", "")
+        if name and name in existing_names:
+            errors.append(f"Skill-Name '{name}' ist bereits registriert")
+
+        # Name-Format
+        if name and not self.NAME_PATTERN.match(name):
+            errors.append(
+                f"Manifest-Name '{name}' entspricht nicht dem Format"
+            )
+
+        return CheckResult(
+            check_name="manifest_integrity",
+            passed=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+        )
+
+    # ====================================================================
+    # Hilfsmethoden
+    # ====================================================================
+
+    @staticmethod
+    def _parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
+        """Parst YAML-Frontmatter und Body aus Markdown."""
+        frontmatter: dict[str, Any] = {}
+        body = content
+
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                try:
+                    frontmatter = yaml.safe_load(parts[1]) or {}
+                except yaml.YAMLError as exc:
+                    log.warning("skill_frontmatter_parse_failed", error=str(exc))
+                body = parts[2].strip()
+
+        return frontmatter, body
+
+    @staticmethod
+    def compute_content_hash(skill_md: str) -> str:
+        """Berechnet den SHA-256-Hash einer skill.md-Datei."""
+        return hashlib.sha256(skill_md.encode("utf-8")).hexdigest()
