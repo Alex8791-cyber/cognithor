@@ -1,15 +1,20 @@
-"""Input-Sanitizer: Schutz gegen Prompt-Injection.
+"""Input-Sanitizer: Schutz gegen Prompt-Injection und Path-Traversal.
 
 Prüft und bereinigt alle externen Inhalte, bevor sie dem Planner
 (LLM) vorgelegt werden. Externe Inhalte werden in
 <external_content>-Tags gewrappt, bekannte Injection-Patterns
 werden entfernt oder neutralisiert.
 
+Zusätzlich: Validierung von Voice-/Modellnamen gegen Path-Traversal
+(CWE-22) — verhindert das Einschleusen von ../../-Sequenzen in
+Dateinamen, die als Pfade verwendet werden (z.B. Piper TTS Modelle).
+
 Sicherheitsgarantien:
   - Externe Inhalte sind IMMER markiert
   - Bekannte Injection-Patterns werden neutralisiert
   - Instruction-Hierarchie wird durchgesetzt
   - System-Prompts sind nicht überschreibbar
+  - Voice-/Modellnamen sind gegen Path-Traversal validiert
 
 Bibel-Referenz: §11.3 (Input-Sanitization)
 """
@@ -18,11 +23,115 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from jarvis.models import SanitizeResult
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
+
+
+# ============================================================================
+# Voice/Model Name Validation (CWE-22 Path Traversal Prevention)
+# ============================================================================
+
+# Piper voice names follow pattern: lang_REGION-name-quality
+# e.g. "de_DE-thorsten-high", "de_DE-thorsten_emotional-medium", "en_US-lessac-low"
+# Allowed: ASCII letters, digits, underscores, hyphens, dots (for version suffixes)
+# Blocked: path separators (/ \), parent traversal (..), null bytes, spaces, special chars
+_VOICE_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_\-\.]*$")
+
+# Maximum length for voice/model names (prevents abuse via extremely long names)
+_MAX_VOICE_NAME_LENGTH = 128
+
+
+def validate_voice_name(voice: str) -> str:
+    """Validates a voice/model name against path traversal attacks (CWE-22).
+
+    Ensures the name contains only safe characters and cannot be used
+    to construct paths outside the intended directory.
+
+    Args:
+        voice: The voice/model name to validate.
+
+    Returns:
+        The validated voice name (unchanged if valid).
+
+    Raises:
+        ValueError: If the voice name is invalid or potentially malicious.
+    """
+    if not voice:
+        raise ValueError("Voice name must not be empty")
+
+    if len(voice) > _MAX_VOICE_NAME_LENGTH:
+        raise ValueError(
+            f"Voice name too long ({len(voice)} chars, max {_MAX_VOICE_NAME_LENGTH})"
+        )
+
+    # Null byte injection check (can bypass string checks in C-level path APIs)
+    if "\x00" in voice:
+        log.warning("voice_name_null_byte_blocked", voice=repr(voice))
+        raise ValueError("Voice name contains null byte")
+
+    # Path separator check (explicit, before regex, for clear error message)
+    if "/" in voice or "\\" in voice:
+        log.warning("voice_name_path_separator_blocked", voice=voice)
+        raise ValueError(
+            f"Voice name contains path separator: {voice!r}"
+        )
+
+    # Parent directory traversal check
+    if ".." in voice:
+        log.warning("voice_name_traversal_blocked", voice=voice)
+        raise ValueError(
+            f"Voice name contains directory traversal sequence: {voice!r}"
+        )
+
+    # Whitelist regex: only safe characters
+    if not _VOICE_NAME_PATTERN.match(voice):
+        log.warning("voice_name_invalid_chars_blocked", voice=voice)
+        raise ValueError(
+            f"Voice name contains invalid characters: {voice!r}. "
+            f"Allowed: letters, digits, underscores, hyphens, dots."
+        )
+
+    return voice
+
+
+def validate_model_path_containment(
+    model_path: Path,
+    allowed_dir: Path,
+) -> Path:
+    """Defense-in-depth: verifies a constructed model path stays within its directory.
+
+    Even after voice name validation, this ensures the resolved path
+    is contained within the expected directory. Catches edge cases
+    like symlink escapes or OS-specific path normalization quirks.
+
+    Args:
+        model_path: The constructed model file path.
+        allowed_dir: The directory the path must reside in.
+
+    Returns:
+        The resolved, validated path.
+
+    Raises:
+        ValueError: If the resolved path escapes the allowed directory.
+    """
+    try:
+        resolved = model_path.resolve()
+        allowed_resolved = allowed_dir.resolve()
+        resolved.relative_to(allowed_resolved)
+    except (ValueError, OSError) as exc:
+        log.warning(
+            "model_path_containment_violation",
+            model_path=str(model_path),
+            allowed_dir=str(allowed_dir),
+        )
+        raise ValueError(
+            f"Model path {model_path} escapes allowed directory {allowed_dir}"
+        ) from exc
+    return resolved
 
 
 # ============================================================================

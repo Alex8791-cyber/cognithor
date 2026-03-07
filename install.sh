@@ -327,14 +327,65 @@ detect_hardware_tier() {
     # Ermittelt Hardware-Tier basierend auf VRAM und RAM
     local vram_mb=0
     local ram_mb=0
+    local gpu_count=0
     local vram_str="keine GPU"
 
-    # VRAM via nvidia-smi
+    # VRAM via nvidia-smi (supports multi-GPU: sums all GPUs)
     if check_command nvidia-smi; then
-        vram_mb=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ' || echo "0")
+        local _nvsmi_output
+        _nvsmi_output=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null) || true
+        if [[ -n "$_nvsmi_output" ]]; then
+            # Sum VRAM across all GPUs (one value per line)
+            local _total_vram=0
+            while IFS= read -r _line; do
+                _line=$(echo "$_line" | tr -d ' \r')
+                if [[ "$_line" =~ ^[0-9]+$ ]]; then
+                    _total_vram=$(( _total_vram + _line ))
+                    gpu_count=$(( gpu_count + 1 ))
+                fi
+            done <<< "$_nvsmi_output"
+            vram_mb=$_total_vram
+        fi
         if [[ "$vram_mb" -gt 0 ]]; then
             local vram_gb=$(( vram_mb / 1024 ))
-            vram_str="${vram_gb} GB VRAM"
+            if [[ "$gpu_count" -gt 1 ]]; then
+                vram_str="${vram_gb} GB VRAM (${gpu_count} GPUs)"
+            else
+                vram_str="${vram_gb} GB VRAM"
+            fi
+        fi
+    # AMD GPU via rocm-smi (Radeon)
+    elif check_command rocm-smi; then
+        local _rocm_output
+        _rocm_output=$(rocm-smi --showmeminfo vram --json 2>/dev/null) || true
+        if [[ -n "$_rocm_output" ]]; then
+            local _total_vram=0
+            # Parse JSON output: extract "Total Memory (B)" values
+            while IFS= read -r _vram_bytes; do
+                _vram_bytes=$(echo "$_vram_bytes" | tr -d ' ",' | grep -oP '[0-9]+')
+                if [[ -n "$_vram_bytes" && "$_vram_bytes" =~ ^[0-9]+$ ]]; then
+                    _total_vram=$(( _total_vram + _vram_bytes / 1048576 ))
+                    gpu_count=$(( gpu_count + 1 ))
+                fi
+            done < <(echo "$_rocm_output" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    for card in data.values():
+        if isinstance(card, dict):
+            total = card.get('Total Memory (B)', card.get('VRAM Total Memory (B)', 0))
+            if total: print(total)
+except: pass
+" 2>/dev/null)
+            vram_mb=$_total_vram
+        fi
+        if [[ "$vram_mb" -gt 0 ]]; then
+            local vram_gb=$(( vram_mb / 1024 ))
+            if [[ "$gpu_count" -gt 1 ]]; then
+                vram_str="${vram_gb} GB VRAM AMD (${gpu_count} GPUs)"
+            else
+                vram_str="${vram_gb} GB VRAM AMD"
+            fi
         fi
     fi
 
@@ -361,7 +412,7 @@ detect_hardware_tier() {
 
     # Anzeige
     echo ""
-    info "Dein System: ${vram_str}, ${ram_gb} GB RAM"
+    info "Dein System: ${vram_str}, ${ram_gb} GB RAM, ${cpu_cores} Kerne"
     info "Hardware-Tier: ${BOLD}$(echo "$tier" | tr '[:lower:]' '[:upper:]')${NC}"
 
     case "$tier" in
@@ -542,7 +593,32 @@ install_jarvis() {
     elif [[ -f "$ui_dist" ]]; then
         success "Pre-built UI vorhanden (Node.js nicht noetig)"
     else
-        info "Node.js nicht gefunden -- Web-UI nicht erstellt (CLI-Modus verfuegbar)"
+        echo ""
+        warn "Node.js nicht gefunden -- Web-UI kann nicht erstellt werden"
+        info "CLI-Modus ist vollstaendig verfuegbar (kein Node.js noetig)"
+        echo ""
+        info "Fuer Web-UI spaeter Node.js installieren:"
+        local _distro_id=""
+        if [[ -f /etc/os-release ]]; then
+            _distro_id=$(. /etc/os-release && echo "${ID:-}")
+        fi
+        case "$_distro_id" in
+            ubuntu|debian)
+                echo "    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -"
+                echo "    sudo apt install -y nodejs"
+                ;;
+            fedora|rhel|centos|rocky|alma)
+                echo "    sudo dnf install nodejs"
+                ;;
+            arch|manjaro)
+                echo "    sudo pacman -S nodejs npm"
+                ;;
+            *)
+                echo "    https://nodejs.org/en/download/"
+                ;;
+        esac
+        echo "    cd $ui_dir && npm install && npm run build"
+        echo ""
     fi
 }
 
@@ -599,9 +675,18 @@ setup_directories() {
         create_directory_safe "$dir"
     done
 
-    # Additionally run jarvis --init-only for any extra setup
+    # Additionally run jarvis --init-only for any extra setup (with timeout)
     info "Fuehre jarvis --init-only aus..."
-    "$VENV_DIR/bin/jarvis" --init-only 2>/dev/null || true
+    if timeout 30 "$VENV_DIR/bin/jarvis" --init-only 2>/dev/null; then
+        success "jarvis --init-only erfolgreich"
+    else
+        local _exit_code=$?
+        if [[ $_exit_code -eq 124 ]]; then
+            warn "jarvis --init-only Timeout nach 30s -- uebersprungen"
+        else
+            warn "jarvis --init-only fehlgeschlagen (Exit-Code: $_exit_code) -- uebersprungen"
+        fi
+    fi
     success "Verzeichnisstruktur in $JARVIS_HOME vollstaendig"
 
     # Config-Datei

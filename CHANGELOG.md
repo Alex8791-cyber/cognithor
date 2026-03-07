@@ -5,6 +5,26 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.27.3-beta] – 2026-03-07
+
+### Security Fix & Installer Bug-Fixes
+
+Closes a high-severity Path Traversal vulnerability (CWE-22) in the TTS/Voice API and fixes three installer bugs reported by QA.
+
+### Fixed
+
+- **CWE-22 Path Traversal in TTS API** — Malicious `voice` parameter in `POST /api/v1/tts` could escape the voices directory via `../../../../etc/passwd`. Added `validate_voice_name()` whitelist (regex + null-byte + length check) and `validate_model_path_containment()` defense-in-depth across all 4 TTS entry points (`__main__.py`, `mcp/media.py`, `voice_ws_bridge.py`)
+- **Multi-GPU detection crash** (install.sh) — `nvidia-smi` on multi-GPU systems (e.g. 2x Tesla M40) returned multi-line output causing `bash: [[: 12288\n0: syntax error`. Now parses all lines individually and sums VRAM across GPUs
+- **`--init-only` hangs indefinitely** — `StartupChecker.check_and_fix_all()` ran before the `--init-only` exit, attempting model pulls (30min timeout) and pip installs (5min timeout). Moved `--init-only` exit before StartupChecker. Added `timeout 30` safety net in install.sh
+
+### Added
+
+- `validate_voice_name()` in `security/sanitizer.py` — Central voice/model name validation against path traversal
+- `validate_model_path_containment()` — Defense-in-depth path containment check (resolve + relative_to)
+- AMD GPU detection via `rocm-smi` in install.sh
+- Node.js missing: distro-specific installation instructions (Ubuntu, Fedora, Arch)
+- 96 new security tests in `test_voice_path_traversal.py`
+
 ## [0.27.1] – 2026-03-07
 
 ### Community Skill Marketplace & Autonomy Hardening

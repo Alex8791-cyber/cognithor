@@ -132,6 +132,14 @@ class VoiceMessageHandler:
         if not text.strip():
             return None
 
+        # CWE-22: Validate voice name against path traversal
+        from jarvis.security.sanitizer import validate_voice_name
+        try:
+            validate_voice_name(voice)
+        except ValueError as exc:
+            log.warning("voice_ws_invalid_voice_name", voice=voice, error=str(exc))
+            return None
+
         try:
             media = self._get_media()
             output = self._workspace / "voice_response.wav"

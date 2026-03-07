@@ -14,7 +14,11 @@ from jarvis.security.red_team import (
     SecurityScanner,
 )
 from jarvis.security.sandbox import Sandbox, SandboxResult
-from jarvis.security.sanitizer import InputSanitizer
+from jarvis.security.sanitizer import (
+    InputSanitizer,
+    validate_model_path_containment,
+    validate_voice_name,
+)
 from jarvis.security.vault import (
     EncryptedVault,
     IsolatedSessionStore,
@@ -118,4 +122,6 @@ __all__ = [
     "SecureTokenStore",
     "create_ssl_context",
     "get_token_store",
+    "validate_model_path_containment",
+    "validate_voice_name",
 ]

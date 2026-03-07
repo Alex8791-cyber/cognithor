@@ -145,7 +145,24 @@ def main() -> None:
 
     log = get_logger("jarvis")
 
-    # 3.5 Startup-Check: Fehlende Abhängigkeiten automatisch laden
+    # 3.5 Init-only: Nur Verzeichnisstruktur erstellen, dann sofort beenden.
+    # WICHTIG: Muss VOR dem StartupChecker stehen, da dieser Model-Pulls
+    # (bis 30 Min Timeout) und pip-Installs (bis 5 Min) ausloest.
+    if args.init_only:
+        if created:
+            for path in created:
+                log.info("created_path", path=path)
+        log.info("init_complete", paths_created=len(created))
+        log.info(
+            "init_summary",
+            version=__version__,
+            home=str(config.jarvis_home),
+            config_file=str(config.config_file),
+            paths_created=len(created),
+        )
+        return
+
+    # 3.6 Startup-Check: Fehlende Abhängigkeiten automatisch laden
     from jarvis.core.startup_check import StartupChecker
 
     checker = StartupChecker(config)
@@ -166,17 +183,6 @@ def main() -> None:
     if created:
         for path in created:
             log.info("created_path", path=path)
-
-    if args.init_only:
-        log.info("init_complete", paths_created=len(created))
-        log.info(
-            "init_summary",
-            version=__version__,
-            home=str(config.jarvis_home),
-            config_file=str(config.config_file),
-            paths_created=len(created),
-        )
-        return
 
     # 5. System-Check -- startup banner (intentional CLI output)
     _api_host = args.api_host or os.environ.get("JARVIS_API_HOST", "127.0.0.1")
@@ -499,6 +505,10 @@ def main() -> None:
                     try:
                         wav_bytes = await _run_piper_tts(text, voice, length_scale)
                         return Response(content=wav_bytes, media_type="audio/wav")
+                    except ValueError as _val_exc:
+                        # CWE-22: Invalid voice name (path traversal attempt)
+                        log.warning("tts_voice_validation_failed", voice=voice, error=str(_val_exc))
+                        return {"error": f"Ungueltiger Voice-Name: {_val_exc}"}
                     except FileNotFoundError:
                         return {"error": "Piper TTS nicht installiert. Bitte: pip install piper-tts"}
                     except Exception as _tts_exc:
@@ -530,11 +540,18 @@ def main() -> None:
                 async def _run_piper_tts(text: str, voice: str, length_scale: float = 1.0) -> bytes:
                     """Generiert WAV-Audio via Piper TTS."""
                     import tempfile
+                    from jarvis.security.sanitizer import validate_voice_name, validate_model_path_containment
+
+                    # CWE-22: Validate voice name before path construction
+                    validate_voice_name(voice)
 
                     # Voice-Modell-Pfad ermitteln
                     voices_dir = Path(config.jarvis_home) / "voices"
                     voices_dir.mkdir(exist_ok=True)
                     model_path = voices_dir / f"{voice}.onnx"
+
+                    # Defense-in-depth: ensure resolved path stays in voices_dir
+                    validate_model_path_containment(model_path, voices_dir)
 
                     # Auto-Download wenn nicht vorhanden
                     if not model_path.exists():
@@ -597,6 +614,13 @@ def main() -> None:
                 async def _download_piper_voice(voice: str, dest: Path) -> None:
                     """Lädt ein Piper-Voicemodell von HuggingFace herunter."""
                     import urllib.request
+                    from jarvis.security.sanitizer import validate_voice_name, validate_model_path_containment
+
+                    # CWE-22: Validate voice name before download
+                    validate_voice_name(voice)
+
+                    # Defense-in-depth: ensure download target stays in dest dir
+                    validate_model_path_containment(dest / f"{voice}.onnx", dest)
 
                     parts = voice.split("-")  # de_DE-pavoque-low
                     lang = parts[0]  # de_DE

@@ -838,6 +838,13 @@ class MediaPipeline:
         if not text.strip():
             return MediaResult(success=False, error="Leerer Text")
 
+        # CWE-22: Validate voice name against path traversal
+        from jarvis.security.sanitizer import validate_voice_name
+        try:
+            validate_voice_name(voice)
+        except ValueError as exc:
+            return MediaResult(success=False, error=f"Ungueltiger Voice-Name: {exc}")
+
         out = Path(output_path) if output_path else self._workspace / "tts_output.wav"
 
         # Versuch 1: Piper
