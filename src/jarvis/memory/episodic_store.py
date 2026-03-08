@@ -126,8 +126,6 @@ class EpisodicStore:
         date_range: tuple[str, str] | None = None,
     ) -> list[EpisodicEntry]:
         """FTS5-Volltext-Suche ueber Episoden."""
-        conn = self._get_conn()
-
         # Build query
         conditions = ["episodes_fts MATCH ?"]
         params: list[Any] = [query]
@@ -144,14 +142,16 @@ class EpisodicStore:
         params.append(limit)
 
         try:
-            rows = conn.execute(
-                f"""SELECT e.* FROM episodes e
-                    JOIN episodes_fts ON episodes_fts.rowid = e.rowid
-                    WHERE {where}
-                    ORDER BY rank
-                    LIMIT ?""",
-                params,
-            ).fetchall()
+            with self._write_lock:
+                conn = self._get_conn()
+                rows = conn.execute(
+                    f"""SELECT e.* FROM episodes e
+                        JOIN episodes_fts ON episodes_fts.rowid = e.rowid
+                        WHERE {where}
+                        ORDER BY rank
+                        LIMIT ?""",
+                    params,
+                ).fetchall()
         except sqlite3.OperationalError:
             # FTS query syntax error - return empty
             return []
@@ -164,10 +164,11 @@ class EpisodicStore:
         limit: int = 5,
     ) -> list[EpisodicEntry]:
         """Findet Episoden mit aehnlicher Tool-Sequenz."""
-        conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM episodes WHERE success_score > 0 ORDER BY success_score DESC"
-        ).fetchall()
+        with self._write_lock:
+            conn = self._get_conn()
+            rows = conn.execute(
+                "SELECT * FROM episodes WHERE success_score > 0 ORDER BY success_score DESC"
+            ).fetchall()
 
         # Score by Jaccard similarity of tool sequences
         target_set = set(tool_sequence)
@@ -190,17 +191,19 @@ class EpisodicStore:
 
     def get_session_episodes(self, session_id: str) -> list[EpisodicEntry]:
         """Alle Episoden einer Session."""
-        conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM episodes WHERE session_id = ? ORDER BY timestamp",
-            (session_id,),
-        ).fetchall()
+        with self._write_lock:
+            conn = self._get_conn()
+            rows = conn.execute(
+                "SELECT * FROM episodes WHERE session_id = ? ORDER BY timestamp",
+                (session_id,),
+            ).fetchall()
         return [self._row_to_entry(r) for r in rows]
 
     def get_episode_count(self) -> int:
         """Gesamtzahl der Episoden."""
-        conn = self._get_conn()
-        row = conn.execute("SELECT COUNT(*) as cnt FROM episodes").fetchone()
+        with self._write_lock:
+            conn = self._get_conn()
+            row = conn.execute("SELECT COUNT(*) as cnt FROM episodes").fetchone()
         return row["cnt"] if row else 0
 
     def store_summary(
@@ -227,16 +230,17 @@ class EpisodicStore:
 
     def get_summaries(self, period: str | None = None) -> list[dict[str, Any]]:
         """Holt Zusammenfassungen, optional gefiltert nach Periode."""
-        conn = self._get_conn()
-        if period:
-            rows = conn.execute(
-                "SELECT * FROM episode_summaries WHERE period = ? ORDER BY start_date DESC",
-                (period,),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT * FROM episode_summaries ORDER BY start_date DESC"
-            ).fetchall()
+        with self._write_lock:
+            conn = self._get_conn()
+            if period:
+                rows = conn.execute(
+                    "SELECT * FROM episode_summaries WHERE period = ? ORDER BY start_date DESC",
+                    (period,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM episode_summaries ORDER BY start_date DESC"
+                ).fetchall()
 
         return [
             {
