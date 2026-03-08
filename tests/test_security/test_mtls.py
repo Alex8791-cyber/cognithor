@@ -1,4 +1,5 @@
 """Tests for mTLS certificate generation and management."""
+
 from __future__ import annotations
 
 import ssl
@@ -91,6 +92,7 @@ class TestEnsureMtlsCerts:
     def test_disabled_returns_none(self):
         """Returns None when mTLS is disabled."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         config.security.mtls.enabled = False
         assert ensure_mtls_certs(config) is None
@@ -102,6 +104,7 @@ class TestEnsureMtlsCerts:
     def test_generates_all_certs(self, tmp_path):
         """Generates all certificates when none exist."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         config.security.mtls.enabled = True
         config.security.mtls.certs_dir = str(tmp_path / "certs")
@@ -117,6 +120,7 @@ class TestEnsureMtlsCerts:
     def test_idempotent(self, tmp_path):
         """Does not regenerate if certs already exist."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         config.security.mtls.enabled = True
         config.security.mtls.certs_dir = str(tmp_path / "certs")
@@ -132,6 +136,7 @@ class TestEnsureMtlsCerts:
     def test_auto_generate_false_warns(self, tmp_path):
         """Returns None when certs missing and auto_generate is False."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         config.security.mtls.enabled = True
         config.security.mtls.certs_dir = str(tmp_path / "empty_certs")

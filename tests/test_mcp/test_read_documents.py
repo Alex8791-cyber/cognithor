@@ -17,8 +17,8 @@ def pipeline(tmp_path: Path) -> MediaPipeline:
 
 # ── read_pdf ───────────────────────────────────────────────────────
 
-class TestReadPdf:
 
+class TestReadPdf:
     @pytest.mark.asyncio
     async def test_file_not_found(self, pipeline: MediaPipeline) -> None:
         result = await pipeline.read_pdf("/nonexistent/file.pdf")
@@ -60,7 +60,7 @@ class TestReadPdf:
         pages = []
         for i in range(5):
             p = MagicMock()
-            p.get_text.return_value = f"Page {i+1}"
+            p.get_text.return_value = f"Page {i + 1}"
             p.get_images.return_value = []
             pages.append(p)
 
@@ -85,8 +85,8 @@ class TestReadPdf:
 
 # ── read_ppt ───────────────────────────────────────────────────────
 
-class TestReadPpt:
 
+class TestReadPpt:
     @pytest.mark.asyncio
     async def test_file_not_found(self, pipeline: MediaPipeline) -> None:
         result = await pipeline.read_ppt("/nonexistent/file.pptx")
@@ -143,8 +143,8 @@ class TestReadPpt:
 
 # ── read_docx ──────────────────────────────────────────────────────
 
-class TestReadDocx:
 
+class TestReadDocx:
     @pytest.mark.asyncio
     async def test_file_not_found(self, pipeline: MediaPipeline) -> None:
         result = await pipeline.read_docx("/nonexistent/file.docx")
@@ -194,8 +194,8 @@ class TestReadDocx:
 
 # ── Tool registration ──────────────────────────────────────────────
 
-class TestToolSchemas:
 
+class TestToolSchemas:
     def test_schemas_include_new_tools(self) -> None:
         from jarvis.mcp.media import MEDIA_TOOL_SCHEMAS
 

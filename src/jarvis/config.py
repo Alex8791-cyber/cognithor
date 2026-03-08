@@ -1362,7 +1362,9 @@ class MtlsConfig(BaseModel):
     """Mutual TLS Konfiguration fuer Frontend-Backend-Kommunikation."""
 
     enabled: bool = Field(default=False, description="mTLS fuer WebUI-API aktivieren")
-    certs_dir: str = Field(default="", description="Zertifikats-Verzeichnis (Standard: ~/.jarvis/certs/)")
+    certs_dir: str = Field(
+        default="", description="Zertifikats-Verzeichnis (Standard: ~/.jarvis/certs/)"
+    )
     auto_generate: bool = Field(default=True, description="Zertifikate automatisch generieren")
 
 

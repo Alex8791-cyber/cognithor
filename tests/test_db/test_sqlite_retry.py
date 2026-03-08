@@ -1,4 +1,5 @@
 """Tests for SQLite retry-on-locked logic."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -45,6 +46,7 @@ class TestRetryOnLocked:
 
     def test_exhausted_retries_raises(self, backend):
         """Raises after max retries."""
+
         def always_locked(*a, **kw):
             raise sqlite3.OperationalError("database is locked")
 

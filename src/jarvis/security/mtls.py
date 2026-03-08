@@ -59,10 +59,12 @@ def generate_ca(certs_dir: Path) -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
         Tuple aus (CA Private Key, CA Certificate).
     """
     key = _generate_key()
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Cognithor Local CA"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "Cognithor Root CA"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Cognithor Local CA"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "Cognithor Root CA"),
+        ]
+    )
 
     now = datetime.datetime.now(datetime.UTC)
     cert = (
@@ -101,10 +103,12 @@ def generate_server_cert(
     import ipaddress
 
     key = _generate_key()
-    subject = x509.Name([
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Cognithor"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
-    ])
+    subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Cognithor"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
+        ]
+    )
 
     now = datetime.datetime.now(datetime.UTC)
     cert = (
@@ -117,11 +121,13 @@ def generate_server_cert(
         .not_valid_after(now + datetime.timedelta(days=_CERT_VALIDITY_DAYS))
         .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
         .add_extension(
-            x509.SubjectAlternativeName([
-                DNSName("localhost"),
-                IPAddress(ipaddress.IPv4Address("127.0.0.1")),
-                IPAddress(ipaddress.IPv6Address("::1")),
-            ]),
+            x509.SubjectAlternativeName(
+                [
+                    DNSName("localhost"),
+                    IPAddress(ipaddress.IPv4Address("127.0.0.1")),
+                    IPAddress(ipaddress.IPv6Address("::1")),
+                ]
+            ),
             critical=False,
         )
         .sign(ca_key, hashes.SHA256())
@@ -145,10 +151,12 @@ def generate_client_cert(
         certs_dir: Verzeichnis fuer client.pem und client-key.pem.
     """
     key = _generate_key()
-    subject = x509.Name([
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Cognithor"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "Cognithor Frontend"),
-    ])
+    subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Cognithor"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "Cognithor Frontend"),
+        ]
+    )
 
     now = datetime.datetime.now(datetime.UTC)
     cert = (
@@ -194,7 +202,14 @@ def ensure_mtls_certs(config: Any = None) -> Path | None:
     certs_dir.mkdir(parents=True, exist_ok=True)
 
     # Prüfe ob alle benötigten Dateien existieren
-    required_files = ["ca.pem", "ca-key.pem", "server.pem", "server-key.pem", "client.pem", "client-key.pem"]
+    required_files = [
+        "ca.pem",
+        "ca-key.pem",
+        "server.pem",
+        "server-key.pem",
+        "client.pem",
+        "client-key.pem",
+    ]
     all_exist = all((certs_dir / f).exists() for f in required_files)
 
     if all_exist:

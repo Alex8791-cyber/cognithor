@@ -51,7 +51,7 @@ class SQLiteBackend:
                     raise
                 last_exc = exc
                 if attempt < self._max_retries:
-                    delay = self._retry_base_delay * (2 ** attempt) * random.uniform(0.5, 1.0)
+                    delay = self._retry_base_delay * (2**attempt) * random.uniform(0.5, 1.0)
                     logger.warning(
                         "database is locked – retry %d/%d in %.3fs (%s)",
                         attempt + 1,

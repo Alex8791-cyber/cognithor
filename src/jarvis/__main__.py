@@ -139,6 +139,7 @@ def main() -> None:
     _mtls_certs_dir = None
     try:
         from jarvis.security.mtls import ensure_mtls_certs as _ensure_mtls
+
         _mtls_certs_dir = _ensure_mtls(config)
     except ImportError:
         pass  # cryptography nicht installiert
@@ -884,6 +885,7 @@ def main() -> None:
                 if _mtls_certs_dir is not None:
                     # mTLS: Server-Zertifikat + Client-Verifizierung
                     import ssl as _ssl_mod
+
                     uvi_kwargs["ssl_certfile"] = str(_mtls_certs_dir / "server.pem")
                     uvi_kwargs["ssl_keyfile"] = str(_mtls_certs_dir / "server-key.pem")
                     uvi_kwargs["ssl_ca_certs"] = str(_mtls_certs_dir / "ca.pem")

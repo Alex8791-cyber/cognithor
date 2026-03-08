@@ -538,9 +538,7 @@ class MediaPipeline:
         try:
             import fitz  # pymupdf
         except ImportError:
-            raise ImportError(
-                "pymupdf nicht installiert. pip install pymupdf"
-            ) from None
+            raise ImportError("pymupdf nicht installiert. pip install pymupdf") from None
 
         doc = fitz.open(str(path))
         total_pages = len(doc)
@@ -592,15 +590,10 @@ class MediaPipeline:
                                 for row in rows
                             ]
                             if len(md_rows) > 1:
-                                header_sep = (
-                                    "| "
-                                    + " | ".join("---" for _ in rows[0])
-                                    + " |"
-                                )
+                                header_sep = "| " + " | ".join("---" for _ in rows[0]) + " |"
                                 md_rows.insert(1, header_sep)
                             tables_md.append(
-                                f"Tabelle (Seite {i + 1}, #{t_idx + 1}):\n"
-                                + "\n".join(md_rows)
+                                f"Tabelle (Seite {i + 1}, #{t_idx + 1}):\n" + "\n".join(md_rows)
                             )
                 except Exception:
                     pass
@@ -666,17 +659,13 @@ class MediaPipeline:
             log.error("read_ppt_failed", path=file_path, error=str(exc))
             return MediaResult(success=False, error=f"PPT-Lesen fehlgeschlagen: {exc}")
 
-    def _read_ppt_structured(
-        self, path: Path, extract_images: bool
-    ) -> MediaResult:
+    def _read_ppt_structured(self, path: Path, extract_images: bool) -> MediaResult:
         """Synchrone strukturierte PPTX-Extraktion."""
         try:
             from pptx import Presentation
             from pptx.enum.shapes import MSO_SHAPE_TYPE
         except ImportError:
-            raise ImportError(
-                "python-pptx nicht installiert. pip install python-pptx"
-            ) from None
+            raise ImportError("python-pptx nicht installiert. pip install python-pptx") from None
 
         prs = Presentation(str(path))
         slide_texts: list[str] = []
@@ -777,9 +766,7 @@ class MediaPipeline:
         try:
             from docx import Document
         except ImportError:
-            raise ImportError(
-                "python-docx nicht installiert. pip install python-docx"
-            ) from None
+            raise ImportError("python-docx nicht installiert. pip install python-docx") from None
 
         doc = Document(str(path))
         text_parts: list[str] = []
@@ -821,9 +808,7 @@ class MediaPipeline:
                     ]
                     for row in rows[1:]:
                         md_rows.append("| " + " | ".join(row) + " |")
-                    tables_md.append(
-                        f"Tabelle #{t_idx + 1}:\n" + "\n".join(md_rows)
-                    )
+                    tables_md.append(f"Tabelle #{t_idx + 1}:\n" + "\n".join(md_rows))
 
         # Bilder extrahieren
         image_paths: list[str] = []
@@ -1793,13 +1778,17 @@ def register_media_tools(mcp_client: Any, config: Any = None) -> MediaPipeline:
         **_: Any,
     ) -> str:
         result = await pipeline.read_pdf(
-            file_path, extract_images=extract_images,
-            extract_tables=extract_tables, pages=pages,
+            file_path,
+            extract_images=extract_images,
+            extract_tables=extract_tables,
+            pages=pages,
         )
         return result.text if result.success else f"Fehler: {result.error}"
 
     async def _read_ppt(
-        file_path: str, extract_images: bool = False, **_: Any,
+        file_path: str,
+        extract_images: bool = False,
+        **_: Any,
     ) -> str:
         result = await pipeline.read_ppt(file_path, extract_images=extract_images)
         return result.text if result.success else f"Fehler: {result.error}"
@@ -1811,7 +1800,9 @@ def register_media_tools(mcp_client: Any, config: Any = None) -> MediaPipeline:
         **_: Any,
     ) -> str:
         result = await pipeline.read_docx(
-            file_path, extract_images=extract_images, extract_tables=extract_tables,
+            file_path,
+            extract_images=extract_images,
+            extract_tables=extract_tables,
         )
         return result.text if result.success else f"Fehler: {result.error}"
 
