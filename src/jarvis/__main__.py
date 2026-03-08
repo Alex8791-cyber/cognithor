@@ -539,7 +539,7 @@ def main() -> None:
                     except ValueError as _val_exc:
                         # CWE-22: Invalid voice name (path traversal attempt)
                         log.warning("tts_voice_validation_failed", voice=voice, error=str(_val_exc))
-                        return {"error": f"Ungueltiger Voice-Name: {_val_exc}"}
+                        return {"error": "Ungueltiger Voice-Name"}
                     except FileNotFoundError:
                         return {"error": "Piper TTS nicht installiert. Bitte: pip install piper-tts"}
                     except Exception as _tts_exc:
@@ -583,14 +583,14 @@ def main() -> None:
                     # Voice-Modell-Pfad ermitteln
                     voices_dir = Path(config.jarvis_home) / "voices"
                     voices_dir.mkdir(exist_ok=True)
-                    model_path = voices_dir / f"{voice}.onnx"
 
-                    # Defense-in-depth: ensure resolved path stays in voices_dir
+                    # Defense-in-depth: normalize and validate path stays in voices_dir
                     import os.path as _osp
-                    _norm_model = _osp.normpath(_osp.realpath(str(model_path)))
                     _norm_voices = _osp.normpath(_osp.realpath(str(voices_dir)))
+                    _norm_model = _osp.normpath(_osp.join(_norm_voices, f"{voice}.onnx"))
                     if not _norm_model.startswith(_norm_voices + _osp.sep):
                         raise ValueError("Modellpfad verletzt Verzeichnisgrenzen")
+                    model_path = Path(_norm_model)
 
                     # Auto-Download wenn nicht vorhanden
                     if not model_path.exists():
@@ -616,11 +616,10 @@ def main() -> None:
                             "--length-scale", str(length_scale),
                         ]
                         # Multi-speaker models (e.g. thorsten_emotional) need --speaker
-                        model_json = model_path.with_suffix(".onnx.json")
-                        # CWE-22: validate derived path stays within voices_dir
-                        _norm_json = _osp.normpath(_osp.realpath(str(model_json)))
+                        _norm_json = _osp.normpath(_osp.join(_norm_voices, f"{voice}.onnx.json"))
                         if not _norm_json.startswith(_norm_voices + _osp.sep):
                             raise ValueError("Modell-JSON verletzt Verzeichnisgrenzen")
+                        model_json = Path(_norm_json)
                         if model_json.exists():
                             try:
                                 import json as _mj
