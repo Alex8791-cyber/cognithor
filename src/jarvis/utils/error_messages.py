@@ -115,11 +115,13 @@ def classify_error_for_user(exc: BaseException) -> str:
 
     if exc_type in ("TimeoutError", "asyncio.TimeoutError") or "timeout" in exc_str.lower():
         return _t(
-            "Die Verarbeitung hat leider zu lange gedauert. "
-            "Das kann an einem langsamen Netzwerk oder einem überlasteten Dienst liegen. "
-            "Bitte versuch es gleich noch einmal.",
-            "The request timed out. This may be due to a slow network or an overloaded "
-            "service. Please try again in a moment.",
+            "Die Verarbeitung hat das Zeitlimit überschritten. "
+            "Mögliche Ursachen: Ollama ist überlastet, das Modell zu groß für den "
+            "verfügbaren Speicher, oder ein externer Dienst antwortet nicht.\n"
+            "Detail: " + exc_str[:200],
+            "The request timed out. Possible causes: Ollama is overloaded, the model "
+            "is too large for available memory, or an external service is not responding.\n"
+            "Detail: " + exc_str[:200],
         )
 
     if (
@@ -161,14 +163,14 @@ def classify_error_for_user(exc: BaseException) -> str:
             "A memory problem occurred. Please try again with a smaller request.",
         )
 
-    # Generic fallback -- still friendlier than raw exception
+    # Generic fallback -- include exception type + truncated message
     return _t(
-        "Bei der Verarbeitung ist ein unerwarteter Fehler aufgetreten. "
-        "Bitte versuch es erneut. Wenn das Problem weiterhin besteht, "
-        "formuliere deine Anfrage etwas anders.",
-        "An unexpected error occurred during processing. "
-        "Please try again. If the problem persists, "
-        "try rephrasing your request.",
+        f"Ein Fehler ist aufgetreten ({exc_type}).\n"
+        f"Detail: {exc_str[:300]}\n\n"
+        f"Falls dieses Problem wiederholt auftritt, prüfe die Backend-Logs.",
+        f"An error occurred ({exc_type}).\n"
+        f"Detail: {exc_str[:300]}\n\n"
+        f"If this keeps happening, check the backend logs.",
     )
 
 

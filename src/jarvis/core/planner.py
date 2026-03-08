@@ -475,9 +475,11 @@ class Planner:
                 goal=user_message,
                 reasoning="LLM nicht erreichbar (Circuit Breaker offen)",
                 direct_response=(
-                    "Das Sprachmodell ist gerade nicht erreichbar — ich pausiere kurz "
-                    f"und versuche es in {exc.remaining_seconds:.0f} Sekunden erneut. "
-                    "Bitte versuch es gleich noch einmal."
+                    "Das Sprachmodell ist wiederholt nicht erreichbar. "
+                    f"Automatischer Retry in {exc.remaining_seconds:.0f}s.\n\n"
+                    "Prüfe bitte:\n"
+                    "• Läuft Ollama? → `ollama serve`\n"
+                    "• Hat das System genug RAM/VRAM?"
                 ),
                 confidence=0.0,
             )
@@ -509,9 +511,13 @@ class Planner:
                 goal=user_message,
                 reasoning="LLM-Fehler -- kann nicht planen",
                 direct_response=(
-                    "Entschuldigung, ich hatte gerade ein technisches Problem und konnte "
-                    "deine Anfrage nicht verarbeiten. Bitte versuch es gleich noch einmal. "
-                    "Wenn das Problem weiterhin besteht, formuliere deine Frage etwas anders."
+                    f"Ich konnte deine Anfrage nicht verarbeiten — das Sprachmodell "
+                    f"hat einen Fehler gemeldet (HTTP {exc.status_code}).\n\n"
+                    f"Mögliche Ursachen:\n"
+                    f"• Ollama ist nicht gestartet → `ollama serve`\n"
+                    f"• Das Modell '{model}' ist nicht installiert → `ollama pull {model}`\n"
+                    f"• Nicht genug VRAM/RAM für das Modell\n\n"
+                    f"Fehlerdetails: {str(exc)[:200]}"
                 ),
                 confidence=0.0,
             )
@@ -594,8 +600,9 @@ class Planner:
                     return ActionPlan(
                         goal=original_goal,
                         direct_response=(
-                            "Entschuldigung, ich konnte den Plan leider nicht fortsetzen. "
-                            "Bitte versuch es erneut oder beschreib mir dein Ziel nochmal anders."
+                            f"Ich konnte den Plan nicht fortsetzen — das Sprachmodell meldet "
+                            f"Fehler nach {_replan_attempts} Versuchen.\n\n"
+                            f"Fehler: {str(exc)[:200]}"
                         ),
                         confidence=0.0,
                     )
@@ -771,8 +778,9 @@ class Planner:
                 if raw_results:
                     return f"Hier sind die Ergebnisse (Zusammenfassung fehlgeschlagen):\n\n{raw_results}"
                 return (
-                    "Ich konnte die Ergebnisse leider nicht zusammenfassen. "
-                    "Bitte versuch es gleich noch einmal."
+                    "Ich konnte die Ergebnisse leider nicht zusammenfassen — "
+                    "das Sprachmodell antwortet fehlerhaft. "
+                    "Prüfe, ob Ollama läuft und genug Ressourcen hat."
                 )
         return ""  # Unreachable, aber fuer Type-Checker
 
