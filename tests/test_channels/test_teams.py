@@ -30,6 +30,13 @@ sys.modules.setdefault("botbuilder.schema", _mock_botbuilder_schema)
 sys.modules.setdefault("botbuilder.integration", MagicMock())
 sys.modules.setdefault("botbuilder.integration.aiohttp", MagicMock())
 
+# Mock aiohttp so lazy imports inside teams.py don't fail in CI
+_mock_aiohttp = MagicMock()
+_mock_aiohttp_web = MagicMock()
+_mock_aiohttp_web.Response = MagicMock
+sys.modules.setdefault("aiohttp", _mock_aiohttp)
+sys.modules.setdefault("aiohttp.web", _mock_aiohttp_web)
+
 from jarvis.channels.teams import (
     TeamsChannel,
     _split_message,
