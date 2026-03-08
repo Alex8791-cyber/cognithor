@@ -1294,7 +1294,9 @@ def _register_skill_routes(
             pass
         models = sorted(router._available_models) if router._available_models else []
         # Also return currently configured models for reference
-        cfg = config_manager.config
+        cfg = getattr(gateway, "_config", None)
+        if cfg is None:
+            return {"models": models, "configured": {}, "warnings": [], "source": "backend" if router._backend else "ollama"}
         configured = {
             "planner": cfg.models.planner.name,
             "executor": cfg.models.executor.name,
