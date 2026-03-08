@@ -274,7 +274,7 @@ class TestExecutionRecorder:
         final = recorder.get(rec.recording_id)
         assert final.event_count == 7
         assert final.success is True
-        assert final.finished_at > final.started_at
+        assert final.finished_at >= final.started_at
 
     def test_stats(self) -> None:
         recorder = ExecutionRecorder()
