@@ -169,7 +169,7 @@ if not exist "%REPO_ROOT%\ui\node_modules" (
 :: ============================================================
 echo.
 echo   Web-UI wird gestartet (Vite Dev Server)...
-echo   Oeffne http://localhost:5173 im Browser.
+echo   Oeffne http://127.0.0.1:5173 im Browser.
 echo.
 cd /d "%REPO_ROOT%\ui"
 call npm run dev
