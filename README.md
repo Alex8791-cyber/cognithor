@@ -10,16 +10,18 @@
     <a href="#llm-providers">16 LLM Providers</a> &middot; <a href="#channels">17 Channels</a> &middot; <a href="#5-tier-cognitive-memory">5-Tier Memory</a> &middot; <a href="#knowledge-vault">Knowledge Vault</a> &middot; <a href="#security">Security</a> &middot; <a href="LICENSE">Apache 2.0</a>
   </p>
   <p align="center">
+    <a href="https://github.com/Alex8791-cyber/cognithor/stargazers"><img src="https://img.shields.io/github/stars/Alex8791-cyber/cognithor?style=flat-square&color=yellow" alt="GitHub Stars"></a>
     <img src="https://img.shields.io/badge/status-Beta%20%2F%20Experimental-orange?style=flat-square" alt="Status: Beta">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-9%2C596%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-10%2C165%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/lint-0%20errors-brightgreen?style=flat-square" alt="Lint"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
+    <a href="https://github.com/Alex8791-cyber/cognithor/releases"><img src="https://img.shields.io/github/v/release/Alex8791-cyber/cognithor?style=flat-square&color=blue" alt="Release"></a>
   </p>
 </p>
 
-> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (9,596 tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
+> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (10,165 tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
 
 ---
 
@@ -27,7 +29,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 17 channels, 48 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 9,596 tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 17 channels, 48 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 10,165 tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 ---
 
@@ -47,7 +49,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 48 MCP
 | **Deployment (Docker, bare-metal)** | Beta — tested on limited configurations |
 | **Enterprise features** (GDPR, A2A, Governance) | Alpha — implemented but not audited for compliance |
 
-**What the test suite covers:** Unit tests, integration tests, and mocked end-to-end tests for all modules. The 9,596 tests verify code correctness in controlled environments.
+**What the test suite covers:** Unit tests, integration tests, and mocked end-to-end tests for all modules. The 10,165 tests verify code correctness in controlled environments.
 
 **What the test suite does NOT cover:** Real-world deployment scenarios, network edge cases, long-running stability, multi-user load, hardware-specific voice/GPU issues, or actual LLM response quality.
 
@@ -92,25 +94,25 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 48 MCP
 
 ## What's New
 
-### v0.27.1 — Community Skill Marketplace & Autonomy Hardening
+### v0.27.5 "BugHunt" — CodeQL Security Sweep & CI Stability
 
-Full Community Skill Marketplace with trust chain (publisher verification, 5-check validation, ToolEnforcer runtime sandboxing). 13 autonomy fixes across the PGE loop.
+Systematic elimination of all GitHub CodeQL security alerts, cross-platform CI stability fixes, and thread-safety hardening.
 
-- **Community Skill Marketplace** — Install, search, rate, and report community skills from a GitHub-hosted registry with publisher verification and trust levels
-- **ToolEnforcer** — Runtime tool-allowlist for community skills: skills can only invoke declared tools
-- **5-Check Validation Pipeline** — Syntax, injection scan, tool whitelist, safety audit, SHA-256 hash verification
-- **Autonomy Hardening** — Multi-step plans no longer exit early, smart failure threshold, replan retry with fallback, presearch skip patterns fixed
-- **subprocess Differentiation** — `subprocess.run()`/`check_output()` now allowed; `Popen`/`call` remain blocked
-- **Config Tuning** — Larger context budgets (`memory_top_k: 8`, `max_context_chars: 8000`, `response_token_budget: 4000`)
-- **Thread-safe Community Caches** — `asyncio.Lock` on all community module caches, aiohttp fallback to urllib
+- **60+ CodeQL Alerts Resolved** — CWE-209 (information exposure via exceptions), CWE-22 (path traversal), CWE-1333 (ReDoS), CWE-312 (cleartext storage), workflow permissions hardening
+- **Path Traversal Hardened** — All user-supplied paths now validated with `os.path.normpath()` + `startswith()` pattern (CodeQL-recognized), covering TTS voices, model downloads, and sanitizer
+- **CI Cross-Platform Fixes** — Windows path escaping (`\a` -> `\x07`), PowerShell compatibility, aiohttp mock scoping, nio mock consistency, checkpoint ordering determinism
+- **Thread-Safe EpisodicStore** — All SQLite reads now serialized with `_write_lock` to prevent corruption under concurrent access
+- **10,165 Tests** — Up from 9,596 (+569 new tests), ~118,000 LOC source, ~108,000 LOC tests
 
 **Previous Releases**
 
+- **v0.27.3** — CWE-22 Path Traversal fix in TTS API, multi-GPU installer fix, `--init-only` hang fix
+- **v0.27.1** — Community Skill Marketplace, ToolEnforcer runtime sandboxing, 5-check validation pipeline, 13 autonomy fixes
 - **v0.27.0** — Full Audit, Installer Overhaul: 80-item audit, XSS fix, CORS hardening, rate limiting, auto-install Python/Ollama
 - **v0.26.7** — Wiring: DAG-based parallel executor, http_request tool with SSRF protection, sub-agent depth guard, live config reload
 - **v0.26.6** — Chat & Voice: Integrated chat page, voice mode with wake word, Piper TTS, 15 agent infrastructure subsystems
 - **v0.26.5** — Human Feel: Personality Engine, sentiment detection, user preferences, status callbacks, friendly error messages
-- **v0.26.0–v0.26.4** — Security hardening, Docker prod, LM Studio backend, scaling, coverage & skills
+- **v0.26.0-v0.26.4** — Security hardening, Docker prod, LM Studio backend, scaling, coverage & skills
 
 ---
 
@@ -153,7 +155,7 @@ Full Community Skill Marketplace with trust chain (publisher verification, 5-che
 - **Agent SDK** — Decorator-based agent registration (`@agent`, `@tool`, `@hook`), project scaffolding
 - **Plugin Remote Registry** — Remote manifests with SHA-256 checksums, dependency resolution, install/update/rollback
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
-- **9,596 tests** · **89% coverage** · **0 lint errors**
+- **10,165 tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
 
 ## Architecture
 
@@ -548,7 +550,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **9,596 tests** · **100% pass rate** · **89% coverage** · **~109,000 LOC source** · **~92,000 LOC tests**
+Current status: **10,165 tests** · **100% pass rate** · **89% coverage** · **~118,000 LOC source** · **~108,000 LOC tests**
 
 | Area | Tests | Description |
 |------|-------|-------------|
@@ -684,7 +686,7 @@ cognithor/
 │       │   └── useVoiceMode.js    # Voice mode hook (wake word, STT, TTS)
 │       ├── App.jsx                # App shell
 │       └── main.jsx               # React entry
-├── tests/                         # 9,596 tests, ~92,000 LOC
+├── tests/                         # 10,165 tests, ~92,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
 │   ├── test_mcp/                  # MCP tools and client
@@ -842,7 +844,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 
 ---
 
-**Metrics:** ~109,000 LOC source · ~92,000 LOC tests · 9,596 tests · 89% coverage · 0 lint errors · **Status: Beta**
+**Metrics:** ~118,000 LOC source · ~108,000 LOC tests · 10,165 tests · 89% coverage · 0 lint errors · **Status: Beta**
 
 ## Contributors
 

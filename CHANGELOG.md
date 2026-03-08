@@ -5,6 +5,32 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.27.5] "BugHunt" – 2026-03-08
+
+### CodeQL Security Sweep & CI Stability
+
+Systematic elimination of all GitHub CodeQL security alerts (60+), cross-platform CI stability fixes, and thread-safety hardening. Test suite expanded to 10,165 tests.
+
+### Fixed
+
+- **CWE-209 Information Exposure** — 60+ instances of `str(exc)` in API responses replaced with generic error messages + server-side logging across `config_routes.py`, `teams.py`, `__main__.py`
+- **CWE-22 Path Traversal** — All user-supplied paths validated with `os.path.normpath()` + `startswith()` (CodeQL-recognized pattern) in `__main__.py` (voice models, downloads) and `sanitizer.py`
+- **CWE-1333 ReDoS** — Simplified SemVer regex pre-release part in `validator.py` to eliminate exponential backtracking
+- **CWE-312 Cleartext Storage** — Renamed `known_secret` to `known_key_data` in test to avoid false positive
+- **Workflow Permissions** — Added `permissions: contents: read` to `ci.yml` and `publish.yml` for least-privilege CI
+- **Windows CI** — Removed `| head -60` pipe (unavailable in PowerShell), fixed `\a` path escape in `test_production_readiness.py`
+- **aiohttp Mock Leakage** — Scoped aiohttp mocks in `test_teams.py` with `patch.dict` to prevent polluting `test_telegram_webhook.py`
+- **nio Mock Consistency** — `test_matrix.py` now uses `MagicMock(return_value=...)` so shared mock client has `add_event_callback`
+- **Checkpoint Ordering** — Added monotonic `_seq` counter to `Checkpoint` as tiebreaker for same-timestamp sorting
+- **EpisodicStore Thread Safety** — All SQLite read methods now serialized with `_write_lock` to prevent corruption under concurrent multi-thread access
+- **URL Exact Match** — Groq/DeepSeek URL checks in tests changed from `startswith()` to exact `==` match to satisfy CodeQL
+
+### Changed
+
+- Version bumped to 0.27.5 "BugHunt"
+- GitHub Stars badge added to README and docs (dynamic, shields.io)
+- Test count updated: 10,165 tests, ~118,000 LOC source, ~108,000 LOC tests
+
 ## [0.27.3-beta] – 2026-03-07
 
 ### Security Fix & Installer Bug-Fixes
