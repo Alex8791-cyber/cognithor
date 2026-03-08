@@ -15,9 +15,12 @@ Architektur-Bibel: §11.8 (CI/CD), §14.5 (Continuous Testing)
 from __future__ import annotations
 
 import hashlib
+import itertools
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+
+_gate_counter = itertools.count()
 from typing import Any, Callable
 
 
@@ -115,7 +118,7 @@ class SecurityGate:
 
     def evaluate(self, pipeline_result: dict[str, Any]) -> GateResult:
         """Evaluiert ein Pipeline-Ergebnis gegen die Gate-Policy."""
-        gate_id = hashlib.sha256(f"gate:{time.time()}".encode()).hexdigest()[:12]
+        gate_id = hashlib.sha256(f"gate:{time.time()}:{next(_gate_counter)}".encode()).hexdigest()[:12]
         reasons: list[str] = []
         findings: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
         stages: dict[str, str] = {}
