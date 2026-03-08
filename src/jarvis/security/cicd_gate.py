@@ -118,7 +118,9 @@ class SecurityGate:
 
     def evaluate(self, pipeline_result: dict[str, Any]) -> GateResult:
         """Evaluiert ein Pipeline-Ergebnis gegen die Gate-Policy."""
-        gate_id = hashlib.sha256(f"gate:{time.time()}:{next(_gate_counter)}".encode()).hexdigest()[:12]
+        gate_id = hashlib.sha256(f"gate:{time.time()}:{next(_gate_counter)}".encode()).hexdigest()[
+            :12
+        ]
         reasons: list[str] = []
         findings: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
         stages: dict[str, str] = {}
