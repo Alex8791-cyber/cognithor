@@ -238,10 +238,10 @@ class SkillValidator:
     # Name-Format: lowercase, Bindestriche erlaubt
     NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{2,63}$")
 
-    # SemVer-Pattern
+    # SemVer-Pattern (ReDoS-safe: pre-release segments use atomic-style matching)
     SEMVER_PATTERN = re.compile(
         r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
-        r"(?:-(?:0|[1-9]\d*|[\da-zA-Z-]+)(?:\.(?:0|[1-9]\d*|[\da-zA-Z-]+))*)?$"
+        r"(?:-[\da-zA-Z-]+(?:\.[\da-zA-Z-]+)*)?$"
     )
 
     def __init__(
