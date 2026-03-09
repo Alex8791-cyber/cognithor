@@ -36,15 +36,15 @@ def pipeline(workspace: Path) -> MediaPipeline:
 
 
 @pytest.fixture
-def sample_text_file(tmp_path: Path) -> Path:
-    f = tmp_path / "sample.txt"
+def sample_text_file(workspace: Path) -> Path:
+    f = workspace / "sample.txt"
     f.write_text("Hallo Welt. Dies ist ein Testdokument.", encoding="utf-8")
     return f
 
 
 @pytest.fixture
-def sample_markdown_file(tmp_path: Path) -> Path:
-    f = tmp_path / "readme.md"
+def sample_markdown_file(workspace: Path) -> Path:
+    f = workspace / "readme.md"
     f.write_text(
         "# Titel\n\nEin Absatz mit **Markdown**.\n\n## Unterabschnitt\n\nMehr Text.",
         encoding="utf-8",
@@ -53,15 +53,15 @@ def sample_markdown_file(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def sample_csv_file(tmp_path: Path) -> Path:
-    f = tmp_path / "data.csv"
+def sample_csv_file(workspace: Path) -> Path:
+    f = workspace / "data.csv"
     f.write_text("Name,Alter,Stadt\nMax,30,Berlin\nAnna,25,München", encoding="utf-8")
     return f
 
 
 @pytest.fixture
-def sample_html_file(tmp_path: Path) -> Path:
-    f = tmp_path / "page.html"
+def sample_html_file(workspace: Path) -> Path:
+    f = workspace / "page.html"
     f.write_text(
         "<html><head><title>Test</title><style>body{}</style></head>"
         "<body><h1>Überschrift</h1><p>Ein Absatz.</p>"
@@ -72,8 +72,8 @@ def sample_html_file(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def sample_json_file(tmp_path: Path) -> Path:
-    f = tmp_path / "config.json"
+def sample_json_file(workspace: Path) -> Path:
+    f = workspace / "config.json"
     f.write_text('{"name": "Jarvis", "version": "1.0"}', encoding="utf-8")
     return f
 
