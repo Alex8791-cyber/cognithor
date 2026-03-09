@@ -649,9 +649,13 @@ class Gatekeeper:
         # pathlib file deletion
         (re.compile(r"\.unlink\s*\(", re.IGNORECASE), "Path.unlink()"),
         # open() with write/append/create modes — positional or keyword
-        (re.compile(r"\bopen\s*\([^)]*,\s*['\"][waxr+]+", re.IGNORECASE), "open() with write mode"),
+        # Must contain at least one of w, a, x (not just 'r' or 'rb')
         (
-            re.compile(r"\bopen\s*\([^)]*\bmode\s*=\s*['\"][waxr+]+", re.IGNORECASE),
+            re.compile(r"\bopen\s*\([^)]*,\s*['\"][rb]*[wax]", re.IGNORECASE),
+            "open() with write mode",
+        ),
+        (
+            re.compile(r"\bopen\s*\([^)]*\bmode\s*=\s*['\"][rb]*[wax]", re.IGNORECASE),
             "open() with write mode (keyword)",
         ),
         # pathlib write/delete methods
