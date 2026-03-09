@@ -875,10 +875,10 @@ class TestBrowserUseTools:
         mcp_mock = MagicMock()
         registered_tools: dict[str, Any] = {}
 
-        def mock_register(name: str, **kwargs: Any) -> None:
-            registered_tools[name] = kwargs
+        def mock_register(tool_name: str = "", **kwargs: Any) -> None:
+            registered_tools[tool_name] = kwargs
 
-        mcp_mock.register_tool = mock_register
+        mcp_mock.register_builtin_handler = mock_register
 
         agent = register_browser_use_tools(mcp_mock)
         assert agent is not None

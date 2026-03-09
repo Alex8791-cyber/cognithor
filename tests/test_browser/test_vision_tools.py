@@ -101,10 +101,10 @@ class TestVisionToolsDisabled:
         mcp_mock = MagicMock()
         handlers: dict[str, Any] = {}
 
-        def mock_register(name: str, **kwargs: Any) -> None:
-            handlers[name] = kwargs.get("handler")
+        def mock_register(tool_name: str = "", **kwargs: Any) -> None:
+            handlers[tool_name] = kwargs.get("handler")
 
-        mcp_mock.register_tool = mock_register
+        mcp_mock.register_builtin_handler = mock_register
         register_browser_use_tools(mcp_mock)
         return handlers
 
@@ -138,10 +138,10 @@ class TestVisionAnalyzeTool:
         mcp_mock = MagicMock()
         handlers: dict[str, Any] = {}
 
-        def mock_register(name: str, **kwargs: Any) -> None:
-            handlers[name] = kwargs.get("handler")
+        def mock_register(tool_name: str = "", **kwargs: Any) -> None:
+            handlers[tool_name] = kwargs.get("handler")
 
-        mcp_mock.register_tool = mock_register
+        mcp_mock.register_builtin_handler = mock_register
 
         mock_vision = MagicMock()
         mock_vision.is_enabled = True
@@ -169,10 +169,10 @@ class TestVisionFindTool:
         mcp_mock = MagicMock()
         handlers: dict[str, Any] = {}
 
-        def mock_register(name: str, **kwargs: Any) -> None:
-            handlers[name] = kwargs.get("handler")
+        def mock_register(tool_name: str = "", **kwargs: Any) -> None:
+            handlers[tool_name] = kwargs.get("handler")
 
-        mcp_mock.register_tool = mock_register
+        mcp_mock.register_builtin_handler = mock_register
 
         mock_vision = MagicMock()
         mock_vision.is_enabled = True
@@ -200,10 +200,10 @@ class TestVisionScreenshotTool:
         mcp_mock = MagicMock()
         handlers: dict[str, Any] = {}
 
-        def mock_register(name: str, **kwargs: Any) -> None:
-            handlers[name] = kwargs.get("handler")
+        def mock_register(tool_name: str = "", **kwargs: Any) -> None:
+            handlers[tool_name] = kwargs.get("handler")
 
-        mcp_mock.register_tool = mock_register
+        mcp_mock.register_builtin_handler = mock_register
 
         from jarvis.browser.vision import VisionAnalysisResult
 
