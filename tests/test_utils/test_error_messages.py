@@ -59,8 +59,8 @@ class TestClassifyErrorForUser:
     def test_generic_error(self) -> None:
         exc = ValueError("Something went wrong")
         msg = classify_error_for_user(exc)
-        assert "unerwarteter Fehler" in msg
-        assert "erneut" in msg
+        assert "Fehler" in msg
+        assert "ValueError" in msg
 
     def test_os_error_with_connection_keyword(self) -> None:
         exc = OSError("Connection reset by peer")
