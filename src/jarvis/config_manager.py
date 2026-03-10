@@ -178,6 +178,11 @@ class ConfigManager:
         """
         data = self._config.model_dump(mode="json")
 
+        # Version immer aus dem Package — nie aus config.yaml
+        from jarvis import __version__
+
+        data["version"] = __version__
+
         if not include_secrets:
             self._mask_secrets(data)
 
@@ -330,6 +335,9 @@ class ConfigManager:
         for key in ("jarvis_home",):
             if key in data:
                 data[key] = str(data[key])
+
+        # Version nicht in config.yaml speichern — wird immer aus dem Package gelesen
+        data.pop("version", None)
 
         # Secrets nicht im Klartext speichern wenn sie "***" sind
         self._strip_masked_secrets(data)

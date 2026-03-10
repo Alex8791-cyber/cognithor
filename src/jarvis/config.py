@@ -2057,7 +2057,10 @@ def load_config(config_path: Path | None = None) -> JarvisConfig:
     # 2. Umgebungsvariablen anwenden
     data = _apply_env_overrides(data)
 
-    # 3. Pydantic validiert und füllt Defaults
+    # 3. Version aus YAML ignorieren — immer aus dem Package nehmen
+    data.pop("version", None)
+
+    # 4. Pydantic validiert und füllt Defaults
     return JarvisConfig(**data)
 
 
