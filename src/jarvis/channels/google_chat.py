@@ -50,7 +50,9 @@ class GoogleChatChannel(Channel):
         self._http_client: Any | None = None
         self._credentials: Any | None = None
         self._approval_futures: dict[str, asyncio.Future[bool]] = {}
+        self._approval_users: dict[str, str] = {}  # approval_id → user name
         self._approval_lock = asyncio.Lock()
+        self._session_users: dict[str, str] = {}  # session_id → user name
         self._stream_buffers: dict[str, list[str]] = {}
 
     @property
@@ -163,10 +165,15 @@ class GoogleChatChannel(Channel):
         if not text.strip():
             return None
 
+        sender_name = sender.get("name", "")
+        session_id = f"gchat_{sender_name}_{space_name}"
+        self._session_users[session_id] = sender_name
+
         incoming = IncomingMessage(
             channel="google_chat",
-            user_id=sender.get("name", ""),
+            user_id=sender_name,
             text=text.strip(),
+            session_id=session_id,
             metadata={
                 "space_name": space_name,
                 "message_name": message.get("name", ""),
@@ -192,7 +199,11 @@ class GoogleChatChannel(Channel):
         return None
 
     async def _handle_card_click(self, payload: dict[str, Any]) -> None:
-        """Verarbeitet Card-Button-Klicks (Approvals)."""
+        """Verarbeitet Card-Button-Klicks (Approvals).
+
+        Nur der User, der die Aktion urspruenglich ausgeloest hat,
+        darf genehmigen oder ablehnen.
+        """
         action = payload.get("action", {})
         action_method = action.get("actionMethodName", "")
         parameters = {p["key"]: p["value"] for p in action.get("parameters", [])}
@@ -201,10 +212,20 @@ class GoogleChatChannel(Channel):
         if not approval_id:
             return
 
+        clicker = payload.get("user", {}).get("name", "")
         approved = action_method == "jarvis_approve"
 
         async with self._approval_lock:
+            expected_user = self._approval_users.get(approval_id, "")
+            if expected_user and clicker != expected_user:
+                logger.warning(
+                    "Google Chat Approval von fremdem User ignoriert: %s (erwartet: %s)",
+                    clicker,
+                    expected_user,
+                )
+                return
             future = self._approval_futures.pop(approval_id, None)
+            self._approval_users.pop(approval_id, None)
         if future and not future.done():
             future.set_result(approved)
 
@@ -251,10 +272,13 @@ class GoogleChatChannel(Channel):
             return False
 
         approval_id = f"appr_{session_id}_{action.tool}_{id(action)}"
+        requester_user = self._session_users.get(session_id, "")
         loop = asyncio.get_running_loop()
         future: asyncio.Future[bool] = loop.create_future()
         async with self._approval_lock:
             self._approval_futures[approval_id] = future
+            if requester_user:
+                self._approval_users[approval_id] = requester_user
 
         card = {
             "cardsV2": [
@@ -333,6 +357,7 @@ class GoogleChatChannel(Channel):
             logger.warning("Google Chat Approval Timeout: %s", action.tool)
             async with self._approval_lock:
                 self._approval_futures.pop(approval_id, None)
+                self._approval_users.pop(approval_id, None)
             return False
 
     async def send_streaming_token(self, session_id: str, token: str) -> None:

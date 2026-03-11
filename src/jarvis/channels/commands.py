@@ -476,7 +476,7 @@ class FallbackRenderer:
             if 1 <= num <= option_count:
                 return num - 1
         except ValueError:
-            pass
+            pass  # Non-numeric input is expected, return None below
         return None
 
     @staticmethod

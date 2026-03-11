@@ -494,7 +494,7 @@ class CircleManager:
         circle = self._circles.get(circle_id)
         if not circle:
             return False
-        if circle.owner_id != by_peer and by_peer:
+        if not by_peer or circle.owner_id != by_peer:
             return False
 
         # Peer-Zuordnungen bereinigen

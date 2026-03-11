@@ -91,8 +91,8 @@ class UserPreferenceStore:
         """Schließt die DB-Verbindung."""
         try:
             self._conn.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("preferences_db_close_error: %s", exc)  # Cleanup — failure is non-critical
         self._conn = None  # type: ignore[assignment]
 
     def get_or_create(self, user_id: str) -> UserPreference:

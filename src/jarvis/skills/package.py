@@ -247,24 +247,95 @@ class PackageSigner:
     """Signiert und verifiziert Skill-Pakete.
 
     Unterstützt:
-      - HMAC-SHA256 (Fallback, immer verfügbar)
-      - Ed25519 (wenn cryptography-Paket installiert)
+      - Ed25519 (asymmetrisch, bevorzugt — Verifizierer braucht nur den Public Key)
+      - HMAC-SHA256 (symmetrischer Fallback für Abwärtskompatibilität)
 
-    Args:
-        private_key: Privater Schlüssel (Hex-String für HMAC, Bytes für Ed25519).
-        signer_id: Identifikation des Herausgebers.
+    Konstruktor-Varianten:
+      - PackageSigner(private_key="hex-string")  → HMAC-Modus (Legacy)
+      - PackageSigner.generate_ed25519()          → Neues Ed25519-Keypair
+      - PackageSigner.from_ed25519_private(raw)   → Bestehender Ed25519-Key
+      - PackageSigner.verifier(public_key_hex)    → Nur Verifikation (kein Signieren)
     """
 
     def __init__(self, private_key: str, signer_id: str = "") -> None:
-        self._key = private_key
+        self._hmac_key = private_key
+        self._ed25519_private = None
+        self._ed25519_public = None
+        self._algorithm = "hmac-sha256"
         self._signer_id = signer_id or hashlib.sha256(private_key.encode()).hexdigest()[:16]
+
+    @classmethod
+    def generate_ed25519(cls, signer_id: str = "") -> PackageSigner:
+        """Generiert ein neues Ed25519-Keypair."""
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        private_key = Ed25519PrivateKey.generate()
+        public_key = private_key.public_key()
+
+        instance = cls.__new__(cls)
+        instance._hmac_key = ""
+        instance._ed25519_private = private_key
+        instance._ed25519_public = public_key
+        instance._algorithm = "ed25519"
+
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        pub_bytes = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+        instance._signer_id = signer_id or hashlib.sha256(pub_bytes).hexdigest()[:16]
+        return instance
+
+    @classmethod
+    def from_ed25519_private(cls, private_key_hex: str, signer_id: str = "") -> PackageSigner:
+        """Erstellt einen Signer aus einem bestehenden Ed25519-Private-Key (Hex)."""
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        raw = bytes.fromhex(private_key_hex)
+        private_key = Ed25519PrivateKey.from_private_bytes(raw)
+        public_key = private_key.public_key()
+
+        instance = cls.__new__(cls)
+        instance._hmac_key = ""
+        instance._ed25519_private = private_key
+        instance._ed25519_public = public_key
+        instance._algorithm = "ed25519"
+
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        pub_bytes = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+        instance._signer_id = signer_id or hashlib.sha256(pub_bytes).hexdigest()[:16]
+        return instance
+
+    @classmethod
+    def verifier(cls, public_key_hex: str, signer_id: str = "") -> PackageSigner:
+        """Erstellt einen reinen Verifizierer (kein Signieren möglich)."""
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+        raw = bytes.fromhex(public_key_hex)
+        public_key = Ed25519PublicKey.from_public_bytes(raw)
+
+        instance = cls.__new__(cls)
+        instance._hmac_key = ""
+        instance._ed25519_private = None
+        instance._ed25519_public = public_key
+        instance._algorithm = "ed25519"
+
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        pub_bytes = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+        instance._signer_id = signer_id or hashlib.sha256(pub_bytes).hexdigest()[:16]
+        return instance
 
     @property
     def signer_id(self) -> str:
         return self._signer_id
 
+    @property
+    def public_key_hex(self) -> str:
+        """Gibt den öffentlichen Schlüssel als Hex-String zurück (nur Ed25519)."""
+        if self._ed25519_public is None:
+            return ""
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        return self._ed25519_public.public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+
     def sign(self, content: bytes) -> PackageSignature:
-        """Signiert Inhalt mit HMAC-SHA256.
+        """Signiert Inhalt (Ed25519 bevorzugt, HMAC-SHA256 Fallback).
 
         Args:
             content: Zu signierender Inhalt (Bytes).
@@ -272,10 +343,19 @@ class PackageSigner:
         Returns:
             PackageSignature mit Signatur.
         """
+        if self._ed25519_private is not None:
+            sig_bytes = self._ed25519_private.sign(content)
+            return PackageSignature(
+                signer_id=self._signer_id,
+                signature=sig_bytes.hex(),
+                algorithm="ed25519",
+            )
+
+        # HMAC-SHA256 Fallback
         import hmac as hmac_mod
 
         sig = hmac_mod.new(
-            self._key.encode(),
+            self._hmac_key.encode(),
             content,
             hashlib.sha256,
         ).hexdigest()
@@ -287,7 +367,7 @@ class PackageSigner:
         )
 
     def verify(self, content: bytes, signature: PackageSignature) -> bool:
-        """Verifiziert eine HMAC-SHA256 Signatur.
+        """Verifiziert eine Signatur (Ed25519 oder HMAC-SHA256).
 
         Args:
             content: Originaler Inhalt.
@@ -296,19 +376,31 @@ class PackageSigner:
         Returns:
             True wenn die Signatur gültig ist.
         """
-        import hmac as hmac_mod
+        if signature.algorithm == "ed25519":
+            if self._ed25519_public is None:
+                logger.warning("Ed25519-Verifikation angefragt, aber kein Public Key vorhanden")
+                return False
+            try:
+                sig_bytes = bytes.fromhex(signature.signature)
+                self._ed25519_public.verify(sig_bytes, content)
+                return True
+            except Exception:
+                return False
 
-        if signature.algorithm != "hmac-sha256":
-            logger.warning("Unsupported signature algorithm: %s", signature.algorithm)
-            return False
+        if signature.algorithm == "hmac-sha256":
+            if not self._hmac_key:
+                logger.warning("HMAC-Verifikation angefragt, aber kein HMAC-Key vorhanden")
+                return False
+            import hmac as hmac_mod
+            expected = hmac_mod.new(
+                self._hmac_key.encode(),
+                content,
+                hashlib.sha256,
+            ).hexdigest()
+            return hmac_mod.compare_digest(expected, signature.signature)
 
-        expected = hmac_mod.new(
-            self._key.encode(),
-            content,
-            hashlib.sha256,
-        ).hexdigest()
-
-        return hmac_mod.compare_digest(expected, signature.signature)
+        logger.warning("Unsupported signature algorithm: %s", signature.algorithm)
+        return False
 
 
 # ============================================================================

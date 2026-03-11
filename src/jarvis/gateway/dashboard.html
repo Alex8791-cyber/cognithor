@@ -597,9 +597,9 @@ async function loadAgents() {
   if (!agents.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Keine Agenten konfiguriert</td></tr>'; return; }
   tbody.innerHTML = agents.map(a => `
     <tr>
-      <td style="color:var(--text-primary);font-weight:500">${a.name || a.agent_id || '—'}</td>
-      <td><span class="tag tag-blue">${a.preferred_model || a.model || 'Standard'}</span></td>
-      <td>${a.sandbox_profile || a.sandbox_network || '—'}</td>
+      <td style="color:var(--text-primary);font-weight:500">${esc(a.name || a.agent_id) || '—'}</td>
+      <td><span class="tag tag-blue">${esc(a.preferred_model || a.model) || 'Standard'}</span></td>
+      <td>${esc(a.sandbox_profile || a.sandbox_network) || '—'}</td>
       <td>${(a.allowed_tools || []).length || '∞'}</td>
       <td><span class="tag tag-green">Aktiv</span></td>
     </tr>
@@ -616,7 +616,7 @@ async function loadHeartbeat() {
   if (!agents.length) { container.innerHTML = '<div class="empty"><div class="icon">💓</div>Keine Agent-Heartbeats konfiguriert</div>'; return; }
   container.innerHTML = agents.map(a => `
     <div class="card">
-      <div style="font-weight:600;font-size:14px;margin-bottom:10px">${a.agent_id}</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px">${esc(a.agent_id)}</div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
         <span class="card-sub">Tasks</span><span style="font-family:var(--mono)">${a.task_count}</span>
       </div>
@@ -669,8 +669,8 @@ function renderSkillCards(id, skills) {
   if (!skills.length) { el.innerHTML = '<div class="empty">Keine Skills</div>'; return; }
   el.innerHTML = skills.map(s => `
     <div class="card">
-      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${s.name || s.package_id || '—'}</div>
-      <div class="card-sub" style="margin-bottom:8px">${s.description || ''}</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(s.name || s.package_id) || '—'}</div>
+      <div class="card-sub" style="margin-bottom:8px">${esc(s.description) || ''}</div>
       <div style="display:flex;gap:6px">
         ${s.verified ? '<span class="tag tag-green">✓ Verifiziert</span>' : ''}
         ${s.rating ? `<span class="tag tag-orange">${s.rating.toFixed(1)}★</span>` : ''}
@@ -699,10 +699,10 @@ async function loadUpdater() {
   if (!updates.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Alle Skills aktuell ✓</td></tr>'; return; }
   tbody.innerHTML = updates.map(u => `
     <tr>
-      <td style="font-weight:500">${u.package_id}</td>
-      <td><span class="tag tag-blue">${u.current_version}</span></td>
-      <td><span class="tag tag-green">${u.available_version}</span></td>
-      <td><span class="tag tag-${u.severity === 'critical' ? 'red' : u.severity === 'high' ? 'orange' : 'blue'}">${u.severity}</span></td>
+      <td style="font-weight:500">${esc(u.package_id)}</td>
+      <td><span class="tag tag-blue">${esc(u.current_version)}</span></td>
+      <td><span class="tag tag-green">${esc(u.available_version)}</span></td>
+      <td><span class="tag tag-${u.severity === 'critical' ? 'red' : u.severity === 'high' ? 'orange' : 'blue'}">${esc(u.severity)}</span></td>
       <td>${u.auto_installable ? '<button class="btn btn-primary btn-sm">Installieren</button>' : '<span class="tag tag-purple">Manuell</span>'}</td>
     </tr>
   `).join('');
@@ -720,8 +720,8 @@ async function loadConfig() {
   const keys = Object.keys(config).filter(k => typeof config[k] === 'object' && config[k] !== null);
   sections.innerHTML = keys.map(k => `
     <div class="card">
-      <div class="card-title" style="margin-bottom:8px">${k}</div>
-      <pre style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);overflow:auto;max-height:140px">${JSON.stringify(config[k], null, 2)}</pre>
+      <div class="card-title" style="margin-bottom:8px">${esc(k)}</div>
+      <pre style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);overflow:auto;max-height:140px">${esc(JSON.stringify(config[k], null, 2))}</pre>
     </div>
   `).join('') || '<div class="empty">Keine Konfiguration geladen</div>';
 
@@ -729,8 +729,8 @@ async function loadConfig() {
   const presetList = presets.presets || [];
   presetsEl.innerHTML = presetList.map(p => `
     <div class="card" style="cursor:pointer">
-      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${p.name || p}</div>
-      <div class="card-sub">${p.description || 'Preset anwenden'}</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(p.name || p)}</div>
+      <div class="card-sub">${esc(p.description) || 'Preset anwenden'}</div>
     </div>
   `).join('') || '';
 }
@@ -751,10 +751,10 @@ async function loadWizards() {
   };
   const el = document.getElementById('wizard-list');
   el.innerHTML = wizards.map(w => `
-    <div class="card" style="cursor:pointer" onclick="startWizard('${w.wizard_type}')">
+    <div class="card" style="cursor:pointer" onclick="startWizard('${esc(w.wizard_type)}')">
       <div style="font-size:28px;margin-bottom:8px">${icons[w.wizard_type] || '🧙'}</div>
-      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1)}-Wizard</div>
-      <div class="card-sub">${descs[w.wizard_type] || `${w.step_count} Schritte`}</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1))}-Wizard</div>
+      <div class="card-sub">${esc(descs[w.wizard_type]) || `${w.step_count} Schritte`}</div>
       <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">${w.templates?.length || 0} Vorlagen verfügbar</div>
     </div>
   `).join('');
@@ -781,16 +781,16 @@ function renderWizardStep() {
   if (!s) return;
   const content = document.getElementById('wizard-content');
   const val = wizardState.values[s.field_name] ?? s.default ?? '';
-  let html = `<div class="wizard-field"><label>${s.title}</label>
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${s.description}</div>`;
+  let html = `<div class="wizard-field"><label>${esc(s.title)}</label>
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${esc(s.description)}</div>`;
 
-  if (s.field_type === 'text') html += `<input type="text" id="wiz-input" value="${val}" placeholder="${s.tooltip || ''}">`;
-  else if (s.field_type === 'number') html += `<input type="number" id="wiz-input" value="${val}" placeholder="${s.validation_hint || ''}">`;
+  if (s.field_type === 'text') html += `<input type="text" id="wiz-input" value="${esc(val)}" placeholder="${esc(s.tooltip) || ''}">`;
+  else if (s.field_type === 'number') html += `<input type="number" id="wiz-input" value="${esc(val)}" placeholder="${esc(s.validation_hint) || ''}">`;
   else if (s.field_type === 'boolean') html += `<select id="wiz-input"><option value="true" ${val === true ? 'selected' : ''}>Ja</option><option value="false" ${val === false ? 'selected' : ''}>Nein</option></select>`;
-  else if (s.field_type === 'select') html += `<select id="wiz-input">${(s.options||[]).map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label || o.value}</option>`).join('')}</select>`;
-  else if (s.field_type === 'confirm') html += `<pre style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);background:var(--bg-primary);padding:12px;border-radius:7px">${JSON.stringify(wizardState.values, null, 2)}</pre>`;
+  else if (s.field_type === 'select') html += `<select id="wiz-input">${(s.options||[]).map(o => `<option value="${esc(o.value)}" ${val === o.value ? 'selected' : ''}>${esc(o.label || o.value)}</option>`).join('')}</select>`;
+  else if (s.field_type === 'confirm') html += `<pre style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);background:var(--bg-primary);padding:12px;border-radius:7px">${esc(JSON.stringify(wizardState.values, null, 2))}</pre>`;
 
-  if (s.tooltip) html += `<div class="hint">💡 ${s.tooltip}</div>`;
+  if (s.tooltip) html += `<div class="hint">💡 ${esc(s.tooltip)}</div>`;
   html += '</div>';
   content.innerHTML = html;
 
@@ -835,10 +835,10 @@ async function loadBindings() {
   if (!bindings.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Keine Bindings konfiguriert</td></tr>'; return; }
   tbody.innerHTML = bindings.map(b => `
     <tr>
-      <td style="font-weight:500">${b.name || '—'}</td>
-      <td>${b.channel || b.channels?.join(', ') || 'Alle'}</td>
-      <td><span class="tag tag-blue">${b.agent || b.target_agent || '—'}</span></td>
-      <td style="font-family:var(--mono);font-size:11px">${b.pattern || b.regex_pattern || b.command_prefix || '—'}</td>
+      <td style="font-weight:500">${esc(b.name) || '—'}</td>
+      <td>${esc(b.channel || b.channels?.join(', ')) || 'Alle'}</td>
+      <td><span class="tag tag-blue">${esc(b.agent || b.target_agent) || '—'}</span></td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(b.pattern || b.regex_pattern || b.command_prefix) || '—'}</td>
       <td>${b.priority ?? '—'}</td>
     </tr>
   `).join('');
@@ -854,9 +854,9 @@ async function loadCommands() {
   const tbody = document.getElementById('commands-table');
   tbody.innerHTML = cmds.map(c => `
     <tr>
-      <td style="font-family:var(--mono);font-weight:600;color:var(--accent)">/jarvis ${c.name}</td>
-      <td>${c.description}</td>
-      <td><span class="tag tag-${c.scope === 'all' ? 'green' : 'blue'}">${c.scope}</span></td>
+      <td style="font-family:var(--mono);font-weight:600;color:var(--accent)">/jarvis ${esc(c.name)}</td>
+      <td>${esc(c.description)}</td>
+      <td><span class="tag tag-${c.scope === 'all' ? 'green' : 'blue'}">${esc(c.scope)}</span></td>
       <td>${c.requires_auth ? '<span class="tag tag-orange">Auth</span>' : c.admin_only ? '<span class="tag tag-red">Admin</span>' : '—'}</td>
       <td style="font-family:var(--mono)">${c.cooldown_seconds ? c.cooldown_seconds + 's' : '—'}</td>
     </tr>
@@ -866,6 +866,11 @@ async function loadCommands() {
 // ============================================================
 // Helpers
 // ============================================================
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 
 function generateSparkData(n) {
@@ -886,8 +891,8 @@ function renderEvents(id, events) {
   el.innerHTML = events.slice(0, 20).map(e => `
     <div class="event-item">
       <div class="event-time">${formatTime(e.timestamp)}</div>
-      <div class="event-text">${e.event_type || e.message || e.action || '—'}</div>
-      <div class="event-severity" style="color:${severityColor[e.severity] || 'var(--text-muted)'}">${e.severity || ''}</div>
+      <div class="event-text">${esc(e.event_type || e.message || e.action) || '—'}</div>
+      <div class="event-severity" style="color:${severityColor[e.severity] || 'var(--text-muted)'}">${esc(e.severity) || ''}</div>
     </div>
   `).join('');
 }

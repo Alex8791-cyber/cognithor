@@ -91,6 +91,7 @@ class MatrixChannel(Channel):
         # Approval-Workflow
         self._pending_approvals: dict[str, asyncio.Future[bool]] = {}
         self._approval_messages: dict[str, str] = {}  # event_id -> session_id
+        self._approval_expected_users: dict[str, str] = {}  # session_id -> sender
         self._approval_lock = asyncio.Lock()
 
         # Streaming-Buffer
@@ -283,16 +284,24 @@ class MatrixChannel(Channel):
         sender = event.sender
         room_id = room.room_id
 
-        # Approval-Antwort pruefen (Text-basiert)
+        # Approval-Antwort pruefen (Text-basiert, nur vom urspruenglichen User)
         session_for_room = self._sessions.get(room_id, "")
         if session_for_room in self._pending_approvals:
-            normalized = text.lower()
-            if normalized in ("ja", "yes", "ok", "genehmigen", "approve"):
-                await self._resolve_approval(session_for_room, approved=True)
-                return
-            elif normalized in ("nein", "no", "ablehnen", "reject"):
-                await self._resolve_approval(session_for_room, approved=False)
-                return
+            expected_user = self._approval_expected_users.get(session_for_room, "")
+            if not expected_user or sender == expected_user:
+                normalized = text.lower()
+                if normalized in ("ja", "yes", "ok", "genehmigen", "approve"):
+                    await self._resolve_approval(session_for_room, approved=True)
+                    return
+                elif normalized in ("nein", "no", "ablehnen", "reject"):
+                    await self._resolve_approval(session_for_room, approved=False)
+                    return
+            else:
+                logger.warning(
+                    "Matrix Approval von fremdem User ignoriert: %s (erwartet: %s)",
+                    sender,
+                    expected_user,
+                )
 
         # User-Room-Mapping
         self._room_users[room_id] = sender
@@ -350,6 +359,16 @@ class MatrixChannel(Channel):
             session_id = self._approval_messages.get(event_id)
             if not session_id:
                 return
+            expected_user = self._approval_expected_users.get(session_id, "")
+
+        # Nur der urspruengliche User darf genehmigen/ablehnen
+        if expected_user and sender != expected_user:
+            logger.warning(
+                "Matrix Reaction-Approval von fremdem User ignoriert: %s (erwartet: %s)",
+                sender,
+                expected_user,
+            )
+            return
 
         if emoji in ("\u2705", "\U0001f44d"):  # Checkmark, Thumbs-Up
             await self._resolve_approval(session_id, approved=True)
@@ -446,10 +465,15 @@ class MatrixChannel(Channel):
 
         event_id = await self._send_to_room(room_id, text)
 
+        # Den User ermitteln, der die Aktion ausgeloest hat
+        requester_user = self._room_users.get(room_id, "")
+
         loop = asyncio.get_running_loop()
         future: asyncio.Future[bool] = loop.create_future()
         async with self._approval_lock:
             self._pending_approvals[session_id] = future
+            if requester_user:
+                self._approval_expected_users[session_id] = requester_user
             if event_id:
                 self._approval_messages[event_id] = session_id
 
@@ -490,6 +514,7 @@ class MatrixChannel(Channel):
         finally:
             async with self._approval_lock:
                 self._pending_approvals.pop(session_id, None)
+                self._approval_expected_users.pop(session_id, None)
                 if event_id:
                     self._approval_messages.pop(event_id, None)
 

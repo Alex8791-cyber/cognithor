@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -213,7 +214,7 @@ class TestManagement:
         assert skill.last_used is not None
 
     def test_success_rate(self) -> None:
-        skill = Skill(name="test", slug="test", file_path=Path("/tmp/test.md"))
+        skill = Skill(name="test", slug="test", file_path=Path(tempfile.gettempdir()) / "test.md")
         assert skill.success_rate == 0.5  # Neutral für ungetestet
 
         skill.success_count = 8

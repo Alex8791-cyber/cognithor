@@ -241,7 +241,7 @@ class FileLockBackend(DistributedLock):
                     fh.seek(0)
                     msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
                 except OSError:
-                    pass
+                    pass  # Best-effort unlock, file handle will be closed below
             else:
                 import fcntl
 
@@ -250,12 +250,12 @@ class FileLockBackend(DistributedLock):
             try:
                 fh.close()
             except OSError:
-                pass
+                pass  # Best-effort close, file may already be closed
             # Best-effort cleanup of lockfile
             try:
                 self._lock_path(name).unlink(missing_ok=True)
             except OSError:
-                pass
+                pass  # Best-effort lockfile removal, another process may hold it
 
 
 # ============================================================================

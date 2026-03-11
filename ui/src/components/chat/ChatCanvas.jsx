@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useMemo } from "react";
 
 const CANVAS_DARK_CSS = `
   body {
@@ -19,23 +19,13 @@ const CANVAS_DARK_CSS = `
 `;
 
 export function ChatCanvas({ html, title, onClose }) {
-  const iframeRef = useRef(null);
-
-  useEffect(() => {
-    if (!iframeRef.current || !html) return;
-
-    const doc = iframeRef.current.contentDocument;
-    if (!doc) return;
-
-    const fullHtml = `<!DOCTYPE html>
+  const srcdoc = useMemo(() => {
+    if (!html) return "";
+    return `<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8">
 <style>${CANVAS_DARK_CSS}</style>
 </head><body>${html}</body></html>`;
-
-    doc.open();
-    doc.write(fullHtml);
-    doc.close();
   }, [html]);
 
   return (
@@ -49,9 +39,9 @@ export function ChatCanvas({ html, title, onClose }) {
         </button>
       </div>
       <iframe
-        ref={iframeRef}
         className="cc-canvas-frame"
-        sandbox="allow-scripts"
+        sandbox=""
+        srcDoc={srcdoc}
         title="Jarvis Canvas"
       />
     </div>

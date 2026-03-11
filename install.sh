@@ -120,7 +120,12 @@ detect_installer() {
             return 0
         else
             warn "uv nicht gefunden, installiere automatisch..."
-            if curl -LsSf --max-time 30 https://astral.sh/uv/install.sh | sh 2>/dev/null; then
+            local _uv_install_script
+            _uv_install_script=$(mktemp)
+            if curl -LsSf --max-time 30 https://astral.sh/uv/install.sh -o "$_uv_install_script"; then
+                warn "Downloaded uv installer to $_uv_install_script — executing..."
+                sh "$_uv_install_script" 2>/dev/null
+                rm -f "$_uv_install_script"
                 # Pfad aktualisieren
                 export PATH="$HOME/.local/bin:$PATH"
                 if check_command uv; then
@@ -130,6 +135,8 @@ detect_installer() {
                     success "uv installiert ($uv_ver)"
                     return 0
                 fi
+            else
+                rm -f "$_uv_install_script"
             fi
             warn "uv konnte nicht installiert werden -- Fallback auf pip"
         fi
@@ -276,7 +283,11 @@ check_prerequisites() {
         read -rp "  Ollama jetzt installieren? [j/N] " _ollama_answer
         if [[ "$_ollama_answer" =~ ^[jJyY]$ ]]; then
             info "Installiere Ollama..."
-            if curl -fsSL --max-time 60 https://ollama.com/install.sh | sh; then
+            local _ollama_install_script
+            _ollama_install_script=$(mktemp)
+            curl -fsSL --max-time 60 https://ollama.com/install.sh -o "$_ollama_install_script"
+            if [ $? -eq 0 ] && sh "$_ollama_install_script"; then
+                rm -f "$_ollama_install_script"
                 success "Ollama installiert"
                 # Ollama-Server starten
                 nohup ollama serve &>/dev/null &
@@ -298,6 +309,7 @@ check_prerequisites() {
                     warn "Ollama-Server nicht erreichbar nach 15s -- manuell starten: ollama serve"
                 fi
             else
+                rm -f "$_ollama_install_script"
                 error "Ollama-Installation fehlgeschlagen"
                 info "Manuell installieren: curl -fsSL https://ollama.com/install.sh | sh"
             fi

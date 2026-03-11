@@ -1676,6 +1676,7 @@ class JarvisConfig(BaseModel):
     )
     @classmethod
     def _validate_api_key_length(cls, v: str) -> str:
+        v = v.strip()
         if v and v != "***" and len(v) < 8:
             raise ValueError(
                 f"API-Key zu kurz ({len(v)} Zeichen, mind. 8). "

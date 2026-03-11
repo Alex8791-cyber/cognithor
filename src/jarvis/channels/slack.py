@@ -63,7 +63,9 @@ class SlackChannel(Channel):
         self._running = False
         self._bidirectional = False
         self._approval_futures: dict[str, asyncio.Future[bool]] = {}
+        self._approval_users: dict[str, str] = {}  # approval_id → user_id
         self._approval_lock = asyncio.Lock()
+        self._session_users: dict[str, str] = {}  # session_id → user_id
         self._stream_buffers: dict[str, list[str]] = {}
         self._bot_user_id: str = ""
 
@@ -180,10 +182,14 @@ class SlackChannel(Channel):
         channel_id = event.get("channel", "")
         thread_ts = event.get("thread_ts") or event.get("ts", "")
 
+        session_id = f"slack_{user_id}_{channel_id}"
+        self._session_users[session_id] = user_id
+
         incoming = IncomingMessage(
             channel="slack",
             user_id=user_id,
             text=text,
+            session_id=session_id,
             metadata={
                 "channel_id": channel_id,
                 "thread_ts": thread_ts,
@@ -217,19 +223,33 @@ class SlackChannel(Channel):
                         thread_ts=thread_ts,
                     )
                 except Exception:
-                    pass
+                    pass  # Cleanup — error notification failure is non-critical
 
     # ------------------------------------------------------------------
     # Approvals via Block Kit Buttons
     # ------------------------------------------------------------------
 
     async def _on_approval(self, body: dict[str, Any], *, approved: bool) -> None:
-        """Verarbeitet Approval-Button-Klicks."""
+        """Verarbeitet Approval-Button-Klicks.
+
+        Nur der User, der die Aktion urspruenglich ausgeloest hat,
+        darf genehmigen oder ablehnen.
+        """
         actions = body.get("actions", [{}])
         approval_id = actions[0].get("value", "") if actions else ""
+        clicker_id = body.get("user", {}).get("id", "")
 
         async with self._approval_lock:
+            expected_user = self._approval_users.get(approval_id, "")
+            if expected_user and clicker_id != expected_user:
+                logger.warning(
+                    "Slack Approval von fremdem User ignoriert: %s (erwartet: %s)",
+                    clicker_id,
+                    expected_user,
+                )
+                return
             future = self._approval_futures.pop(approval_id, None)
+            self._approval_users.pop(approval_id, None)
         if future and not future.done():
             future.set_result(approved)
 
@@ -371,10 +391,13 @@ class SlackChannel(Channel):
             return False
 
         approval_id = f"appr_{session_id}_{action.tool}_{id(action)}"
+        requester_user = self._session_users.get(session_id, "")
         loop = asyncio.get_running_loop()
         future: asyncio.Future[bool] = loop.create_future()
         async with self._approval_lock:
             self._approval_futures[approval_id] = future
+            if requester_user:
+                self._approval_users[approval_id] = requester_user
 
         blocks = [
             {
@@ -420,6 +443,7 @@ class SlackChannel(Channel):
             logger.error("Slack Approval fehlgeschlagen: %s", exc)
             async with self._approval_lock:
                 self._approval_futures.pop(approval_id, None)
+                self._approval_users.pop(approval_id, None)
             return False
 
         try:
@@ -428,6 +452,7 @@ class SlackChannel(Channel):
             logger.warning("Slack Approval Timeout: %s", action.tool)
             async with self._approval_lock:
                 self._approval_futures.pop(approval_id, None)
+                self._approval_users.pop(approval_id, None)
             return False
 
     async def send_streaming_token(self, session_id: str, token: str) -> None:

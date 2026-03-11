@@ -517,8 +517,8 @@ class Reflector:
                     total_tool_calls=len(tool_sequence),
                     duration_seconds=agent_result.total_duration_ms / 1000.0,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("reflector_audit_log_error", error=str(exc))
 
         # Episodic Store: Langzeit-Episode speichern
         if self._episodic_store and result.session_summary:
@@ -821,7 +821,7 @@ Regeln:
             if isinstance(data, dict):
                 return data
         except json.JSONDecodeError:
-            pass
+            pass  # LLM output not valid JSON, try extracting { ... } block below
 
         # Suche nach erstem { ... } Block
         match = re.search(r"\{.*\}", text, re.DOTALL)
@@ -831,7 +831,7 @@ Regeln:
                 if isinstance(data, dict):
                     return data
             except json.JSONDecodeError:
-                pass
+                pass  # No parseable JSON found in LLM output, caller handles None
 
         return None
 

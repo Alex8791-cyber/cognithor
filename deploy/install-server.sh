@@ -214,7 +214,13 @@ if $INSTALL_OLLAMA; then
     if command -v ollama &>/dev/null; then
         log_info "Ollama already installed: $(ollama --version)"
     else
-        curl -fsSL https://ollama.com/install.sh | sh
+        INSTALL_SCRIPT=$(mktemp)
+        curl -fsSL --max-time 60 https://ollama.com/install.sh -o "$INSTALL_SCRIPT"
+        if [ $? -eq 0 ]; then
+            log_warn "Downloaded Ollama installer to $INSTALL_SCRIPT — executing..."
+            sh "$INSTALL_SCRIPT"
+        fi
+        rm -f "$INSTALL_SCRIPT"
         log_info "Ollama installed"
     fi
     # Ensure ollama service is running

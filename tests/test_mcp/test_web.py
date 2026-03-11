@@ -51,53 +51,53 @@ def web_brave() -> WebTools:
 class TestURLValidation:
     """Tests für SSRF-Schutz und URL-Validierung."""
 
-    def test_valid_https_url(self, web: WebTools) -> None:
-        result = web._validate_url("https://example.com/page")
+    async def test_valid_https_url(self, web: WebTools) -> None:
+        result = await web._validate_url("https://example.com/page")
         assert result == "https://example.com/page"
 
-    def test_valid_http_url(self, web: WebTools) -> None:
-        result = web._validate_url("http://example.com")
+    async def test_valid_http_url(self, web: WebTools) -> None:
+        result = await web._validate_url("http://example.com")
         assert result == "http://example.com"
 
-    def test_rejects_ftp(self, web: WebTools) -> None:
+    async def test_rejects_ftp(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="Nur HTTP/HTTPS"):
-            web._validate_url("ftp://example.com/file")
+            await web._validate_url("ftp://example.com/file")
 
-    def test_rejects_file_scheme(self, web: WebTools) -> None:
+    async def test_rejects_file_scheme(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="Nur HTTP/HTTPS"):
-            web._validate_url("file:///etc/passwd")
+            await web._validate_url("file:///etc/passwd")
 
-    def test_rejects_localhost(self, web: WebTools) -> None:
+    async def test_rejects_localhost(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="blockiert"):
-            web._validate_url("http://localhost/admin")
+            await web._validate_url("http://localhost/admin")
 
-    def test_rejects_127_0_0_1(self, web: WebTools) -> None:
+    async def test_rejects_127_0_0_1(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="blockiert"):
-            web._validate_url("http://127.0.0.1:8080/")
+            await web._validate_url("http://127.0.0.1:8080/")
 
-    def test_rejects_metadata_endpoint(self, web: WebTools) -> None:
+    async def test_rejects_metadata_endpoint(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="blockiert"):
-            web._validate_url("http://169.254.169.254/latest/meta-data/")
+            await web._validate_url("http://169.254.169.254/latest/meta-data/")
 
-    def test_rejects_private_10_network(self, web: WebTools) -> None:
+    async def test_rejects_private_10_network(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="private"):
-            web._validate_url("http://10.0.0.1/internal")
+            await web._validate_url("http://10.0.0.1/internal")
 
-    def test_rejects_private_172_network(self, web: WebTools) -> None:
+    async def test_rejects_private_172_network(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="private"):
-            web._validate_url("http://172.16.0.1/internal")
+            await web._validate_url("http://172.16.0.1/internal")
 
-    def test_rejects_private_192_168(self, web: WebTools) -> None:
+    async def test_rejects_private_192_168(self, web: WebTools) -> None:
         with pytest.raises(WebError, match="private"):
-            web._validate_url("http://192.168.1.1/router")
+            await web._validate_url("http://192.168.1.1/router")
 
-    def test_rejects_empty_url(self, web: WebTools) -> None:
+    async def test_rejects_empty_url(self, web: WebTools) -> None:
         with pytest.raises(WebError):
-            web._validate_url("")
+            await web._validate_url("")
 
-    def test_rejects_no_domain(self, web: WebTools) -> None:
+    async def test_rejects_no_domain(self, web: WebTools) -> None:
         with pytest.raises(WebError):
-            web._validate_url("https://")
+            await web._validate_url("https://")
 
 
 # ── _is_private_host ───────────────────────────────────────────────────────

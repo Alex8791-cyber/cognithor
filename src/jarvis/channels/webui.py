@@ -384,7 +384,7 @@ class WebUIChannel(Channel):
                                 }
                             )
                         except Exception:
-                            pass
+                            pass  # Cleanup — WS error send failure before close is non-critical
                         await websocket.close(code=4001, reason="Unauthorized")
                         return
                 self._connections[session_id] = websocket
@@ -738,7 +738,7 @@ class WebUIChannel(Channel):
                 try:
                     Path(p).unlink(missing_ok=True)
                 except Exception:
-                    pass
+                    pass  # Cleanup — temp file deletion failure is non-critical
 
     async def _process_file_upload(
         self,
@@ -806,7 +806,7 @@ class WebUIChannel(Channel):
                         f"Inhalt:\n{result.text}"
                     )
             except Exception:
-                pass
+                pass  # Cleanup — file content extraction failure is non-critical
 
             # Fallback: Nur Dateiinfo
             return (

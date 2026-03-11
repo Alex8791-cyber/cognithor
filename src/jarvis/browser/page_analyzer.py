@@ -215,7 +215,7 @@ class PageAnalyzer:
                     "() => document.documentElement.outerHTML.length"
                 )
             except Exception:
-                pass
+                pass  # Cleanup — HTML length measurement failure is non-critical
 
             # Interaktive Elemente
             state.links = await self._extract_links(page)

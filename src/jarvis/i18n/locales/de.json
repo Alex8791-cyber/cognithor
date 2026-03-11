@@ -1,0 +1,350 @@
+{
+  "_meta": {
+    "locale": "de",
+    "name": "Deutsch",
+    "version": "1.0.0",
+    "authors": ["Jarvis Team"]
+  },
+
+  "error": {
+    "model_not_installed": "Das benötigte Sprachmodell ist nicht installiert. Ausführen: ollama pull {model}",
+    "ollama_unreachable": "Das Sprachmodell (Ollama) ist nicht erreichbar. Stelle sicher, dass Ollama läuft: ollama serve",
+    "timeout": "Die Verarbeitung hat das Zeitlimit überschritten. Das kann bei komplexen Aufgaben oder langsamen Verbindungen passieren. Versuche es erneut oder vereinfache die Anfrage.",
+    "connection_failed": "Es gab ein Verbindungsproblem. Bitte prüfe deine Netzwerkverbindung und versuche es erneut.",
+    "permission_denied": "Mir fehlt die Berechtigung für diese Aktion. Der Gatekeeper hat den Zugriff aus Sicherheitsgründen blockiert.",
+    "not_found": "Die angeforderte Datei oder Ressource wurde nicht gefunden.",
+    "rate_limited": "Der Dienst ist gerade überlastet (Rate-Limit erreicht). Bitte warte einen Moment und versuche es erneut.",
+    "memory_error": "Es ist ein Speicherproblem aufgetreten. Die Aufgabe ist möglicherweise zu gross.",
+    "generic": "Ein Fehler ist aufgetreten ({exc_type}). Ich versuche einen alternativen Ansatz.",
+    "gatekeeper_blocked": "Ich wollte \"{friendly}\" ausführen, aber das wurde aus Sicherheitsgründen blockiert. Grund: {reason}",
+    "retry_timeout": "Der Dienst hat nicht rechtzeitig geantwortet.",
+    "retry_connection": "Die Verbindung konnte nicht hergestellt werden.",
+    "retry_overloaded": "Der Dienst ist gerade überlastet.",
+    "retry_technical": "Technischer Fehler: {detail}",
+    "retry_exhausted": "Ich habe \"{friendly}\" {attempts}-mal versucht, aber es ist jedes Mal fehlgeschlagen. {detail}",
+    "no_details": "Keine Details verfügbar.",
+    "all_actions_blocked": "Ich konnte keinen meiner geplanten Schritte ausführen. Der Gatekeeper hat alle Aktionen blockiert. Das kann bei sensiblen Operationen passieren, die eine Genehmigung erfordern.",
+    "processing_error": "Verarbeitungsfehler aufgetreten.",
+    "invalid_json": "Ungültiges JSON",
+    "invalid_token": "Ungültiger Token",
+    "python_version": "Cognithor benötigt Python >= 3.12",
+    "audio_transcription": "Fehler bei der Audio-Transkription.",
+    "tts_error": "TTS-Fehler aufgetreten",
+    "piper_failed": "Piper fehlgeschlagen: {detail}",
+    "fastapi_required": "FastAPI ist für den API-Channel erforderlich: pip install fastapi uvicorn",
+    "whisper_unavailable": "faster-whisper nicht installiert. Voice-Transkription nicht verfügbar.",
+    "whisper_required": "faster-whisper ist für STT erforderlich: pip install faster-whisper",
+    "ffmpeg_required": "ffmpeg nicht installiert. Für Voice-Streaming: apt install ffmpeg",
+    "config_load_failed": "Konfigurationsübersicht konnte nicht geladen werden.",
+    "workflow_unavailable": "Workflow-Engine nicht verfügbar",
+    "model_unavailable": "Modell '{name}' ({role}) ist nicht verfügbar. Installieren: ollama pull {name}",
+    "exporter_unavailable": "Exporter nicht verfügbar",
+    "security_pipeline_unavailable": "Security-Pipeline nicht verfügbar",
+    "ecosystem_unavailable": "Ecosystem-Policy nicht verfügbar",
+    "gate_unavailable": "Gate nicht verfügbar",
+    "reputation_unavailable": "Reputation-Engine nicht verfügbar",
+    "ollama_check": "Bitte prüfen:\n• Läuft Ollama? → ollama serve\n• Ist das Modell installiert? → ollama pull {model}",
+    "model_causes": "Mögliche Ursachen:\n• Nicht genug VRAM/RAM für das Modell\n• Modell beschädigt → ollama pull {model}",
+    "check_ollama": "Prüfe, ob Ollama läuft und genug Ressourcen hat.",
+    "invalid_time_format": "Ungültiges Zeitformat: '{s}' (erwartet HH:MM oder HH:MM:SS)",
+    "cryptography_required": "cryptography-Paket erforderlich für Credential-Verschlüsselung. pip install cryptography",
+    "dag_unavailable": "DAG WorkflowEngine ist nicht verfügbar",
+    "recursion_limit": "Sub-Agent Rekursion abgebrochen: Tiefe {depth} überschreitet Maximum",
+    "task_incomplete": "ohne die Aufgabe vollständig abzuschliessen",
+    "delegation_failed": "Agent-Router nicht verfügbar. Delegation an {to_agent} fehlgeschlagen.",
+    "planner_not_init": "Planner nicht initialisiert -- Delegation nicht möglich",
+    "gatekeeper_not_init": "Gatekeeper nicht initialisiert -- Delegation nicht möglich"
+  },
+
+  "tool": {
+    "exec_command": "Shell-Befehl",
+    "write_file": "Datei schreiben",
+    "read_file": "Datei lesen",
+    "edit_file": "Datei bearbeiten",
+    "list_directory": "Verzeichnis auflisten",
+    "run_python": "Python-Code",
+    "web_search": "Web-Suche",
+    "web_news_search": "Nachrichten-Suche",
+    "web_fetch": "Webseite abrufen",
+    "search_and_read": "Web-Recherche",
+    "search_memory": "Wissens-Suche",
+    "save_to_memory": "Wissen speichern",
+    "document_export": "Dokument erstellen",
+    "analyze_image": "Bildanalyse",
+    "transcribe_audio": "Audio-Transkription",
+    "extract_text": "Text-Extraktion",
+    "text_to_speech": "Sprachausgabe",
+    "vault_search": "Vault-Suche",
+    "vault_entry": "Vault-Eintrag",
+    "analyze_code": "Code-Analyse",
+    "browser_navigate": "Browser-Navigation",
+    "browser_screenshot": "Browser-Screenshot"
+  },
+
+  "tool_desc": {
+    "web_search": "Websuche durchführen mit DuckDuckGo und Multi-Backend-Fallback (SearXNG, Brave, Google CSE).",
+    "web_fetch": "Webseite abrufen und sauberen Text mit trafilatura extrahieren.",
+    "search_and_read": "Im Web suchen und die Top-Ergebnisse abrufen. Ideal für tiefere Recherche.",
+    "web_news_search": "Nachrichtensuche durchführen.",
+    "http_request": "HTTP-Request ausführen (GET, POST, PUT, DELETE, PATCH).",
+    "read_file": "Liest eine Datei. Pfad wird gegen Sandbox-Policy geprüft.",
+    "write_file": "Erstellt oder überschreibt eine Datei (atomar).",
+    "exec_command": "Führt einen Shell-Befehl in einer Sandbox aus.",
+    "run_python": "Führt Python-Code in einer Sandbox mit Ressourcen-Limits aus.",
+    "analyze_code": "Kombiniert AST-basierte Qualitätsanalyse mit Security-Pattern-Scanning.",
+    "analyze_image": "Analysiert ein Bild mit Vision-Modell. Standard-Modell: schnell und gut.",
+    "browser_navigate": "Navigiert zu einer URL und extrahiert Seiteninhalt. Nützlich für Recherche, Preisvergleiche, Nachrichtenlesen.",
+    "browser_fill": "Füllt ein Formularfeld auf der aktuellen Seite aus.",
+    "browser_js": "Führt JavaScript auf der aktuellen Seite aus.",
+    "browser_info": "Gibt eine Übersicht der aktuellen Seite zurück.",
+    "browser_screenshot": "Gibt eine textuelle Beschreibung des Screenshots zurück.",
+    "search_memory": "Durchsucht das Jarvis-Gedächtnis über alle Ebenen (Core, Semantisch, Episodisch, Prozedural).",
+    "save_to_memory": "Speichert neue Information ins Jarvis-Gedächtnis.",
+    "get_entity": "Lädt eine Entität aus dem Wissens-Graphen.",
+    "add_entity": "Erstellt eine neue Entität im Wissens-Graphen.",
+    "add_relation": "Erstellt eine Beziehung zwischen zwei Entitäten im Wissens-Graphen.",
+    "get_core_memory": "Gibt die CORE.md zurück (Identität, Regeln, Präferenzen).",
+    "get_episodes": "Lädt die Tageslog-Einträge der letzten N Tage.",
+    "search_procedures": "Durchsucht Prozeduren (bewährte Abläufe für wiederkehrende Aufgaben).",
+    "update_procedure": "Meldet Erfolg/Misserfolg einer Prozedur für Lern-Tracking.",
+    "memory_stats": "Zeigt Statistiken des Memory-Systems."
+  },
+
+  "channel": {
+    "approval_required": "Bestätigung erforderlich",
+    "approval_rationale": "Begründung: {rationale}",
+    "help_title": "Verfügbare Befehle:",
+    "unknown_command": "Unbekannter Befehl: {command}. Tippe /help für Hilfe.",
+    "stt_unavailable": "Spracherkennung nicht verfügbar. Installiere faster-whisper: pip install faster-whisper",
+    "error_fallback": "Ein Fehler ist bei der Verarbeitung aufgetreten."
+  },
+
+  "status": {
+    "exec_command": "Führe Befehl aus...",
+    "run_python": "Führe Python-Code aus...",
+    "tool_running": "Führe {tool} aus..."
+  },
+
+  "voice": {
+    "approval_prompt": "Darf ich {tool} ausführen? Grund: {reason}. Sage Ja oder Nein."
+  },
+
+  "gatekeeper": {
+    "invalid_path": "Ungültiger Pfad: {path}",
+    "path_outside_allowed": "Pfad ausserhalb erlaubter Verzeichnisse: {path}",
+    "dangerous_code": "Gefährlicher Python-Code erkannt: {description}"
+  },
+
+  "executor": {
+    "action_skipped": "Aktion übersprungen: {status} -- {reason}",
+    "deadlock": "Aktion übersprungen: Abhängigkeiten nicht erfüllt (Deadlock)",
+    "deps_not_met": "Aktion übersprungen: Abhängigkeiten nicht erfüllt",
+    "no_mcp_client": "Kein MCP-Client verfügbar"
+  },
+
+  "planner": {
+    "no_tools": "Keine Tools verfügbar.",
+    "output_truncated": "[... Output gekürzt]"
+  },
+
+  "prompt": {
+    "respond_default": "Antworte prägnant und informativ.",
+    "respond_german": "Antworte auf Deutsch, prägnant und informativ.",
+    "natural_speech": "Antworte in natürlicher, gesprochener Sprache, die für Sprachausgabe geeignet ist.",
+    "jarvis_identity": "Du bist Jarvis. Erkläre höflich auf Deutsch."
+  },
+
+  "personality": {
+    "greeting_night": "Hallo Nachtschwärmer! ",
+    "greeting_morning": "Guten Morgen! ",
+    "greeting_afternoon": "Guten Tag! ",
+    "greeting_evening": "Guten Abend! ",
+    "empathy_directive": "Zeige Empathie und Verständnis für die Situation des Users.",
+    "appreciation_directive": "Formuliere Antworten wertschätzend und konstruktiv.",
+    "humor_directive": "Ein gelegentlicher lockerer Kommentar ist erlaubt, aber bleibe immer professionell.",
+    "success_directive": "Wenn eine Aufgabe erfolgreich abgeschlossen wurde, bestätige das positiv.",
+    "proactive_directive": "ob der User noch etwas braucht oder ob dir weitere Details helfen würden."
+  },
+
+  "sentiment": {
+    "response_frustrated": "Sei besonders geduldig, verständnisvoll und hilfsbereit.",
+    "response_urgent": "Antworte prägnant und direkt. Komm sofort zum Punkt. Überspringe Höflichkeitsfloskeln.",
+    "response_confused": "Erkläre besonders klar und schrittweise. Verwende einfache Sprache."
+  },
+
+  "text": {
+    "truncated": "[... gekürzt]",
+    "output_truncated": "[... gekürzt: {current}/{total} Zeichen, Quelle: {url}]"
+  },
+
+  "web": {
+    "invalid_url": "Ungültige URL: {url}",
+    "invalid_domain": "Keine gültige Domain: {url}",
+    "dns_blocked": "DNS für {hostname} zeigt auf blockierte Adresse: {ip}",
+    "search_failed": "Websuche für '{query}' fehlgeschlagen: {error}",
+    "no_results": "Keine Ergebnisse für: {query}",
+    "fetch_failed": "Fetch fehlgeschlagen für {url}: {error}",
+    "invalid_method": "Ungültige HTTP-Methode: {method}. Erlaubt: GET, POST, PUT, DELETE, PATCH, HEAD",
+    "body_too_large": "Request-Body zu gross: {size} Bytes (max: {max_size})",
+    "timeout": "Timeout nach {seconds}s für {url}",
+    "request_failed": "Request fehlgeschlagen für {url}: {error}",
+    "search_results_for": "Suchergebnisse für: {query}",
+    "source_comparison_note": "Übereinstimmungen und Widersprüche zwischen Quellen sollten beachtet werden"
+  },
+
+  "media": {
+    "unsupported_image": "Nicht unterstütztes Bildformat: {suffix}",
+    "unsupported_format": "Nicht unterstütztes Format: {suffix}. Unterstützt: PDF, DOCX, TXT, MD, HTML, CSV",
+    "text_truncated": "[... gekürzt, {length} Zeichen gesamt]",
+    "pdf_reader_required": "Kein PDF-Reader verfügbar. Installiere: pip install pymupdf oder pip install pdfplumber",
+    "analysis_unavailable": "Fehler: Dokument-Analyse nicht verfügbar.",
+    "no_text_in_document": "Fehler: Kein Text im Dokument gefunden. Möglicherweise ein gescanntes PDF -- versuche OCR.",
+    "export_unsupported_format": "Nicht unterstütztes Format: {fmt}. Erlaubt: pdf, docx",
+    "tts_unavailable": "Kein TTS-Backend verfügbar. Installiere piper oder espeak-ng."
+  },
+
+  "fs": {
+    "invalid_path": "Ungültiger Pfad: {path}",
+    "access_denied": "Zugriff verweigert: {path} liegt ausserhalb erlaubter Verzeichnisse",
+    "not_regular_file": "Kein reguläres File: {path}",
+    "file_too_large": "Datei zu gross ({size} Bytes). Maximum: 1 MB.",
+    "edit_ambiguous": "Verwende einen längeren Ausschnitt als old_text."
+  },
+
+  "shell": {
+    "path_blocked": "Befehl blockiert: Pfad '{path}' liegt ausserhalb des Workspace."
+  },
+
+  "memory": {
+    "invalid_tier": "Fehler: Unbekannter Tier '{tier}'. Gültig: {valid}",
+    "no_results": "Keine Ergebnisse für: '{query}'",
+    "access_denied": "Zugriff verweigert: Pfad '{path}' liegt ausserhalb des Workspace",
+    "entity_not_found": "Keine Entität gefunden für: '{name}'",
+    "invalid_json": "Fehler: Ungültiges JSON in attributes: {attributes}",
+    "entity_created": "Entität erstellt: {name} (Typ: {entity_type}, ID: {id})",
+    "source_entity_not_found": "Fehler: Quell-Entität '{name}' nicht gefunden.",
+    "target_entity_not_found": "Fehler: Ziel-Entität '{name}' nicht gefunden.",
+    "no_episodes": "Keine Episodic-Einträge der letzten {days} Tage.",
+    "no_procedures": "Keine Prozeduren gefunden für: '{query}'",
+    "empty_graph": "# Wissens-Graph\n\nKeine Entitäten vorhanden.\n",
+    "compaction_status": "Compaction nötig: JA/Nein"
+  },
+
+  "ingest": {
+    "unsupported_format": "Nicht unterstütztes Format: {suffix}",
+    "no_extractor": "Kein Extraktor für {suffix}",
+    "pymupdf_required": "PDF-Extraktion benötigt PyMuPDF: pip install pymupdf",
+    "docx_required": "DOCX-Extraktion benötigt python-docx: pip install python-docx",
+    "file_too_large": "Datei zu gross: {size} MB"
+  },
+
+  "code": {
+    "access_denied": "Zugriff verweigert: '{path}' liegt ausserhalb des Workspace",
+    "only_python": "Fehler: Nur Python-Dateien (.py) werden unterstützt."
+  },
+
+  "browser": {
+    "text_truncated": "[... gekürzt, {length} Zeichen gesamt]",
+    "field_filled": "Feld '{selector}' ausgefüllt",
+    "vision_unavailable": "(Vision nicht verfügbar)"
+  },
+
+  "security": {
+    "token_store_insecure": "Token-Store nutzt Base64-Fallback (NICHT verschlüsselt!). pip install cryptography",
+    "not_encrypted_warning": "NICHT verschlüsselt. pip install cryptography",
+    "param_length_rule": "Überlange Parameter blockieren (Injection-Schutz)",
+    "rate_limit_exceeded": "Rate-Limit '{name}' überschritten: {detail}",
+    "forbidden_value": "enthält verbotenen Wert '{value}'"
+  },
+
+  "vault": {
+    "invalid_token_format": "Ungültiges Token-Format (Base64-Fehler): {error}",
+    "token_too_short": "Token zu kurz für Legacy-Entschlüsselung"
+  },
+
+  "skill": {
+    "invalid_package_name": "Ungültiger Paketname '{name}'",
+    "invalid_version": "Ungültige Version '{version}': SemVer erwartet",
+    "tool_unavailable": "Tool '{tool}' nicht verfügbar",
+    "no_skill_for": "Kein Skill für: {query}",
+    "syntax_check_passed": "Syntax-Check bestanden (keine Sandbox verfügbar)",
+    "no_manifest": "Paket enthält kein manifest.json",
+    "no_skill_py": "Paket enthält kein skill.py",
+    "invalid_manifest": "Manifest ungültig: {detail}",
+    "code_analysis_dangerous": "Code-Analyse: GEFÄHRLICH -- {detail}",
+    "publisher_untrusted": "Herausgeber '{signer}' nicht vertrauenswürdig",
+    "hash_mismatch": "Content-Hash stimmt nicht überein (Manipulation?)",
+    "auto_created": "Dieser Skill wurde automatisch erstellt. Er muss manuell mit Inhalt befüllt werden."
+  },
+
+  "config": {
+    "preset_office_name": "Büro-Assistent",
+    "preset_office_desc": "Tägliche Briefings, E-Mail-Übersicht, Kalender-Check"
+  },
+
+  "wizard": {
+    "invalid_selection": "Ungültige Auswahl für '{title}'",
+    "confirmation": "Bestätigung",
+    "confirm_settings": "Prüfe die Einstellungen und bestätige."
+  },
+
+  "cli": {
+    "help_log_level": "Log-Level überschreiben",
+    "help_no_cli": "CLI-Channel nicht starten (Headless-Betrieb für Control Center)",
+    "help_api_port": "Port für die Control Center API",
+    "help_api_host": "Host für die Control Center API"
+  },
+
+  "cron": {
+    "default_weather": "Wetter für Nürnberg",
+    "default_weekly": "Wochenrückblick:\n"
+  },
+
+  "collaboration": {
+    "researcher": "Recherchiere gründlich. Liefere Fakten, Quellen und Kontext.",
+    "analyst": "Analysiere die Daten. Identifiziere Muster, Trends und Zusammenhänge.",
+    "critic": "Prüfe kritisch. Finde Fehler, Lücken und Schwächen im Argument.",
+    "validator": "Validiere die Ergebnisse gegen die Anforderungen. Prüfe Korrektheit.",
+    "executor": "Führe die Aufgabe aus. Produziere konkreten Output.",
+    "synthesizer": "Fasse alle Perspektiven zusammen. Erstelle eine kohärente Synthese.",
+    "mediator": "Vermittle zwischen Positionen. Finde Konsens und löse Konflikte.",
+    "previous_contributions": "Vorherige Beiträge:\n"
+  },
+
+  "webchat": {
+    "attach_file": "Datei anhängen",
+    "approval_required": "Bestätigung erforderlich",
+    "mic_access_denied": "Mikrofon-Zugriff nicht möglich. Bitte erlaube den Zugriff."
+  },
+
+  "audit": {
+    "eval_dangerous": "eval() erlaubt beliebige Code-Ausführung",
+    "exec_dangerous": "exec() erlaubt beliebige Code-Ausführung",
+    "shell_injection": "Shell-Injection möglich bei shell=True",
+    "direct_shell": "Direkte Shell-Ausführung",
+    "external_http": "Skill macht HTTP-Requests nach aussen",
+    "dns_exfiltration": "DNS-Anfragen können zur Datenexfiltration genutzt werden",
+    "file_access_sandbox": "Dateizugriff auf Sandbox beschränken",
+    "temp_secrets": "Credentials in temporäre Dateien geschrieben",
+    "base64_obfuscation": "Base64-Kodierung kann bösartigen Code verstecken",
+    "user_approved": "User-Bestätigung für: {reason}",
+    "user_rejected": "User-Ablehnung für: {reason}"
+  },
+
+  "log": {
+    "approval_timeout": "Approval-Timeout für %s",
+    "cron_loaded": "Geladene Cron-Jobs: %d",
+    "cron_triggered": "Cron-Job ausgelöst: '%s'",
+    "heartbeat_executed": "Heartbeat ausgeführt"
+  },
+
+  "integrity": {
+    "negation_contradiction": "Negations-Widerspruch (Überlappung: {count} Wörter)",
+    "content_too_long": "Inhalt ungewöhnlich lang"
+  },
+
+  "hygiene": {
+    "contradictory_values": "Widersprüchliche Werte für '{key}': {values}",
+    "hash_mismatch": "Hash-Mismatch für Eintrag '{entry_id}'"
+  }
+}

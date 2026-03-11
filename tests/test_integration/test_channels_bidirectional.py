@@ -11,6 +11,8 @@ Beweist:
 from __future__ import annotations
 
 import asyncio
+import os
+import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -130,7 +132,7 @@ class TestSlackChannelBidirectional:
         ch._client = AsyncMock()
         ch._bidirectional = True
 
-        action = PlannedAction(tool="delete_file", params={"path": "/tmp/data"})
+        action = PlannedAction(tool="delete_file", params={"path": os.path.join(tempfile.gettempdir(), "data")})
 
         # Starte Approval in Background (wird wegen fehlendem Button-Klick timeouten)
         task = asyncio.create_task(ch.request_approval("sess1", action, "Gefährliche Aktion"))

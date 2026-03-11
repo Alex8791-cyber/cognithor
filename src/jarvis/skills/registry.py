@@ -277,6 +277,14 @@ class SkillRegistry:
             for sub_dir in sorted(community_dir.iterdir()):
                 if not sub_dir.is_dir():
                     continue
+                # Die SkillRegistry laedt recalled Skills nicht
+                if (sub_dir / ".recalled").exists():
+                    log.warning(
+                        "community_skill_recalled",
+                        dir=str(sub_dir),
+                        msg="Skill is recalled — skipping",
+                    )
+                    continue
                 skill_md = sub_dir / "skill.md"
                 if not skill_md.exists():
                     continue
@@ -627,7 +635,12 @@ class SkillRegistry:
                     )
                     body = result.sanitized_text
                 except Exception as exc:
-                    log.warning("community_skill_sanitize_error", error=str(exc))
+                    log.error(
+                        "community_skill_sanitize_failed_rejecting",
+                        skill=best.skill.slug,
+                        error=str(exc),
+                    )
+                    return None  # Reject unsanitized community skill
 
             # Nicht doppelt injizieren
             if body not in working_memory.injected_procedures:

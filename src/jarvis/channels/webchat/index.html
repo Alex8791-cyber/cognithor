@@ -428,8 +428,19 @@ function connect() {
 
   ws = new WebSocket(url);
 
-  ws.onopen = () => {
+  ws.onopen = async () => {
     reconnectAttempts = 0;
+    // Authenticate: fetch bootstrap token and send as first message
+    try {
+      const base = `http://${location.hostname || 'localhost'}:8741`;
+      const resp = await fetch(`${base}/api/v1/bootstrap`);
+      const data = await resp.json();
+      if (data.token) {
+        ws.send(JSON.stringify({ type: 'auth', token: data.token }));
+      }
+    } catch (e) {
+      console.warn('Auth token fetch failed:', e);
+    }
     statusDot.className = 'status-dot connected';
     statusText.textContent = 'Verbunden';
     connectionInfo.textContent = `Session: ${CONFIG.sessionId.slice(0, 12)}...`;

@@ -13,7 +13,7 @@
     <a href="https://github.com/Alex8791-cyber/cognithor/stargazers"><img src="https://img.shields.io/github/stars/Alex8791-cyber/cognithor?style=flat-square&color=yellow" alt="GitHub Stars"></a>
     <img src="https://img.shields.io/badge/status-Beta%20%2F%20Experimental-orange?style=flat-square" alt="Status: Beta">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-10%2C165%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-10%2C208%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/lint-0%20errors-brightgreen?style=flat-square" alt="Lint"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
@@ -21,7 +21,7 @@
   </p>
 </p>
 
-> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (10,178 tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
+> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (10,208 tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
 
 ---
 
@@ -29,7 +29,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 10,178 tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 10,208 tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 ---
 
@@ -49,14 +49,14 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 | **Deployment (Docker, bare-metal)** | Beta — tested on limited configurations |
 | **Enterprise features** (GDPR, A2A, Governance) | Alpha — implemented but not audited for compliance |
 
-**What the test suite covers:** Unit tests, integration tests, and mocked end-to-end tests for all modules. The 10,178 tests verify code correctness in controlled environments.
+**What the test suite covers:** Unit tests, integration tests, and mocked end-to-end tests for all modules. The 10,208 tests verify code correctness in controlled environments.
 
 **What the test suite does NOT cover:** Real-world deployment scenarios, network edge cases, long-running stability, multi-user load, hardware-specific voice/GPU issues, or actual LLM response quality.
 
 **Important notes for users:**
 - This project is developed by a solo developer with AI assistance. Code is human-reviewed, but the pace is fast.
 - Breaking changes may occur between minor versions. Pin your version if stability matters.
-- The default language for system prompts, error messages, and UI strings is **German**. See [Language & Internationalization](#language--internationalization).
+- The default language is **German**, switchable to **English** via the Control Center or `config.yaml`. See [Language & Internationalization](#language--internationalization).
 - For production use, thorough testing in your specific environment is strongly recommended.
 - Bug reports and contributions are welcome — see [Issues](https://github.com/Alex8791-cyber/cognithor/issues).
 
@@ -94,6 +94,16 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 
 ## What's New
 
+### v0.33.0-beta — i18n Language Packs, 4 Critical Bug Fixes
+
+- **i18n Language Pack System** — JSON-based internationalization with dot-notation keys, SHA-256 integrity verification, fallback chain (locale → EN → raw key), thread-safe locale switching. Ships with German and English packs (~250 keys each)
+- **Language Switcher in UI** — Control Center header quick-toggle (DE/EN) + General page dropdown. Language changes are live — no restart needed
+- **Bug Fix: Planner JSON Parse Retry** — When the LLM returns malformed JSON, the planner now automatically retries with format hints instead of silently failing ("task failed successfully")
+- **Bug Fix: LLM Timeout Wiring** — Embedding timeouts now respect the configured `timeout_seconds` instead of hardcoded values. LLM timeout is now visible on the Executor page for all backends
+- **Bug Fix: WebSocket Race Condition** — All 12 `send_json()` calls in the WebSocket handler are now protected against disconnection errors via `_ws_safe_send()`. No more "Cannot call send" crashes
+- **Bug Fix: GlobalSearch** — Added missing pages (Executor, Workflows, Knowledge Graph) to FIELD_INDEX and PAGE_LABELS. Search now finds all 19 config pages
+- **10,208 tests passing** (0 failures)
+
 ### v0.30.0 — mTLS, Document Reading, DB Retry
 
 - **Document Reading** — 3 new MCP tools: `read_pdf` (PyMuPDF), `read_ppt` (python-pptx), `read_docx` (python-docx) with structured output, formatting, tables, images, metadata
@@ -114,7 +124,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 **Previous Releases**
 
 - **v0.28.0** — Vite IPv6 fix, Qwen3-Coder model update, Python 3.15 locale compat
-- **v0.27.5** "BugHunt" — 60+ CodeQL fixes, CI stability, thread-safe EpisodicStore, 10,178 tests
+- **v0.27.5** "BugHunt" — 60+ CodeQL fixes, CI stability, thread-safe EpisodicStore, 10,208 tests
 - **v0.27.3** — CWE-22 Path Traversal fix in TTS API, multi-GPU installer fix, `--init-only` hang fix
 - **v0.27.1** — Community Skill Marketplace, ToolEnforcer runtime sandboxing, 5-check validation pipeline, 13 autonomy fixes
 - **v0.27.0** — Full Audit, Installer Overhaul: 80-item audit, XSS fix, CORS hardening, rate limiting, auto-install Python/Ollama
@@ -157,6 +167,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 - **DAG Workflow Engine** — Directed acyclic graph execution with parallel branches, conditional edges, cycle detection, automatic retry. Now wired into the Executor for parallel tool execution
 - **Distributed Workers** — Capability-based job routing, health monitoring, failover, dead-letter queue
 - **Multi-Agent Collaboration** — Debate, voting, and pipeline patterns for agent teams
+- **i18n Language Packs** — JSON-based internationalization with SHA-256 integrity verification, German and English included, extensible to any language
 - **Tool Sandbox Hardening** — Per-tool resource limits, network guards, escape detection (8 attack categories)
 - **GDPR Compliance Toolkit** — Data processing logs (Art. 30), retention enforcement, right-to-erasure (Art. 17), audit export
 - **Agent Benchmark Suite** — 14 standardized tasks, composite scoring, regression detection across versions
@@ -164,7 +175,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 - **Agent SDK** — Decorator-based agent registration (`@agent`, `@tool`, `@hook`), project scaffolding
 - **Plugin Remote Registry** — Remote manifests with SHA-256 checksums, dependency resolution, install/update/rollback
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
-- **10,178 tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
+- **10,208 tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
 
 ## Architecture
 
@@ -559,7 +570,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **10,178 tests** · **100% pass rate** · **89% coverage** · **~118,000 LOC source** · **~108,000 LOC tests**
+Current status: **10,208 tests** · **100% pass rate** · **89% coverage** · **~118,000 LOC source** · **~108,000 LOC tests**
 
 | Area | Tests | Description |
 |------|-------|-------------|
@@ -695,7 +706,7 @@ cognithor/
 │       │   └── useVoiceMode.js    # Voice mode hook (wake word, STT, TTS)
 │       ├── App.jsx                # App shell
 │       └── main.jsx               # React entry
-├── tests/                         # 10,178 tests, ~92,000 LOC
+├── tests/                         # 10,208 tests, ~92,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
 │   ├── test_mcp/                  # MCP tools and client
@@ -787,22 +798,44 @@ See [`deploy/README.md`](deploy/README.md) for full deployment documentation (Do
 
 ## Language & Internationalization
 
-Cognithor was originally developed in German. The following areas contain German-language strings:
+Cognithor ships with a **JSON-based i18n language pack system** (since v0.33.0). The default language is German, switchable to English — or any future language — via the Control Center UI or `config.yaml`.
 
-| Area | Language | Notes |
-|------|----------|-------|
-| **README & docs** | English | Fully translated |
-| **Code & comments** | Mixed (EN/DE) | Variable names in English, some comments in German |
-| **System prompts** (Planner) | German | The LLM is instructed in German by default |
-| **Error messages** | German | User-facing error templates in `utils/error_messages.py` |
-| **Vault folders** | German | `recherchen/`, `meetings/`, `wissen/`, `projekte/`, `daily/` |
-| **Personality / Greetings** | German | "Guten Morgen!", "Guten Abend!", etc. |
-| **Gatekeeper reasons** | English | Policy decisions are in English |
-| **Log messages** | English | structlog keys and messages |
+### How It Works
 
-**To customize the language:** Override the system prompt in `~/.jarvis/CORE.md` or modify `core/planner.py:SYSTEM_PROMPT`. Full i18n support is planned but not yet implemented.
+```python
+from jarvis.i18n import t, set_locale
 
-**Contributing translations:** If you'd like to help translate Cognithor to other languages, please open an issue or PR. The main areas to translate are: system prompts, error messages, and vault folder names.
+set_locale("en")  # or "de"
+print(t("error.timeout"))  # "The operation timed out..."
+```
+
+- **Language packs**: JSON files in `src/jarvis/i18n/locales/` (e.g., `en.json`, `de.json`)
+- **Dot-notation keys**: `{"error": {"timeout": "..."}}` → `t("error.timeout")`
+- **Fallback chain**: Current locale → English → raw key
+- **SHA-256 integrity**: Optional `.sha256` sidecar files for community pack verification
+- **Thread-safe**: Locale switching via `set_locale()` is thread-safe
+
+### Switching Language
+
+1. **Control Center**: General → "Sprache / Language" dropdown, or click the language button in the header
+2. **Config file**: Set `language: en` in `~/.jarvis/config.yaml`
+3. **Environment variable**: `JARVIS_LANGUAGE=en`
+
+| Area | i18n Status | Notes |
+|------|-------------|-------|
+| **Error messages** | Fully i18n | `utils/error_messages.py` uses `t()` |
+| **Tool names** | Fully i18n | All 20 MCP tools have translated names |
+| **Personality / Greetings** | Fully i18n | Greetings, empathy, success messages |
+| **System prompts** (Planner) | i18n keys | Prompt templates in language packs |
+| **Control Center UI** | Partial | Config labels still hardcoded (planned) |
+| **Log messages** | English only | structlog keys are not translated |
+
+### Contributing Translations
+
+1. Copy `src/jarvis/i18n/locales/en.json` to `<locale>.json` (e.g., `zh.json`, `fr.json`)
+2. Translate all ~250 string values
+3. Run `python -c "from jarvis.i18n import generate_pack_hash; generate_pack_hash('<locale>')"`
+4. Submit a PR
 
 ## Roadmap
 
@@ -853,7 +886,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 
 ---
 
-**Metrics:** ~118,000 LOC source · ~108,000 LOC tests · 10,178 tests · 89% coverage · 0 lint errors · **Status: Beta**
+**Metrics:** ~118,000 LOC source · ~108,000 LOC tests · 10,208 tests · 89% coverage · 0 lint errors · **Status: Beta**
 
 ## Contributors
 

@@ -678,6 +678,7 @@ function GeneralPage({ cfg, set }) {
     <Section title="Allgemein" desc="Identität, Betriebsmodus, Kosten und Dashboard" />
     <Card title="Identität">
       <TextInput label="Besitzer-Name" value={cfg.owner_name} onChange={v => set("owner_name", v)} desc="Wird in Prompts und CORE.md verwendet" error={!cfg.owner_name ? "Pflichtfeld" : null} />
+      <SelectInput label="Sprache / Language" value={cfg.language || "de"} onChange={v => set("language", v)} options={[{value:"de",label:"Deutsch"},{value:"en",label:"English"}]} desc="UI- und System-Sprache für Fehlermeldungen, Begrüßungen und Status-Texte" />
       <SelectInput label="Betriebsmodus" value={cfg.operation_mode} onChange={v => set("operation_mode", v)} options={[{value:"auto",label:"Auto-Detect"},{value:"offline",label:"Offline (nur lokal)"},{value:"online",label:"Online (Cloud-APIs)"},{value:"hybrid",label:"Hybrid"}]} desc="auto erkennt den Modus aus vorhandenen API-Keys" />
       <ReadOnly label="Version" value={cfg.version} desc="Systemversion (nur lesbar)" />
     </Card>
@@ -970,6 +971,7 @@ function ExecutorPage({ cfg, set }) {
   return (<>
     <Section title="Executor" desc="Tool-Ausführung: Timeouts, Retries, Parallelität" />
     <Card title="Allgemein">
+      <NumberInput label="LLM-Timeout (Sekunden)" value={cfg.ollama?.timeout_seconds} onChange={v => set("ollama.timeout_seconds", v)} min={10} max={600} desc="Timeout für LLM-Anfragen (Planner/Executor). Gilt für alle Backends (Ollama, OpenAI, etc.)" />
       <NumberInput label="Standard-Timeout (Sekunden)" value={e.default_timeout_seconds} onChange={v => set("executor.default_timeout_seconds", v)} min={5} max={600} desc="Timeout für einzelne Tool-Aufrufe" />
       <NumberInput label="Max. Output (Zeichen)" value={e.max_output_chars} onChange={v => set("executor.max_output_chars", v)} min={1000} max={100000} desc="Tool-Output wird ab dieser Länge abgeschnitten" />
       <NumberInput label="Max. Retries" value={e.max_retries} onChange={v => set("executor.max_retries", v)} min={0} max={10} desc="Wiederholungsversuche bei transienten Fehlern" />
@@ -1626,6 +1628,7 @@ export default function App() {
       daily_budget_usd: cfg.daily_budget_usd, monthly_budget_usd: cfg.monthly_budget_usd,
       vision_model: cfg.vision_model, vision_model_detail: cfg.vision_model_detail,
       openai_base_url: cfg.openai_base_url, anthropic_max_tokens: cfg.anthropic_max_tokens,
+      language: cfg.language,
     };
     for (const k of API_KEY_FIELDS) {
       if (cfg[k] !== "***") topPayload[k] = cfg[k];
@@ -2196,6 +2199,17 @@ export default function App() {
         <div className="cc-header-actions">
           <GlobalSearch onNavigate={(pageId) => { setPage(pageId); setMenuOpen(false); }} />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <button
+            className="cc-theme-toggle"
+            title={`Language: ${(cfg.language || "de").toUpperCase()}`}
+            onClick={() => {
+              const next = cfg.language === "en" ? "de" : "en";
+              setCfg(prev => ({ ...prev, language: next }));
+            }}
+            style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1 }}
+          >
+            {(cfg.language || "de").toUpperCase()}
+          </button>
           {/* Prominenter Start/Stop Button */}
           <button 
             className={`cc-btn-sm ${appStatus === "running" ? "cc-btn-danger" : "cc-btn-success"}`} 

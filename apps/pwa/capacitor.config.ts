@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
     // In development, connect to local Jarvis backend
     // url: 'http://localhost:8741',
     cleartext: true,
-    allowNavigation: ['*'],
+    allowNavigation: ['localhost', '127.0.0.1', '*.local'],
   },
   plugins: {
     PushNotifications: {

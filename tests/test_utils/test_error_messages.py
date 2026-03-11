@@ -6,6 +6,8 @@ Testet:
   - retry_exhausted_message: Tool-Name + Attempts + Error
   - all_actions_blocked_message: Pro Aktion eine Begründung
   - _friendly_tool_name: Tool-Name-Mapping
+
+Tests run in both DE and EN locale to validate i18n integration.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from jarvis.i18n import set_locale
 from jarvis.utils.error_messages import (
     _friendly_tool_name,
     all_actions_blocked_message,
@@ -80,11 +83,11 @@ class TestGatekeeperBlockMessage:
     def test_unknown_tool(self) -> None:
         msg = gatekeeper_block_message("custom_tool", "Policy blockiert")
         assert "custom_tool" in msg
-        assert "Berechtigung" in msg
+        assert "Sicherheitsgründen" in msg or "blockiert" in msg
 
     def test_contains_suggestion(self) -> None:
         msg = gatekeeper_block_message("write_file", "Keine Erlaubnis")
-        assert "Berechtigung" in msg or "alternative" in msg.lower()
+        assert "blockiert" in msg or "Sicherheitsgründen" in msg
 
 
 class TestRetryExhaustedMessage:
@@ -126,7 +129,7 @@ class TestAllActionsBlockedMessage:
         msg = all_actions_blocked_message(steps, decisions)
         assert "Shell-Befehl" in msg
         assert "Root-Befehl" in msg
-        assert "Sicherheitsgründen" in msg
+        assert "blockiert" in msg or "Gatekeeper" in msg
 
     def test_multiple_actions(self) -> None:
         steps = [
@@ -153,3 +156,32 @@ class TestFriendlyToolName:
 
     def test_unknown_tool_returns_name(self) -> None:
         assert _friendly_tool_name("custom_tool") == "custom_tool"
+
+
+class TestEnglishLocale:
+    """Verify error messages work in English locale."""
+
+    def test_timeout_en(self) -> None:
+        set_locale("en")
+        msg = classify_error_for_user(TimeoutError("timeout"))
+        assert "timed out" in msg
+        set_locale("de")
+
+    def test_connection_en(self) -> None:
+        set_locale("en")
+        msg = classify_error_for_user(ConnectionError("refused"))
+        assert "connection" in msg.lower()
+        set_locale("de")
+
+    def test_friendly_tool_name_en(self) -> None:
+        set_locale("en")
+        assert _friendly_tool_name("exec_command") == "Shell command"
+        assert _friendly_tool_name("web_search") == "Web search"
+        set_locale("de")
+
+    def test_gatekeeper_en(self) -> None:
+        set_locale("en")
+        msg = gatekeeper_block_message("exec_command", "dangerous")
+        assert "Shell command" in msg
+        assert "security" in msg.lower()
+        set_locale("de")

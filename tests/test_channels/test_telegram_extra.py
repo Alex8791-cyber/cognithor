@@ -7,6 +7,7 @@ request_approval timeout, session mapping persistence.
 from __future__ import annotations
 
 import asyncio
+import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -89,7 +90,7 @@ class TestTranscribeAudioPaths:
 
         mock_fw = MagicMock()
         with patch.dict("sys.modules", {"faster_whisper": mock_fw}):
-            result = await ch._transcribe_audio(Path("/tmp/x.ogg"))
+            result = await ch._transcribe_audio(Path(tempfile.gettempdir()) / "x.ogg")
         assert result == "Hello"
         mock_fw.WhisperModel.assert_not_called()  # model reused
 
@@ -105,7 +106,7 @@ class TestTranscribeAudioPaths:
         mock_fw.WhisperModel.return_value = mock_model
 
         with patch.dict("sys.modules", {"faster_whisper": mock_fw}):
-            result = await ch._transcribe_audio(Path("/tmp/x.ogg"))
+            result = await ch._transcribe_audio(Path(tempfile.gettempdir()) / "x.ogg")
         assert result == "World"
         mock_fw.WhisperModel.assert_called_once()
 
@@ -117,13 +118,13 @@ class TestTranscribeAudioPaths:
 
         mock_fw = MagicMock()
         with patch.dict("sys.modules", {"faster_whisper": mock_fw}):
-            result = await ch._transcribe_audio(Path("/tmp/x.ogg"))
+            result = await ch._transcribe_audio(Path(tempfile.gettempdir()) / "x.ogg")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_whisper_import_error(self, ch: TelegramChannel) -> None:
         with patch.dict("sys.modules", {"faster_whisper": None}):
-            result = await ch._transcribe_audio(Path("/tmp/x.ogg"))
+            result = await ch._transcribe_audio(Path(tempfile.gettempdir()) / "x.ogg")
         assert result is None
 
 

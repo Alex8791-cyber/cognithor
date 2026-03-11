@@ -753,6 +753,19 @@ class Gateway:
                 log.debug("config_file_reload_failed", exc_info=True)
                 new_config = self._config
 
+            # Live-update i18n locale from config
+            try:
+                import os
+                from jarvis.i18n import set_locale
+                _lang = (
+                    os.environ.get("JARVIS_LANGUAGE")
+                    or os.environ.get("COGNITHOR_LANGUAGE")
+                    or new_config.language
+                )
+                set_locale(_lang)
+            except Exception:
+                log.debug("i18n_locale_reload_failed", exc_info=True)
+
             # Live-update Executor runtime parameters
             if self._executor and hasattr(self._executor, "reload_config"):
                 try:
@@ -1370,6 +1383,20 @@ class Gateway:
                     self._run_recorder.record_plan(run_id, plan)
                 except Exception:
                     log.debug("run_recorder_plan_failed", exc_info=True)
+
+            # JSON parse failed even after retry — inform user instead of
+            # silently returning garbled LLM output as a "direct response"
+            if getattr(plan, "parse_failed", False):
+                log.warning(
+                    "pge_plan_parse_failed",
+                    iteration=session.iteration_count,
+                    confidence=plan.confidence,
+                )
+                final_response = (
+                    "Ich konnte die Antwort des Sprachmodells nicht korrekt verarbeiten. "
+                    "Bitte versuche es erneut oder formuliere deine Anfrage anders."
+                )
+                break
 
             # Direkte Antwort
             if not plan.has_actions and plan.direct_response:

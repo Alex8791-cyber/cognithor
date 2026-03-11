@@ -1,5 +1,8 @@
 """Tests fuer CapabilityMatrix und PolicyEvaluator."""
 
+import os
+import tempfile
+
 import pytest
 from jarvis.security.capabilities import (
     CapabilityMatrix,
@@ -146,7 +149,7 @@ class TestPolicyEvaluator:
     def test_evaluate_with_params(self):
         decision = self.evaluator.evaluate(
             "read_file",
-            params={"path": "/tmp/test.txt"},
+            params={"path": os.path.join(tempfile.gettempdir(), "test.txt")},
             profile_name="standard",
         )
         assert decision.allowed

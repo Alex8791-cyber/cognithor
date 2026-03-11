@@ -14,9 +14,11 @@ Architektur-Bibel: §16.4 (Endnutzer-Transparenz), §17.1 (DSGVO-Compliance)
 
 from __future__ import annotations
 
+import sqlite3
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 
@@ -77,7 +79,12 @@ class UserConsent:
 
 
 class ConsentManager:
-    """Verwaltet Einwilligungen pro Nutzer (DSGVO-konform)."""
+    """Verwaltet Einwilligungen pro Nutzer (DSGVO-konform).
+
+    Args:
+        db_path: Pfad zur SQLite-Datenbank für persistente Speicherung.
+                 None = In-Memory (für Tests / Abwärtskompatibilität).
+    """
 
     # Pflicht-Einwilligungen für Versicherungsberatung
     REQUIRED_FOR_INSURANCE = [
@@ -85,9 +92,63 @@ class ConsentManager:
         ConsentPurpose.INSURANCE_ADVICE,
     ]
 
-    def __init__(self) -> None:
-        self._consents: dict[str, list[UserConsent]] = {}
-        self._counter = 0
+    _CREATE_TABLE = """
+        CREATE TABLE IF NOT EXISTS consents (
+            consent_id  TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL,
+            purpose     TEXT NOT NULL,
+            status      TEXT NOT NULL DEFAULT 'pending',
+            granted_at  TEXT DEFAULT '',
+            expires_at  TEXT DEFAULT '',
+            withdrawn_at TEXT DEFAULT '',
+            legal_basis TEXT DEFAULT 'Art. 6(1)(a) DSGVO',
+            description TEXT DEFAULT '',
+            created_at  TEXT DEFAULT ''
+        )
+    """
+
+    def __init__(self, db_path: str | Path | None = None) -> None:
+        if db_path is not None:
+            db_path = Path(db_path)
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            self._db = sqlite3.connect(str(db_path))
+        else:
+            self._db = sqlite3.connect(":memory:")
+        self._db.execute("PRAGMA journal_mode=WAL")
+        self._db.execute("PRAGMA foreign_keys=ON")
+        self._db.execute(self._CREATE_TABLE)
+        self._db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_consents_user ON consents(user_id)"
+        )
+        self._db.commit()
+
+        # In-memory cache for live object references (tests check obj.status directly)
+        self._cache: dict[str, UserConsent] = {}
+
+        # Counter: max existing ID
+        row = self._db.execute(
+            "SELECT consent_id FROM consents ORDER BY rowid DESC LIMIT 1"
+        ).fetchone()
+        if row and row[0].startswith("CON-"):
+            try:
+                self._counter = int(row[0][4:])
+            except ValueError:
+                self._counter = 0
+        else:
+            self._counter = 0
+
+    def _row_to_consent(self, row: tuple) -> UserConsent:
+        return UserConsent(
+            consent_id=row[0],
+            user_id=row[1],
+            purpose=ConsentPurpose(row[2]),
+            status=ConsentStatus(row[3]),
+            granted_at=row[4] or "",
+            expires_at=row[5] or "",
+            withdrawn_at=row[6] or "",
+            legal_basis=row[7] or "Art. 6(1)(a) DSGVO",
+            description=row[8] or "",
+        )
 
     def request_consent(
         self,
@@ -109,38 +170,64 @@ class ConsentManager:
             description=description or f"Einwilligung für {purpose.value}",
             expires_at=expires,
         )
-        self._consents.setdefault(user_id, []).append(consent)
+        self._db.execute(
+            "INSERT INTO consents (consent_id, user_id, purpose, status, "
+            "granted_at, expires_at, withdrawn_at, legal_basis, description, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (consent.consent_id, user_id, purpose.value, consent.status.value,
+             consent.granted_at, consent.expires_at, consent.withdrawn_at,
+             consent.legal_basis, consent.description, now),
+        )
+        self._db.commit()
+        self._cache[consent.consent_id] = consent
         return consent
 
     def grant(self, consent_id: str) -> bool:
-        for consents in self._consents.values():
-            for c in consents:
-                if c.consent_id == consent_id:
-                    c.status = ConsentStatus.GRANTED
-                    c.granted_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-                    return True
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        cur = self._db.execute(
+            "UPDATE consents SET status=?, granted_at=? WHERE consent_id=?",
+            (ConsentStatus.GRANTED.value, now, consent_id),
+        )
+        self._db.commit()
+        if cur.rowcount > 0:
+            cached = self._cache.get(consent_id)
+            if cached:
+                cached.status = ConsentStatus.GRANTED
+                cached.granted_at = now
+            return True
         return False
 
     def deny(self, consent_id: str) -> bool:
-        for consents in self._consents.values():
-            for c in consents:
-                if c.consent_id == consent_id:
-                    c.status = ConsentStatus.DENIED
-                    return True
+        cur = self._db.execute(
+            "UPDATE consents SET status=? WHERE consent_id=?",
+            (ConsentStatus.DENIED.value, consent_id),
+        )
+        self._db.commit()
+        if cur.rowcount > 0:
+            cached = self._cache.get(consent_id)
+            if cached:
+                cached.status = ConsentStatus.DENIED
+            return True
         return False
 
     def withdraw(self, consent_id: str) -> bool:
         """Widerruf -- DSGVO Art. 7(3)."""
-        for consents in self._consents.values():
-            for c in consents:
-                if c.consent_id == consent_id:
-                    c.status = ConsentStatus.WITHDRAWN
-                    c.withdrawn_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-                    return True
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        cur = self._db.execute(
+            "UPDATE consents SET status=?, withdrawn_at=? WHERE consent_id=?",
+            (ConsentStatus.WITHDRAWN.value, now, consent_id),
+        )
+        self._db.commit()
+        if cur.rowcount > 0:
+            cached = self._cache.get(consent_id)
+            if cached:
+                cached.status = ConsentStatus.WITHDRAWN
+                cached.withdrawn_at = now
+            return True
         return False
 
     def has_consent(self, user_id: str, purpose: ConsentPurpose) -> bool:
-        for c in self._consents.get(user_id, []):
+        for c in self.user_consents(user_id):
             if c.purpose == purpose and c.is_valid:
                 return True
         return False
@@ -150,31 +237,50 @@ class ConsentManager:
         return all(self.has_consent(user_id, p) for p in self.REQUIRED_FOR_INSURANCE)
 
     def user_consents(self, user_id: str) -> list[UserConsent]:
-        return self._consents.get(user_id, [])
+        rows = self._db.execute(
+            "SELECT consent_id, user_id, purpose, status, granted_at, "
+            "expires_at, withdrawn_at, legal_basis, description "
+            "FROM consents WHERE user_id=? ORDER BY rowid",
+            (user_id,),
+        ).fetchall()
+        return [self._row_to_consent(r) for r in rows]
 
     def withdraw_all(self, user_id: str) -> int:
         """Alle Einwilligungen eines Nutzers widerrufen."""
-        count = 0
-        for c in self._consents.get(user_id, []):
-            if c.status == ConsentStatus.GRANTED:
-                c.status = ConsentStatus.WITHDRAWN
-                c.withdrawn_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-                count += 1
-        return count
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        cur = self._db.execute(
+            "UPDATE consents SET status=?, withdrawn_at=? "
+            "WHERE user_id=? AND status=?",
+            (ConsentStatus.WITHDRAWN.value, now, user_id, ConsentStatus.GRANTED.value),
+        )
+        self._db.commit()
+        return cur.rowcount
 
     @property
     def user_count(self) -> int:
-        return len(self._consents)
+        row = self._db.execute(
+            "SELECT COUNT(DISTINCT user_id) FROM consents"
+        ).fetchone()
+        return row[0] if row else 0
 
     def stats(self) -> dict[str, Any]:
-        all_c = [c for consents in self._consents.values() for c in consents]
+        row = self._db.execute(
+            "SELECT "
+            "  COUNT(DISTINCT user_id), "
+            "  COUNT(*), "
+            "  SUM(CASE WHEN status='granted' THEN 1 ELSE 0 END), "
+            "  SUM(CASE WHEN status='denied' THEN 1 ELSE 0 END), "
+            "  SUM(CASE WHEN status='withdrawn' THEN 1 ELSE 0 END), "
+            "  SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) "
+            "FROM consents"
+        ).fetchone()
         return {
-            "total_users": len(self._consents),
-            "total_consents": len(all_c),
-            "granted": sum(1 for c in all_c if c.status == ConsentStatus.GRANTED),
-            "denied": sum(1 for c in all_c if c.status == ConsentStatus.DENIED),
-            "withdrawn": sum(1 for c in all_c if c.status == ConsentStatus.WITHDRAWN),
-            "pending": sum(1 for c in all_c if c.status == ConsentStatus.PENDING),
+            "total_users": row[0] or 0,
+            "total_consents": row[1] or 0,
+            "granted": row[2] or 0,
+            "denied": row[3] or 0,
+            "withdrawn": row[4] or 0,
+            "pending": row[5] or 0,
         }
 
 
@@ -467,8 +573,8 @@ class UserActivityLog:
 class UserPortal:
     """Hauptklasse: Endnutzer-Portal mit Einwilligung, Transparenz, DSGVO."""
 
-    def __init__(self) -> None:
-        self._consents = ConsentManager()
+    def __init__(self, consent_db_path: str | Path | None = None) -> None:
+        self._consents = ConsentManager(db_path=consent_db_path)
         self._decisions = DecisionViewBuilder()
         self._notifications = NotificationCenter()
         self._activities = UserActivityLog()

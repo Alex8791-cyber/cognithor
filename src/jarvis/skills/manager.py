@@ -148,7 +148,7 @@ def search_remote_skills(query: str, limit: int = 10) -> list[str]:
                     if line.strip() == "---":
                         break
             except Exception:
-                pass
+                pass  # Cleanup — frontmatter parsing failure is non-critical
 
             # Prüfe, ob Query im Dateinamen, Frontmatter-Name, Triggern oder Inhalt vorkommt
             match_found = False

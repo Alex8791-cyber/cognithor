@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
+import json
 import logging
 import time
 from typing import Any
@@ -111,7 +113,7 @@ class FeishuChannel(Channel):
                 self._token_expires_at = time.time() + expire
                 logger.debug("Feishu Token erneuert (läuft in %ds ab)", expire)
             else:
-                logger.error("Feishu Token-Request fehlgeschlagen: %s", data)
+                logger.error("Feishu Token-Request fehlgeschlagen: code=%s, msg=%s", data.get("code"), data.get("msg", "?"))
         except Exception as exc:
             logger.error("Feishu Token-Request fehlgeschlagen: %s", exc)
 
@@ -144,10 +146,10 @@ class FeishuChannel(Channel):
         timestamp = body.get("header", {}).get("event_time", "")
         nonce = body.get("header", {}).get("nonce", "")
         signature = body.get("header", {}).get("signature", "")
-        body_str = str(body)
+        body_str = json.dumps(body, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
 
         expected = hashlib.sha256(f"{timestamp}{nonce}{encrypt_key}{body_str}".encode()).hexdigest()
-        return signature == expected
+        return hmac.compare_digest(signature, expected)
 
     async def handle_event(self, payload: dict[str, Any]) -> dict[str, Any] | None:
         """Verarbeitet eingehende Events von Feishu.
@@ -255,7 +257,7 @@ class FeishuChannel(Channel):
         body: dict[str, Any] = {
             "receive_id": chat_id,
             "msg_type": "text",
-            "content": f'{{"text": "{text}"}}',
+            "content": json.dumps({"text": text}),
         }
 
         url = f"{_FEISHU_API_BASE}/im/v1/messages"

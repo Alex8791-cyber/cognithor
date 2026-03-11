@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import tempfile
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -269,7 +271,7 @@ class TestWSApproval:
 
         action = PlannedAction(
             tool="file_delete",
-            params={"path": "/tmp/test.txt"},
+            params={"path": os.path.join(tempfile.gettempdir(), "test.txt")},
             rationale="Cleanup",
         )
 

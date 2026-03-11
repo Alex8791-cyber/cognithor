@@ -63,8 +63,10 @@ class IRCChannel(Channel):
         self._recv_task: asyncio.Task[None] | None = None
         self._last_msg_time: float = 0
         self._approval_futures: dict[str, asyncio.Future[bool]] = {}
+        self._approval_users: dict[str, str] = {}  # session_id → nick
         self._approval_lock = asyncio.Lock()
         self._stream_buffers: dict[str, list[str]] = {}
+        self._last_sender: str = ""  # Nick des letzten Nachrichten-Senders
 
     @property
     def name(self) -> str:
@@ -210,15 +212,15 @@ class IRCChannel(Channel):
 
         clean_text = text.strip()
 
-        # Approval-Antworten abfangen
+        # Approval-Antworten abfangen (nur vom ursprünglichen User)
         if clean_text.lower() in ("ja", "yes", "j", "y"):
             for sid, fut in list(self._approval_futures.items()):
-                if not fut.done():
+                if not fut.done() and self._approval_users.get(sid) == nick:
                     fut.set_result(True)
                     return
         elif clean_text.lower() in ("nein", "no", "n"):
             for sid, fut in list(self._approval_futures.items()):
-                if not fut.done():
+                if not fut.done() and self._approval_users.get(sid) == nick:
                     fut.set_result(False)
                     return
 
@@ -235,6 +237,7 @@ class IRCChannel(Channel):
 
         if self._handler:
             try:
+                self._last_sender = nick
                 response = await self._handler(incoming)
                 await self._send_message(reply_target, response.text)
             except Exception as exc:
@@ -276,7 +279,7 @@ class IRCChannel(Channel):
             try:
                 await self._send_raw("QUIT :Jarvis shutting down")
             except Exception:
-                pass
+                pass  # Cleanup — QUIT send failure during shutdown is non-critical
             self._writer.close()
             self._writer = None
         self._reader = None
@@ -314,6 +317,7 @@ class IRCChannel(Channel):
         future: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
         async with self._approval_lock:
             self._approval_futures[session_id] = future
+            self._approval_users[session_id] = self._last_sender
 
         try:
             return await asyncio.wait_for(future, timeout=120.0)
@@ -322,6 +326,7 @@ class IRCChannel(Channel):
             return False
         finally:
             self._approval_futures.pop(session_id, None)
+            self._approval_users.pop(session_id, None)
 
     async def send_streaming_token(self, session_id: str, token: str) -> None:
         """Buffert Streaming-Tokens und sendet sie als eine Nachricht."""

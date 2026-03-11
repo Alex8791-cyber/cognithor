@@ -329,8 +329,8 @@ class AuditTrail:
                     results.append(entry)
                     if len(results) >= limit:
                         break
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as exc:
+            log.debug("audit_query_read_error", error=str(exc), exc_info=True)
 
         return results
 

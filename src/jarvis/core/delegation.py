@@ -461,8 +461,8 @@ class DelegationEngine:
         # Fall back to router keyword matching
         if self._router:
             route = self._router.route(task)
-            if route and route.agent_name != exclude_agent:
-                return route.agent_name
+            if route and route.agent.name != exclude_agent:
+                return route.agent.name
 
         return None
 
@@ -503,7 +503,7 @@ class DelegationEngine:
             try:
                 return json.loads(raw)
             except json.JSONDecodeError:
-                pass
+                pass  # Not valid JSON, fall through to wrap as plain response
         return {"response": raw}
 
     def _record(self, result: DelegationResult, start_time: float) -> None:
@@ -520,8 +520,8 @@ class DelegationEngine:
                     status=result.status,
                     duration_ms=result.duration_ms,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug("delegation_audit_log_error", error=str(exc))
 
         log.info(
             "delegation_completed",

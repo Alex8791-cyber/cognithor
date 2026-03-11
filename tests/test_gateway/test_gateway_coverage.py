@@ -23,6 +23,8 @@ Deckt ab:
 from __future__ import annotations
 
 import asyncio
+import os
+import tempfile
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
@@ -468,7 +470,7 @@ class TestExtractAttachments:
         gw = Gateway(config)
         tr = ToolResult(
             tool_name="document_export",
-            content="/tmp/test.pdf",
+            content=os.path.join(tempfile.gettempdir(), "test.pdf"),
             is_error=False,
         )
         attachments = gw._extract_attachments([tr])

@@ -1095,7 +1095,7 @@ class PenetrationSuite:
                 report = test_fn()
                 self._reports.append(report)
             except Exception:
-                pass
+                pass  # Silenced: custom test failure should not abort the entire red-team campaign
 
         # Gesamtbericht erstellen
         combined = VulnerabilityReport(

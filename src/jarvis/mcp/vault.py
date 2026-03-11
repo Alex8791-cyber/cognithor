@@ -133,6 +133,7 @@ class VaultTools:
         try:
             return json.loads(self._index_path.read_text(encoding="utf-8"))
         except Exception:
+            log.debug("vault_index_read_failed", path=str(self._index_path), exc_info=True)
             return {}
 
     def _write_index(self, index: dict[str, Any]) -> None:

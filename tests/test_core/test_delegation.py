@@ -56,7 +56,8 @@ def _make_router(can_delegate: bool = True) -> MagicMock:
     router = MagicMock()
     router.can_delegate = MagicMock(return_value=can_delegate)
     route_result = MagicMock()
-    route_result.agent_name = "researcher"
+    route_result.agent = MagicMock()
+    route_result.agent.name = "researcher"
     router.route = MagicMock(return_value=route_result)
     return router
 

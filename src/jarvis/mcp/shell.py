@@ -228,7 +228,7 @@ class ShellTools:
             try:
                 network_override = NetworkPolicy(_sandbox_network)
             except ValueError:
-                pass
+                pass  # Invalid network policy value, fall back to default (None)
 
         # Befehls-Logging: Kuerzen und sensitive Muster maskieren
         _log_cmd = command[: self._max_log_command_length]

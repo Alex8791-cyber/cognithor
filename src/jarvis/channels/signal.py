@@ -524,8 +524,26 @@ class SignalChannel(Channel):
                 self._pending_approvals.pop(session_id, None)
 
     async def _handle_approval_reply(self, source: str, reply_text: str) -> None:
-        """Verarbeitet eine Approval-Antwort."""
+        """Verarbeitet eine Approval-Antwort.
+
+        Nur die Nummer, die die Aktion urspruenglich ausgeloest hat,
+        darf genehmigen oder ablehnen.
+        """
         session_id = self._sessions.get(source, "")
+        if not session_id:
+            logger.warning("Signal: Approval-Antwort von unbekannter Nummer %s", source)
+            return
+
+        # Verify: Only the phone number that owns this session can approve
+        expected_phone = self._phone_for_session(session_id)
+        if expected_phone and expected_phone != source:
+            logger.warning(
+                "Signal: Approval von fremder Nummer ignoriert: %s (erwartet: %s)",
+                source,
+                expected_phone,
+            )
+            return
+
         async with self._approval_lock:
             future = self._pending_approvals.get(session_id)
 

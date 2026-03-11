@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import types
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,7 @@ from jarvis.core.startup_check import (
 def mock_config() -> MagicMock:
     """Minimal mock of JarvisConfig with models + ollama sub-configs."""
     config = MagicMock()
-    config.jarvis_home = Path("/tmp/test_jarvis_home")
+    config.jarvis_home = Path(tempfile.gettempdir()) / "test_jarvis_home"
     config.llm_backend_type = "ollama"
     config.ollama.base_url = "http://localhost:11434"
 

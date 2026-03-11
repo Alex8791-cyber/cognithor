@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import tempfile
 import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -892,32 +893,32 @@ class TestGraphEngineManagement:
 
 class TestStateManager:
     def test_create_execution(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         record = sm.create_execution("my_graph", GraphState(x=1))
         assert record.graph_name == "my_graph"
         assert record.status == ExecutionStatus.RUNNING
 
     def test_get_execution(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         record = sm.create_execution("g", GraphState())
         assert sm.get_execution(record.execution_id) is record
         assert sm.get_execution("nope") is None
 
     def test_update_execution(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         record = sm.create_execution("g", GraphState())
         record.status = ExecutionStatus.COMPLETED
         sm.update_execution(record)
         assert sm.get_execution(record.execution_id).status == ExecutionStatus.COMPLETED
 
     def test_list_executions(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         sm.create_execution("a", GraphState())
         sm.create_execution("b", GraphState())
         assert len(sm.list_executions()) == 2
 
     def test_list_executions_with_filter(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         sm.create_execution("a", GraphState())
         r = sm.create_execution("b", GraphState())
         r.status = ExecutionStatus.COMPLETED
@@ -926,34 +927,34 @@ class TestStateManager:
         assert len(running) == 1
 
     def test_create_checkpoint(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         record = sm.create_execution("g", GraphState())
         cp = sm.create_checkpoint(record.execution_id, "g", "n1", GraphState(x=1))
         assert cp.current_node == "n1"
         assert cp.execution_id == record.execution_id
 
     def test_get_checkpoint(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         cp = sm.create_checkpoint("exec1", "g", "n1", GraphState())
         assert sm.get_checkpoint(cp.checkpoint_id) is cp
         assert sm.get_checkpoint("nope") is None
 
     def test_get_latest_checkpoint(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         sm.create_checkpoint("exec1", "g", "n1", GraphState())
         cp2 = sm.create_checkpoint("exec1", "g", "n2", GraphState())
         latest = sm.get_latest_checkpoint("exec1")
         assert latest is not None
 
     def test_delete_checkpoint(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         cp = sm.create_checkpoint("exec1", "g", "n1", GraphState())
         assert sm.get_checkpoint(cp.checkpoint_id) is not None
         sm.delete_checkpoint(cp.checkpoint_id)
         assert cp.checkpoint_id not in sm._checkpoints
 
     def test_list_checkpoints(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         sm.create_checkpoint("exec1", "g", "n1", GraphState())
         sm.create_checkpoint("exec2", "g", "n1", GraphState())
         all_cps = sm.list_checkpoints()
@@ -962,7 +963,7 @@ class TestStateManager:
         assert len(filtered) == 1
 
     def test_restore_state(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         cp = sm.create_checkpoint("exec1", "g", "n1", GraphState(val=42))
         state, node = sm.restore_state(cp.checkpoint_id)
         assert state is not None
@@ -970,20 +971,20 @@ class TestStateManager:
         assert node == "n1"
 
     def test_restore_state_not_found(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         state, node = sm.restore_state("nope")
         assert state is None
         assert node == ""
 
     def test_restore_from_latest(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         sm.create_checkpoint("exec1", "g", "n1", GraphState(a=1))
         sm.create_checkpoint("exec1", "g", "n2", GraphState(a=2))
         state, node = sm.restore_from_latest("exec1")
         assert state is not None
 
     def test_restore_from_latest_not_found(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         state, node = sm.restore_from_latest("nope")
         assert state is None
 
@@ -1031,7 +1032,7 @@ class TestStateManager:
         assert removed >= 3
 
     def test_stats(self):
-        sm = StateManager(storage_dir="/tmp/test_graph_sm")
+        sm = StateManager(storage_dir=str(Path(tempfile.gettempdir()) / "test_graph_sm"))
         s = sm.stats()
         assert "checkpoints" in s
         assert "executions" in s

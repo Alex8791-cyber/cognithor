@@ -62,7 +62,9 @@ class TwitchChannel(Channel):
         self._last_msg_time: float = 0
         self._stream_buffers: dict[str, list[str]] = {}
         self._approval_futures: dict[str, asyncio.Future[bool]] = {}
+        self._approval_users: dict[str, str] = {}  # session_id → nick
         self._approval_lock = asyncio.Lock()
+        self._last_sender: str = ""  # Nick des letzten Nachrichten-Senders
 
     @property
     def name(self) -> str:
@@ -193,15 +195,15 @@ class TwitchChannel(Channel):
         is_sub = tags.get("subscriber") == "1"
         is_broadcaster = tags.get("badges", "").startswith("broadcaster")
 
-        # Approval-Antworten abfangen
+        # Approval-Antworten abfangen (nur vom ursprünglichen User)
         if text.lower() in ("ja", "yes", "j", "y"):
             for sid, fut in list(self._approval_futures.items()):
-                if not fut.done():
+                if not fut.done() and self._approval_users.get(sid) == nick.lower():
                     fut.set_result(True)
                     return
         elif text.lower() in ("nein", "no", "n"):
             for sid, fut in list(self._approval_futures.items()):
-                if not fut.done():
+                if not fut.done() and self._approval_users.get(sid) == nick.lower():
                     fut.set_result(False)
                     return
 
@@ -221,6 +223,7 @@ class TwitchChannel(Channel):
 
         if self._handler:
             try:
+                self._last_sender = nick.lower()
                 response = await self._handler(incoming)
                 await self._send_chat(response.text)
             except Exception as exc:
@@ -264,7 +267,7 @@ class TwitchChannel(Channel):
             try:
                 await self._send_raw(f"PART #{self._channel}")
             except Exception:
-                pass
+                pass  # Cleanup — PART send failure during shutdown is non-critical
             self._writer.close()
             self._writer = None
         self._reader = None
@@ -298,6 +301,7 @@ class TwitchChannel(Channel):
         future: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
         async with self._approval_lock:
             self._approval_futures[session_id] = future
+            self._approval_users[session_id] = self._last_sender
 
         try:
             return await asyncio.wait_for(future, timeout=120.0)
@@ -306,6 +310,7 @@ class TwitchChannel(Channel):
             return False
         finally:
             self._approval_futures.pop(session_id, None)
+            self._approval_users.pop(session_id, None)
 
     async def send_streaming_token(self, session_id: str, token: str) -> None:
         """Buffert Streaming-Tokens und sendet sie als eine Nachricht."""

@@ -9,6 +9,7 @@ Validiert:
 from __future__ import annotations
 
 import sqlite3
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -82,12 +83,12 @@ class TestGatekeeperAuditBuffer:
         from jarvis.core.gatekeeper import Gatekeeper
 
         config = MagicMock()
-        config.logs_dir = Path("/tmp/test_logs")
+        config.logs_dir = Path(tempfile.gettempdir()) / "test_logs"
         config.security.policies_dir = None
         config.security.blocked_commands = []
         config.security.credential_patterns = []
         config.security.allowed_paths = []
-        config.jarvis_home = Path("/tmp")
+        config.jarvis_home = Path(tempfile.gettempdir())
 
         gk = Gatekeeper(config)
         assert hasattr(gk, "_audit_buffer")

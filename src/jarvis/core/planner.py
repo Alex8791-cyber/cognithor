@@ -543,6 +543,38 @@ class Planner:
 
         # Prüfe ob JSON-Plan in der Antwort steckt
         plan = self._extract_plan(assistant_text, user_message)
+
+        # Retry once if JSON parsing failed (LLM produced malformed JSON)
+        if plan.parse_failed:
+            log.warning("planner_json_retry", model=model, goal=user_message[:80])
+            retry_hint = (
+                "\n\nIMPORTANT: Your previous response contained malformed JSON that could not be parsed. "
+                "Please respond with VALID JSON only. Use this exact format:\n"
+                '```json\n{"goal": "...", "steps": [{"tool": "...", "args": {...}, "purpose": "..."}]}\n```'
+            )
+            retry_messages = list(messages)
+            retry_messages.append({"role": "assistant", "content": assistant_text})
+            retry_messages.append({"role": "user", "content": retry_hint})
+            try:
+                retry_response = await self._ollama.chat(
+                    model=model,
+                    messages=retry_messages,
+                    temperature=max(0.3, model_config.get("temperature", 0.7) - 0.3),
+                    top_p=model_config.get("top_p", 0.9),
+                    options={
+                        "num_predict": getattr(self._config.planner, "response_token_budget", 3000)
+                    },
+                )
+                retry_text = retry_response.get("message", {}).get("content", "")
+                self._record_cost(retry_response, model, session_id=working_memory.session_id)
+                retry_plan = self._extract_plan(retry_text, user_message)
+                if not retry_plan.parse_failed:
+                    log.info("planner_json_retry_success")
+                    return retry_plan
+                log.warning("planner_json_retry_also_failed")
+            except Exception as _retry_exc:
+                log.warning("planner_json_retry_error", error=str(_retry_exc))
+
         return plan
 
     async def replan(
@@ -616,7 +648,40 @@ class Planner:
         if tool_calls:
             return self._parse_tool_calls(tool_calls, original_goal)
 
-        return self._extract_plan(assistant_text, original_goal)
+        plan = self._extract_plan(assistant_text, original_goal)
+
+        # Retry once if JSON parsing failed during replan
+        if plan.parse_failed:
+            log.warning("planner_replan_json_retry", model=model)
+            retry_hint = (
+                "\n\nIMPORTANT: Your previous response contained malformed JSON. "
+                "Please respond with VALID JSON only. Use this exact format:\n"
+                '```json\n{"goal": "...", "steps": [{"tool": "...", "args": {...}, "purpose": "..."}]}\n```'
+            )
+            retry_messages = list(messages)
+            retry_messages.append({"role": "assistant", "content": assistant_text})
+            retry_messages.append({"role": "user", "content": retry_hint})
+            try:
+                retry_response = await self._ollama.chat(
+                    model=model,
+                    messages=retry_messages,
+                    temperature=max(0.3, model_config.get("temperature", 0.7) - 0.3),
+                    top_p=model_config.get("top_p", 0.9),
+                    options={
+                        "num_predict": getattr(self._config.planner, "response_token_budget", 3000)
+                    },
+                )
+                retry_text = retry_response.get("message", {}).get("content", "")
+                self._record_cost(retry_response, model, session_id=working_memory.session_id)
+                retry_plan = self._extract_plan(retry_text, original_goal)
+                if not retry_plan.parse_failed:
+                    log.info("planner_replan_json_retry_success")
+                    return retry_plan
+                log.warning("planner_replan_json_retry_also_failed")
+            except Exception as _retry_exc:
+                log.warning("planner_replan_json_retry_error", error=str(_retry_exc))
+
+        return plan
 
     async def generate_escalation(
         self,
@@ -1044,9 +1109,32 @@ class Planner:
             if data is not None and ("steps" in data or "goal" in data):
                 return self._parse_plan_json(data, goal)
 
-        # Kein JSON gefunden → direkte Antwort (reduzierte Confidence,
-        # da unklar ob das LLM tatsaechlich eine Antwort geben wollte
-        # oder ob die JSON-Generierung fehlgeschlagen ist)
+        # Detect if LLM *attempted* JSON but it was malformed:
+        # presence of braces or json markers signals a parse failure,
+        # not a genuine direct answer.
+        _has_json_markers = (
+            first_brace is not None
+            and first_brace >= 0
+            or json_match is not None
+            or '"steps"' in text
+            or '"goal"' in text
+        )
+
+        if _has_json_markers:
+            log.warning(
+                "planner_json_parse_failed_fallback",
+                text_len=len(text),
+                text_preview=text[:200],
+            )
+            return ActionPlan(
+                goal=goal,
+                reasoning="JSON parse failed — needs retry",
+                direct_response=text.strip(),
+                confidence=0.1,
+                parse_failed=True,
+            )
+
+        # Kein JSON gefunden → echte direkte Antwort (z.B. "Was ist 2+2?" → "4")
         log.debug("planner_no_json_found", text_len=len(text))
         return ActionPlan(
             goal=goal,

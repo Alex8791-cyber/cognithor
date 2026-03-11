@@ -307,8 +307,8 @@ class JarvisResourceProvider:
                     files.append(rel_path)
                 if len(files) > 200:
                     break
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("workspace_listing_error", error=str(exc))
 
         return json.dumps(
             {

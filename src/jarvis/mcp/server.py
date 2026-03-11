@@ -875,8 +875,8 @@ class JarvisMCPServer:
                     await handler(notification)
                 else:
                     handler(notification)
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("notification_handler_error", error=str(exc))
 
     # ── Stats ────────────────────────────────────────────────────
 

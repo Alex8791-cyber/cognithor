@@ -54,7 +54,9 @@ class MattermostChannel(Channel):
         self._ws_task: asyncio.Task[None] | None = None
         self._bot_user_id: str = ""
         self._approval_futures: dict[str, asyncio.Future[bool]] = {}
+        self._approval_users: dict[str, str] = {}  # post_id → user_id
         self._approval_lock = asyncio.Lock()
+        self._session_users: dict[str, str] = {}  # session_id → user_id
         self._stream_buffers: dict[str, list[str]] = {}
 
     @property
@@ -177,11 +179,14 @@ class MattermostChannel(Channel):
 
         channel_id = post.get("channel_id", "")
         post_id = post.get("id", "")
+        session_id = f"mm_{user_id}_{channel_id}"
+        self._session_users[session_id] = user_id
 
         incoming = IncomingMessage(
             channel="mattermost",
             user_id=user_id,
             text=text,
+            session_id=session_id,
             metadata={
                 "channel_id": channel_id,
                 "post_id": post_id,
@@ -212,9 +217,14 @@ class MattermostChannel(Channel):
                 )
 
     async def _on_reaction(self, reaction: dict[str, Any]) -> None:
-        """Verarbeitet Reactions (für Approvals)."""
+        """Verarbeitet Reactions (für Approvals).
+
+        Nur der User, der die Aktion urspruenglich ausgeloest hat,
+        darf genehmigen oder ablehnen.
+        """
         emoji = reaction.get("emoji_name", "")
         post_id = reaction.get("post_id", "")
+        reactor_id = reaction.get("user_id", "")
 
         if emoji in ("white_check_mark", "heavy_check_mark", "+1", "thumbsup"):
             approved = True
@@ -224,7 +234,16 @@ class MattermostChannel(Channel):
             return
 
         async with self._approval_lock:
+            expected_user = self._approval_users.get(post_id, "")
+            if expected_user and reactor_id != expected_user:
+                logger.warning(
+                    "Mattermost Approval von fremdem User ignoriert: %s (erwartet: %s)",
+                    reactor_id,
+                    expected_user,
+                )
+                return
             future = self._approval_futures.pop(post_id, None)
+            self._approval_users.pop(post_id, None)
         if future and not future.done():
             future.set_result(approved)
 
@@ -303,10 +322,13 @@ class MattermostChannel(Channel):
         if not post_id:
             return False
 
+        requester_user = self._session_users.get(session_id, "")
         loop = asyncio.get_running_loop()
         future: asyncio.Future[bool] = loop.create_future()
         async with self._approval_lock:
             self._approval_futures[post_id] = future
+            if requester_user:
+                self._approval_users[post_id] = requester_user
 
         try:
             return await asyncio.wait_for(future, timeout=300.0)
@@ -314,6 +336,7 @@ class MattermostChannel(Channel):
             logger.warning("Mattermost Approval Timeout: %s", action.tool)
             async with self._approval_lock:
                 self._approval_futures.pop(post_id, None)
+                self._approval_users.pop(post_id, None)
             return False
 
     async def send_streaming_token(self, session_id: str, token: str) -> None:

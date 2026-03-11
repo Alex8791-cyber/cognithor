@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -42,7 +44,7 @@ def _make_entry(
     params: dict | None = None,
     execution_result: str | None = None,
 ) -> AuditEntry:
-    p = params or {"path": "/tmp/test.txt"}
+    p = params or {"path": os.path.join(tempfile.gettempdir(), "test.txt")}
     params_hash = hashlib.sha256(json.dumps(p, sort_keys=True).encode()).hexdigest()
     return AuditEntry(
         session_id=session_id,

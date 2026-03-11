@@ -12,6 +12,7 @@ from __future__ import annotations
 import errno
 import os
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -45,9 +46,10 @@ class TestBootstrapSkipModels:
             parser.add_argument("--force", action="store_true")
             parser.add_argument("--skip-models", action="store_true")
 
-            args = parser.parse_args(["--repo-root", "/tmp/test", "--skip-models"])
+            _test_root = str(Path(tempfile.gettempdir()) / "test")
+            args = parser.parse_args(["--repo-root", _test_root, "--skip-models"])
             assert args.skip_models is True
-            assert args.repo_root == "/tmp/test"
+            assert args.repo_root == _test_root
         finally:
             sys.path.pop(0)
 

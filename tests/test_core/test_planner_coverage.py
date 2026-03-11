@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -59,13 +61,14 @@ class TestPlannerEdgeCases:
     @pytest.mark.asyncio
     async def test_plan_json_in_code_block(self, config: JarvisConfig) -> None:
         """LLM returns JSON in a code block."""
-        content = '```json\n{"goal":"test","steps":[{"tool":"read_file","params":{"path":"/tmp/x"},"rationale":"test"}],"confidence":0.9}\n```'
+        _tmpx = os.path.join(tempfile.gettempdir(), "x")
+        content = f'```json\n{{"goal":"test","steps":[{{"tool":"read_file","params":{{"path":"{_tmpx}"}},"rationale":"test"}}],"confidence":0.9}}\n```'
         ollama = _mock_ollama(content)
         planner = Planner(config, ollama, _mock_router())
         wm = WorkingMemory(session_id="test")
 
         plan = await planner.plan(
-            user_message="Lies /tmp/x",
+            user_message=f"Lies {_tmpx}",
             working_memory=wm,
             tool_schemas={"read_file": {"description": "reads a file"}},
         )
@@ -243,13 +246,13 @@ class TestPlannerToolCalls:
                         {
                             "function": {
                                 "name": "read_file",
-                                "arguments": {"path": "/tmp/test.txt"},
+                                "arguments": {"path": os.path.join(tempfile.gettempdir(), "test.txt")},
                             }
                         },
                         {
                             "function": {
                                 "name": "write_file",
-                                "arguments": {"path": "/tmp/out.txt", "content": "hello"},
+                                "arguments": {"path": os.path.join(tempfile.gettempdir(), "out.txt"), "content": "hello"},
                             }
                         },
                     ],
@@ -267,9 +270,9 @@ class TestPlannerToolCalls:
         assert isinstance(plan, ActionPlan)
         assert len(plan.steps) == 2
         assert plan.steps[0].tool == "read_file"
-        assert plan.steps[0].params == {"path": "/tmp/test.txt"}
+        assert plan.steps[0].params == {"path": os.path.join(tempfile.gettempdir(), "test.txt")}
         assert plan.steps[1].tool == "write_file"
-        assert plan.steps[1].params == {"path": "/tmp/out.txt", "content": "hello"}
+        assert plan.steps[1].params == {"path": os.path.join(tempfile.gettempdir(), "out.txt"), "content": "hello"}
         assert plan.confidence == 0.7
 
 

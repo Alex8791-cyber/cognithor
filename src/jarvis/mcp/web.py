@@ -19,6 +19,7 @@ Bibel-Referenz: §5.3 (jarvis-web Server)
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
@@ -264,7 +265,7 @@ class WebTools:
 
         log.info("web_tools_config_reloaded")
 
-    def _validate_url(self, url: str) -> str:
+    async def _validate_url(self, url: str) -> str:
         """Validiert eine URL gegen SSRF-Angriffe.
 
         Args:
@@ -310,7 +311,11 @@ class WebTools:
 
         if cached_ips is None:
             try:
-                resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+                loop = asyncio.get_running_loop()
+                resolved = await loop.run_in_executor(
+                    None,
+                    lambda: socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM),
+                )
                 ips: list[str] = []
                 for _family, _type, _proto, _canonname, sockaddr in resolved:
                     ip = sockaddr[0]
@@ -863,7 +868,7 @@ class WebTools:
         Returns:
             Extrahierter Text oder HTML-Inhalt.
         """
-        validated = self._validate_url(url)
+        validated = await self._validate_url(url)
         max_chars = max_chars or self._max_text_chars
 
         # Domain-Filter prüfen
@@ -958,7 +963,7 @@ class WebTools:
                 f"Ungültige HTTP-Methode: {method}. Erlaubt: {', '.join(sorted(allowed_methods))}"
             )
 
-        validated = self._validate_url(url)
+        validated = await self._validate_url(url)
 
         # Domain-Filter prüfen
         parsed = urlparse(validated)

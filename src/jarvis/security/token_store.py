@@ -26,7 +26,7 @@ try:
 
     _HAS_CRYPTO = True
 except ImportError:
-    pass
+    pass  # Optional: cryptography not installed, encryption features unavailable
 
 
 class SecureTokenStore:

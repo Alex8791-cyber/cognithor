@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+
 import pytest
 
 from jarvis.models import AgentType, PlannedAction, SandboxLevel
@@ -182,7 +185,7 @@ class TestValidateAction:
     def test_valid_action(self, engine: PolicyEngine):
         action = PlannedAction(
             tool="read_file",
-            params={"path": "/tmp/test"},
+            params={"path": os.path.join(tempfile.gettempdir(), "test")},
             rationale="test",
         )
         violations = engine.validate_action_for_agent(AgentType.PLANNER, action, "sess_1")

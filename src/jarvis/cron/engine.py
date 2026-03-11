@@ -568,8 +568,8 @@ class CronEngine:
             from apscheduler.triggers.cron import CronTrigger  # type: ignore
 
             trigger = CronTrigger(**fields, timezone="Europe/Berlin")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("cron_trigger_creation_failed: %s", exc)
 
         if name in self._active_jobs:
             self._remove_scheduled(name)

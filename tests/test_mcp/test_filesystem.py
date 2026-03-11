@@ -10,6 +10,8 @@ Testet:
 
 from __future__ import annotations
 
+import os
+import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -183,7 +185,7 @@ class TestWriteFile:
     def test_write_outside_sandbox_blocked(self, fs: FileSystemTools) -> None:
         """Schreiben außerhalb der Sandbox wird blockiert."""
         with pytest.raises(FileSystemError, match="Zugriff verweigert"):
-            fs.write_file("/tmp/evil.txt", "böse")
+            fs.write_file(os.path.join(tempfile.gettempdir(), "evil.txt"), "böse")
 
     def test_write_returns_size(self, fs: FileSystemTools, sandbox: Path) -> None:
         """Rückgabe enthält Dateigröße."""

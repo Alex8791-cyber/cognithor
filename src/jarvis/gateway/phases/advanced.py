@@ -168,7 +168,9 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
     try:
         from jarvis.core.user_portal import UserPortal
 
-        result["user_portal"] = UserPortal()
+        jarvis_home = getattr(config, "jarvis_home", Path.home() / ".jarvis")
+        consent_db = jarvis_home / "consent.db"
+        result["user_portal"] = UserPortal(consent_db_path=consent_db)
     except Exception:
         log.debug("user_portal_init_skipped", exc_info=True)
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -273,21 +274,22 @@ class TestPlannerPrompts:
         config = JarvisConfig()
         planner = Planner(config, AsyncMock(), MagicMock())
 
-        text = """Ich werde die Datei erstellen.
+        _tmpfile = str(Path(tempfile.gettempdir()) / "test.txt")
+        text = f"""Ich werde die Datei erstellen.
 
 ```json
-{
+{{
   "goal": "Datei erstellen",
   "reasoning": "User will eine Datei",
   "steps": [
-    {
+    {{
       "tool": "write_file",
-      "params": {"path": "/tmp/test.txt", "content": "Hallo"},
+      "params": {{"path": "{_tmpfile}", "content": "Hallo"}},
       "rationale": "Datei schreiben"
-    }
+    }}
   ],
   "confidence": 0.9
-}
+}}
 ```"""
 
         plan = planner._extract_plan(text, "test")

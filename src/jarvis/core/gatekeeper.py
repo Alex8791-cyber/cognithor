@@ -14,6 +14,7 @@ Bible reference: §3.2 (Gatekeeper), §11 (Security)
 
 from __future__ import annotations
 
+import asyncio
 import atexit
 import hashlib
 import json
@@ -873,13 +874,28 @@ class Gatekeeper:
         )
 
     def _flush_audit_buffer(self) -> None:
-        """Schreibt den Audit-Buffer gesammelt auf Disk (batch I/O)."""
+        """Schreibt den Audit-Buffer gesammelt auf Disk (batch I/O).
+
+        Delegates to executor when called inside a running event loop to
+        avoid blocking the async gateway.
+        """
         if not self._audit_buffer:
             return
+        # Snapshot + clear first so the buffer is free immediately
+        lines = list(self._audit_buffer)
+        self._audit_buffer.clear()
+
+        def _do_write() -> None:
+            try:
+                self._audit_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(self._audit_path, "a", encoding="utf-8") as f:
+                    f.writelines(lines)
+            except OSError as exc:
+                log.error("audit_write_failed", error=str(exc))
+
         try:
-            self._audit_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self._audit_path, "a", encoding="utf-8") as f:
-                f.writelines(self._audit_buffer)
-            self._audit_buffer.clear()
-        except OSError as exc:
-            log.error("audit_write_failed", error=str(exc))
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(None, _do_write)
+        except RuntimeError:
+            # No running loop — direct sync write (atexit, tests)
+            _do_write()

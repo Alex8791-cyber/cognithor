@@ -24,7 +24,9 @@ export class JarvisAPI {
   private ws: WebSocket | null = null;
   private handlers: Set<MessageHandler> = new Set();
   private reconnectTimer: number | null = null;
+  private _reconnectAttempts = 0;
   private _connected = false;
+  private _token: string | null = null;
 
   constructor(private serverUrl: string) {}
 
@@ -38,14 +40,32 @@ export class JarvisAPI {
       .replace('wss://', 'https://');
   }
 
+  private async fetchToken(): Promise<string | null> {
+    if (this._token) return this._token;
+    try {
+      const resp = await fetch(`${this.httpUrl}/api/v1/bootstrap`);
+      if (resp.ok) {
+        const data = await resp.json();
+        this._token = data?.token || null;
+      }
+    } catch { /* bootstrap not available */ }
+    return this._token;
+  }
+
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
     try {
       this.ws = new WebSocket(`${this.serverUrl}/ws`);
 
-      this.ws.onopen = () => {
+      this.ws.onopen = async () => {
         this._connected = true;
+        this._reconnectAttempts = 0;
+        // Send auth token as first message
+        const token = await this.fetchToken();
+        if (token && this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({ type: 'auth', token }));
+        }
         this.notify({ type: 'system', text: 'Verbunden' });
       };
 
@@ -126,9 +146,11 @@ export class JarvisAPI {
 
   private scheduleReconnect(): void {
     if (this.reconnectTimer) return;
+    const delay = Math.min(1000 * Math.pow(2, this._reconnectAttempts), 30000);
+    this._reconnectAttempts++;
     this.reconnectTimer = window.setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
-    }, 3000);
+    }, delay);
   }
 }

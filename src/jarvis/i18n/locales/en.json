@@ -1,0 +1,350 @@
+{
+  "_meta": {
+    "locale": "en",
+    "name": "English",
+    "version": "v0.33.0",
+    "authors": ["Jarvis Team"]
+  },
+
+  "error": {
+    "model_not_installed": "The required language model is not installed. Run: ollama pull {model}",
+    "ollama_unreachable": "The language model (Ollama) is not reachable. Make sure Ollama is running: ollama serve",
+    "timeout": "The operation timed out. This can happen with complex tasks or slow connections. Try again or simplify the request.",
+    "connection_failed": "There was a connection problem. Please check your network and try again.",
+    "permission_denied": "I don't have permission for this action. The Gatekeeper blocked the request for safety reasons.",
+    "not_found": "The requested file or resource was not found.",
+    "rate_limited": "The service is currently overloaded (rate limit reached). Please wait a moment and try again.",
+    "memory_error": "A memory issue occurred. The task may be too large.",
+    "generic": "An error occurred ({exc_type}). I'll try an alternative approach.",
+    "gatekeeper_blocked": "I wanted to run \"{friendly}\", but it was blocked for security reasons. Reason: {reason}",
+    "retry_timeout": "The service did not respond in time.",
+    "retry_connection": "The connection could not be established.",
+    "retry_overloaded": "The service is currently overloaded.",
+    "retry_technical": "Technical error: {detail}",
+    "retry_exhausted": "I tried \"{friendly}\" {attempts} times, but it failed each time. {detail}",
+    "no_details": "No details available.",
+    "all_actions_blocked": "I couldn't execute any of my planned steps. The Gatekeeper blocked all actions. This can happen with sensitive operations that require approval.",
+    "processing_error": "A processing error occurred.",
+    "invalid_json": "Invalid JSON",
+    "invalid_token": "Invalid token",
+    "python_version": "Cognithor requires Python >= 3.12",
+    "audio_transcription": "Error during audio transcription.",
+    "tts_error": "TTS error occurred",
+    "piper_failed": "Piper failed: {detail}",
+    "fastapi_required": "FastAPI is required for the API channel: pip install fastapi uvicorn",
+    "whisper_unavailable": "faster-whisper not installed. Voice transcription not available.",
+    "whisper_required": "faster-whisper is required for STT: pip install faster-whisper",
+    "ffmpeg_required": "ffmpeg not installed. For voice streaming: apt install ffmpeg",
+    "config_load_failed": "Configuration overview could not be loaded.",
+    "workflow_unavailable": "Workflow engine not available",
+    "model_unavailable": "Model '{name}' ({role}) is not available. Install: ollama pull {name}",
+    "exporter_unavailable": "Exporter not available",
+    "security_pipeline_unavailable": "Security pipeline not available",
+    "ecosystem_unavailable": "Ecosystem policy not available",
+    "gate_unavailable": "Gate not available",
+    "reputation_unavailable": "Reputation engine not available",
+    "ollama_check": "Please check:\n• Is Ollama running? → ollama serve\n• Is the model installed? → ollama pull {model}",
+    "model_causes": "Possible causes:\n• Not enough VRAM/RAM for the model\n• Model corrupted → ollama pull {model}",
+    "check_ollama": "Check if Ollama is running and has enough resources.",
+    "invalid_time_format": "Invalid time format: '{s}' (expected HH:MM or HH:MM:SS)",
+    "cryptography_required": "cryptography package required for credential encryption. pip install cryptography",
+    "dag_unavailable": "DAG WorkflowEngine is not available",
+    "recursion_limit": "Sub-agent recursion aborted: depth {depth} exceeds maximum",
+    "task_incomplete": "without fully completing the task",
+    "delegation_failed": "Agent router not available. Delegation to {to_agent} failed.",
+    "planner_not_init": "Planner not initialized — delegation not possible",
+    "gatekeeper_not_init": "Gatekeeper not initialized — delegation not possible"
+  },
+
+  "tool": {
+    "exec_command": "Shell command",
+    "write_file": "Write file",
+    "read_file": "Read file",
+    "edit_file": "Edit file",
+    "list_directory": "List directory",
+    "run_python": "Python code",
+    "web_search": "Web search",
+    "web_news_search": "News search",
+    "web_fetch": "Fetch webpage",
+    "search_and_read": "Web research",
+    "search_memory": "Knowledge search",
+    "save_to_memory": "Save knowledge",
+    "document_export": "Create document",
+    "analyze_image": "Image analysis",
+    "transcribe_audio": "Audio transcription",
+    "extract_text": "Text extraction",
+    "text_to_speech": "Text to speech",
+    "vault_search": "Vault search",
+    "vault_entry": "Vault entry",
+    "analyze_code": "Code analysis",
+    "browser_navigate": "Browser navigation",
+    "browser_screenshot": "Browser screenshot"
+  },
+
+  "tool_desc": {
+    "web_search": "Perform a web search using DuckDuckGo with multi-backend fallback (SearXNG, Brave, Google CSE).",
+    "web_fetch": "Fetch a webpage and extract clean text using trafilatura.",
+    "search_and_read": "Search the web and fetch the top results. Ideal for in-depth research.",
+    "web_news_search": "Search for recent news articles.",
+    "http_request": "Execute an HTTP request (GET, POST, PUT, DELETE, PATCH).",
+    "read_file": "Read a file. Path is checked against sandbox policy.",
+    "write_file": "Create or overwrite a file (atomic write).",
+    "exec_command": "Execute a shell command in a sandbox.",
+    "run_python": "Execute Python code in a sandbox with resource limits.",
+    "analyze_code": "Combined AST-based quality analysis with security pattern scanning.",
+    "analyze_image": "Analyze an image using vision model. Default model: fast and accurate.",
+    "browser_navigate": "Navigate to a URL and extract page content. Useful for research, price comparisons, reading news.",
+    "browser_fill": "Fill a form field on the current page.",
+    "browser_js": "Execute JavaScript on the current page.",
+    "browser_info": "Return an overview of the current page.",
+    "browser_screenshot": "Return a textual description of the current page screenshot.",
+    "search_memory": "Search the Jarvis knowledge base across all tiers (core, semantic, episodic, procedural).",
+    "save_to_memory": "Save new information to the Jarvis knowledge base.",
+    "get_entity": "Load an entity from the knowledge graph.",
+    "add_entity": "Create a new entity in the knowledge graph.",
+    "add_relation": "Create a relationship between two entities in the knowledge graph.",
+    "get_core_memory": "Return CORE.md (identity, rules, preferences).",
+    "get_episodes": "Load day-log entries from the last N days.",
+    "search_procedures": "Search procedures (proven workflows for recurring tasks).",
+    "update_procedure": "Report success/failure of a procedure for learning tracking.",
+    "memory_stats": "Show memory system statistics."
+  },
+
+  "channel": {
+    "approval_required": "Approval required",
+    "approval_rationale": "Reason: {rationale}",
+    "help_title": "Available commands:",
+    "unknown_command": "Unknown command: {command}. Type /help for help.",
+    "stt_unavailable": "Speech recognition not available. Install faster-whisper: pip install faster-whisper",
+    "error_fallback": "An error occurred during processing."
+  },
+
+  "status": {
+    "exec_command": "Executing command...",
+    "run_python": "Running Python code...",
+    "tool_running": "Running {tool}..."
+  },
+
+  "voice": {
+    "approval_prompt": "May I run {tool}? Reason: {reason}. Say yes or no."
+  },
+
+  "gatekeeper": {
+    "invalid_path": "Invalid path: {path}",
+    "path_outside_allowed": "Path outside allowed directories: {path}",
+    "dangerous_code": "Dangerous Python code detected: {description}"
+  },
+
+  "executor": {
+    "action_skipped": "Action skipped: {status} — {reason}",
+    "deadlock": "Action skipped: dependencies not met (deadlock)",
+    "deps_not_met": "Action skipped: dependencies not met",
+    "no_mcp_client": "No MCP client available"
+  },
+
+  "planner": {
+    "no_tools": "No tools available.",
+    "output_truncated": "[... output truncated]"
+  },
+
+  "prompt": {
+    "respond_default": "Respond concisely and informatively.",
+    "respond_german": "Respond in German, concisely and informatively.",
+    "natural_speech": "Respond in natural, spoken language suitable for voice output.",
+    "jarvis_identity": "You are Jarvis. Explain politely."
+  },
+
+  "personality": {
+    "greeting_night": "Hello night owl! ",
+    "greeting_morning": "Good morning! ",
+    "greeting_afternoon": "Good afternoon! ",
+    "greeting_evening": "Good evening! ",
+    "empathy_directive": "Show empathy and understanding for the user's situation.",
+    "appreciation_directive": "Formulate responses appreciatively and constructively.",
+    "humor_directive": "An occasional casual comment is allowed, but always stay professional.",
+    "success_directive": "When a task is successfully completed, confirm it positively.",
+    "proactive_directive": "whether the user needs anything else or if additional details would help."
+  },
+
+  "sentiment": {
+    "response_frustrated": "Be especially patient, understanding, and helpful.",
+    "response_urgent": "Respond concisely and directly. Get straight to the point. Skip pleasantries.",
+    "response_confused": "Explain especially clearly and step by step. Use simple language."
+  },
+
+  "text": {
+    "truncated": "[... truncated]",
+    "output_truncated": "[... output truncated: {current}/{total} characters, source: {url}]"
+  },
+
+  "web": {
+    "invalid_url": "Invalid URL: {url}",
+    "invalid_domain": "No valid domain: {url}",
+    "dns_blocked": "DNS for {hostname} points to blocked address: {ip}",
+    "search_failed": "Web search for '{query}' failed: {error}",
+    "no_results": "No results for: {query}",
+    "fetch_failed": "Fetch failed for {url}: {error}",
+    "invalid_method": "Invalid HTTP method: {method}. Allowed: GET, POST, PUT, DELETE, PATCH, HEAD",
+    "body_too_large": "Request body too large: {size} bytes (max: {max_size})",
+    "timeout": "Timeout after {seconds}s for {url}",
+    "request_failed": "Request failed for {url}: {error}",
+    "search_results_for": "Search results for: {query}",
+    "source_comparison_note": "Matches and contradictions between sources should be noted"
+  },
+
+  "media": {
+    "unsupported_image": "Unsupported image format: {suffix}",
+    "unsupported_format": "Unsupported format: {suffix}. Supported: PDF, DOCX, TXT, MD, HTML, CSV",
+    "text_truncated": "[... truncated, {length} characters total]",
+    "pdf_reader_required": "No PDF reader available. Install: pip install pymupdf or pip install pdfplumber",
+    "analysis_unavailable": "Error: Document analysis not available.",
+    "no_text_in_document": "Error: No text found in document. Possibly a scanned PDF — try OCR.",
+    "export_unsupported_format": "Unsupported format: {fmt}. Allowed: pdf, docx",
+    "tts_unavailable": "No TTS backend available. Install piper or espeak-ng."
+  },
+
+  "fs": {
+    "invalid_path": "Invalid path: {path}",
+    "access_denied": "Access denied: {path} is outside allowed directories",
+    "not_regular_file": "Not a regular file: {path}",
+    "file_too_large": "File too large ({size} bytes). Maximum: 1 MB.",
+    "edit_ambiguous": "Use a longer excerpt as old_text to make it unique."
+  },
+
+  "shell": {
+    "path_blocked": "Command blocked: path '{path}' is outside the workspace."
+  },
+
+  "memory": {
+    "invalid_tier": "Error: Unknown tier '{tier}'. Valid: {valid}",
+    "no_results": "No results for: '{query}'",
+    "access_denied": "Access denied: path '{path}' is outside the workspace",
+    "entity_not_found": "No entity found for: '{name}'",
+    "invalid_json": "Error: Invalid JSON in attributes: {attributes}",
+    "entity_created": "Entity created: {name} (type: {entity_type}, ID: {id})",
+    "source_entity_not_found": "Error: Source entity '{name}' not found.",
+    "target_entity_not_found": "Error: Target entity '{name}' not found.",
+    "no_episodes": "No episodic entries from the last {days} days.",
+    "no_procedures": "No procedures found for: '{query}'",
+    "empty_graph": "# Knowledge Graph\n\nNo entities present.\n",
+    "compaction_status": "Compaction needed: YES/No"
+  },
+
+  "ingest": {
+    "unsupported_format": "Unsupported format: {suffix}",
+    "no_extractor": "No extractor for {suffix}",
+    "pymupdf_required": "PDF extraction requires PyMuPDF: pip install pymupdf",
+    "docx_required": "DOCX extraction requires python-docx: pip install python-docx",
+    "file_too_large": "File too large: {size} MB"
+  },
+
+  "code": {
+    "access_denied": "Access denied: '{path}' is outside the workspace",
+    "only_python": "Error: Only Python files (.py) are supported."
+  },
+
+  "browser": {
+    "text_truncated": "[... truncated, {length} characters total]",
+    "field_filled": "Field '{selector}' filled",
+    "vision_unavailable": "(Vision not available)"
+  },
+
+  "security": {
+    "token_store_insecure": "Token store uses Base64 fallback (NOT encrypted!). pip install cryptography",
+    "not_encrypted_warning": "NOT encrypted. pip install cryptography",
+    "param_length_rule": "Block overly long parameters (injection protection)",
+    "rate_limit_exceeded": "Rate limit '{name}' exceeded: {detail}",
+    "forbidden_value": "contains forbidden value '{value}'"
+  },
+
+  "vault": {
+    "invalid_token_format": "Invalid token format (Base64 error): {error}",
+    "token_too_short": "Token too short for legacy decryption"
+  },
+
+  "skill": {
+    "invalid_package_name": "Invalid package name '{name}'",
+    "invalid_version": "Invalid version '{version}': SemVer expected",
+    "tool_unavailable": "Tool '{tool}' not available",
+    "no_skill_for": "No skill for: {query}",
+    "syntax_check_passed": "Syntax check passed (no sandbox available)",
+    "no_manifest": "Package does not contain manifest.json",
+    "no_skill_py": "Package does not contain skill.py",
+    "invalid_manifest": "Manifest invalid: {detail}",
+    "code_analysis_dangerous": "Code analysis: DANGEROUS — {detail}",
+    "publisher_untrusted": "Publisher '{signer}' not trusted",
+    "hash_mismatch": "Content hash mismatch (tampering?)",
+    "auto_created": "This skill was auto-created. It needs to be manually filled with content."
+  },
+
+  "config": {
+    "preset_office_name": "Office Assistant",
+    "preset_office_desc": "Daily briefings, email overview, calendar check"
+  },
+
+  "wizard": {
+    "invalid_selection": "Invalid selection for '{title}'",
+    "confirmation": "Confirmation",
+    "confirm_settings": "Review the settings and confirm."
+  },
+
+  "cli": {
+    "help_log_level": "Override log level",
+    "help_no_cli": "Don't start CLI channel (headless mode for Control Center)",
+    "help_api_port": "Port for the Control Center API",
+    "help_api_host": "Host for the Control Center API"
+  },
+
+  "cron": {
+    "default_weather": "Weather for Nuremberg",
+    "default_weekly": "Weekly review:\n"
+  },
+
+  "collaboration": {
+    "researcher": "Research thoroughly. Provide facts, sources, and context.",
+    "analyst": "Analyze the data. Identify patterns, trends, and correlations.",
+    "critic": "Review critically. Find errors, gaps, and weaknesses in the argument.",
+    "validator": "Validate results against requirements. Check correctness.",
+    "executor": "Execute the task. Produce concrete output.",
+    "synthesizer": "Summarize all perspectives. Create a coherent synthesis.",
+    "mediator": "Mediate between positions. Find consensus and resolve conflicts.",
+    "previous_contributions": "Previous contributions:\n"
+  },
+
+  "webchat": {
+    "attach_file": "Attach file",
+    "approval_required": "Approval required",
+    "mic_access_denied": "Microphone access not possible. Please allow access."
+  },
+
+  "audit": {
+    "eval_dangerous": "eval() allows arbitrary code execution",
+    "exec_dangerous": "exec() allows arbitrary code execution",
+    "shell_injection": "Shell injection possible with shell=True",
+    "direct_shell": "Direct shell execution",
+    "external_http": "Skill makes external HTTP requests",
+    "dns_exfiltration": "DNS queries can be used for data exfiltration",
+    "file_access_sandbox": "Restrict file access to sandbox",
+    "temp_secrets": "Credentials written to temporary files",
+    "base64_obfuscation": "Base64 encoding can hide malicious code",
+    "user_approved": "User approved: {reason}",
+    "user_rejected": "User rejected: {reason}"
+  },
+
+  "log": {
+    "approval_timeout": "Approval timeout for %s",
+    "cron_loaded": "Loaded cron jobs: %d",
+    "cron_triggered": "Cron job triggered: '%s'",
+    "heartbeat_executed": "Heartbeat executed"
+  },
+
+  "integrity": {
+    "negation_contradiction": "Negation contradiction (overlap: {count} words)",
+    "content_too_long": "Content unusually long"
+  },
+
+  "hygiene": {
+    "contradictory_values": "Contradictory values for '{key}': {values}",
+    "hash_mismatch": "Hash mismatch for entry '{entry_id}'"
+  }
+}

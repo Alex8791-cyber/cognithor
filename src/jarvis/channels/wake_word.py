@@ -146,7 +146,7 @@ class WakeWordDetector:
                 if keyword_index >= 0:
                     return True
         except Exception:
-            pass
+            pass  # Cleanup — wake word detection failure is non-critical
         return False
 
     def _detect_energy(self, chunk: bytes) -> bool:

@@ -1296,7 +1296,21 @@ class MediaPipeline:
         except ValueError as exc:
             return MediaResult(success=False, error=f"Ungueltiger Voice-Name: {exc}")
 
-        out = Path(output_path) if output_path else self._workspace / "tts_output.wav"
+        if output_path:
+            try:
+                out = Path(output_path).expanduser().resolve()
+                jarvis_home = Path.home() / ".jarvis"
+                try:
+                    out.relative_to(self._workspace)
+                except ValueError:
+                    out.relative_to(jarvis_home)
+            except (ValueError, OSError):
+                return MediaResult(
+                    success=False,
+                    error=f"Ausgabepfad ausserhalb des Workspace: {output_path}",
+                )
+        else:
+            out = self._workspace / "tts_output.wav"
 
         # Versuch 1: Piper
         try:

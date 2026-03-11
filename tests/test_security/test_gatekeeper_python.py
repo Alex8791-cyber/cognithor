@@ -9,6 +9,8 @@ Ref: Schritt 4a in Gatekeeper.evaluate()
 
 from __future__ import annotations
 
+import os
+import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -37,7 +39,7 @@ def gk_config(tmp_path: Path) -> JarvisConfig:
     config = JarvisConfig(
         jarvis_home=tmp_path,
         security=SecurityConfig(
-            allowed_paths=[str(tmp_path), "/tmp/jarvis/"],
+            allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")],
         ),
     )
     ensure_directory_structure(config)
@@ -222,12 +224,12 @@ class TestRunPythonAdditionalPatterns:
         assert decision.status == GateStatus.BLOCK
 
     def test_os_unlink_blocked(self, gatekeeper: Gatekeeper, session: SessionContext) -> None:
-        action = _run_python_action("os.unlink('/tmp/important')")
+        action = _run_python_action(f"os.unlink('{tempfile.gettempdir()}/important')")
         decision = gatekeeper.evaluate(action, session)
         assert decision.status == GateStatus.BLOCK
 
     def test_os_rmdir_blocked(self, gatekeeper: Gatekeeper, session: SessionContext) -> None:
-        action = _run_python_action("os.rmdir('/tmp/dir')")
+        action = _run_python_action(f"os.rmdir('{tempfile.gettempdir()}/dir')")
         decision = gatekeeper.evaluate(action, session)
         assert decision.status == GateStatus.BLOCK
 
@@ -238,7 +240,7 @@ class TestRunPythonAdditionalPatterns:
         assert "os.exec" in decision.reason
 
     def test_shutil_move_blocked(self, gatekeeper: Gatekeeper, session: SessionContext) -> None:
-        action = _run_python_action("shutil.move('/etc/passwd', '/tmp/stolen')")
+        action = _run_python_action(f"shutil.move('/etc/passwd', '{tempfile.gettempdir()}/stolen')")
         decision = gatekeeper.evaluate(action, session)
         assert decision.status == GateStatus.BLOCK
 
@@ -264,7 +266,7 @@ class TestRunPythonAdditionalPatterns:
 
     def test_open_read_mode_passes(self, gatekeeper: Gatekeeper, session: SessionContext) -> None:
         """open() im Read-Modus ('r') wird NICHT blockiert."""
-        action = _run_python_action("f = open('/tmp/data.txt', 'r')")
+        action = _run_python_action(f"f = open('{tempfile.gettempdir()}/data.txt', 'r')")
         decision = gatekeeper.evaluate(action, session)
         assert decision.policy_name != "blocked_python_code"
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -62,7 +63,7 @@ def pipeline_with_memory(config: IngestConfig) -> IngestPipeline:
 class TestIngestResult:
     def test_success_summary(self) -> None:
         r = IngestResult(
-            file_path="/tmp/test.md",
+            file_path=str(Path(tempfile.gettempdir()) / "test.md"),
             file_name="test.md",
             success=True,
             chunks_created=5,
@@ -73,7 +74,7 @@ class TestIngestResult:
 
     def test_error_summary(self) -> None:
         r = IngestResult(
-            file_path="/tmp/bad.pdf",
+            file_path=str(Path(tempfile.gettempdir()) / "bad.pdf"),
             file_name="bad.pdf",
             error="PDF-Extraktion fehlgeschlagen",
         )
@@ -177,7 +178,7 @@ class TestIngestFile:
 
     @pytest.mark.asyncio
     async def test_ingest_nonexistent_file(self, pipeline: IngestPipeline) -> None:
-        result = await pipeline.ingest_file(Path("/tmp/nonexistent.txt"))
+        result = await pipeline.ingest_file(Path(tempfile.gettempdir()) / "nonexistent.txt")
         assert result.success is False
         assert "nicht gefunden" in result.error
 

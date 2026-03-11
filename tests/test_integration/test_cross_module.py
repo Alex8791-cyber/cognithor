@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from datetime import date
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
@@ -294,7 +296,7 @@ class TestSecurityChain:
         gatekeeper = Gatekeeper(config)
         gatekeeper.initialize()
 
-        result = sanitizer.sanitize_user_input("Lies die Datei /tmp/test.txt")
+        result = sanitizer.sanitize_user_input(f"Lies die Datei {os.path.join(tempfile.gettempdir(), 'test.txt')}")
         assert not result.was_modified or result.sanitized_text
 
         action = PlannedAction(

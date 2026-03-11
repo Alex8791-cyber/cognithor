@@ -684,7 +684,7 @@ class BrowserAgent:
                 log.debug("cookie_banner_dismissed", selector=banner["acceptSelector"])
                 return True
         except Exception:
-            pass
+            pass  # Cleanup — cookie banner dismissal failure is non-critical
         return False
 
     # ── Vision-Integration ──────────────────────────────────────

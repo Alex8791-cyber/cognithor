@@ -88,9 +88,12 @@ class TeamsChannel(Channel):
 
         # Session-Mapping: conversation_id -> session_id
         self._sessions: dict[str, str] = {}
+        # Session->User mapping for approval verification
+        self._session_user_ids: dict[str, str] = {}  # session_id -> user_id
 
         # Approval-Workflow
         self._pending_approvals: dict[str, asyncio.Future[bool]] = {}
+        self._approval_expected_users: dict[str, str] = {}  # approval_id -> user_id
         self._approval_lock = asyncio.Lock()
 
         # Streaming-Buffer
@@ -142,7 +145,7 @@ class TeamsChannel(Channel):
             try:
                 await context.send_activity("Ein interner Fehler ist aufgetreten.")
             except Exception:
-                pass
+                pass  # Cleanup — error notification failure is non-critical
 
         self._adapter.on_turn_error = on_error
 
@@ -236,6 +239,7 @@ class TeamsChannel(Channel):
                 if not future.done():
                     future.set_result(False)
             self._pending_approvals.clear()
+            self._approval_expected_users.clear()
 
         # Webhook stoppen
         if self._webhook_runner:
@@ -286,23 +290,32 @@ class TeamsChannel(Channel):
                         mention_text = getattr(entity, "text", "")
                         text = text.replace(mention_text, "").strip()
 
-        # Approval-Antwort pruefen
+        # Approval-Antwort pruefen (nur vom urspruenglichen User)
         session_for_conv = self._sessions.get(conversation_id, "")
         if session_for_conv in self._pending_approvals:
-            normalized = text.lower()
-            if normalized in ("ja", "yes", "ok", "genehmigen", "approve"):
-                await self._resolve_approval(
-                    session_for_conv, approved=True, turn_context=turn_context
+            expected_user = self._approval_expected_users.get(session_for_conv, "")
+            if not expected_user or user_id == expected_user:
+                normalized = text.lower()
+                if normalized in ("ja", "yes", "ok", "genehmigen", "approve"):
+                    await self._resolve_approval(
+                        session_for_conv, approved=True, turn_context=turn_context
+                    )
+                    return
+                elif normalized in ("nein", "no", "ablehnen", "reject"):
+                    await self._resolve_approval(
+                        session_for_conv, approved=False, turn_context=turn_context
+                    )
+                    return
+            else:
+                logger.warning(
+                    "Teams Approval von fremdem User ignoriert: %s (erwartet: %s)",
+                    user_id,
+                    expected_user,
                 )
-                return
-            elif normalized in ("nein", "no", "ablehnen", "reject"):
-                await self._resolve_approval(
-                    session_for_conv, approved=False, turn_context=turn_context
-                )
-                return
 
         # Session-Mapping
         session_id = self._get_or_create_session(conversation_id)
+        self._session_user_ids[session_id] = user_id
 
         incoming = IncomingMessage(
             channel="teams",
@@ -322,7 +335,7 @@ class TeamsChannel(Channel):
             try:
                 await turn_context.send_activity(_create_typing_activity())
             except Exception:
-                pass
+                pass  # Cleanup — typing indicator failure is non-critical
 
             try:
                 response = await self._handler(incoming)
@@ -351,24 +364,37 @@ class TeamsChannel(Channel):
                 await turn_context.send_activity(friendly)
 
     async def _on_invoke(self, turn_context: Any) -> None:
-        """Verarbeitet Invoke-Activities (Adaptive Card Actions)."""
+        """Verarbeitet Invoke-Activities (Adaptive Card Actions).
+
+        Nur der User, der die Aktion urspruenglich ausgeloest hat,
+        darf genehmigen oder ablehnen.
+        """
         from botbuilder.schema import Activity  # type: ignore[import-untyped]
 
         activity = turn_context.activity
         value = activity.value or {}
+        invoker_id = activity.from_property.id if activity.from_property else ""
 
         if isinstance(value, dict):
             action_type = value.get("action", "")
             approval_id = value.get("approval_id", "")
 
             if action_type in ("approve", "reject") and approval_id:
-                approved = action_type == "approve"
                 async with self._approval_lock:
-                    future = self._pending_approvals.get(approval_id)
-                if future and not future.done():
-                    future.set_result(approved)
-                    status = "genehmigt" if approved else "abgelehnt"
-                    await turn_context.send_activity(f"Aktion {status}.")
+                    expected_user = self._approval_expected_users.get(approval_id, "")
+                    if expected_user and invoker_id != expected_user:
+                        logger.warning(
+                            "Teams Invoke-Approval von fremdem User ignoriert: %s (erwartet: %s)",
+                            invoker_id,
+                            expected_user,
+                        )
+                    else:
+                        future = self._pending_approvals.get(approval_id)
+                        if future and not future.done():
+                            approved = action_type == "approve"
+                            future.set_result(approved)
+                            status = "genehmigt" if approved else "abgelehnt"
+                            await turn_context.send_activity(f"Aktion {status}.")
 
         # Invoke braucht eine Response
         invoke_response = Activity(
@@ -441,10 +467,13 @@ class TeamsChannel(Channel):
             return False
 
         approval_id = session_id
+        requester_user = self._session_user_ids.get(session_id, "")
         loop = asyncio.get_running_loop()
         future: asyncio.Future[bool] = loop.create_future()
         async with self._approval_lock:
             self._pending_approvals[approval_id] = future
+            if requester_user:
+                self._approval_expected_users[approval_id] = requester_user
 
         # Adaptive Card senden
         card = _build_approval_card(action, reason, approval_id)
@@ -487,6 +516,7 @@ class TeamsChannel(Channel):
         finally:
             async with self._approval_lock:
                 self._pending_approvals.pop(approval_id, None)
+                self._approval_expected_users.pop(approval_id, None)
 
     async def _resolve_approval(
         self,

@@ -80,7 +80,13 @@ class _SimpleEncryptor:
             fernet = self._build_fernet(self._raw_key, salt)
             return fernet.decrypt(fernet_token.encode("ascii")).decode("utf-8")
 
-        # Legacy fallback: old XOR-HMAC encrypted data
+        # Legacy fallback: old XOR-HMAC encrypted data (deprecated)
+        import warnings
+        warnings.warn(
+            "Legacy XOR-HMAC encryption detected. Entry will be auto-migrated to Fernet.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._legacy_decrypt(token)
 
     # -- internals -------------------------------------------------------------
@@ -194,13 +200,24 @@ class EncryptedVault:
         return entry
 
     def retrieve(self, service: str, key: str) -> str | None:
-        """Holt und entschlüsselt ein Credential."""
+        """Holt und entschlüsselt ein Credential.
+
+        Auto-migrates legacy XOR-HMAC entries to Fernet on read.
+        """
         entry = self._entries.get(f"{service}:{key}")
         if not entry:
             return None
         entry.last_accessed = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         entry.access_count += 1
-        return self._encryptor.decrypt(entry.encrypted_value)
+        plaintext = self._encryptor.decrypt(entry.encrypted_value)
+        # Auto-migrate legacy entries to Fernet
+        if "." not in entry.encrypted_value:
+            _vault_log.info(
+                "vault_legacy_migration: re-encrypting %s:%s with Fernet",
+                service, key,
+            )
+            entry.encrypted_value = self._encryptor.encrypt(plaintext)
+        return plaintext
 
     def delete(self, service: str, key: str) -> bool:
         """Löscht ein Credential."""

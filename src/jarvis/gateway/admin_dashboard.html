@@ -564,13 +564,13 @@
     <div class="nav-item" data-page="redteam">
       <span class="nav-icon">🎯</span><span>Red-Team</span>
     </div>
-    <div class="nav-item" data-page="governance">
+    <div class="nav-item" data-page="governance-hub">
       <span class="nav-icon">⚖️</span><span>Governance Hub</span>
     </div>
-    <div class="nav-item" data-page="impact">
+    <div class="nav-item" data-page="impact-assessment">
       <span class="nav-icon">📋</span><span>Impact Assessment</span>
     </div>
-    <div class="nav-item" data-page="codeaudit">
+    <div class="nav-item" data-page="codeaudit-detail">
       <span class="nav-icon">🔬</span><span>Code-Audit</span>
     </div>
     <div class="nav-item" data-page="userportal">
@@ -1242,7 +1242,7 @@
   </div>
 
   <!-- ===== GOVERNANCE HUB ===== -->
-  <div class="page" id="page-governance">
+  <div class="page" id="page-governance-hub">
     <div class="page-header">
       <div>
         <div class="page-title">⚖️ Governance Hub</div>
@@ -1397,7 +1397,7 @@
   </div>
 
   <!-- ===== IMPACT ASSESSMENT ===== -->
-  <div class="page" id="page-impact">
+  <div class="page" id="page-impact-assessment">
     <div class="page-header">
       <div>
         <div class="page-title">📋 AI Impact Assessment</div>
@@ -1436,7 +1436,7 @@
   </div>
 
   <!-- ===== CODE-AUDIT ===== -->
-  <div class="page" id="page-codeaudit">
+  <div class="page" id="page-codeaudit-detail">
     <div class="page-header">
       <div>
         <div class="page-title">🔬 Automatisierte Code-Analyse</div>
@@ -1594,10 +1594,24 @@
 <script>
 // ===== API LAYER =====
 const BASE = '/api/v1';
+let _authToken = null;
+
+async function _ensureToken() {
+  if (_authToken) return;
+  try {
+    const r = await fetch(`${BASE}/bootstrap`);
+    if (r.ok) { const d = await r.json(); _authToken = d.token || null; }
+  } catch { /* bootstrap unavailable */ }
+}
+
 const api = {
   get: async (path) => {
+    await _ensureToken();
     try {
-      const r = await fetch(`${BASE}${path}`);
+      const headers = {};
+      if (_authToken) headers['Authorization'] = `Bearer ${_authToken}`;
+      const r = await fetch(`${BASE}${path}`, { headers });
+      if (!r.ok) return { error: `HTTP ${r.status}: ${r.statusText}` };
       return await r.json();
     } catch (e) {
       console.warn(`API ${path}:`, e);
@@ -1605,16 +1619,24 @@ const api = {
     }
   },
   post: async (path, data) => {
+    await _ensureToken();
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (_authToken) headers['Authorization'] = `Bearer ${_authToken}`;
       const r = await fetch(`${BASE}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        method: 'POST', headers, body: JSON.stringify(data),
       });
+      if (!r.ok) return { error: `HTTP ${r.status}: ${r.statusText}` };
       return await r.json();
     } catch (e) { return { error: e.message }; }
   },
 };
+
+// ===== HTML ESCAPE (XSS prevention) =====
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 // ===== NAVIGATION =====
 function showPage(pageId) {
@@ -1664,7 +1686,7 @@ function statusPill(status) {
     online: 'green', offline: 'red',
   };
   const cls = map[status] || 'blue';
-  return `<span class="pill ${cls}">${status}</span>`;
+  return `<span class="pill ${cls}">${esc(status)}</span>`;
 }
 
 function eventTypeColor(type) {
@@ -1719,7 +1741,7 @@ async function refreshDashboard() {
   } else {
     tbody.innerHTML = agents.map(a => `
       <tr>
-        <td style="font-weight:600;color:var(--text-primary);">${a.agent_id}</td>
+        <td style="font-weight:600;color:var(--text-primary);">${esc(a.agent_id)}</td>
         <td><span class="pill blue">${a.task_count}</span></td>
         <td>${a.config ? statusPill('active') : statusPill('pending')}</td>
         <td style="font-family:var(--mono);font-size:12px;">${
@@ -1741,8 +1763,8 @@ async function refreshDashboard() {
   el.innerHTML = events.map(e => `
     <div class="event-row">
       <span class="event-time">${timeAgo(e.time)}</span>
-      <span class="event-type" style="${eventTypeColor(e.type)}">${e.type}</span>
-      <span class="event-msg">${e.msg}</span>
+      <span class="event-type" style="${eventTypeColor(e.type)}">${esc(e.type)}</span>
+      <span class="event-msg">${esc(e.msg)}</span>
     </div>
   `).join('');
 }
@@ -1765,12 +1787,12 @@ async function loadAgents() {
       <div class="data-card-header">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:18px;">🤖</span>
-          <span style="font-weight:700;">${a.agent_id}</span>
+          <span style="font-weight:700;">${esc(a.agent_id)}</span>
           ${a.config ? statusPill('active') : statusPill('pending')}
         </div>
         <div style="display:flex;gap:12px;">
           ${a.config ? `<span class="metric-sub">Intervall: ${a.config.interval_minutes}min</span>
-          <span class="metric-sub">Kanal: ${a.config.channel}</span>` : ''}
+          <span class="metric-sub">Kanal: ${esc(a.config.channel)}</span>` : ''}
         </div>
       </div>
       <table>
@@ -1779,7 +1801,7 @@ async function loadAgents() {
           ${a.tasks.length === 0 ? '<tr><td colspan="6" style="color:var(--text-muted);text-align:center;">Keine Tasks</td></tr>' :
             a.tasks.map(t => `
               <tr>
-                <td style="font-weight:600;color:var(--text-primary);">${t.name}</td>
+                <td style="font-weight:600;color:var(--text-primary);">${esc(t.name)}</td>
                 <td>${statusPill(t.last_status)}</td>
                 <td style="font-family:var(--mono);">${t.run_count}</td>
                 <td style="font-family:var(--mono);color:${t.fail_count > 0 ? 'var(--accent-red)' : 'var(--text-muted)'};">${t.fail_count}</td>
@@ -1800,20 +1822,25 @@ async function loadMonitoring() {
     api.get('/monitoring/metrics'),
   ]);
 
-  // CPU/Mem bars
-  const cpu = Math.random() * 40 + 10; // Simulated
-  const mem = Math.random() * 300 + 100;
-  document.getElementById('cpu-bar').style.width = cpu + '%';
-  document.getElementById('cpu-val').textContent = Math.round(cpu);
-  document.getElementById('mem-bar').style.width = Math.min((mem/512)*100, 100) + '%';
-  document.getElementById('mem-val').textContent = Math.round(mem);
+  // CPU/Mem bars — use real data from API, fallback to '—' if unavailable
+  const metrics = metricsData || {};
+  const cpu = typeof metrics.cpu_percent === 'number' ? metrics.cpu_percent : null;
+  const mem = typeof metrics.memory_mb === 'number' ? metrics.memory_mb : null;
+  const memMax = typeof metrics.memory_max_mb === 'number' ? metrics.memory_max_mb : 512;
+  document.getElementById('cpu-bar').style.width = (cpu != null ? cpu : 0) + '%';
+  document.getElementById('cpu-val').textContent = cpu != null ? Math.round(cpu) : '—';
+  document.getElementById('mem-bar').style.width = (mem != null ? Math.min((mem/memMax)*100, 100) : 0) + '%';
+  document.getElementById('mem-val').textContent = mem != null ? Math.round(mem) : '—';
 
-  // Mini chart
+  // Mini chart — use real connection history if available, else empty
   const chart = document.getElementById('conn-chart');
-  const bars = Array.from({length: 20}, () => Math.random() * 100);
-  chart.innerHTML = bars.map(h =>
-    `<div class="mini-bar" style="height:${Math.max(h, 5)}%"></div>`
-  ).join('');
+  const history = Array.isArray(metrics.connection_history) ? metrics.connection_history : [];
+  const maxH = Math.max(...history, 1);
+  chart.innerHTML = history.length > 0
+    ? history.slice(-20).map(h =>
+        `<div class="mini-bar" style="height:${Math.max((h/maxH)*100, 5)}%"></div>`
+      ).join('')
+    : '<div style="color:var(--text-muted);font-size:11px;padding:8px;">Keine Daten</div>';
 }
 
 // ===== MARKETPLACE =====
@@ -1828,7 +1855,7 @@ async function loadMarketplace() {
   const categories = cats.categories || [];
   catEl.innerHTML = categories.map(c => `
     <div class="metric-card" style="cursor:pointer;">
-      <div class="metric-label">${c.icon || '📦'} ${c.name || c.category || 'Kategorie'}</div>
+      <div class="metric-label">${esc(c.icon) || '📦'} ${esc(c.name || c.category) || 'Kategorie'}</div>
       <div class="metric-value blue" style="font-size:20px;">${c.count || 0}</div>
       <div class="metric-sub">Skills</div>
     </div>
@@ -1846,8 +1873,8 @@ async function searchSkills() {
     : `<div class="data-card"><div class="data-card-header">Suchergebnisse <span class="tag">${skills.length}</span></div>
       <table><thead><tr><th>Name</th><th>Version</th><th>Rating</th><th>Downloads</th></tr></thead>
       <tbody>${skills.map(s => `<tr>
-        <td style="font-weight:600;color:var(--text-primary);">${s.name || s.package_id}</td>
-        <td style="font-family:var(--mono);">${s.version || '—'}</td>
+        <td style="font-weight:600;color:var(--text-primary);">${esc(s.name || s.package_id)}</td>
+        <td style="font-family:var(--mono);">${esc(s.version) || '—'}</td>
         <td>${s.avg_rating ? '⭐ ' + s.avg_rating.toFixed(1) : '—'}</td>
         <td style="font-family:var(--mono);">${s.install_count || 0}</td>
       </tr>`).join('')}</tbody></table></div>`;
@@ -1888,9 +1915,9 @@ async function loadUpdates() {
     </div>
 
     <div class="data-card">
-      <div class="data-card-header">Update-Policy <span class="tag">${(stats.policy || {}).strategy || 'notify'}</span></div>
+      <div class="data-card-header">Update-Policy <span class="tag">${esc((stats.policy || {}).strategy) || 'notify'}</span></div>
       <div style="padding:14px 18px;font-size:12px;color:var(--text-secondary);">
-        Strategie: <strong>${(stats.policy || {}).strategy || '—'}</strong> ·
+        Strategie: <strong>${esc((stats.policy || {}).strategy) || '—'}</strong> ·
         Security-Auto: <strong>${(stats.policy || {}).auto_security_updates ? 'Ja' : 'Nein'}</strong> ·
         Signatur erforderlich: <strong>${(stats.policy || {}).require_signature ? 'Ja' : 'Nein'}</strong> ·
         Check-Intervall: <strong>${(stats.policy || {}).check_interval_hours || 24}h</strong>
@@ -1901,8 +1928,8 @@ async function loadUpdates() {
       <div class="data-card-header" style="color:var(--accent-red);">⚠️ Security Recalls</div>
       <table><thead><tr><th>Paket</th><th>Grund</th><th>Schwere</th><th>Aktion</th></tr></thead>
       <tbody>${recs.map(r => `<tr>
-        <td style="font-weight:600;">${r.package_id}</td>
-        <td>${r.reason}</td>
+        <td style="font-weight:600;">${esc(r.package_id)}</td>
+        <td>${esc(r.reason)}</td>
         <td>${statusPill(r.severity)}</td>
         <td>${r.force_uninstall ? statusPill('deinstalliert') : '—'}</td>
       </tr>`).join('')}</tbody></table></div>` : ''}
@@ -1911,9 +1938,9 @@ async function loadUpdates() {
       <div class="data-card-header">Update-Historie <span class="tag">${hist.length}</span></div>
       <table><thead><tr><th>Paket</th><th>Von</th><th>Nach</th><th>Status</th><th>Datum</th></tr></thead>
       <tbody>${hist.map(h => `<tr>
-        <td style="font-weight:600;">${h.package_id}</td>
-        <td style="font-family:var(--mono);">${h.from}</td>
-        <td style="font-family:var(--mono);">${h.to}</td>
+        <td style="font-weight:600;">${esc(h.package_id)}</td>
+        <td style="font-family:var(--mono);">${esc(h.from)}</td>
+        <td style="font-family:var(--mono);">${esc(h.to)}</td>
         <td>${h.success ? statusPill('completed') : statusPill('failed')}</td>
         <td style="font-family:var(--mono);font-size:11px;">${timeAgo(h.installed_at)}</td>
       </tr>`).join('')}</tbody></table></div>` : ''}
@@ -1930,10 +1957,10 @@ async function loadWizards() {
 
   const icons = { heartbeat: '💓', binding: '🔗', agent: '🤖', sandbox: '📦' };
   el.innerHTML = wizards.map(w => `
-    <div class="data-card" style="cursor:pointer;" onclick="openWizard('${w.wizard_type}')">
+    <div class="data-card" style="cursor:pointer;" onclick="openWizard('${esc(w.wizard_type)}')">
       <div style="padding:24px;text-align:center;">
         <div style="font-size:32px;margin-bottom:12px;">${icons[w.wizard_type] || '🧙'}</div>
-        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1)}-Wizard</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${esc(w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1))}-Wizard</div>
         <div style="font-size:12px;color:var(--text-secondary);">${w.step_count} Schritte · ${w.templates.length} Vorlagen</div>
       </div>
     </div>
@@ -1954,7 +1981,7 @@ async function openWizard(type) {
   panel.innerHTML = `
     <div class="data-card">
       <div class="data-card-header">
-        🧙 ${type.charAt(0).toUpperCase() + type.slice(1)}-Assistent
+        🧙 ${esc(type.charAt(0).toUpperCase() + type.slice(1))}-Assistent
         <button class="btn" onclick="document.getElementById('wizard-panel').style.display='none'">✕ Schließen</button>
       </div>
       <div style="padding:20px;">
@@ -1962,8 +1989,8 @@ async function openWizard(type) {
           <div class="metric-label" style="margin-bottom:10px;">Vorlagen — schneller Start</div>
           <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;">
             ${templates.map(t => `
-              <button class="btn" onclick="applyTemplate('${type}','${t.template_id}')">
-                ${t.icon || '📋'} ${t.name}
+              <button class="btn" onclick="applyTemplate('${esc(type)}','${esc(t.template_id)}')">
+                ${esc(t.icon) || '📋'} ${esc(t.name)}
               </button>
             `).join('')}
           </div>
@@ -1971,28 +1998,28 @@ async function openWizard(type) {
 
         <div class="wizard-steps" id="wiz-steps">
           ${steps.map((s, i) => `
-            <div class="wizard-step ${i === 0 ? 'active' : ''}" data-idx="${i}">${i+1}. ${s.title}</div>
+            <div class="wizard-step ${i === 0 ? 'active' : ''}" data-idx="${i}">${i+1}. ${esc(s.title)}</div>
           `).join('')}
         </div>
 
         <div id="wiz-fields">
           ${steps.map((s, i) => `
             <div class="wizard-field" data-step="${i}" style="${i > 0 ? 'display:none' : ''}">
-              <label>${s.title} ${s.required ? '<span style="color:var(--accent-red);">*</span>' : ''}</label>
+              <label>${esc(s.title)} ${s.required ? '<span style="color:var(--accent-red);">*</span>' : ''}</label>
               ${s.field_type === 'boolean' ? `
-                <select id="wf-${s.field_name}"><option value="true">Ja</option><option value="false">Nein</option></select>
+                <select id="wf-${esc(s.field_name)}"><option value="true">Ja</option><option value="false">Nein</option></select>
               ` : s.field_type === 'select' ? `
-                <select id="wf-${s.field_name}">${(s.options||[]).map(o =>
-                  `<option value="${o.value}">${o.label || o.value}</option>`
+                <select id="wf-${esc(s.field_name)}">${(s.options||[]).map(o =>
+                  `<option value="${esc(o.value)}">${esc(o.label || o.value)}</option>`
                 ).join('')}</select>
               ` : s.field_type === 'number' ? `
-                <input type="number" id="wf-${s.field_name}" value="${s.default || ''}" placeholder="${s.validation_hint}">
+                <input type="number" id="wf-${esc(s.field_name)}" value="${esc(s.default) || ''}" placeholder="${esc(s.validation_hint)}">
               ` : s.field_type === 'confirm' ? `
                 <div style="color:var(--accent-green);font-size:13px;">✓ Konfiguration bereit</div>
               ` : `
-                <input type="text" id="wf-${s.field_name}" value="${s.default || ''}" placeholder="${s.description}">
+                <input type="text" id="wf-${esc(s.field_name)}" value="${esc(s.default) || ''}" placeholder="${esc(s.description)}">
               `}
-              ${s.tooltip ? `<div class="wizard-tooltip">💡 ${s.tooltip}</div>` : ''}
+              ${s.tooltip ? `<div class="wizard-tooltip">💡 ${esc(s.tooltip)}</div>` : ''}
             </div>
           `).join('')}
         </div>
@@ -2000,7 +2027,7 @@ async function openWizard(type) {
         <div style="display:flex;gap:10px;margin-top:20px;">
           <button class="btn" id="wiz-prev" onclick="wizStep(-1)" disabled>← Zurück</button>
           <button class="btn primary" id="wiz-next" onclick="wizStep(1)">Weiter →</button>
-          <button class="btn primary" id="wiz-save" onclick="wizSave('${type}')" style="display:none;">💾 Konfiguration erstellen</button>
+          <button class="btn primary" id="wiz-save" onclick="wizSave('${esc(type)}')" style="display:none;">💾 Konfiguration erstellen</button>
         </div>
       </div>
     </div>
@@ -2063,15 +2090,15 @@ async function applyTemplate(type, templateId) {
 async function loadConfig() {
   const data = await api.get('/config');
   const el = document.getElementById('config-content');
-  if (data.error) { el.innerHTML = `<div class="empty-state"><p>${data.error}</p></div>`; return; }
+  if (data.error) { el.innerHTML = `<div class="empty-state"><p>${esc(data.error)}</p></div>`; return; }
 
   const sections = Object.keys(data.config || data || {}).filter(k => k !== 'error');
   el.innerHTML = sections.map(section => `
     <div class="data-card">
-      <div class="data-card-header">${section}</div>
+      <div class="data-card-header">${esc(section)}</div>
       <div style="padding:14px 18px;">
         <pre style="font-family:var(--mono);font-size:12px;color:var(--text-secondary);white-space:pre-wrap;">${
-          JSON.stringify((data.config || data)[section], null, 2)
+          esc(JSON.stringify((data.config || data)[section], null, 2))
         }</pre>
       </div>
     </div>
@@ -2110,8 +2137,8 @@ async function loadCommands() {
       <table>
         <thead><tr><th>Command</th><th>Beschreibung</th><th>Scope</th><th>Auth</th><th>Admin</th></tr></thead>
         <tbody>${commands.map(c => `<tr>
-          <td style="font-family:var(--mono);font-weight:600;color:var(--accent-cyan);">/jarvis ${c.name}</td>
-          <td>${c.description}</td>
+          <td style="font-family:var(--mono);font-weight:600;color:var(--accent-cyan);">/jarvis ${esc(c.name)}</td>
+          <td>${esc(c.description)}</td>
           <td>${statusPill(c.scope)}</td>
           <td>${c.requires_auth ? '🔐' : '—'}</td>
           <td>${c.admin_only ? '👑' : '—'}</td>
@@ -2180,7 +2207,7 @@ async function loadIsolation() {
         <div class="event-row">
           <span class="event-time">${timeAgo(v.timestamp)}</span>
           <span class="event-type" style="background:rgba(239,68,68,0.15);color:var(--accent-red);">violation</span>
-          <span class="event-msg">${v.agent_id || '?'}: ${v.path || v.message || '?'}</span>
+          <span class="event-msg">${esc(v.agent_id) || '?'}: ${esc(v.path || v.message) || '?'}</span>
         </div>
       `).join('')}</div>
     </div>` : ''}
@@ -2203,8 +2230,8 @@ async function loadAuditLog() {
     <div class="event-log">${entries.map(e => `
       <div class="event-row">
         <span class="event-time">${timeAgo(e.timestamp)}</span>
-        <span class="event-type" style="${eventTypeColor(e.event_type || e.type)}">${e.event_type || e.type || '?'}</span>
-        <span class="event-msg">${e.description || e.message || JSON.stringify(e).slice(0, 100)}</span>
+        <span class="event-type" style="${eventTypeColor(e.event_type || e.type)}">${esc(e.event_type || e.type) || '?'}</span>
+        <span class="event-msg">${esc(e.description || e.message) || esc(JSON.stringify(e).slice(0, 100))}</span>
       </div>
     `).join('')}</div>
   </div>`;
@@ -2222,8 +2249,8 @@ function connectSSE() {
         row.className = 'event-row';
         row.innerHTML = `
           <span class="event-time">${timeAgo(data.timestamp)}</span>
-          <span class="event-type" style="${eventTypeColor(data.event_type)}">${data.event_type}</span>
-          <span class="event-msg">${data.description || ''}</span>
+          <span class="event-type" style="${eventTypeColor(data.event_type)}">${esc(data.event_type)}</span>
+          <span class="event-msg">${esc(data.description) || ''}</span>
         `;
         el.prepend(row);
         if (el.children.length > 50) el.removeChild(el.lastChild);
@@ -2305,8 +2332,8 @@ async function loadGovernance() {
       const colors = {verified:'var(--accent-green)',high:'var(--accent-blue)',moderate:'var(--accent-yellow)',low:'var(--accent-orange, #f97316)',untrusted:'var(--accent-red)'};
       distEl.innerHTML = Object.entries(dist).map(([k,v]) =>
         `<div style="padding:8px 16px;background:var(--bg-primary);border-radius:8px;border-left:3px solid ${colors[k]||'var(--border)'}">
-          <div style="font-size:18px;font-weight:700;color:var(--text-primary)">${v}</div>
-          <div style="font-size:11px;text-transform:uppercase">${k}</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text-primary)">${esc(v)}</div>
+          <div style="font-size:11px;text-transform:uppercase">${esc(k)}</div>
         </div>`
       ).join('');
     }
@@ -2397,7 +2424,7 @@ async function loadEconomics() {
     const modelEl = document.getElementById('ec-model-costs');
     if (modelEl && Object.keys(models).length) {
       modelEl.innerHTML = Object.entries(models).map(([m,c]) =>
-        `<div style="padding:4px 0;border-bottom:1px solid var(--border)">${m}: <b>${c.toFixed(4)}€</b></div>`
+        `<div style="padding:4px 0;border-bottom:1px solid var(--border)">${esc(m)}: <b>${c.toFixed(4)}€</b></div>`
       ).join('');
     }
   } catch(e) { console.log('Economics:', e); }

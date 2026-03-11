@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -201,7 +203,7 @@ class TestErrorTypeRecording:
 class TestAgentContext:
     def test_set_and_clear_agent_context(self, executor: Executor) -> None:
         executor.set_agent_context(
-            workspace_dir="/tmp/agent",
+            workspace_dir=str(Path(tempfile.gettempdir()) / "agent"),
             sandbox_overrides={"network": False},
             agent_name="test-agent",
             session_id="sess-123",
@@ -600,7 +602,7 @@ class TestWorkspaceInjection:
         """exec_command with agent workspace context -> working_dir injected."""
         exec_ws = Executor(config, mcp_client=mock_mcp)
         exec_ws.set_agent_context(
-            workspace_dir="/tmp/agent_workspace",
+            workspace_dir=str(Path(tempfile.gettempdir()) / "agent_workspace"),
             agent_name="test-agent",
             session_id="sess-001",
         )
@@ -612,6 +614,6 @@ class TestWorkspaceInjection:
             # Verify the working_dir was injected into the call params
             call_args = mock_mcp.call_tool.call_args
             passed_params = call_args[0][1]
-            assert passed_params.get("working_dir") == "/tmp/agent_workspace"
+            assert passed_params.get("working_dir") == str(Path(tempfile.gettempdir()) / "agent_workspace")
         finally:
             exec_ws.clear_agent_context()

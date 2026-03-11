@@ -1,4 +1,4 @@
-{{
+{
   "name": "test",
   "version": "0.1.0",
   "author": "dev",
@@ -6,4 +6,4 @@
   "min_jarvis": "0.13.0",
   "permissions": [],
   "tags": []
-}}
+}

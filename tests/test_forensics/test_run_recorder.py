@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+
 import pytest
 
 from jarvis.models import (
@@ -31,8 +34,8 @@ def sample_plan():
         goal="Test goal",
         reasoning="Test reasoning",
         steps=[
-            PlannedAction(tool="read_file", params={"path": "/tmp/test.txt"}),
-            PlannedAction(tool="write_file", params={"path": "/tmp/out.txt", "content": "hello"}),
+            PlannedAction(tool="read_file", params={"path": os.path.join(tempfile.gettempdir(), "test.txt")}),
+            PlannedAction(tool="write_file", params={"path": os.path.join(tempfile.gettempdir(), "out.txt"), "content": "hello"}),
         ],
         confidence=0.9,
     )

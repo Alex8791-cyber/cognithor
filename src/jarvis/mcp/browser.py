@@ -213,7 +213,7 @@ class BrowserTool:
                 if octets[0] == 192 and octets[1] == 168:
                     return f"Zugriff auf private Adresse blockiert: {hostname}"
             except ValueError:
-                pass
+                pass  # Not a numeric IP address, skip private-range check
         # IPv6 private
         if hostname.startswith(("fc", "fd", "fe80")):
             return f"Zugriff auf private Adresse blockiert: {hostname}"

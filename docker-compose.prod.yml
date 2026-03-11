@@ -28,7 +28,7 @@ services:
     environment:
       - JARVIS_OLLAMA_BASE_URL=http://ollama:11434
       - JARVIS_API_HOST=0.0.0.0
-      - JARVIS_API_TOKEN=${JARVIS_API_TOKEN:-}
+      - JARVIS_API_TOKEN=${JARVIS_API_TOKEN:?Set JARVIS_API_TOKEN in .env}
       - JARVIS_LOGGING_LEVEL=${JARVIS_LOGGING_LEVEL:-INFO}
       - JARVIS_TELEGRAM_TOKEN=${JARVIS_TELEGRAM_TOKEN:-}
       - JARVIS_TELEGRAM_ALLOWED_USERS=${JARVIS_TELEGRAM_ALLOWED_USERS:-}
@@ -63,7 +63,7 @@ services:
       - jarvis-data:/home/jarvis/.jarvis
     environment:
       - JARVIS_WEBUI_HOST=0.0.0.0
-      - JARVIS_API_TOKEN=${JARVIS_API_TOKEN:-}
+      - JARVIS_API_TOKEN=${JARVIS_API_TOKEN:?Set JARVIS_API_TOKEN in .env}
       - JARVIS_WEBUI_CORS_ORIGINS=${JARVIS_WEBUI_CORS_ORIGINS:-*}
     networks:
       - jarvis-internal

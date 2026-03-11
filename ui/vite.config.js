@@ -159,6 +159,20 @@ function jarvisLauncher() {
     killPortProcess()
   }
 
+  // Auth check: if JARVIS_API_TOKEN is set, require Authorization: Bearer <token>.
+  // If not set (typical dev), allow all requests for convenience.
+  function checkAuth(req, res) {
+    const expected = process.env.JARVIS_API_TOKEN
+    if (!expected) return true  // no token configured → dev mode, allow
+    const auth = req.headers['authorization'] || ''
+    const match = auth.match(/^Bearer\s+(.+)$/i)
+    if (match && match[1] === expected) return true
+    res.statusCode = 401
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify({ error: 'Unauthorized — invalid or missing token' }))
+    return false
+  }
+
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
   function readBody(req) {
@@ -198,6 +212,7 @@ function jarvisLauncher() {
 
         // ── POST /api/v1/system/start ─────────────────────────────
         if (req.url === '/api/v1/system/start' && req.method === 'POST') {
+          if (!checkAuth(req, res)) return
           await readBody(req)
           res.setHeader('Content-Type', 'application/json')
 
@@ -231,6 +246,7 @@ function jarvisLauncher() {
 
         // ── POST /api/v1/system/stop ──────────────────────────────
         if (req.url === '/api/v1/system/stop' && req.method === 'POST') {
+          if (!checkAuth(req, res)) return
           await readBody(req)
           res.setHeader('Content-Type', 'application/json')
           stopBackend()

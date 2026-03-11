@@ -6,6 +6,8 @@ Bringt die kritischen Module von 33–67% auf ≥90% Coverage.
 from __future__ import annotations
 
 import hashlib
+import os
+import tempfile
 import time
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -584,7 +586,7 @@ class TestGatewayIntegration:
 
         action = PlannedAction(
             tool="read_file",
-            params={"path": "/tmp/test"},
+            params={"path": os.path.join(tempfile.gettempdir(), "test")},
             rationale="test",
         )
 
@@ -604,7 +606,7 @@ class TestGatewayIntegration:
             ToolResult(tool_name="read_file", content="Inhalt XYZ", success=True)
         ]
 
-        msg = IncomingMessage(channel="cli", user_id="alex", text="Lies /tmp/test")
+        msg = IncomingMessage(channel="cli", user_id="alex", text=f"Lies {os.path.join(tempfile.gettempdir(), 'test')}")
         response = await gateway.handle_message(msg)
 
         assert "Inhalt XYZ" in response.text

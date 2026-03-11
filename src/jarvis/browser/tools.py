@@ -383,7 +383,7 @@ def register_browser_use_tools(
                 if vision_result.success:
                     description = vision_result.description
             except Exception:
-                pass
+                pass  # Cleanup — vision description failure is non-critical
 
         return json.dumps(
             {

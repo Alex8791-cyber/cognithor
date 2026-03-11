@@ -7,6 +7,7 @@ Typing-Indicator, Datei-Versand, zentrale Nachrichtenverarbeitung.
 from __future__ import annotations
 
 import asyncio
+import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -227,7 +228,7 @@ class TestSendFile:
     async def test_send_file_no_app(self) -> None:
         ch = TelegramChannel(token="t")
         ch._app = None
-        result = await ch.send_file(123, Path("/tmp/test.txt"))
+        result = await ch.send_file(123, Path(tempfile.gettempdir()) / "test.txt")
         assert result is False
 
     @pytest.mark.asyncio

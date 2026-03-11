@@ -458,4 +458,4 @@ class DiscordChannel(Channel):
             if channel is not None:
                 await channel.typing()
         except Exception:
-            pass
+            pass  # Cleanup — typing indicator failure is non-critical

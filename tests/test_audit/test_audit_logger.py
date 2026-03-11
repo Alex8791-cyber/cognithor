@@ -12,6 +12,7 @@ Testet:
 from __future__ import annotations
 
 import json
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -55,7 +56,7 @@ class TestAuditLogging:
         assert entry.success is False
 
     def test_log_file_access(self, logger: AuditLogger) -> None:
-        entry = logger.log_file_access("/tmp/test.txt", "write", agent_name="coder")
+        entry = logger.log_file_access(str(Path(tempfile.gettempdir()) / "test.txt"), "write", agent_name="coder")
         assert entry.category == AuditCategory.FILE_ACCESS
         assert "write" in entry.description
 

@@ -161,8 +161,8 @@ async def init_pge(
             from jarvis.skills.generator import GapDetector
 
             gap_detector = GapDetector()
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("gap_detector_init_skipped", error=str(exc))
 
     # PersonalityEngine (optional)
     personality_engine = None

@@ -13,6 +13,8 @@ Testet:
 
 from __future__ import annotations
 
+import os
+import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -37,7 +39,7 @@ def gk_config(tmp_path: Path) -> JarvisConfig:
     config = JarvisConfig(
         jarvis_home=tmp_path,
         security=SecurityConfig(
-            allowed_paths=[str(tmp_path), "/tmp/jarvis/"],
+            allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")],
         ),
     )
     ensure_directory_structure(config)

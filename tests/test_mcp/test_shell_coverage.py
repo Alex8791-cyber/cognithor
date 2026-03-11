@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -244,7 +245,7 @@ class TestSandboxLevelExtended:
         """ShellTools mit verschiedenen sandbox_level-Werten initialisieren."""
         for level in ("bare", "process", "jobobject"):
             cfg = MagicMock()
-            cfg.workspace_dir = Path("/tmp/test_workspace")
+            cfg.workspace_dir = Path(tempfile.gettempdir()) / "test_workspace"
             cfg.shell = None
             cfg.sandbox_level = level
             cfg.sandbox_network = "allow"

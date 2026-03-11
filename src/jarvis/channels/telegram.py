@@ -524,7 +524,7 @@ class TelegramChannel(Channel):
             bot = self._app.bot
             await bot.send_chat_action(chat_id=chat_id, action="typing")
         except Exception:
-            pass
+            pass  # Cleanup — typing indicator failure is non-critical
 
     # === Interne Handler ===
 

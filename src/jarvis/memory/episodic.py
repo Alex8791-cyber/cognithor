@@ -124,7 +124,7 @@ class EpisodicMemory:
                 d = date.fromisoformat(f.stem)
                 dates.append(d)
             except ValueError:
-                continue
+                continue  # Filename doesn't match date format, skip
 
         return sorted(dates, reverse=True)
 
@@ -157,11 +157,11 @@ class EpisodicMemory:
             try:
                 d = date.fromisoformat(f.stem)
             except ValueError:
-                continue
+                continue  # Filename doesn't match date format, skip
             if d < threshold:
                 try:
                     f.unlink()
                     deleted += 1
                 except OSError:
-                    pass
+                    pass  # Best-effort deletion, file may be locked
         return deleted

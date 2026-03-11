@@ -11,7 +11,9 @@ import asyncio
 import io
 import math
 import struct
+import tempfile
 import wave
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -136,7 +138,7 @@ class TestSTTEngineAdvanced:
         mock_model.transcribe.return_value = ([seg1, seg2], mock_info)
         engine._model = mock_model
 
-        result = engine._transcribe_sync("/tmp/test.wav")
+        result = engine._transcribe_sync(str(Path(tempfile.gettempdir()) / "test.wav"))
         assert result == "Hello World Goodbye"
 
     @pytest.mark.asyncio

@@ -229,12 +229,16 @@ def _register_system_routes(
 
     @app.post("/api/v1/credentials", dependencies=deps)
     async def store_credential(
-        service: str,
-        key: str,
-        value: str,
-        agent_id: str = "",
+        request: Request,
     ) -> dict[str, Any]:
-        """Speichert ein Credential."""
+        """Speichert ein Credential (Body: service, key, value, agent_id)."""
+        body = await request.json()
+        service = body.get("service", "")
+        key = body.get("key", "")
+        value = body.get("value", "")
+        agent_id = body.get("agent_id", "")
+        if not service or not key or not value:
+            return {"error": "service, key und value sind erforderlich", "status": 400}
         try:
             from jarvis.security.credentials import CredentialStore
 
@@ -546,6 +550,16 @@ def _register_config_routes(
         if gateway is not None and hasattr(gateway, "reload_components"):
             gateway.reload_components(prompts=True, policies=True, core_memory=True, config=True)
         return {"status": "ok", "message": "Konfiguration und Komponenten neu geladen"}
+
+    # -- Locales (available i18n language packs) --
+
+    @app.get("/api/v1/locales", dependencies=deps)
+    async def list_locales() -> dict[str, Any]:
+        """Returns available i18n locales and the currently active one."""
+        from jarvis.i18n import get_available_locales, get_locale
+
+        locales = get_available_locales()
+        return {"locales": locales, "active": get_locale()}
 
     # -- Presets (BEFORE {section} routes to avoid path parameter conflict) --
 
@@ -1295,7 +1309,7 @@ def _register_skill_routes(
         try:
             await router.initialize()
         except Exception:
-            pass
+            pass  # Cleanup — model list refresh failure is non-critical
         models = sorted(router._available_models) if router._available_models else []
         # Also return currently configured models for reference
         cfg = getattr(gateway, "_config", None)
@@ -1529,7 +1543,7 @@ def _register_prometheus_routes(
             if hub is not None:
                 metric_collector = getattr(hub, "metrics", None)
         except Exception:
-            pass
+            pass  # Cleanup — metric collector lookup failure is non-critical
 
         exporter = PrometheusExporter(
             metrics_provider=metrics_provider,
@@ -2173,7 +2187,7 @@ def _register_prompt_evolution_routes(
             try:
                 stats.update(engine.get_stats("system_prompt"))
             except Exception:
-                pass
+                pass  # Cleanup — stats retrieval failure is non-critical
         return stats
 
     @app.post("/api/v1/prompt-evolution/evolve", dependencies=deps)

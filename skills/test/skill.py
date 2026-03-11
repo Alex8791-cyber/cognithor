@@ -12,4 +12,4 @@ class TestSkill(BaseSkill):
 
     async def execute(self, params: dict) -> dict:
         """Hauptlogik."""
-        return {{"status": "ok", "result": "TODO"}}
+        return {"status": "ok", "result": "TODO"}

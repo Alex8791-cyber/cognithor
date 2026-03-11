@@ -384,8 +384,8 @@ class UnifiedLLMClient:
         if self._backend is not None:
             try:
                 await self._backend.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug("backend_close_error", error=str(exc))  # Cleanup — failure is non-critical
         if self._ollama is not None:
             await self._ollama.close()
 

@@ -249,8 +249,10 @@ class TestSystemRoutes:
     @pytest.mark.asyncio
     async def test_store_credential(self, registered_app: FakeApp) -> None:
         handler = registered_app.routes["POST /api/v1/credentials"]
+        fake_request = AsyncMock()
+        fake_request.json = AsyncMock(return_value={"service": "test", "key": "k", "value": "v"})
         with patch("jarvis.channels.config_routes.CredentialStore", create=True):
-            result = await handler(service="test", key="k", value="v")
+            result = await handler(fake_request)
         assert isinstance(result, dict)
 
     @pytest.mark.asyncio

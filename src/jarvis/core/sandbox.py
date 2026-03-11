@@ -34,6 +34,37 @@ log = get_logger(__name__)
 
 MAX_OUTPUT_BYTES = 50_000
 
+# Keys that are safe to pass through from the host environment.
+_SAFE_ENV_KEYS = frozenset({
+    "PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "COMSPEC",
+    "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE",
+    "TERM", "COLORTERM", "SHELL",
+})
+
+
+def _build_sandbox_env(*, working_dir: str = "") -> dict[str, str]:
+    """Build a minimal, safe environment for sandboxed processes.
+
+    Only passes through whitelisted keys from the host environment.
+    Prevents leaking API keys, secrets, and other sensitive env vars.
+    """
+    env: dict[str, str] = {}
+    for key in _SAFE_ENV_KEYS:
+        val = os.environ.get(key)
+        if val is not None:
+            env[key] = val
+    # Ensure HOME is always set
+    env.setdefault("HOME", str(Path.home()))
+    if sys.platform == "win32":
+        # Windows needs SYSTEMROOT for most tools to work
+        env.setdefault("SYSTEMROOT", r"C:\Windows")
+        env.setdefault("COMSPEC", r"C:\Windows\system32\cmd.exe")
+    else:
+        env.setdefault("PATH", "/usr/bin:/bin:/usr/local/bin")
+        env.setdefault("LANG", "de_DE.UTF-8")
+        env.setdefault("LC_ALL", "de_DE.UTF-8")
+    return env
+
 
 # ============================================================================
 # Konfiguration
@@ -307,13 +338,7 @@ class WindowsJobObjectSandbox:
     - Kill-on-Close: Alle Prozesse werden beendet wenn der Job geschlossen wird
     """
 
-    # Win32 Constants
-    JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x00000100
-    JOB_OBJECT_LIMIT_JOB_TIME = 0x00000004
-    JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x00000008
-    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
-    JobObjectExtendedLimitInformation = 9
-    PROCESS_ALL_ACCESS = 0x001F0FFF
+    # Win32 Constants — imported at method level from jarvis.utils.win32_job
 
     def __init__(self, config: SandboxConfig) -> None:
         self._config = config
@@ -346,42 +371,15 @@ class WindowsJobObjectSandbox:
             SandboxResult mit Ausführungsergebnis.
         """
         import ctypes
-        import ctypes.wintypes
-
-        # ----- ctypes Strukturen (lokal definiert, nur auf Windows) -----
-
-        class IO_COUNTERS(ctypes.Structure):
-            _fields_ = [
-                ("ReadOperationCount", ctypes.c_ulonglong),
-                ("WriteOperationCount", ctypes.c_ulonglong),
-                ("OtherOperationCount", ctypes.c_ulonglong),
-                ("ReadTransferCount", ctypes.c_ulonglong),
-                ("WriteTransferCount", ctypes.c_ulonglong),
-                ("OtherTransferCount", ctypes.c_ulonglong),
-            ]
-
-        class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
-            _fields_ = [
-                ("PerProcessUserTimeLimit", ctypes.c_int64),
-                ("PerJobUserTimeLimit", ctypes.c_int64),
-                ("LimitFlags", ctypes.wintypes.DWORD),
-                ("MinimumWorkingSetSize", ctypes.c_size_t),
-                ("MaximumWorkingSetSize", ctypes.c_size_t),
-                ("ActiveProcessLimit", ctypes.wintypes.DWORD),
-                ("Affinity", ctypes.POINTER(ctypes.c_ulong)),
-                ("PriorityClass", ctypes.wintypes.DWORD),
-                ("SchedulingClass", ctypes.wintypes.DWORD),
-            ]
-
-        class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
-            _fields_ = [
-                ("BasicLimitInformation", JOBOBJECT_BASIC_LIMIT_INFORMATION),
-                ("IoInfo", IO_COUNTERS),
-                ("ProcessMemoryLimit", ctypes.c_size_t),
-                ("JobMemoryLimit", ctypes.c_size_t),
-                ("PeakProcessMemoryUsed", ctypes.c_size_t),
-                ("PeakJobMemoryUsed", ctypes.c_size_t),
-            ]
+        from jarvis.utils.win32_job import (
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+            JOB_OBJECT_LIMIT_ACTIVE_PROCESS,
+            JOB_OBJECT_LIMIT_JOB_TIME,
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+            JOB_OBJECT_LIMIT_PROCESS_MEMORY,
+            JobObjectExtendedLimitInformation,
+            PROCESS_ALL_ACCESS,
+        )
 
         kernel32 = ctypes.windll.kernel32
         job_handle = None
@@ -400,10 +398,10 @@ class WindowsJobObjectSandbox:
             # 2. Limits konfigurieren
             info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
             info.BasicLimitInformation.LimitFlags = (
-                self.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-                | self.JOB_OBJECT_LIMIT_PROCESS_MEMORY
-                | self.JOB_OBJECT_LIMIT_ACTIVE_PROCESS
-                | self.JOB_OBJECT_LIMIT_JOB_TIME
+                JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+                | JOB_OBJECT_LIMIT_JOB_TIME
             )
 
             # Memory-Limit (Bytes)
@@ -418,7 +416,7 @@ class WindowsJobObjectSandbox:
             # 3. Limits auf Job setzen
             success = kernel32.SetInformationJobObject(
                 job_handle,
-                self.JobObjectExtendedLimitInformation,
+                JobObjectExtendedLimitInformation,
                 ctypes.byref(info),
                 ctypes.sizeof(info),
             )
@@ -430,14 +428,10 @@ class WindowsJobObjectSandbox:
                     exit_code=-1,
                 )
 
-            # 4. Subprocess starten (exec statt shell, um Injection zu vermeiden)
-            env = {
-                **os.environ,
-                "HOME": str(Path.home()),
-                "PATH": os.environ.get("PATH", ""),
-            }
+            # 4. Subprocess starten mit minimaler Umgebung
+            env = _build_sandbox_env(working_dir=working_dir)
 
-            # Windows: cmd.exe /S /c "..." für Shell-Features + korrekte Quotes
+            # Windows: cmd.exe /c für Shell-Features (Pipes, Redirects)
             exec_args = ["cmd.exe", "/c", command]
 
             proc = await asyncio.create_subprocess_exec(
@@ -449,7 +443,7 @@ class WindowsJobObjectSandbox:
             )
 
             # 5. Prozess-Handle holen und dem Job zuweisen
-            proc_handle = kernel32.OpenProcess(self.PROCESS_ALL_ACCESS, False, proc.pid)
+            proc_handle = kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, proc.pid)
             if proc_handle:
                 kernel32.AssignProcessToJobObject(job_handle, proc_handle)
             else:
@@ -791,17 +785,9 @@ class SandboxExecutor:
         """Bare-Ausführung ohne Sandbox (Fallback)."""
         log.warning("bare_exec_no_sandbox", command=command[:200], cwd=cwd)
 
-        env = {
-            **os.environ,
-            "HOME": str(Path.home()),
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin" if sys.platform != "win32" else ""),
-        }
-        if sys.platform != "win32":
-            env["LANG"] = "de_DE.UTF-8"
-            env["LC_ALL"] = "de_DE.UTF-8"
+        env = _build_sandbox_env(working_dir=cwd)
 
         try:
-            # Exec statt Shell um Injection zu vermeiden.
             # Shell-Features (Pipes, Redirects) werden über sh -c / cmd /c bereitgestellt.
             if sys.platform == "win32":
                 exec_args = ["cmd.exe", "/c", command]

@@ -7,6 +7,8 @@ angebunden ist – lückenlos von Eingang (User-Input) bis Ausgang (Response).
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -237,7 +239,7 @@ class TestReflectorAuditIntegration:
                 ActionPlan(
                     goal="test",
                     reasoning="test reasoning",
-                    steps=[_PA(tool="read_file", params={"path": "/tmp/x"})],
+                    steps=[_PA(tool="read_file", params={"path": os.path.join(tempfile.gettempdir(), "x")})],
                 )
             ],
         )

@@ -63,7 +63,7 @@ def detect_uv() -> InstallerInfo | None:
                 version=version or "unknown",
             )
     except Exception:
-        pass
+        pass  # Cleanup — uv detection failure is non-critical
     return None
 
 
@@ -86,7 +86,7 @@ def detect_pip() -> InstallerInfo | None:
                 version=version,
             )
     except Exception:
-        pass
+        pass  # Cleanup — pip detection failure is non-critical
     return None
 
 

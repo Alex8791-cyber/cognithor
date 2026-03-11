@@ -8,4 +8,4 @@ class BackupSkill(BaseSkill):
     CRON = "0 * * * *"  # Stündlich
 
     async def execute(self, params: dict) -> dict:
-        return {{"status": "ok", "automated": True}}
+        return {"status": "ok", "automated": True}

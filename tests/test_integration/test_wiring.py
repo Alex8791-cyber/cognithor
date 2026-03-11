@@ -7,6 +7,7 @@ sondern auch tatsächlich im Executor/AgentRouter/CronEngine verdrahtet sind.
 from __future__ import annotations
 
 import asyncio
+import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -46,7 +47,7 @@ def runtime_monitor() -> RuntimeMonitor:
 @pytest.fixture
 def mock_config() -> MagicMock:
     config = MagicMock()
-    config.jarvis_home = Path("/tmp/jarvis_test")
+    config.jarvis_home = Path(tempfile.gettempdir()) / "jarvis_test"
     config.executor = None  # Defaults statt MagicMock-Attribute
     return config
 

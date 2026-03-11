@@ -197,6 +197,7 @@ class ActionPlan(BaseModel, frozen=True):
     memory_context: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     iteration: int = Field(default=0, ge=0)
+    parse_failed: bool = Field(default=False)
 
     @property
     def is_direct_response(self) -> bool:

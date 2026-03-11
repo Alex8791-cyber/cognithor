@@ -259,8 +259,8 @@ class HybridSearch:
                     w_graph = opt_weights.get("graph", w_graph)
                 else:
                     w_vector, w_bm25, w_graph = opt_weights
-            except Exception:
-                pass  # Fallback auf vorherige Gewichte
+            except Exception as exc:
+                logger.debug("Dynamische Gewichtung fehlgeschlagen (Fallback): %s", exc)
 
         # Batch-Fetch aller Chunks (1 Query statt N+1)
         all_chunk_ids = list(scores.keys())

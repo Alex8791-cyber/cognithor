@@ -105,6 +105,7 @@ _EDITABLE_SECTIONS = frozenset(
 _EDITABLE_TOP_LEVEL = frozenset(
     {
         "owner_name",
+        "language",
         "llm_backend_type",
         "operation_mode",
         "cost_tracking_enabled",

@@ -7,13 +7,15 @@ import { I } from "../utils/icons";
  */
 const FIELD_INDEX = [
   // General
-  { page: "general", terms: ["besitzer", "owner", "name", "betriebsmodus", "operation", "mode", "version", "kosten", "cost", "budget", "dashboard", "port"] },
+  { page: "general", terms: ["besitzer", "owner", "name", "betriebsmodus", "operation", "mode", "version", "kosten", "cost", "budget", "dashboard", "port", "sprache", "language", "locale", "deutsch", "english", "i18n"] },
   // Providers
   { page: "providers", terms: ["provider", "backend", "ollama", "openai", "anthropic", "claude", "gemini", "groq", "deepseek", "mistral", "together", "openrouter", "xai", "grok", "cerebras", "github", "bedrock", "huggingface", "moonshot", "api key", "base url"] },
   // Models
   { page: "models", terms: ["modell", "model", "planner", "executor", "coder", "embedding", "context window", "vram", "temperature", "top p", "speed", "vision", "skill override"] },
   // PGE Trinity
-  { page: "planner", terms: ["pge", "trinity", "planner", "gatekeeper", "executor", "sandbox", "iteration", "eskalation", "escalation", "risk", "risiko", "policies", "timeout", "memory", "cpu", "netzwerk", "network"] },
+  { page: "planner", terms: ["pge", "trinity", "planner", "gatekeeper", "sandbox", "iteration", "eskalation", "escalation", "risk", "risiko", "policies", "timeout", "memory", "cpu", "netzwerk", "network"] },
+  // Executor
+  { page: "executor", terms: ["executor", "timeout", "retry", "retries", "backoff", "parallel", "dag", "tool", "bildanalyse", "image", "audio", "transkription", "tts", "python", "llm timeout"] },
   // Memory
   { page: "memory", terms: ["memory", "chunk", "overlap", "search", "top-k", "vector", "bm25", "graph", "gewichtung", "weight", "recency", "compaction", "episodic", "retention"] },
   // Channels
@@ -21,7 +23,7 @@ const FIELD_INDEX = [
   // Security
   { page: "security", terms: ["sicherheit", "security", "iteration", "pfad", "path", "blockiert", "blocked", "command", "befehl", "credential", "pattern", "regex"] },
   // Web
-  { page: "web", terms: ["web", "suche", "search", "searxng", "brave", "duckduckgo", "ddg"] },
+  { page: "web", terms: ["web", "suche", "search", "searxng", "brave", "duckduckgo", "ddg", "fetch", "http", "request"] },
   // MCP
   { page: "mcp", terms: ["mcp", "a2a", "agent", "protocol", "server", "stdio", "http", "auth", "token", "tool", "resource", "prompt", "sampling", "remote"] },
   // Cron
@@ -36,6 +38,10 @@ const FIELD_INDEX = [
   { page: "agents", terms: ["agent", "multi-agent", "routing", "trigger", "keyword", "pattern", "priorität", "priority", "modell", "model", "sprache", "language"] },
   // Bindings
   { page: "bindings", terms: ["binding", "routing", "regel", "rule", "command", "prefix", "pattern", "ziel", "target"] },
+  // Workflows
+  { page: "workflows", terms: ["workflow", "dag", "graph", "ablauf", "prozess", "process", "automation"] },
+  // Knowledge Graph
+  { page: "knowledge-graph", terms: ["wissensgraph", "knowledge", "graph", "entity", "relation", "entität", "beziehung", "ontologie"] },
   // System
   { page: "system", terms: ["system", "neustart", "restart", "export", "import", "preset", "minimal", "standard", "vollausbau", "full", "info", "version"] },
 ];
@@ -45,6 +51,7 @@ const PAGE_LABELS = {
   providers: "LLM Provider",
   models: "Modelle",
   planner: "PGE Trinity",
+  executor: "Executor",
   memory: "Memory",
   channels: "Channels",
   security: "Sicherheit",
@@ -56,6 +63,8 @@ const PAGE_LABELS = {
   prompts: "Prompts & Policies",
   agents: "Agenten",
   bindings: "Bindings",
+  workflows: "Workflows",
+  "knowledge-graph": "Wissensgraph",
   system: "System",
 };
 

@@ -454,8 +454,24 @@ class WhatsAppChannel(Channel):
                 await self._send_text(from_number, friendly)
 
     async def _handle_button_response(self, from_number: str, button_id: str) -> None:
-        """Verarbeitet Button-Antworten fuer Approval-Workflows."""
+        """Verarbeitet Button-Antworten fuer Approval-Workflows.
+
+        Nur die Nummer, die die Aktion urspruenglich ausgeloest hat,
+        darf genehmigen oder ablehnen.
+        """
         session_id = self._sessions.get(from_number, "")
+        if not session_id:
+            logger.warning("WhatsApp: Button-Antwort von unbekannter Nummer %s", from_number)
+            return
+        # Verify: Only the phone number that owns this session can approve
+        expected_phone = self._phone_for_session(session_id)
+        if expected_phone and expected_phone != from_number:
+            logger.warning(
+                "WhatsApp: Approval von fremder Nummer ignoriert: %s (erwartet: %s)",
+                from_number,
+                expected_phone,
+            )
+            return
         future = self._pending_approvals.pop(session_id, None)
         if future and not future.done():
             approved = button_id.startswith("approve")

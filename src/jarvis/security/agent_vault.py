@@ -18,6 +18,7 @@ import base64
 import hashlib
 import os
 import secrets
+import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -557,11 +558,24 @@ def _load_or_create_master_secret(path: str | None = None) -> bytes:
     master = os.urandom(32)
     key_file.parent.mkdir(parents=True, exist_ok=True)
     key_file.write_bytes(master)
-    # Restrict permissions: owner-only on Unix, default ACL on Windows.
+    # Restrict permissions: owner-only read/write.
     try:
         key_file.chmod(0o600)
     except OSError:
-        pass  # Windows: ACL-based, chmod not fully supported
+        pass
+    # On Windows, restrict ACL to current user only.
+    if sys.platform == "win32":
+        try:
+            import subprocess
+            username = os.environ.get("USERNAME", "")
+            if username:
+                subprocess.run(
+                    ["icacls", str(key_file), "/inheritance:r",
+                     "/grant:r", f"{username}:(R,W)"],
+                    capture_output=True, timeout=10,
+                )
+        except Exception:
+            pass  # Best-effort ACL restriction
     return master
 
 

@@ -12,9 +12,18 @@ from typing import TYPE_CHECKING
 import pytest
 
 from jarvis.config import JarvisConfig, ensure_directory_structure
+from jarvis.i18n import set_locale
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@pytest.fixture(autouse=True)
+def _set_test_locale():
+    """Ensure all tests run with German locale (backwards compatibility)."""
+    set_locale("de")
+    yield
+    set_locale("de")
 
 
 @pytest.fixture

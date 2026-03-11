@@ -5,6 +5,29 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.33.0-beta] – 2026-03-11
+
+### Added
+- **i18n Language Pack System**: JSON-based internationalization with dot-notation keys (`t("error.timeout")`), SHA-256 integrity verification, thread-safe locale switching, fallback chain (locale → EN → raw key). Ships with German and English packs (~250 keys each). New module: `src/jarvis/i18n/`
+- **Language Switcher in UI**: Control Center header quick-toggle button (DE/EN) + General page dropdown. Language changes are live via `reload_components(config=True)` — no restart needed
+- **Locales API Endpoint**: `GET /api/v1/locales` returns available language packs and active locale
+- **English locale tests**: New test class `TestEnglishLocale` validates error messages in both locales
+
+### Fixed
+- **Planner JSON Parse Retry** (critical): When the LLM returns malformed JSON, the planner now detects the failure (via `parse_failed` flag on `ActionPlan`), automatically retries with a format hint and lower temperature, and provides a clear error message to the user if both attempts fail. Previously, malformed JSON was silently converted to a direct response ("task failed successfully")
+- **LLM Timeout Wiring**: `embed()` and `embed_batch()` in `model_router.py` now use `self._timeout` from config instead of hardcoded 30s/60s. LLM timeout field added to Executor page in UI (visible for all backends, not just Ollama)
+- **WebSocket Race Condition** (critical): New `_ws_safe_send()` helper wraps all 12 `websocket.send_json()` calls in `__main__.py`. Returns `False` on disconnection errors, breaking the message loop cleanly instead of crashing with "Cannot call 'send'"
+- **GlobalSearch "Einstellung suchen"** (broken since v29): Added 3 missing pages to `FIELD_INDEX` and `PAGE_LABELS` in `GlobalSearch.jsx`: Executor, Workflows, Knowledge Graph. Search now finds all 19 config pages
+- **Pre-existing `_validate_url` async bug**: Fixed 14 test methods in `test_web.py` and `test_web_coverage.py` that called `async _validate_url()` without `await`
+- **German umlaut encoding in de.json**: Replaced ASCII-safe substitutions (ue/oe/ae) with proper UTF-8 characters (ü/ö/ä) across ~80 occurrences
+
+### Changed
+- `ActionPlan` model: New `parse_failed: bool` field (default `False`)
+- `config_manager.py`: Added `language` to `_EDITABLE_TOP_LEVEL` set
+- `gateway.py`: `reload_components(config=True)` now calls `set_locale()` for live language switching
+- `conftest.py`: Global `set_locale("de")` autouse fixture for test backwards compatibility
+- Test count: 10,165 → **10,208** (43 new tests)
+
 ## [0.30.0] – 2026-03-08
 
 ### Added

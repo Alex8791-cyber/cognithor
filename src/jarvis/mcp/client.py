@@ -248,7 +248,7 @@ class JarvisMCPClient:
                     try:
                         await server.session.__aexit__(None, None, None)
                     except Exception:
-                        pass
+                        pass  # Cleanup — session close failure is non-critical
                     server.session = None
                 # Close stdio streams context manager
                 if server.read_stream is not None:
@@ -257,14 +257,14 @@ class JarvisMCPClient:
                         if hasattr(server.read_stream, "aclose"):
                             await server.read_stream.aclose()
                     except Exception:
-                        pass
+                        pass  # Cleanup — stream close failure is non-critical
                     server.read_stream = None
                 if server.write_stream is not None:
                     try:
                         if hasattr(server.write_stream, "aclose"):
                             await server.write_stream.aclose()
                     except Exception:
-                        pass
+                        pass  # Cleanup — stream close failure is non-critical
                     server.write_stream = None
                 # Terminate subprocess
                 if server.process and server.process.returncode is None:

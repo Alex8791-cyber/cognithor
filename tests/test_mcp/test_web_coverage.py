@@ -175,12 +175,12 @@ class TestDomainFiltering:
 
 
 class TestValidateUrlDns:
-    def test_dns_cache_hit(self, web: WebTools) -> None:
+    async def test_dns_cache_hit(self, web: WebTools) -> None:
         web._dns_cache.set("example.com", ["93.184.216.34"])
-        result = web._validate_url("https://example.com/page")
+        result = await web._validate_url("https://example.com/page")
         assert result == "https://example.com/page"
 
-    def test_dns_cache_hit_with_blocked_ip_invalidates(self, web: WebTools) -> None:
+    async def test_dns_cache_hit_with_blocked_ip_invalidates(self, web: WebTools) -> None:
         import socket
 
         web._dns_cache.set("tricky.com", ["127.0.0.1"])
@@ -192,16 +192,16 @@ class TestValidateUrlDns:
             ],
         ):
             with pytest.raises(WebError, match="blockierte Adresse"):
-                web._validate_url("https://tricky.com/page")
+                await web._validate_url("https://tricky.com/page")
 
-    def test_dns_resolution_failure(self, web: WebTools) -> None:
+    async def test_dns_resolution_failure(self, web: WebTools) -> None:
         import socket
 
         with patch("socket.getaddrinfo", side_effect=socket.gaierror("No such host")):
             with pytest.raises(WebError, match="DNS-Aufloesung fehlgeschlagen"):
-                web._validate_url("https://nonexistent.example.invalid/page")
+                await web._validate_url("https://nonexistent.example.invalid/page")
 
-    def test_dns_resolves_to_private_ip(self, web: WebTools) -> None:
+    async def test_dns_resolves_to_private_ip(self, web: WebTools) -> None:
         import socket
 
         with patch(
@@ -211,7 +211,7 @@ class TestValidateUrlDns:
             ],
         ):
             with pytest.raises(WebError, match="blockierte Adresse"):
-                web._validate_url("https://sneaky.com/page")
+                await web._validate_url("https://sneaky.com/page")
 
 
 # ============================================================================

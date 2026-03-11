@@ -216,7 +216,10 @@ class RegistrySync:
         Erstellt eine ``.recalled``-Datei im Skill-Verzeichnis.
         Die SkillRegistry laedt recalled Skills nicht.
         """
-        skill_dir = self._community_dir / skill_name
+        skill_dir = (self._community_dir / skill_name).resolve()
+        if not skill_dir.is_relative_to(self._community_dir.resolve()):
+            log.error("path_traversal_blocked", skill_name=skill_name)
+            return
         if skill_dir.exists():
             recall_marker = skill_dir / ".recalled"
             try:

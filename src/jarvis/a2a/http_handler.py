@@ -312,7 +312,7 @@ class A2AHTTPHandler:
                 writer.write(header + body_bytes)
                 await writer.drain()
             except Exception:
-                pass
+                pass  # Cleanup — error response send failure is non-critical
             finally:
                 writer.close()
 

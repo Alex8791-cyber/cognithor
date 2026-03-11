@@ -11,5 +11,5 @@ class GmailSyncSkill(BaseSkill):
 
     async def execute(self, params: dict) -> dict:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{{self.API_BASE}}/endpoint")
-            return {{"data": resp.json()}}
+            resp = await client.get(f"{self.API_BASE}/endpoint")
+            return {"data": resp.json()}

@@ -166,7 +166,7 @@ class CodeTools:
                 if temp_path.exists():
                     temp_path.unlink()
             except OSError:
-                pass
+                pass  # Best-effort temp file cleanup, non-critical
 
     async def analyze_code(
         self,
@@ -240,7 +240,7 @@ class CodeTools:
                         if tmp.exists():
                             tmp.unlink()
                     except OSError:
-                        pass
+                        pass  # Best-effort temp file cleanup, non-critical
 
         # 2. Security-Analyse
         from jarvis.security.code_audit import CodeAuditor

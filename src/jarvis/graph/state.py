@@ -218,8 +218,8 @@ class StateManager:
                 if data.get("execution_id") == execution_id:
                     cp = Checkpoint.from_dict(data)
                     self._checkpoints[cp.checkpoint_id] = cp
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug("checkpoint_load_error", path=str(path), error=str(exc))
 
     # ── Cleanup ──────────────────────────────────────────────────
 

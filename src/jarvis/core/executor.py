@@ -191,7 +191,7 @@ class Executor:
             try:
                 token.var.reset(token)
             except ValueError:
-                pass
+                pass  # Token already reset or from different context, safe to ignore
         self._ctx_tokens = []
 
     async def execute(
@@ -358,7 +358,12 @@ class Executor:
                 error_type="NoMCPClient",
             )
 
-        timeout = params.pop("_timeout", self._tool_timeouts.get(tool_name, self._default_timeout))
+        _MAX_TIMEOUT = 300  # Hard ceiling: 5 minutes, regardless of LLM request
+        raw_timeout = params.pop("_timeout", self._tool_timeouts.get(tool_name, self._default_timeout))
+        try:
+            timeout = min(int(raw_timeout), _MAX_TIMEOUT)
+        except (TypeError, ValueError):
+            timeout = self._default_timeout
 
         # --- Agent-Kontext in Tool-Params injizieren ---
         if _agent_workspace_var.get() and tool_name in self.WORKSPACE_TOOLS:
@@ -449,8 +454,8 @@ class Executor:
                             success=not is_error,
                             session_id=_session_id_var.get(),
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        log.debug("profiler_record_error", error=str(exc))
                 # Audit: Erfolgreiche Tool-Ausführung protokollieren
                 if self._audit_logger:
                     self._audit_logger.log_tool_call(
@@ -483,8 +488,8 @@ class Executor:
                         error_type=last_error_type,
                         session_id=_session_id_var.get(),
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    log.debug("profiler_record_error", error=str(exc))
 
             # Error-Clustering
             if self._error_clusterer:
@@ -494,8 +499,8 @@ class Executor:
                         last_error,
                         f"tool={tool_name}",
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    log.debug("error_clusterer_error", error=str(exc))
 
             # Retry-Entscheidung
             if last_error_type not in self.RETRYABLE_ERRORS:
@@ -551,8 +556,8 @@ class Executor:
                             "retrying",
                             f"Versuch {attempt + 1} von {self._max_retries}...",
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        log.debug("status_callback_error", error=str(exc))
                 await asyncio.sleep(delay)
 
         # Alle Retries erschöpft

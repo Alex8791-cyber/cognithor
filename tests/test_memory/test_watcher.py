@@ -11,6 +11,16 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _wait_for(predicate, timeout=3.0, interval=0.05):
+    """Poll until predicate() is truthy or timeout is reached."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(interval)
+    return predicate()
+
+
 class TestMemoryFileHandler:
     def test_ignores_non_markdown(self):
         calls: list[str] = []
@@ -101,10 +111,10 @@ class TestMemoryWatcher:
         )
         watcher.start()
 
-        # Create a new file
-        time.sleep(0.3)
+        # Let watcher establish baseline
+        time.sleep(0.2)
         (tmp_path / "new.md").write_text("Hello", encoding="utf-8")
-        time.sleep(1.0)
+        assert _wait_for(lambda: len(changed_files) >= 1, timeout=3.0)
 
         watcher.stop()
         assert len(changed_files) >= 1
@@ -122,12 +132,11 @@ class TestMemoryWatcher:
             debounce_seconds=0.0,
         )
         watcher.start()
-        time.sleep(0.3)
 
-        # Modify the file (ensure mtime changes)
-        time.sleep(0.1)
+        # Let watcher establish baseline, then modify
+        time.sleep(0.2)
         test_file.write_text("Version 2", encoding="utf-8")
-        time.sleep(1.0)
+        assert _wait_for(lambda: len(changed_files) >= 1, timeout=3.0)
 
         watcher.stop()
         assert len(changed_files) >= 1

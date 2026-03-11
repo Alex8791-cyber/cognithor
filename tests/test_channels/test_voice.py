@@ -7,7 +7,9 @@ und den VoiceChannel selbst.
 from __future__ import annotations
 
 import io
+import os
 import struct
+import tempfile
 import wave
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -480,7 +482,7 @@ class TestVoiceApproval:
         ):
             action = PlannedAction(
                 tool="file_delete",
-                params={"path": "/tmp/x"},
+                params={"path": os.path.join(tempfile.gettempdir(), "x")},
                 rationale="Cleanup",
             )
             result = await channel.request_approval("v1", action, "Datei löschen")

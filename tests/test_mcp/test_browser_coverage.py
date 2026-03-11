@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -156,7 +157,7 @@ class TestScreenshot:
         mock_page = AsyncMock()
         mock_page.screenshot = AsyncMock(side_effect=RuntimeError("fail"))
         tool._page = mock_page
-        result = await tool.screenshot(path="/tmp/test.png")
+        result = await tool.screenshot(path=str(Path(tempfile.gettempdir()) / "test.png"))
         assert not result.success
 
 

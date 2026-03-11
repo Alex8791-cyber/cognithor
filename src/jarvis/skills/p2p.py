@@ -502,7 +502,7 @@ class ReputationTracker:
         """Prüft ob ein Entity (Peer/Paket) vertrauenswürdig ist."""
         profile = self._profiles.get(entity_id)
         if not profile:
-            return True  # Unbekannt = neutral
+            return False  # Unbekannt = nicht vertrauenswürdig
         return not profile.quarantined and profile.score >= 0
 
     def is_quarantined(self, entity_id: str) -> bool:

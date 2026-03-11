@@ -178,7 +178,7 @@ class IMessageChannel(Channel):
             try:
                 await self._poll_task
             except asyncio.CancelledError:
-                pass
+                pass  # Expected: we just cancelled this task
             self._poll_task = None
 
         # Pending approvals abbrechen
@@ -610,5 +610,20 @@ def _split_message(text: str) -> list[str]:
 
 
 def _escape_applescript(text: str) -> str:
-    """Escaped einen String fuer die Verwendung in AppleScript."""
-    return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    """Escaped einen String fuer die Verwendung in AppleScript.
+
+    Strips control characters (incl. NULL bytes) that could cause truncation
+    or undefined behaviour in osascript, then escapes backslashes and quotes
+    so the value is safe inside a double-quoted AppleScript string literal.
+    """
+    # Remove NULL bytes and control chars except \n \r \t (which are escaped below)
+    cleaned = "".join(
+        ch for ch in text if ch in ("\n", "\r", "\t") or ord(ch) >= 0x20
+    )
+    return (
+        cleaned.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+        .replace("\n", "\\n")
+    )

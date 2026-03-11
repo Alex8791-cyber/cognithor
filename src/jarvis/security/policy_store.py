@@ -409,6 +409,6 @@ class PolicyStore:
             data = yaml.safe_load(path.read_text(encoding="utf-8"))
             if isinstance(data, dict) and "rules" in data:
                 return data["rules"]
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("policy_rules_load_error", path=str(path), error=str(exc))
         return []
