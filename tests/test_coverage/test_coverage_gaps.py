@@ -606,7 +606,11 @@ class TestGatewayIntegration:
             ToolResult(tool_name="read_file", content="Inhalt XYZ", success=True)
         ]
 
-        msg = IncomingMessage(channel="cli", user_id="alex", text=f"Lies {os.path.join(tempfile.gettempdir(), 'test')}")
+        msg = IncomingMessage(
+            channel="cli",
+            user_id="alex",
+            text=f"Lies {os.path.join(tempfile.gettempdir(), 'test')}",
+        )
         response = await gateway.handle_message(msg)
 
         assert "Inhalt XYZ" in response.text

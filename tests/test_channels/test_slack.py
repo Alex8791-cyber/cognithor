@@ -244,7 +244,9 @@ class TestSlackApproval:
     async def test_approval_returns_false_without_bidirectional(self, slack: SlackChannel) -> None:
         """Ohne Socket Mode ist Approval nicht möglich."""
         slack._bidirectional = False
-        action = PlannedAction(tool="delete_file", params={"path": os.path.join(tempfile.gettempdir(), "x")})
+        action = PlannedAction(
+            tool="delete_file", params={"path": os.path.join(tempfile.gettempdir(), "x")}
+        )
         result = await slack.request_approval("s1", action, "Gefährlich")
         assert result is False
 
@@ -254,7 +256,9 @@ class TestSlackApproval:
         slack._bidirectional = True
         slack._client = AsyncMock()
 
-        action = PlannedAction(tool="delete_file", params={"path": os.path.join(tempfile.gettempdir(), "x")})
+        action = PlannedAction(
+            tool="delete_file", params={"path": os.path.join(tempfile.gettempdir(), "x")}
+        )
 
         # Simuliere sofortige Genehmigung
         async def resolve_approval() -> None:

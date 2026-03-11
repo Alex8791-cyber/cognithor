@@ -757,6 +757,7 @@ class Gateway:
             try:
                 import os
                 from jarvis.i18n import set_locale
+
                 _lang = (
                     os.environ.get("JARVIS_LANGUAGE")
                     or os.environ.get("COGNITHOR_LANGUAGE")

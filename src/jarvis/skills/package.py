@@ -279,6 +279,7 @@ class PackageSigner:
         instance._algorithm = "ed25519"
 
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
         pub_bytes = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
         instance._signer_id = signer_id or hashlib.sha256(pub_bytes).hexdigest()[:16]
         return instance
@@ -299,6 +300,7 @@ class PackageSigner:
         instance._algorithm = "ed25519"
 
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
         pub_bytes = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
         instance._signer_id = signer_id or hashlib.sha256(pub_bytes).hexdigest()[:16]
         return instance
@@ -318,6 +320,7 @@ class PackageSigner:
         instance._algorithm = "ed25519"
 
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
         pub_bytes = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
         instance._signer_id = signer_id or hashlib.sha256(pub_bytes).hexdigest()[:16]
         return instance
@@ -332,6 +335,7 @@ class PackageSigner:
         if self._ed25519_public is None:
             return ""
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
         return self._ed25519_public.public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
 
     def sign(self, content: bytes) -> PackageSignature:
@@ -392,6 +396,7 @@ class PackageSigner:
                 logger.warning("HMAC-Verifikation angefragt, aber kein HMAC-Key vorhanden")
                 return False
             import hmac as hmac_mod
+
             expected = hmac_mod.new(
                 self._hmac_key.encode(),
                 content,

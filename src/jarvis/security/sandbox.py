@@ -698,6 +698,7 @@ class Sandbox:
             JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
             JOB_OBJECT_LIMIT_PROCESS_MEMORY,
             JobObjectExtendedLimitInformation,
+            PROCESS_ALL_ACCESS,
         )
 
         kernel32 = ctypes.windll.kernel32

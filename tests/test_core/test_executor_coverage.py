@@ -614,6 +614,8 @@ class TestWorkspaceInjection:
             # Verify the working_dir was injected into the call params
             call_args = mock_mcp.call_tool.call_args
             passed_params = call_args[0][1]
-            assert passed_params.get("working_dir") == str(Path(tempfile.gettempdir()) / "agent_workspace")
+            assert passed_params.get("working_dir") == str(
+                Path(tempfile.gettempdir()) / "agent_workspace"
+            )
         finally:
             exec_ws.clear_agent_context()

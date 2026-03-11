@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-from pathlib import Path
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 from jarvis import __version__
@@ -129,7 +129,10 @@ def main() -> None:
 
     # 1.1 i18n: Set locale from config (or JARVIS_LANGUAGE env var)
     from jarvis.i18n import set_locale
-    _lang = os.environ.get("JARVIS_LANGUAGE") or os.environ.get("COGNITHOR_LANGUAGE") or config.language
+
+    _lang = (
+        os.environ.get("JARVIS_LANGUAGE") or os.environ.get("COGNITHOR_LANGUAGE") or config.language
+    )
     set_locale(_lang)
 
     # 1.5 Lite-Modus: kleinere Modelle fuer niedrigen VRAM-Verbrauch
@@ -406,7 +409,8 @@ def main() -> None:
 
                         if skills_router is not None:
                             api_app.include_router(
-                                skills_router, dependencies=_skills_auth_deps,
+                                skills_router,
+                                dependencies=_skills_auth_deps,
                             )
                             log.info("skills_marketplace_api_registered")
                     except Exception as _skills_exc:
@@ -420,7 +424,8 @@ def main() -> None:
 
                         if community_router is not None:
                             api_app.include_router(
-                                community_router, dependencies=_skills_auth_deps,
+                                community_router,
+                                dependencies=_skills_auth_deps,
                             )
                             log.info("community_marketplace_api_registered")
                         else:
@@ -501,7 +506,9 @@ def main() -> None:
                             try:
                                 msg = _json.loads(raw)
                             except _json.JSONDecodeError:
-                                if not await _ws_safe_send(websocket, {"type": "error", "error": "Ungültiges JSON"}):
+                                if not await _ws_safe_send(
+                                    websocket, {"type": "error", "error": "Ungültiges JSON"}
+                                ):
                                     break
                                 continue
 
@@ -516,7 +523,9 @@ def main() -> None:
                                 text = (msg.get("text") or "").strip()
                                 metadata = msg.get("metadata", {})
                                 if not text:
-                                    if not await _ws_safe_send(websocket, {"type": "error", "error": "Leere Nachricht"}):
+                                    if not await _ws_safe_send(
+                                        websocket, {"type": "error", "error": "Leere Nachricht"}
+                                    ):
                                         break
                                     continue
 
@@ -534,10 +543,13 @@ def main() -> None:
                                     _MAX_AUDIO_B64_BYTES = 52_428_800  # 50 MB
                                     estimated_size = len(audio_b64) * 3 // 4
                                     if estimated_size > _MAX_AUDIO_B64_BYTES:
-                                        if not await _ws_safe_send(websocket, {
-                                            "type": "error",
-                                            "error": f"Audiodatei zu gross ({estimated_size // 1_048_576} MB, max {_MAX_AUDIO_B64_BYTES // 1_048_576} MB)",
-                                        }):
+                                        if not await _ws_safe_send(
+                                            websocket,
+                                            {
+                                                "type": "error",
+                                                "error": f"Audiodatei zu gross ({estimated_size // 1_048_576} MB, max {_MAX_AUDIO_B64_BYTES // 1_048_576} MB)",
+                                            },
+                                        ):
                                             break
                                         continue
                                     audio_type = (
@@ -574,31 +586,40 @@ def main() -> None:
                                             metadata.pop("audio_base64", None)
                                             metadata.pop("file_base64", None)
                                             metadata["transcribed_from"] = "audio"
-                                            if not await _ws_safe_send(websocket, {
-                                                "type": "transcription",
-                                                "text": text,
-                                                "session_id": session_id,
-                                            }):
+                                            if not await _ws_safe_send(
+                                                websocket,
+                                                {
+                                                    "type": "transcription",
+                                                    "text": text,
+                                                    "session_id": session_id,
+                                                },
+                                            ):
                                                 break
                                         else:
                                             log.warning(
                                                 "ws_audio_transcription_failed",
                                                 error=getattr(result, "error", ""),
                                             )
-                                            if not await _ws_safe_send(websocket, {
-                                                "type": "error",
-                                                "error": "Audiodatei konnte nicht transkribiert werden.",
-                                            }):
+                                            if not await _ws_safe_send(
+                                                websocket,
+                                                {
+                                                    "type": "error",
+                                                    "error": "Audiodatei konnte nicht transkribiert werden.",
+                                                },
+                                            ):
                                                 break
                                             continue
                                     except Exception as _audio_exc:
                                         log.error(
                                             "ws_audio_transcription_error", error=str(_audio_exc)
                                         )
-                                        if not await _ws_safe_send(websocket, {
-                                            "type": "error",
-                                            "error": "Fehler bei der Audio-Transkription.",
-                                        }):
+                                        if not await _ws_safe_send(
+                                            websocket,
+                                            {
+                                                "type": "error",
+                                                "error": "Fehler bei der Audio-Transkription.",
+                                            },
+                                        ):
                                             break
                                         continue
                                     finally:
@@ -621,27 +642,39 @@ def main() -> None:
                                 )
                                 try:
                                     response = await gateway.handle_message(incoming)
-                                    if not await _ws_safe_send(websocket, {
-                                        "type": "assistant_message",
-                                        "text": response.text,
-                                        "session_id": session_id,
-                                    }):
+                                    if not await _ws_safe_send(
+                                        websocket,
+                                        {
+                                            "type": "assistant_message",
+                                            "text": response.text,
+                                            "session_id": session_id,
+                                        },
+                                    ):
                                         break
-                                    if not await _ws_safe_send(websocket, {
-                                        "type": "stream_end",
-                                        "session_id": session_id,
-                                    }):
+                                    if not await _ws_safe_send(
+                                        websocket,
+                                        {
+                                            "type": "stream_end",
+                                            "session_id": session_id,
+                                        },
+                                    ):
                                         break
                                 except Exception as _ws_exc:
                                     log.error("cc_ws_handler_error", error=str(_ws_exc))
-                                    if not await _ws_safe_send(websocket, {
-                                        "type": "error",
-                                        "error": "Verarbeitungsfehler aufgetreten.",
-                                    }):
+                                    if not await _ws_safe_send(
+                                        websocket,
+                                        {
+                                            "type": "error",
+                                            "error": "Verarbeitungsfehler aufgetreten.",
+                                        },
+                                    ):
                                         break
                                 continue
 
-                            if not await _ws_safe_send(websocket, {"type": "error", "error": f"Unbekannter Typ: {msg_type}"}):
+                            if not await _ws_safe_send(
+                                websocket,
+                                {"type": "error", "error": f"Unbekannter Typ: {msg_type}"},
+                            ):
                                 break
                     except WebSocketDisconnect:
                         log.info("cc_ws_disconnected", session_id=session_id)

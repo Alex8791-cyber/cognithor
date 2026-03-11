@@ -117,7 +117,9 @@ def gk_config_offline(tmp_path: Path) -> JarvisConfig:
     config = JarvisConfig(
         jarvis_home=tmp_path,
         operation_mode="offline",
-        security=SecurityConfig(allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")]),
+        security=SecurityConfig(
+            allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")]
+        ),
     )
     ensure_directory_structure(config)
     return config
@@ -129,7 +131,9 @@ def gk_config_online(tmp_path: Path) -> JarvisConfig:
     config = JarvisConfig(
         jarvis_home=tmp_path,
         operation_mode="online",
-        security=SecurityConfig(allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")]),
+        security=SecurityConfig(
+            allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")]
+        ),
     )
     ensure_directory_structure(config)
     return config

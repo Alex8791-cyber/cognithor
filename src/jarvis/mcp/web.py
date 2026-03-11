@@ -314,7 +314,9 @@ class WebTools:
                 loop = asyncio.get_running_loop()
                 resolved = await loop.run_in_executor(
                     None,
-                    lambda: socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM),
+                    lambda: socket.getaddrinfo(
+                        hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM
+                    ),
                 )
                 ips: list[str] = []
                 for _family, _type, _proto, _canonname, sockaddr in resolved:

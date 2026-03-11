@@ -617,9 +617,7 @@ def _escape_applescript(text: str) -> str:
     so the value is safe inside a double-quoted AppleScript string literal.
     """
     # Remove NULL bytes and control chars except \n \r \t (which are escaped below)
-    cleaned = "".join(
-        ch for ch in text if ch in ("\n", "\r", "\t") or ord(ch) >= 0x20
-    )
+    cleaned = "".join(ch for ch in text if ch in ("\n", "\r", "\t") or ord(ch) >= 0x20)
     return (
         cleaned.replace("\\", "\\\\")
         .replace('"', '\\"')

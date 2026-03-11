@@ -82,6 +82,7 @@ class _SimpleEncryptor:
 
         # Legacy fallback: old XOR-HMAC encrypted data (deprecated)
         import warnings
+
         warnings.warn(
             "Legacy XOR-HMAC encryption detected. Entry will be auto-migrated to Fernet.",
             DeprecationWarning,
@@ -214,7 +215,8 @@ class EncryptedVault:
         if "." not in entry.encrypted_value:
             _vault_log.info(
                 "vault_legacy_migration: re-encrypting %s:%s with Fernet",
-                service, key,
+                service,
+                key,
             )
             entry.encrypted_value = self._encryptor.encrypt(plaintext)
         return plaintext

@@ -567,12 +567,13 @@ def _load_or_create_master_secret(path: str | None = None) -> bytes:
     if sys.platform == "win32":
         try:
             import subprocess
+
             username = os.environ.get("USERNAME", "")
             if username:
                 subprocess.run(
-                    ["icacls", str(key_file), "/inheritance:r",
-                     "/grant:r", f"{username}:(R,W)"],
-                    capture_output=True, timeout=10,
+                    ["icacls", str(key_file), "/inheritance:r", "/grant:r", f"{username}:(R,W)"],
+                    capture_output=True,
+                    timeout=10,
                 )
         except Exception:
             pass  # Best-effort ACL restriction

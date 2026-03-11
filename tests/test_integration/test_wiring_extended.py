@@ -239,7 +239,12 @@ class TestReflectorAuditIntegration:
                 ActionPlan(
                     goal="test",
                     reasoning="test reasoning",
-                    steps=[_PA(tool="read_file", params={"path": os.path.join(tempfile.gettempdir(), "x")})],
+                    steps=[
+                        _PA(
+                            tool="read_file",
+                            params={"path": os.path.join(tempfile.gettempdir(), "x")},
+                        )
+                    ],
                 )
             ],
         )

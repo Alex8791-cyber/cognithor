@@ -35,11 +35,24 @@ log = get_logger(__name__)
 MAX_OUTPUT_BYTES = 50_000
 
 # Keys that are safe to pass through from the host environment.
-_SAFE_ENV_KEYS = frozenset({
-    "PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "COMSPEC",
-    "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE",
-    "TERM", "COLORTERM", "SHELL",
-})
+_SAFE_ENV_KEYS = frozenset(
+    {
+        "PATH",
+        "HOME",
+        "USERPROFILE",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TERM",
+        "COLORTERM",
+        "SHELL",
+    }
+)
 
 
 def _build_sandbox_env(*, working_dir: str = "") -> dict[str, str]:

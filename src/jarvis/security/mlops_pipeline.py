@@ -209,7 +209,9 @@ class AdversarialFuzzer:
                         )
                     )
             except Exception:
-                passed += 1  # Exception = geblockt (intentional: exception means payload was blocked)
+                passed += (
+                    1  # Exception = geblockt (intentional: exception means payload was blocked)
+                )
 
         elapsed = (time.monotonic() - start) * 1000
         total = len(self._all_payloads)

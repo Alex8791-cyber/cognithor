@@ -258,7 +258,9 @@ class TestAgentContext:
     @pytest.mark.asyncio
     async def test_workspace_injected_into_exec_command(self, executor: Executor) -> None:
         """exec_command bekommt working_dir aus Agent-Workspace."""
-        executor.set_agent_context(workspace_dir=str(Path(tempfile.gettempdir()) / "agent" / "coder"))
+        executor.set_agent_context(
+            workspace_dir=str(Path(tempfile.gettempdir()) / "agent" / "coder")
+        )
 
         action = PlannedAction(tool="exec_command", params={"command": "echo hi"})
         results = await executor.execute([action], [_allow_decision(action)])
@@ -268,15 +270,17 @@ class TestAgentContext:
         call_args = executor._mcp_client.call_tool.call_args
         assert call_args is not None, "call_tool wurde nicht aufgerufen"
         passed_params = call_args[0][1]  # zweites Positional-Arg = params dict
-        assert passed_params.get("working_dir") == str(Path(tempfile.gettempdir()) / "agent" / "coder"), (
-            f"working_dir nicht injiziert: {passed_params}"
-        )
+        assert passed_params.get("working_dir") == str(
+            Path(tempfile.gettempdir()) / "agent" / "coder"
+        ), f"working_dir nicht injiziert: {passed_params}"
         executor.clear_agent_context()
 
     @pytest.mark.asyncio
     async def test_workspace_not_injected_when_explicit(self, executor: Executor) -> None:
         """Wenn Planner explizit working_dir setzt, wird's nicht überschrieben."""
-        executor.set_agent_context(workspace_dir=str(Path(tempfile.gettempdir()) / "agent" / "coder"))
+        executor.set_agent_context(
+            workspace_dir=str(Path(tempfile.gettempdir()) / "agent" / "coder")
+        )
 
         _explicit = str(Path(tempfile.gettempdir()) / "explicit")
         action = PlannedAction(
@@ -302,7 +306,9 @@ class TestAgentContext:
     @pytest.mark.asyncio
     async def test_non_workspace_tools_unaffected(self, executor: Executor) -> None:
         """web_search u.ä. bekommen KEIN working_dir injiziert."""
-        executor.set_agent_context(workspace_dir=str(Path(tempfile.gettempdir()) / "agent" / "coder"))
+        executor.set_agent_context(
+            workspace_dir=str(Path(tempfile.gettempdir()) / "agent" / "coder")
+        )
 
         action = PlannedAction(tool="web_search", params={"query": "test"})
         # web_search ist nicht in WORKSPACE_TOOLS → kein working_dir

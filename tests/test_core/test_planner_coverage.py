@@ -246,13 +246,18 @@ class TestPlannerToolCalls:
                         {
                             "function": {
                                 "name": "read_file",
-                                "arguments": {"path": os.path.join(tempfile.gettempdir(), "test.txt")},
+                                "arguments": {
+                                    "path": os.path.join(tempfile.gettempdir(), "test.txt")
+                                },
                             }
                         },
                         {
                             "function": {
                                 "name": "write_file",
-                                "arguments": {"path": os.path.join(tempfile.gettempdir(), "out.txt"), "content": "hello"},
+                                "arguments": {
+                                    "path": os.path.join(tempfile.gettempdir(), "out.txt"),
+                                    "content": "hello",
+                                },
                             }
                         },
                     ],
@@ -272,7 +277,10 @@ class TestPlannerToolCalls:
         assert plan.steps[0].tool == "read_file"
         assert plan.steps[0].params == {"path": os.path.join(tempfile.gettempdir(), "test.txt")}
         assert plan.steps[1].tool == "write_file"
-        assert plan.steps[1].params == {"path": os.path.join(tempfile.gettempdir(), "out.txt"), "content": "hello"}
+        assert plan.steps[1].params == {
+            "path": os.path.join(tempfile.gettempdir(), "out.txt"),
+            "content": "hello",
+        }
         assert plan.confidence == 0.7
 
 

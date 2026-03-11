@@ -364,6 +364,7 @@ class MemoryIndex:
         # FTS5 Query: Wörter mit OR verbinden, Prefix-Match für deutsche Komposita
         # Sanitize: strip FTS5 operators/special chars to prevent query injection
         import re
+
         _fts_clean = re.compile(r'["\(\)\*\:\^]')
         words = [_fts_clean.sub("", w) for w in query.strip().split()]
         words = [w for w in words if w and w.upper() not in ("AND", "OR", "NOT", "NEAR")]

@@ -85,7 +85,9 @@ class TestRunPython:
     @pytest.mark.asyncio()
     async def test_workspace_confinement(self, code_tools: CodeTools) -> None:
         """Arbeitsverzeichnis außerhalb Workspace wird abgelehnt."""
-        result = await code_tools.run_python('print("test")', working_dir=f"{tempfile.gettempdir()}/evil")
+        result = await code_tools.run_python(
+            'print("test")', working_dir=f"{tempfile.gettempdir()}/evil"
+        )
         assert "Zugriff verweigert" in result
 
     @pytest.mark.asyncio()

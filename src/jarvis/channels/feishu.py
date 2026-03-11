@@ -113,7 +113,11 @@ class FeishuChannel(Channel):
                 self._token_expires_at = time.time() + expire
                 logger.debug("Feishu Token erneuert (läuft in %ds ab)", expire)
             else:
-                logger.error("Feishu Token-Request fehlgeschlagen: code=%s, msg=%s", data.get("code"), data.get("msg", "?"))
+                logger.error(
+                    "Feishu Token-Request fehlgeschlagen: code=%s, msg=%s",
+                    data.get("code"),
+                    data.get("msg", "?"),
+                )
         except Exception as exc:
             logger.error("Feishu Token-Request fehlgeschlagen: %s", exc)
 

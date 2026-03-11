@@ -296,7 +296,9 @@ class TestSecurityChain:
         gatekeeper = Gatekeeper(config)
         gatekeeper.initialize()
 
-        result = sanitizer.sanitize_user_input(f"Lies die Datei {os.path.join(tempfile.gettempdir(), 'test.txt')}")
+        result = sanitizer.sanitize_user_input(
+            f"Lies die Datei {os.path.join(tempfile.gettempdir(), 'test.txt')}"
+        )
         assert not result.was_modified or result.sanitized_text
 
         action = PlannedAction(

@@ -115,9 +115,7 @@ def get_available_locales() -> list[str]:
     """Return locale codes for all installed language packs."""
     if not LOCALES_DIR.is_dir():
         return []
-    return sorted(
-        p.stem for p in LOCALES_DIR.glob("*.json") if p.stem != "_meta"
-    )
+    return sorted(p.stem for p in LOCALES_DIR.glob("*.json") if p.stem != "_meta")
 
 
 def reload_locale(locale: str | None = None) -> None:
@@ -199,18 +197,14 @@ def _ensure_loaded(locale: str) -> None:
         with _lock:
             _packs[locale] = flat
 
-        logger.debug(
-            "i18n_pack_loaded locale=%s keys=%d", locale, len(flat)
-        )
+        logger.debug("i18n_pack_loaded locale=%s keys=%d", locale, len(flat))
     except (json.JSONDecodeError, OSError) as exc:
         logger.error("i18n_pack_load_failed locale=%s error=%s", locale, exc)
         with _lock:
             _packs[locale] = {}
 
 
-def _flatten(
-    data: dict[str, Any], prefix: str = ""
-) -> dict[str, str]:
+def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, str]:
     """Flatten nested dict into dot-notation keys."""
     result: dict[str, str] = {}
     for key, value in data.items():

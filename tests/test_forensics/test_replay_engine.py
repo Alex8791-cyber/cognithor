@@ -29,7 +29,9 @@ from jarvis.models import (
 def gk_config(tmp_path):
     config = JarvisConfig(
         jarvis_home=tmp_path,
-        security=SecurityConfig(allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")]),
+        security=SecurityConfig(
+            allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")]
+        ),
     )
     ensure_directory_structure(config)
     return config
@@ -52,7 +54,10 @@ def sample_run():
     plan = ActionPlan(
         goal="Test",
         steps=[
-            PlannedAction(tool="read_file", params={"path": os.path.join(tempfile.gettempdir(), "jarvis", "test.txt")}),
+            PlannedAction(
+                tool="read_file",
+                params={"path": os.path.join(tempfile.gettempdir(), "jarvis", "test.txt")},
+            ),
             PlannedAction(tool="search_memory", params={"query": "test"}),
         ],
     )

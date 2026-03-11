@@ -359,7 +359,9 @@ class Executor:
             )
 
         _MAX_TIMEOUT = 300  # Hard ceiling: 5 minutes, regardless of LLM request
-        raw_timeout = params.pop("_timeout", self._tool_timeouts.get(tool_name, self._default_timeout))
+        raw_timeout = params.pop(
+            "_timeout", self._tool_timeouts.get(tool_name, self._default_timeout)
+        )
         try:
             timeout = min(int(raw_timeout), _MAX_TIMEOUT)
         except (TypeError, ValueError):

@@ -117,9 +117,7 @@ class ConsentManager:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.execute(self._CREATE_TABLE)
-        self._db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_consents_user ON consents(user_id)"
-        )
+        self._db.execute("CREATE INDEX IF NOT EXISTS idx_consents_user ON consents(user_id)")
         self._db.commit()
 
         # In-memory cache for live object references (tests check obj.status directly)
@@ -174,9 +172,18 @@ class ConsentManager:
             "INSERT INTO consents (consent_id, user_id, purpose, status, "
             "granted_at, expires_at, withdrawn_at, legal_basis, description, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (consent.consent_id, user_id, purpose.value, consent.status.value,
-             consent.granted_at, consent.expires_at, consent.withdrawn_at,
-             consent.legal_basis, consent.description, now),
+            (
+                consent.consent_id,
+                user_id,
+                purpose.value,
+                consent.status.value,
+                consent.granted_at,
+                consent.expires_at,
+                consent.withdrawn_at,
+                consent.legal_basis,
+                consent.description,
+                now,
+            ),
         )
         self._db.commit()
         self._cache[consent.consent_id] = consent
@@ -249,8 +256,7 @@ class ConsentManager:
         """Alle Einwilligungen eines Nutzers widerrufen."""
         now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         cur = self._db.execute(
-            "UPDATE consents SET status=?, withdrawn_at=? "
-            "WHERE user_id=? AND status=?",
+            "UPDATE consents SET status=?, withdrawn_at=? WHERE user_id=? AND status=?",
             (ConsentStatus.WITHDRAWN.value, now, user_id, ConsentStatus.GRANTED.value),
         )
         self._db.commit()
@@ -258,9 +264,7 @@ class ConsentManager:
 
     @property
     def user_count(self) -> int:
-        row = self._db.execute(
-            "SELECT COUNT(DISTINCT user_id) FROM consents"
-        ).fetchone()
+        row = self._db.execute("SELECT COUNT(DISTINCT user_id) FROM consents").fetchone()
         return row[0] if row else 0
 
     def stats(self) -> dict[str, Any]:

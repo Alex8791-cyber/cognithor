@@ -325,7 +325,9 @@ class TestBrowserAgentScreenshot:
     @pytest.mark.asyncio
     async def test_screenshot_with_path(self):
         agent = _make_running_agent()
-        result = await agent.screenshot(path=str(Path(tempfile.gettempdir()) / "test.png"), full_page=True)
+        result = await agent.screenshot(
+            path=str(Path(tempfile.gettempdir()) / "test.png"), full_page=True
+        )
         assert result.success is True
 
     @pytest.mark.asyncio

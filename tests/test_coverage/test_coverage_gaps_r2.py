@@ -358,7 +358,11 @@ class TestGatekeeperEvaluate:
     def test_evaluate_plan(self, gatekeeper):
         """evaluate_plan evaluiert mehrere Aktionen."""
         actions = [
-            PlannedAction(tool="read_file", params={"path": os.path.join(tempfile.gettempdir(), "test")}, rationale="test"),
+            PlannedAction(
+                tool="read_file",
+                params={"path": os.path.join(tempfile.gettempdir(), "test")},
+                rationale="test",
+            ),
             PlannedAction(tool="exec_command", params={"command": "echo hi"}, rationale="test"),
         ]
         ctx = SessionContext(session_id="test", channel="cli", user_id="alex")
