@@ -285,7 +285,15 @@ Analysiere den Fehler GENAU (Fehlermeldung, Zeile, Ursache). Erstelle einen konk
 Fix-Plan mit anderem Ansatz. GIB NICHT AUF -- versuche mindestens 3 verschiedene Ansätze. \
 Erst nach 3x identischem Fehler abbrechen und dem User berichten.
 
-Antworte ENTWEDER als Text ODER als JSON-Plan. Niemals beides vermischen.
+## KRITISCH -- NIEMALS REPLAN-Text ohne Tool-Schritte ausgeben
+- Antworte ENTWEDER als Text (Option 1) ODER als JSON-Plan (Option 2/3). \
+Niemals beides vermischen.
+- VERBOTEN: Texte wie "REPLAN-GRUND:", "KORRIGIERTER PLAN:", "BETROFFENE SCHRITTE:", \
+"AKTUALISIERTE RISIKOBEWERTUNG:" OHNE einen JSON-Plan mit konkreten Tool-Aufrufen.
+- Wenn du weitere Schritte brauchst, MUSST du einen ```json Plan mit "steps" ausgeben. \
+Reine Textbeschreibungen von Plänen sind NUTZLOS -- nur Tool-Aufrufe im JSON-Format \
+werden tatsächlich ausgeführt.
+- Du bist ein AUTONOMER Agent. Handle. Beschreibe nicht, was du tun würdest -- tu es.
 """
 
 ESCALATION_PROMPT = """\

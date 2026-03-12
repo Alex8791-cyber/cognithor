@@ -1362,6 +1362,8 @@ class Gateway:
         all_plans: list[ActionPlan] = []
         all_audit: list[AuditEntry] = []
         final_response = ""
+        _consecutive_no_tool_iters = 0  # Detect stuck replan loops
+        _MAX_NO_TOOL_ITERS = 2  # After 2 iters without tool execution, stop
 
         # Status callback for progress feedback
         _status_cb = self._make_status_callback(msg.channel, session.session_id)
@@ -1420,12 +1422,50 @@ class Gateway:
                 )
                 break
 
-            # Direkte Antwort
+            # Direkte Antwort — but detect REPLAN text masquerading as response
             if not plan.has_actions and plan.direct_response:
+                _resp = plan.direct_response.strip()
+                # If the LLM returned REPLAN reasoning instead of a real answer
+                # or a JSON plan, it's stuck — don't echo it to the user.
+                _is_replan_text = (
+                    _resp.startswith("REPLAN")
+                    or _resp.startswith("KORRIGIERTER PLAN")
+                    or _resp.startswith("BETROFFENE SCHRITTE")
+                    or _resp.startswith("AKTUALISIERTE RISIKOBEWERTUNG")
+                )
+                if _is_replan_text and session.iteration_count < session.max_iterations:
+                    log.warning(
+                        "pge_replan_text_as_response",
+                        iteration=session.iteration_count,
+                        preview=_resp[:100],
+                    )
+                    # Force a replan by continuing the loop — don't break
+                    continue
+
+                # If we already have successful tool results but the replan
+                # returned text instead of JSON, formulate a proper response
+                if all_results and any(r.success for r in all_results):
+                    await _status_cb("finishing", "Formuliere Antwort...")
+                    final_response = await self._planner.formulate_response(
+                        user_message=msg.text,
+                        results=all_results,
+                        working_memory=wm,
+                    )
+                    break
+
                 final_response = plan.direct_response
                 break
 
             if not plan.has_actions:
+                # If there are prior successful results, summarize them
+                if all_results and any(r.success for r in all_results):
+                    await _status_cb("finishing", "Formuliere Antwort...")
+                    final_response = await self._planner.formulate_response(
+                        user_message=msg.text,
+                        results=all_results,
+                        working_memory=wm,
+                    )
+                    break
                 final_response = (
                     "Ich konnte keinen Plan erstellen. Kannst du deine Frage umformulieren?"
                 )
@@ -1546,6 +1586,28 @@ class Gateway:
             has_errors = any(r.is_error for r in results)
             has_success = any(r.success for r in results)
 
+            # Track consecutive iterations without any tool execution
+            if results:
+                _consecutive_no_tool_iters = 0
+            else:
+                _consecutive_no_tool_iters += 1
+                if _consecutive_no_tool_iters >= _MAX_NO_TOOL_ITERS:
+                    log.warning("pge_stuck_no_tools", iterations=session.iteration_count)
+                    if all_results and any(r.success for r in all_results):
+                        await _status_cb("finishing", "Formuliere Antwort...")
+                        final_response = await self._planner.formulate_response(
+                            user_message=msg.text,
+                            results=all_results,
+                            working_memory=wm,
+                        )
+                    else:
+                        final_response = (
+                            "Ich stecke in einer Planungsschleife fest. "
+                            "Bitte formuliere deine Anfrage konkreter — z.B. "
+                            "'Schreibe eine Pac-Man main.py' statt 'Erstelle ein Spiel'."
+                        )
+                    break
+
             # Pruefen ob der Plan MEHRERE Schritte hatte (Multi-Step-Task)
             _current_plan = all_plans[-1] if all_plans else None
             _is_multi_step = (
@@ -1565,9 +1627,8 @@ class Gateway:
             }
             used_coding_tool = any(r.tool_name in _CODING_TOOLS for r in results)
 
-            # Multi-Step-Tasks: Nicht nach erstem Erfolg abbrechen, sondern
-            # Replan aufrufen um naechste Schritte zu planen.
-            # Nur bei Single-Step-Tasks (z.B. einfache Suche) sofort antworten.
+            # ── Break conditions ─────────────────────────────────────────
+            # Single-step non-coding tasks: respond immediately after success
             if has_success and not has_errors and not used_coding_tool and not _is_multi_step:
                 await _status_cb("finishing", "Formuliere Antwort...")
                 final_response = await self._planner.formulate_response(
@@ -1577,9 +1638,25 @@ class Gateway:
                 )
                 break
 
-            # Failure-Threshold: Erst bei Haelfte der max_iterations aufgeben,
-            # nicht schon nach 5 (gibt dem Planner Raum fuer Alternativstrategien)
-            _failure_threshold = max(5, session.max_iterations // 2)
+            # Multi-step / coding tasks: let replan decide if more steps needed.
+            # BUT cap consecutive replans to prevent infinite loops.
+            # After 3 successful iterations (tools executed), call formulate_response
+            # to deliver results to the user instead of endlessly replanning.
+            _successful_iters = sum(1 for r in all_results if r.success)
+            _max_coding_iters = min(6, session.max_iterations - 1)
+            if has_success and (used_coding_tool or _is_multi_step):
+                if session.iteration_count >= _max_coding_iters or _successful_iters >= 4:
+                    await _status_cb("finishing", "Formuliere Antwort...")
+                    final_response = await self._planner.formulate_response(
+                        user_message=msg.text,
+                        results=all_results,
+                        working_memory=wm,
+                    )
+                    break
+                # Otherwise: continue to replan for more steps (normal)
+
+            # Failure-Threshold: give planner room for alternative strategies
+            _failure_threshold = max(3, session.max_iterations // 2)
             if not has_success and session.iteration_count >= _failure_threshold:
                 await _status_cb("finishing", "Formuliere Antwort...")
                 final_response = await self._planner.formulate_response(
