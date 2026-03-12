@@ -865,15 +865,21 @@ class Planner:
             if schemas_hash != self._cached_tools_hash or self._cached_tools_section is None:
                 tools_lines = []
                 for name, schema in tool_schemas.items():
-                    desc = schema.get("description", "Keine Beschreibung")
-                    params = schema.get("inputSchema", {}).get("properties", {})
-                    param_list = ", ".join(f"{k}: {v.get('type', '?')}" for k, v in params.items())
+                    desc = schema.get("description", "No description")
+                    props = schema.get("inputSchema", {}).get("properties", {})
+                    required = set(schema.get("inputSchema", {}).get("required", []))
+                    parts = []
+                    for k, v in props.items():
+                        typ = v.get("type", "?")
+                        req = " [required]" if k in required else ""
+                        parts.append(f"{k}: {typ}{req}")
+                    param_list = ", ".join(parts)
                     tools_lines.append(f"- **{name}**({param_list}): {desc}")
                 self._cached_tools_section = "\n".join(tools_lines)
                 self._cached_tools_hash = schemas_hash
             tools_section = self._cached_tools_section
         else:
-            tools_section = "Keine Tools verfügbar."
+            tools_section = "No tools available."
 
         # Context-Section (Memory) — Relevanz-Ranking nach Score (#41 Optimierung)
         context_parts: list[str] = []

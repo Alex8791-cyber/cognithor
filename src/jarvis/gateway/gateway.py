@@ -411,21 +411,36 @@ class Gateway:
 
         content = core_path.read_text(encoding="utf-8")
 
-        # Tool-Liste zusammenstellen
-        tools = sorted(self._mcp_client.get_tool_list()) if self._mcp_client else []
-        tool_lines = [f"- `{t}`" for t in tools]
+        # Tool-Liste mit vollständigen Schemas zusammenstellen
+        tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
+        tool_lines = []
+        for name in sorted(tool_schemas):
+            schema = tool_schemas[name]
+            desc = schema.get("description", "")
+            props = schema.get("inputSchema", {}).get("properties", {})
+            required = set(schema.get("inputSchema", {}).get("required", []))
+            if props:
+                parts = []
+                for k, v in props.items():
+                    typ = v.get("type", "?")
+                    req = " *" if k in required else ""
+                    parts.append(f"{k}: {typ}{req}")
+                param_str = ", ".join(parts)
+                tool_lines.append(f"- `{name}({param_str})` — {desc}")
+            else:
+                tool_lines.append(f"- `{name}()` — {desc}")
 
         # Skill-Liste zusammenstellen
         skill_lines = []
         if hasattr(self, "_skill_registry") and self._skill_registry:
             try:
                 for slug, skill in self._skill_registry._skills.items():
-                    status = "aktiv" if skill.enabled else "inaktiv"
+                    status = "active" if skill.enabled else "inactive"
                     skill_lines.append(f"- **{skill.name}** (`{slug}`) — {status}")
             except Exception:
                 log.debug("core_inventory_skills_failed", exc_info=True)
         if not skill_lines:
-            skill_lines = ["- (keine Skills registriert)"]
+            skill_lines = ["- (no skills registered)"]
 
         # Prozedur-Liste
         proc_lines = []
@@ -436,26 +451,30 @@ class Gateway:
                     uses = f"{meta.total_uses}x" if meta.total_uses else "0x"
                     kw = ", ".join(meta.trigger_keywords[:3]) if meta.trigger_keywords else ""
                     suffix = f" [{kw}]" if kw else ""
-                    proc_lines.append(f"- `{meta.name}` ({uses} genutzt){suffix}")
+                    proc_lines.append(f"- `{meta.name}` ({uses} used){suffix}")
             except Exception:
                 log.debug("core_inventory_procedures_failed", exc_info=True)
         if not proc_lines:
-            proc_lines = ["- (keine Prozeduren gespeichert)"]
+            proc_lines = ["- (no procedures stored)"]
 
+        tool_count = len(tool_schemas)
         inventory = (
-            "## INVENTAR (auto-aktualisiert)\n\n"
-            f"### Registrierte Tools ({len(tools)})\n" + "\n".join(tool_lines) + "\n\n"
-            f"### Installierte Skills ({len(skill_lines)})\n" + "\n".join(skill_lines) + "\n\n"
-            f"### Gelernte Prozeduren ({len(proc_lines)})\n" + "\n".join(proc_lines)
+            "## INVENTORY (auto-updated)\n\n"
+            "Parameters marked with * are required.\n\n"
+            f"### Registered Tools ({tool_count})\n" + "\n".join(tool_lines) + "\n\n"
+            f"### Installed Skills ({len(skill_lines)})\n" + "\n".join(skill_lines) + "\n\n"
+            f"### Learned Procedures ({len(proc_lines)})\n" + "\n".join(proc_lines)
         )
 
-        # Bestehenden INVENTAR-Abschnitt ersetzen oder am Ende anhängen
-        marker_start = "## INVENTAR (auto-aktualisiert)"
-        if marker_start in content:
-            # Alles von marker_start bis zum nächsten ## oder Dateiende ersetzen
-            import re
+        # Bestehenden INVENTAR/INVENTORY-Abschnitt ersetzen oder am Ende anhängen
+        import re
 
-            pattern = re.escape(marker_start) + r".*?(?=\n## (?!INVENTAR)|\Z)"
+        marker_old = "## INVENTAR (auto-aktualisiert)"
+        marker_new = "## INVENTORY (auto-updated)"
+        marker_start = marker_old if marker_old in content else marker_new if marker_new in content else None
+        if marker_start:
+            # Alles von marker_start bis zum nächsten ## oder Dateiende ersetzen
+            pattern = re.escape(marker_start) + r".*?(?=\n## (?!INVENT)|\Z)"
             content = re.sub(pattern, inventory, content, flags=re.DOTALL)
         else:
             content = content.rstrip() + "\n\n---\n\n" + inventory + "\n"
