@@ -170,7 +170,8 @@ function jarvisLauncher() {
           `\n  [ERROR] Failed to start Jarvis backend: ${err.message}\n` +
           `  Make sure Python 3.12+ is installed and jarvis is installed in it.\n` +
           `  Fix: cd "${BACKEND_DIR}" && pip install -e ".[all]"\n` +
-          `  Or run start_cognithor.bat to bootstrap automatically.\n`
+          `  On Ubuntu/Debian: sudo apt install python3.12\n` +
+          `  On macOS: brew install python@3.12\n`
         )
       }
     })
