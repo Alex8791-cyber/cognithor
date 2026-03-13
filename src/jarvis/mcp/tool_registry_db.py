@@ -273,85 +273,214 @@ _CATEGORY_LABELS: dict[str, dict[str, str]] = {
 # ============================================================================
 
 DEFAULT_EXAMPLES: dict[str, tuple[str, str]] = {
+    # ---- Web & Research ----
     "web_search": (
-        'web_search(query="Wetter Nuernberg morgen")',
-        '[{"title": "Wetter ...", "snippet": "Morgen 12 Grad..."}]',
+        '{"query": "OpenAI GPT-5 release", "num_results": 5}',
+        '{"results": [{"title": "GPT-5 Launch Announced",'
+        ' "url": "https://openai.com/blog/gpt5",'
+        ' "snippet": "OpenAI announced GPT-5 with..."}]}',
+    ),
+    "web_news_search": (
+        '{"query": "AI regulation EU",'
+        ' "num_results": 3, "timelimit": "7d"}',
+        '{"results": [{"title": "EU AI Act Takes Effect",'
+        ' "url": "https://reuters.com/...",'
+        ' "summary": "The European Union AI Act...",'
+        ' "source": "Reuters", "date": "2026-03-10"}]}',
     ),
     "search_and_read": (
-        'search_and_read(query="Python asyncio tutorial")',
-        '{"url": "https://...", "title": "...", "text": "asyncio is..."}',
+        '{"query": "Python asyncio tutorial beginners"}',
+        '{"url": "https://realpython.com/async-io-python/",'
+        ' "title": "Async IO in Python",'
+        ' "text": "asyncio is a library to write'
+        ' concurrent code using async/await..."}',
     ),
     "web_fetch": (
-        'web_fetch(url="https://example.com/api")',
-        '{"status": 200, "text": "...page content..."}',
+        '{"url": "https://api.github.com/repos/python/cpython"}',
+        '{"status": 200, "content_type": "application/json",'
+        ' "text": "{\\"full_name\\": \\"python/cpython\\",'
+        ' \\"stargazers_count\\": 65000}"}',
     ),
+    "http_request": (
+        '{"url": "https://api.example.com/data",'
+        ' "method": "POST",'
+        ' "headers": {"Content-Type": "application/json"},'
+        ' "body": "{\\"key\\": \\"value\\"}"}',
+        '{"status": 200,'
+        ' "headers": {"content-type": "application/json"},'
+        ' "body": "{\\"id\\": 42, \\"status\\": \\"created\\"}"}',
+    ),
+    # ---- Filesystem ----
     "read_file": (
-        'read_file(path="/tmp/test.txt")',
-        '"Zeile 1\\nZeile 2\\n..."',
+        '{"path": "/home/user/config.yaml"}',
+        '{"content": "server:\\n  host: localhost\\n'
+        '  port: 8080\\n", "size": 42, "encoding": "utf-8"}',
     ),
     "write_file": (
-        'write_file(path="/tmp/out.txt", content="Hello")',
-        '{"written": true, "bytes": 5}',
+        '{"path": "/tmp/output.txt", "content": "Hello World"}',
+        '{"written": true, "bytes": 11, "path": "/tmp/output.txt"}',
     ),
     "edit_file": (
-        'edit_file(path="/tmp/test.py", old="foo", new="bar")',
+        '{"path": "/tmp/app.py",'
+        ' "old_text": "DEBUG = True",'
+        ' "new_text": "DEBUG = False"}',
         '{"edited": true, "replacements": 1}',
     ),
+    "list_directory": (
+        '{"path": "/home/user/project", "recursive": false}',
+        '{"entries": [{"name": "src", "type": "directory"},'
+        ' {"name": "README.md", "type": "file",'
+        ' "size": 1024}]}',
+    ),
+    # ---- Shell ----
     "exec_command": (
-        'exec_command(command="echo hello")',
-        '{"stdout": "hello\\n", "exit_code": 0}',
+        '{"command": "echo hello && date", "timeout": 30}',
+        '{"stdout": "hello\\n2026-03-13\\n",'
+        ' "stderr": "", "exit_code": 0}',
     ),
     "run_python": (
-        'run_python(code="print(2+2)")',
-        '{"stdout": "4\\n", "exit_code": 0}',
+        '{"code": "import math\\nprint(math.pi)"}',
+        '{"stdout": "3.141592653589793\\n",'
+        ' "stderr": "", "exit_code": 0}',
     ),
+    # ---- Memory ----
     "search_memory": (
-        'search_memory(query="Geburtstag Alexander")',
-        '[{"text": "Alexander: 15. Maerz", "score": 0.92}]',
+        '{"query": "meeting notes project alpha"}',
+        '{"results": [{"text": "Project Alpha kickoff:'
+        ' deadline March 30...",'
+        ' "score": 0.92, "tags": ["meeting", "project"]}]}',
     ),
     "save_to_memory": (
-        'save_to_memory(text="Termin: Zahnarzt 20.03.", tags=["termin"])',
+        '{"text": "Dentist appointment March 20 at 2pm",'
+        ' "tags": ["appointment", "health"]}',
         '{"saved": true, "id": "mem_abc123"}',
     ),
+    "get_core_memory": (
+        "{}",
+        '{"content": "# CORE.md\\n## Identity\\nName: Jarvis..."}',
+    ),
+    "get_recent_episodes": (
+        '{"days": 3}',
+        '{"episodes": [{"date": "2026-03-12",'
+        ' "summary": "Helped user debug Python script..."},'
+        ' {"date": "2026-03-11",'
+        ' "summary": "Created weekly report..."}]}',
+    ),
+    # ---- Vault ----
     "vault_save": (
-        'vault_save(title="Vertrag.pdf", content="...")',
-        '{"id": "vault_xyz", "title": "Vertrag.pdf"}',
+        '{"title": "Meeting Notes Q1",'
+        ' "content": "# Q1 Review\\n- Revenue up 15%..."}',
+        '{"id": "vault_xyz789",'
+        ' "title": "Meeting Notes Q1",'
+        ' "created": "2026-03-13T10:00:00Z"}',
     ),
     "vault_search": (
-        'vault_search(query="Mietvertrag")',
-        '[{"title": "Mietvertrag_2025.pdf", "score": 0.88}]',
+        '{"query": "rental contract"}',
+        '{"results": [{"id": "vault_abc",'
+        ' "title": "Rental_Contract_2025.pdf",'
+        ' "score": 0.88, "snippet": "Monthly rent: 950 EUR..."}]}',
     ),
+    # ---- Knowledge ----
     "knowledge_synthesize": (
-        'knowledge_synthesize(topic="Machine Learning Basics")',
-        '{"synthesis": "ML ist ein Teilgebiet der KI..."}',
+        '{"topic": "machine learning basics", "language": "en"}',
+        '{"synthesis": "Machine learning is a subset of AI'
+        ' that enables systems to learn from data...",'
+        ' "sources": 5, "confidence": 0.85}',
     ),
+    "knowledge_gaps": (
+        '{"topic": "quantum computing", "language": "en"}',
+        '{"completeness": 0.3,'
+        ' "known": ["basic concepts", "qubit definition"],'
+        ' "gaps": ["error correction",'
+        ' "hardware implementations"],'
+        ' "research_suggestions":'
+        ' ["Search for quantum error correction 2025"]}',
+    ),
+    "knowledge_contradictions": (
+        '{"topic": "project deadline", "language": "en"}',
+        '{"contradictions": [{"claim_a": "Deadline is March 30",'
+        ' "source_a": "memory",'
+        ' "claim_b": "Deadline extended to April 15",'
+        ' "source_b": "vault"}]}',
+    ),
+    # ---- Documents ----
     "analyze_document": (
-        'analyze_document(path="/tmp/report.pdf")',
-        '{"pages": 12, "summary": "Quartalsreport Q4..."}',
+        '{"path": "/tmp/report.pdf"}',
+        '{"pages": 12,'
+        ' "summary": "Q4 quarterly report covering'
+        ' revenue, expenses...",'
+        ' "key_figures": ["Revenue: 2.3M EUR",'
+        ' "Growth: 15%"]}',
     ),
+    "document_export": (
+        '{"format": "pdf",'
+        ' "content": "# Report\\nContent here...",'
+        ' "output_path": "/tmp/report.pdf"}',
+        '{"path": "/tmp/report.pdf",'
+        ' "format": "pdf", "pages": 3, "size": 45200}',
+    ),
+    # ---- Browser ----
     "browser_navigate": (
-        'browser_navigate(url="https://example.com")',
-        '{"title": "Example Domain", "status": 200}',
+        '{"url": "https://example.com/login"}',
+        '{"title": "Login - Example",'
+        ' "status": 200, "url": "https://example.com/login"}',
     ),
     "browser_click": (
-        'browser_click(selector="#submit-btn")',
-        '{"clicked": true, "element": "button"}',
+        '{"selector": "#submit-btn"}',
+        '{"clicked": true, "element": "button", "text": "Submit"}',
     ),
-    "create_chart": (
-        'create_chart(type="bar", data={"A": 10, "B": 20})',
-        '{"path": "/tmp/chart.png", "format": "png"}',
+    "browser_fill": (
+        '{"selector": "#email", "value": "user@example.com"}',
+        '{"filled": true, "selector": "#email"}',
     ),
+    # ---- Git ----
     "git_status": (
-        "git_status()",
-        '{"branch": "main", "modified": ["src/app.py"]}',
+        "{}",
+        '{"branch": "feature/auth",'
+        ' "modified": ["src/auth.py"],'
+        ' "untracked": ["tests/test_auth.py"], "staged": []}',
     ),
+    "git_diff": (
+        '{"file": "src/auth.py"}',
+        '{"diff": "- old_line\\n+ new_line",'
+        ' "additions": 5, "deletions": 2}',
+    ),
+    # ---- Visualization ----
+    "create_chart": (
+        '{"type": "bar",'
+        ' "data": {"Q1": 150, "Q2": 230, "Q3": 180, "Q4": 310},'
+        ' "title": "Revenue by Quarter"}',
+        '{"path": "/tmp/chart_revenue.png",'
+        ' "format": "png", "size": 24500}',
+    ),
+    # ---- Email ----
     "email_send": (
-        'email_send(to="user@example.com", subject="Test", body="Hi!")',
-        '{"sent": true, "message_id": "msg_123"}',
+        '{"to": "colleague@company.com",'
+        ' "subject": "Meeting Tomorrow",'
+        ' "body": "Hi, reminder about our 2pm meeting."}',
+        '{"sent": true, "message_id": "msg_20260313_001"}',
     ),
+    # ---- Docker ----
     "docker_ps": (
-        "docker_ps()",
-        '[{"id": "abc123", "image": "nginx", "status": "running"}]',
+        "{}",
+        '{"containers": [{"id": "a1b2c3",'
+        ' "image": "nginx:latest",'
+        ' "status": "Up 2 hours", "ports": "80/tcp"}]}',
+    ),
+    # ---- Skills ----
+    "list_skills": (
+        "{}",
+        '{"skills": [{"slug": "morning-briefing",'
+        ' "name": "Morning Briefing", "status": "active"},'
+        ' {"slug": "code-review",'
+        ' "name": "Code Review", "status": "active"}]}',
+    ),
+    "search_procedures": (
+        '{"query": "deploy production"}',
+        '{"procedures": [{"name": "deploy_to_prod",'
+        ' "uses": 12,'
+        ' "steps": ["git pull", "run tests",'
+        ' "docker build", "deploy"]}]}',
     ),
 }
 
@@ -402,6 +531,98 @@ _SECTION_HEADERS: dict[str, dict[str, str]] = {
         "role_browser": "Browser",
         "role_researcher": "Researcher",
     },
+}
+
+# ============================================================================
+# Lokalisierte Tool-Beschreibungen
+# ============================================================================
+
+_TOOL_DESCRIPTIONS_DE: dict[str, str] = {
+    "web_search": "Durchsucht das Internet nach Informationen.",
+    "web_news_search": "Sucht aktuelle Nachrichten zu einem Thema.",
+    "search_and_read": "Sucht im Internet und liest die besten Ergebnisse vollstaendig.",
+    "web_fetch": "Ruft den Inhalt einer URL ab.",
+    "http_request": "Fuehrt einen HTTP-Request aus (GET/POST/PUT/PATCH/DELETE).",
+    "read_file": "Liest den Inhalt einer Datei.",
+    "write_file": "Schreibt Inhalt in eine Datei.",
+    "edit_file": "Ersetzt einen String in einer Datei (str_replace).",
+    "list_directory": "Listet Dateien und Ordner in einem Verzeichnis.",
+    "search_files": "Sucht Dateien nach Name/Pattern.",
+    "find_in_files": "Sucht Text in Dateien (grep-artig).",
+    "find_and_replace": "Sucht und ersetzt Text in mehreren Dateien.",
+    "exec_command": "Fuehrt einen Shell-Befehl in einer Sandbox aus.",
+    "run_python": "Fuehrt Python-Code in einer Sandbox aus.",
+    "search_memory": "Durchsucht das Langzeitgedaechtnis.",
+    "save_to_memory": "Speichert Information im Langzeitgedaechtnis.",
+    "get_core_memory": "Gibt CORE.md (Identitaet, Regeln, Praeferenzen) zurueck.",
+    "get_recent_episodes": "Laedt die Tageslog-Eintraege der letzten Tage.",
+    "search_procedures": "Sucht gelernte Prozeduren nach Stichwort.",
+    "record_procedure_usage": "Vermerkt die Nutzung einer Prozedur.",
+    "memory_stats": "Zeigt Statistiken zum Gedaechtnis-System.",
+    "add_entity": "Fuegt eine Entitaet zum Wissensgraphen hinzu.",
+    "add_relation": "Fuegt eine Relation zwischen Entitaeten hinzu.",
+    "get_entity": "Laedt eine Entitaet aus dem Wissensgraphen.",
+    "vault_save": "Speichert ein Dokument im Vault.",
+    "vault_update": "Aktualisiert ein Vault-Dokument.",
+    "vault_link": "Verlinkt zwei Vault-Dokumente miteinander.",
+    "vault_search": "Durchsucht den Vault nach Dokumenten.",
+    "vault_read": "Liest ein Vault-Dokument.",
+    "vault_list": "Listet alle Vault-Dokumente.",
+    "knowledge_synthesize": "Synthesiert Wissen zu einem Thema aus allen Quellen.",
+    "knowledge_gaps": "Analysiert Wissensluecken zu einem Thema.",
+    "knowledge_contradictions": "Findet Widersprueche in gespeichertem Wissen.",
+    "knowledge_timeline": "Erstellt eine Zeitleiste zu einem Thema.",
+    "document_export": "Exportiert Inhalt als PDF/DOCX/Markdown.",
+    "analyze_document": "Analysiert ein Dokument (PDF, DOCX, etc.).",
+    "media_extract_text": "Extrahiert Text aus Bildern/Dokumenten (OCR).",
+    "media_analyze_image": "Analysiert ein Bild mit Vision-Modell.",
+    "media_tts": "Konvertiert Text zu Sprache.",
+    "media_transcribe_audio": "Transkribiert eine Audio-Datei.",
+    "browser_navigate": "Navigiert zu einer URL im Browser.",
+    "browser_click": "Klickt ein Element im Browser.",
+    "browser_fill": "Fuellt ein Eingabefeld im Browser.",
+    "browser_extract": "Extrahiert Daten aus der aktuellen Seite.",
+    "browser_screenshot": "Macht einen Screenshot der aktuellen Seite.",
+    "git_status": "Zeigt den Git-Status des Repositories.",
+    "git_diff": "Zeigt Aenderungen (Git-Diff).",
+    "git_log": "Zeigt die Git-Historie.",
+    "git_commit": "Erstellt einen Git-Commit.",
+    "git_branch": "Verwaltet Git-Branches.",
+    "create_chart": "Erstellt ein Diagramm (Bar, Line, Pie, etc.).",
+    "email_send": "Sendet eine E-Mail.",
+    "email_read_inbox": "Liest den Posteingang.",
+    "docker_ps": "Listet laufende Docker-Container.",
+    "list_skills": "Listet alle registrierten Skills.",
+    "create_skill": "Erstellt einen neuen Skill.",
+    "db_query": "Fuehrt eine Datenbank-Abfrage aus.",
+    "db_schema": "Zeigt das Datenbank-Schema.",
+}
+
+_TOOL_DESCRIPTIONS_ZH: dict[str, str] = {
+    "web_search": "搜索互联网信息。",
+    "web_news_search": "搜索最新新闻。",
+    "search_and_read": "搜索互联网并完整阅读最佳结果。",
+    "web_fetch": "获取URL的内容。",
+    "read_file": "读取文件内容。",
+    "write_file": "将内容写入文件。",
+    "edit_file": "替换文件中的字符串。",
+    "list_directory": "列出目录中的文件和文件夹。",
+    "exec_command": "在沙箱中执行Shell命令。",
+    "run_python": "在沙箱中执行Python代码。",
+    "search_memory": "搜索长期记忆。",
+    "save_to_memory": "保存信息到长期记忆。",
+    "get_core_memory": "返回CORE.md（身份、规则、偏好）。",
+    "vault_save": "保存文档到保险库。",
+    "vault_search": "搜索保险库中的文档。",
+    "knowledge_synthesize": "从所有来源综合某主题的知识。",
+    "knowledge_gaps": "分析某主题的知识空白。",
+    "browser_navigate": "在浏览器中导航到URL。",
+    "browser_click": "点击浏览器中的元素。",
+    "git_status": "显示Git仓库状态。",
+    "create_chart": "创建图表（柱状图、折线图等）。",
+    "email_send": "发送电子邮件。",
+    "docker_ps": "列出运行中的Docker容器。",
+    "list_skills": "列出所有已注册的技能。",
 }
 
 # ============================================================================
@@ -672,13 +893,12 @@ class ToolRegistryDB:
                 param_str = self._format_params(tool.input_schema)
                 sig = f"`{tool.name}({param_str})`" if param_str else f"`{tool.name}()`"
                 lines.append(f"- {sig} -- {tool.description}")
-                # Beispiel, falls vorhanden
+                # Structured example, if available
                 if tool.example_input:
                     ex_prefix = headers["example_prefix"]
-                    ex_line = f"  {ex_prefix}: {tool.example_input}"
+                    lines.append(f"  {ex_prefix} Input: `{tool.example_input}`")
                     if tool.example_output:
-                        ex_line += f" -> {tool.example_output}"
-                    lines.append(ex_line)
+                        lines.append(f"  {ex_prefix} Output: `{tool.example_output}`")
             lines.append("")  # Leerzeile nach Kategorie
 
         return "\n".join(lines)
@@ -733,11 +953,17 @@ class ToolRegistryDB:
             if name in DEFAULT_EXAMPLES:
                 ex_in, ex_out = DEFAULT_EXAMPLES[name]
 
+            # Localized descriptions: use tool-specific overrides if available,
+            # otherwise the MCP description (usually English) goes to all langs
+            desc_de = _TOOL_DESCRIPTIONS_DE.get(name, desc)
+            desc_en = desc  # MCP descriptions are typically in English
+            desc_zh = _TOOL_DESCRIPTIONS_ZH.get(name, desc)
+
             self.upsert_tool(
                 name=name,
-                description_de=desc,
-                description_en=desc,
-                description_zh=desc,
+                description_de=desc_de,
+                description_en=desc_en,
+                description_zh=desc_zh,
                 input_schema=input_schema,
                 example_input=ex_in,
                 example_output=ex_out,
@@ -831,13 +1057,14 @@ class ToolRegistryDB:
 
     @staticmethod
     def _format_params(input_schema: dict[str, Any]) -> str:
-        """Formatiert die Parameter eines Tools als kompakten String."""
+        """Formatiert die Parameter eines Tools als kompakten String mit Typen."""
         props = input_schema.get("properties", {})
         if not props:
             return ""
         required = set(input_schema.get("required", []))
         parts: list[str] = []
-        for k, _v in props.items():
-            req = "*" if k in required else ""
-            parts.append(f"{k}{req}")
+        for k, v in props.items():
+            ptype = v.get("type", "any") if isinstance(v, dict) else "any"
+            req = " *" if k in required else ""
+            parts.append(f"{k}: {ptype}{req}")
         return ", ".join(parts)

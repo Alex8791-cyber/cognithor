@@ -342,7 +342,7 @@ class TestSyncFromMCP:
         registry.sync_from_mcp(mock_client)
         tool = registry.get_tool("web_search")
         assert tool.example_input != ""
-        assert "web_search" in tool.example_input
+        assert "query" in tool.example_input
 
     def test_sync_unknown_tool_gets_all_role(self, registry: ToolRegistryDB) -> None:
         """Unbekannte Tools bekommen Rolle 'all'."""
@@ -372,7 +372,7 @@ class TestPromptSectionGeneration:
     def test_prompt_section_contains_examples(self, populated_registry: ToolRegistryDB) -> None:
         """Prompt-Abschnitt zeigt Beispiele an."""
         section = populated_registry.get_tool_prompt_section("all", "en")
-        assert "Example:" in section
+        assert "Example Input:" in section
         assert 'read_file(path="/tmp/test.txt")' in section
 
     def test_prompt_section_groups_by_category(self, populated_registry: ToolRegistryDB) -> None:
@@ -403,8 +403,8 @@ class TestPromptSectionGeneration:
     def test_prompt_section_param_format(self, populated_registry: ToolRegistryDB) -> None:
         """Parameter werden korrekt formatiert (required mit *)."""
         section = populated_registry.get_tool_prompt_section("all", "en")
-        # read_file has path* required
-        assert "path*" in section
+        # read_file has path: string * (required)
+        assert "path: string *" in section
 
     def test_prompt_section_no_tools(self, registry: ToolRegistryDB) -> None:
         """Leere DB generiert leeren Abschnitt."""

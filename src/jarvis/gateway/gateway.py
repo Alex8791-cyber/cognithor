@@ -439,7 +439,9 @@ class Gateway:
                 registry_db.sync_from_mcp(self._mcp_client)
 
             tool_count = registry_db.tool_count()
-            tool_section = registry_db.get_tool_prompt_section("all", language)
+            # Planner sees CORE.md — show only planner-relevant tools,
+            # not the full 50+ executor tools that waste context
+            tool_section = registry_db.get_tool_prompt_section("planner", language)
             registry_db.close()
         except Exception:
             log.debug("tool_registry_db_failed_falling_back", exc_info=True)
