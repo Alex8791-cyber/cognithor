@@ -1643,6 +1643,21 @@ export function t(key, params) {
   return text;
 }
 
+/**
+ * Translate a key using a specific locale (without changing the global locale).
+ * Used by the language settings popup to preview text in the selected language (#32).
+ */
+export function tLocale(locale, key, params) {
+  const pack = packs[locale] || packs.en;
+  let text = pack[key] || packs.en[key] || key;
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      text = text.replace(`{${k}}`, v);
+    }
+  }
+  return text;
+}
+
 /** Get the current locale. */
 export function getLocale() {
   return _locale;

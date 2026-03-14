@@ -547,6 +547,14 @@ def _register_config_routes(
         # Trigger live-reload of runtime components
         if gateway is not None and hasattr(gateway, "reload_components"):
             gateway.reload_components(config=True)
+        # Sync backend i18n locale when language changes (#33)
+        if "language" in updates:
+            try:
+                from jarvis.i18n import set_locale
+
+                set_locale(updates["language"])
+            except Exception:
+                pass
         return {"results": results}
 
     @app.post("/api/v1/config/reload", dependencies=deps)

@@ -5,7 +5,7 @@ import { ConfirmModal } from "./components/ConfirmModal";
 import ChatPage from "./pages/ChatPage";
 import WorkflowGraphPage from "./pages/WorkflowGraphPage";
 import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
-import { t, setLocale as setI18nLocale, onLocaleChange } from "./utils/i18n";
+import { t, tLocale, setLocale as setI18nLocale, onLocaleChange } from "./utils/i18n";
 
 // ═══════════════════════════════════════════════════════════════════════
 // Cognithor · Control Center v2 — UX-Rewrite mit allen 23 Fixes
@@ -695,17 +695,19 @@ function LanguagePage({ cfg, set }) {
       const data = await api("GET", "/locales");
       if (data && !data.error) {
         setLocales(data.locales || []);
-        setActiveLocale(data.active || cfg.language || "de");
+        // Prefer cfg.language (already loaded from backend config) over
+        // data.active to avoid stale backend locale state (#33)
+        setActiveLocale(cfg.language || data.active || "de");
         setPresetLocales(data.preset_locales || []);
       }
     })();
-  }, []);
+  }, [cfg.language]);
 
   const handleLocaleChange = useCallback((newLocale) => {
     setActiveLocale(newLocale);
     set("language", newLocale);
-    // Switch UI language immediately so the popup renders in the selected language (#32)
-    setI18nLocale(newLocale);
+    // NOTE: Do NOT call setI18nLocale() here — global UI language only changes
+    // on save, not on click (#32). The popup uses local t_preview() instead.
     setError(null);
     setSuccess(null);
     setPreview(null);
@@ -799,44 +801,48 @@ function LanguagePage({ cfg, set }) {
     ru: "Русский (Russian)",
   };
 
+  // Preview helper: shows language page in the *selected* language,
+  // without changing the global UI locale (#32)
+  const tl = (key, params) => tLocale(activeLocale, key, params);
+
   return (<>
-    <Section title={t("lang.title")} desc={t("lang.subtitle")} />
+    <Section title={tl("lang.title")} desc={tl("lang.subtitle")} />
 
     {/* Card 1: Active Language */}
-    <Card title={t("lang.active")}>
+    <Card title={tl("lang.active")}>
       <SelectInput
-        label={t("lang.system")}
+        label={tl("lang.system")}
         value={activeLocale}
         onChange={handleLocaleChange}
         options={locales.map(l => ({ value: l, label: LOCALE_LABELS[l] || l.toUpperCase() }))}
-        desc={t("lang.system_desc")}
+        desc={tl("lang.system_desc")}
       />
       <div className="cc-language-info">
         <small>
-          {t("lang.packs_info", { packs: locales.length > 0 ? locales.map(l => l.toUpperCase()).join(", ") : "...", presets: presetLocales.map(l => l.toUpperCase()).join(", ") })}
+          {tl("lang.packs_info", { packs: locales.length > 0 ? locales.map(l => l.toUpperCase()).join(", ") : "...", presets: presetLocales.map(l => l.toUpperCase()).join(", ") })}
         </small>
       </div>
     </Card>
 
     {/* Card 2: Prompt Translation — shown when locale changes */}
     {showPromptTranslation && (
-      <Card title={t("lang.translate_title")} open>
+      <Card title={tl("lang.translate_title")} open>
         <div className="cc-language-translation-intro">
-          {t("lang.translate_desc", { lang: LOCALE_LABELS[activeLocale] || activeLocale.toUpperCase() })}
-          {" "}{t("lang.translate_question")}
+          {tl("lang.translate_desc", { lang: LOCALE_LABELS[activeLocale] || activeLocale.toUpperCase() })}
+          {" "}{tl("lang.translate_question")}
         </div>
 
         <SelectInput
-          label={t("lang.method_label")}
+          label={tl("lang.method_label")}
           value={method}
           onChange={setMethod}
           options={[
-            { value: "preset", label: t("lang.method_preset") + (presetLocales.includes(activeLocale) ? "" : " — N/A") },
-            { value: "ollama", label: t("lang.method_ollama") },
+            { value: "preset", label: tl("lang.method_preset") + (presetLocales.includes(activeLocale) ? "" : " — N/A") },
+            { value: "ollama", label: tl("lang.method_ollama") },
           ]}
           desc={method === "preset"
-            ? t("lang.desc_preset") + " " + presetLocales.map(l => l.toUpperCase()).join(", ")
-            : t("lang.desc_ollama")
+            ? tl("lang.desc_preset") + " " + presetLocales.map(l => l.toUpperCase()).join(", ")
+            : tl("lang.desc_ollama")
           }
         />
 
@@ -846,10 +852,10 @@ function LanguagePage({ cfg, set }) {
             onClick={handleTranslate}
             disabled={translating || (method === "preset" && !presetLocales.includes(activeLocale))}
           >
-            {translating ? t("lang.translating") : t("lang.translate_btn")}
+            {translating ? tl("lang.translating") : tl("lang.translate_btn")}
           </button>
           <button className="cc-btn" onClick={() => { setShowPromptTranslation(false); setPreview(null); }}>
-            {t("lang.skip")}
+            {tl("lang.skip")}
           </button>
         </div>
 
@@ -860,17 +866,17 @@ function LanguagePage({ cfg, set }) {
 
     {/* Card 3: Translation Preview */}
     {preview && (
-      <Card title={t("lang.preview_title")} open>
+      <Card title={tl("lang.preview_title")} open>
         <div className="cc-language-preview-intro">
-          {t("lang.preview_desc")}
+          {tl("lang.preview_desc")}
         </div>
 
         {Object.entries(preview).map(([key, text]) => (
           <div key={key} className="cc-language-preview-block">
             <label className="cc-label">{
-              key === "plannerSystem" ? t("lang.planner_prompt") :
-              key === "replanPrompt" ? t("lang.replan_prompt") :
-              key === "escalationPrompt" ? t("lang.escalation_prompt") : key
+              key === "plannerSystem" ? tl("lang.planner_prompt") :
+              key === "replanPrompt" ? tl("lang.replan_prompt") :
+              key === "escalationPrompt" ? tl("lang.escalation_prompt") : key
             }</label>
             <pre className="cc-language-preview-text">{text.slice(0, 800)}{text.length > 800 ? "\n…" : ""}</pre>
           </div>
@@ -878,10 +884,10 @@ function LanguagePage({ cfg, set }) {
 
         <div className="cc-language-actions" style={{ marginTop: 16 }}>
           <button className="cc-btn cc-btn-primary" onClick={handleApply}>
-            {I.check} {t("lang.accept")}
+            {I.check} {tl("lang.accept")}
           </button>
           <button className="cc-btn" onClick={handleDiscard}>
-            {t("lang.discard")}
+            {tl("lang.discard")}
           </button>
         </div>
       </Card>
@@ -2297,13 +2303,15 @@ export default function App() {
         .cc-global-search-hint { color: var(--text2); }
         .cc-global-search-kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; margin-left: 4px; }
         .cc-global-search-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 250; display: flex; align-items: flex-start; justify-content: center; padding-top: 15vh; animation: modalIn 0.15s ease-out; cursor: pointer; }
+        [data-theme="light"] .cc-global-search-overlay { background: rgba(0,0,0,0.12); }
         .cc-global-search-dialog { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 520px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05); cursor: default; }
+        [data-theme="light"] .cc-global-search-dialog { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); }
         .cc-global-search-input-wrap { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text2); }
         .cc-global-search-input { flex: 1; background: transparent; border: none; color: var(--text); font-size: 15px; font-family: inherit; outline: none; }
-        .cc-global-search-esc { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); }
+        .cc-global-search-esc { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); }
         .cc-global-search-results { max-height: 320px; overflow-y: auto; }
         .cc-global-search-result { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 12px 16px; border: none; background: transparent; color: var(--text); font-family: inherit; cursor: pointer; transition: background 0.1s; text-align: left; font-size: 13px; }
-        .cc-global-search-result:hover { background: var(--bg3); }
+        .cc-global-search-result:hover { background: var(--bg); }
         .cc-global-search-result-label { font-weight: 600; }
         .cc-global-search-result-terms { font-size: 11px; color: var(--text2); }
         .cc-global-search-empty { padding: 20px; text-align: center; color: var(--text2); font-size: 13px; }
