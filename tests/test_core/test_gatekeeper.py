@@ -125,6 +125,8 @@ class TestRiskClassification:
             "calendar_today",
             "calendar_upcoming",
             "screenshot_desktop",
+            "vault_list",
+            "vault_search",
         ],
     )
     def test_green_tools_comprehensive(
@@ -152,6 +154,9 @@ class TestRiskClassification:
             "docker_stop",
             "api_connect",
             "api_call",
+            "vault_save",
+            "vault_write",
+            "vault_delete",
         ],
     )
     def test_yellow_tools_comprehensive(

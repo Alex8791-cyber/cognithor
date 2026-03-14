@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { I } from "../utils/icons";
+import { t } from "../utils/i18n";
 
 /**
  * PAGES and FIELD_INDEX define the searchable content.
@@ -48,27 +49,27 @@ const FIELD_INDEX = [
   { page: "system", terms: ["system", "restart", "export", "import", "info", "version", "factory reset"] },
 ];
 
-const PAGE_LABELS = {
-  general: "General",
-  language: "Language Settings",
-  providers: "LLM Providers",
-  models: "Models",
-  planner: "PGE Trinity",
-  executor: "Executor",
-  memory: "Memory",
-  channels: "Channels",
-  security: "Security",
-  web: "Web Tools",
-  mcp: "Integrations",
-  cron: "Cron & Heartbeat",
-  database: "Database",
-  logging: "Logging",
-  prompts: "Prompts & Policies",
-  agents: "Agents",
-  bindings: "Bindings",
-  workflows: "Workflows",
-  "knowledge-graph": "Knowledge Graph",
-  system: "System",
+const PAGE_NAV_KEYS = {
+  general: "nav.general",
+  language: "nav.language",
+  providers: "nav.providers",
+  models: "nav.models",
+  planner: "nav.planner",
+  executor: "nav.executor",
+  memory: "nav.memory",
+  channels: "nav.channels",
+  security: "nav.security",
+  web: "nav.web",
+  mcp: "nav.mcp",
+  cron: "nav.cron",
+  database: "nav.database",
+  logging: "nav.logging",
+  prompts: "nav.prompts",
+  agents: "nav.agents",
+  bindings: "nav.bindings",
+  workflows: "nav.workflows",
+  "knowledge-graph": "nav.knowledge_graph",
+  system: "nav.system",
 };
 
 export function GlobalSearch({ onNavigate }) {
@@ -116,9 +117,10 @@ export function GlobalSearch({ onNavigate }) {
       for (const term of entry.terms) {
         if (term.includes(q) || q.includes(term)) {
           if (!matches.has(entry.page)) {
+            const navKey = PAGE_NAV_KEYS[entry.page];
             matches.set(entry.page, {
               page: entry.page,
-              label: PAGE_LABELS[entry.page],
+              label: navKey ? t(navKey) : entry.page,
               matchedTerms: [],
             });
           }
@@ -144,7 +146,7 @@ export function GlobalSearch({ onNavigate }) {
         type="button"
       >
         {I.search}
-        <span className="cc-global-search-hint">Search...</span>
+        <span className="cc-global-search-hint">{t("search.hint")}</span>
         <kbd className="cc-global-search-kbd">⌘K</kbd>
       </button>
     );
@@ -160,7 +162,7 @@ export function GlobalSearch({ onNavigate }) {
             className="cc-global-search-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search settings..."
+            placeholder={t("search.placeholder")}
             autoComplete="new-password"
             role="presentation"
             name={"gs_" + Date.now()}
@@ -187,7 +189,7 @@ export function GlobalSearch({ onNavigate }) {
         )}
         {query && results.length === 0 && (
           <div className="cc-global-search-empty">
-            No results for &ldquo;{query}&rdquo;
+            {t("search.no_results", { query })}
           </div>
         )}
       </div>

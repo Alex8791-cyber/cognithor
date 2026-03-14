@@ -451,6 +451,9 @@ class Gatekeeper:
             "calendar_today",
             "calendar_upcoming",
             "calendar_check_availability",
+            # Vault (read-only)
+            "vault_list",
+            "vault_search",
             # Docker (read-only)
             "docker_ps",
             "docker_logs",
@@ -479,6 +482,9 @@ class Gatekeeper:
             "create_skill",
             "install_community_skill",
             "report_skill",
+            "vault_save",
+            "vault_write",
+            "vault_delete",
             "delegate_to_remote_agent",
             "email_read_inbox",
             "email_search",

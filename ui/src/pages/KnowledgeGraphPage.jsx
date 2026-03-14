@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../utils/api";
+import { t } from "../utils/i18n";
 
 // ── Entity type colors ────────────────────────────────────────────────
 const TYPE_COLORS = {
@@ -119,9 +120,9 @@ function GraphRenderer({ entities, relations, width, height, onNodeClick, select
           <circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/>
           <path d="M6 7l4 4M14 13l4-6M6 17l4-4"/>
         </svg>
-        <div>No entities in knowledge graph</div>
+        <div>{t("kg.empty_title")}</div>
         <div style={{ fontSize: 12, marginTop: 6, opacity: 0.6 }}>
-          Entities are automatically extracted from conversations.
+          {t("kg.empty_desc")}
         </div>
       </div>
     );
@@ -201,20 +202,20 @@ function EntityDetail({ entity, relations, onClose }) {
         <span style={{ color: colors.fill, fontWeight: 600 }}>{entity.name}</span>
         <button className="cc-kg-close" onClick={onClose}>&times;</button>
       </div>
-      <div className="cc-kg-detail-row"><b>ID:</b> {entity.id?.slice(0, 12)}</div>
-      <div className="cc-kg-detail-row"><b>Type:</b> {entity.type}</div>
+      <div className="cc-kg-detail-row"><b>{t("kg.id_label")}</b> {entity.id?.slice(0, 12)}</div>
+      <div className="cc-kg-detail-row"><b>{t("kg.type_label")}</b> {entity.type}</div>
       <div className="cc-kg-detail-row">
-        <b>Confidence:</b> {Math.round((entity.confidence || 0) * 100)}%
+        <b>{t("kg.confidence_label")}</b> {Math.round((entity.confidence || 0) * 100)}%
       </div>
       {entity.attributes && Object.keys(entity.attributes).length > 0 && (
         <div className="cc-kg-detail-row">
-          <b>Attributes:</b>
+          <b>{t("kg.attributes_label")}</b>
           <pre className="cc-kg-output">{JSON.stringify(entity.attributes, null, 2)}</pre>
         </div>
       )}
       {relations.length > 0 && (
         <div className="cc-kg-detail-row">
-          <b>Relationships ({relations.length}):</b>
+          <b>{t("kg.relationships_label", { count: relations.length })}</b>
           <div className="cc-kg-rel-list">
             {relations.map((r, i) => (
               <div key={i} className="cc-kg-rel-item">
@@ -294,17 +295,17 @@ export default function KnowledgeGraphPage() {
   const graphW = 800;
   const graphH = 500;
 
-  if (loading) return <div className="cc-kg-loading">Loading knowledge graph...</div>;
+  if (loading) return <div className="cc-kg-loading">{t("kg.loading")}</div>;
 
   return (
     <div className="cc-kg-page">
       <style>{KG_STYLES}</style>
 
       <div className="cc-kg-header">
-        <h2 className="cc-kg-title">Knowledge Graph</h2>
+        <h2 className="cc-kg-title">{t("kg.title")}</h2>
         <div className="cc-kg-stats">
-          <span>{stats.entities || 0} Entities</span>
-          <span>{stats.relations || 0} Relationships</span>
+          <span>{stats.entities || 0} {t("kg.entities")}</span>
+          <span>{stats.relations || 0} {t("kg.relationships")}</span>
           <button className="cc-kg-refresh" onClick={fetchData} title="Refresh">
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M23 4v6h-6M1 20v-6h6"/>
@@ -328,17 +329,17 @@ export default function KnowledgeGraphPage() {
         <input
           className="cc-kg-search"
           type="text"
-          placeholder="Search entity..."
+          placeholder={t("kg.search_placeholder")}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         <select className="cc-kg-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-          <option value="">All types</option>
+          <option value="">{t("kg.all_types")}</option>
           {entityTypes.map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        <span className="cc-kg-count">{filtered.length} visible</span>
+        <span className="cc-kg-count">{t("kg.visible", { count: filtered.length })}</span>
       </div>
 
       {/* Graph */}

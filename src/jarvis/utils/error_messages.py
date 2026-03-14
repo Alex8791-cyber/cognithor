@@ -53,15 +53,36 @@ def classify_error_for_user(exc: BaseException) -> str:
 
     Used by all channels instead of generic error messages.
     Language is determined by the active i18n locale.
+    Backend-aware: distinguishes Ollama errors from cloud API errors
+    to avoid suggesting 'ollama serve' for OpenAI/Anthropic problems.
     """
     exc_type = type(exc).__name__
     exc_str = str(exc)[:200]
+    status_code = getattr(exc, "status_code", None)
 
-    # Ollama-specific errors (model not found, connection refused)
+    # ── Backend-specific errors (LLMBackendError from llm_backend.py) ──
+    if exc_type == "LLMBackendError":
+        if status_code == 429 or "429" in exc_str:
+            return t("error.cloud_rate_limited")
+        if status_code == 401 or "unauthorized" in exc_str.lower() or "401" in exc_str:
+            return t("error.cloud_auth_failed")
+        if status_code == 402 or "quota" in exc_str.lower() or "billing" in exc_str.lower():
+            return t("error.cloud_quota_exceeded")
+        if status_code == 404 or "not found" in exc_str.lower():
+            return t("error.cloud_model_not_found")
+        if "timeout" in exc_str.lower():
+            return t("error.timeout") + f"\nDetail: {exc_str}"
+        if "nicht erreichbar" in exc_str.lower() or "unreachable" in exc_str.lower():
+            return t("error.cloud_unreachable")
+        # Generic backend error
+        return t("error.cloud_generic", detail=exc_str[:150])
+
+    # ── Ollama-specific errors (OllamaError from model_router.py) ──
     if exc_type == "OllamaError":
-        status_code = getattr(exc, "status_code", None)
         if status_code == 404:
             return t("error.model_not_installed", model="<modelname>") + f"\nDetails: {exc_str}"
+        if status_code == 429 or "429" in exc_str:
+            return t("error.rate_limited")
         if (
             "nicht erreichbar" in exc_str.lower()
             or "unreachable" in exc_str.lower()

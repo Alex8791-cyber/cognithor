@@ -704,7 +704,8 @@ function LanguagePage({ cfg, set }) {
   const handleLocaleChange = useCallback((newLocale) => {
     setActiveLocale(newLocale);
     set("language", newLocale);
-    // Language is applied to the UI only after a successful save (see save handler)
+    // Switch UI language immediately so the popup renders in the selected language (#32)
+    setI18nLocale(newLocale);
     setError(null);
     setSuccess(null);
     setPreview(null);
@@ -2291,8 +2292,8 @@ export default function App() {
         @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
         /* ── Global Search ──────────────────────────── */
-        .cc-global-search-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
-        .cc-global-search-trigger:hover { border-color: var(--accent); color: var(--accent); }
+        .cc-global-search-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: inherit; opacity: 0.8; }
+        .cc-global-search-trigger:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
         .cc-global-search-hint { color: var(--text2); }
         .cc-global-search-kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; margin-left: 4px; }
         .cc-global-search-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 250; display: flex; align-items: flex-start; justify-content: center; padding-top: 15vh; animation: modalIn 0.15s ease-out; cursor: pointer; }

@@ -156,6 +156,82 @@ class TestFriendlyToolName:
         assert _friendly_tool_name("custom_tool") == "custom_tool"
 
 
+class _FakeLLMBackendError(Exception):
+    """Mimics LLMBackendError from llm_backend.py for testing."""
+
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+# Rename the class so type(exc).__name__ == "LLMBackendError"
+_FakeLLMBackendError.__name__ = "LLMBackendError"
+_FakeLLMBackendError.__qualname__ = "LLMBackendError"
+
+
+class _FakeOllamaError(Exception):
+    """Mimics OllamaError from model_router.py for testing."""
+
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+_FakeOllamaError.__name__ = "OllamaError"
+_FakeOllamaError.__qualname__ = "OllamaError"
+
+
+class TestCloudBackendErrors:
+    """Tests for cloud/OpenAI-specific error classification."""
+
+    @staticmethod
+    def _make_backend_error(message: str, status_code: int | None = None) -> Exception:
+        return _FakeLLMBackendError(message, status_code)
+
+    def test_cloud_429_rate_limit(self) -> None:
+        exc = self._make_backend_error("OpenAI HTTP 429: rate limit", status_code=429)
+        msg = classify_error_for_user(exc)
+        assert "Rate-Limit" in msg or "Kontingent" in msg or "API" in msg
+
+    def test_cloud_401_auth_failed(self) -> None:
+        exc = self._make_backend_error("OpenAI HTTP 401: Unauthorized", status_code=401)
+        msg = classify_error_for_user(exc)
+        assert "Authentifizierung" in msg or "API-Schlüssel" in msg
+
+    def test_cloud_402_quota(self) -> None:
+        exc = self._make_backend_error("OpenAI HTTP 402: billing", status_code=402)
+        msg = classify_error_for_user(exc)
+        assert "Kontingent" in msg or "Abrechnung" in msg
+
+    def test_cloud_404_model_not_found(self) -> None:
+        exc = self._make_backend_error("OpenAI HTTP 404: model not found", status_code=404)
+        msg = classify_error_for_user(exc)
+        assert "Modell" in msg or "nicht verfügbar" in msg
+
+    def test_cloud_generic_error(self) -> None:
+        exc = self._make_backend_error("OpenAI HTTP 500: internal server error", status_code=500)
+        msg = classify_error_for_user(exc)
+        assert "Cloud-API" in msg or "Fehler" in msg
+
+    def test_cloud_timeout(self) -> None:
+        exc = self._make_backend_error("OpenAI Timeout nach 120s")
+        msg = classify_error_for_user(exc)
+        assert "Zeitlimit" in msg
+
+    def test_ollama_error_not_cloud(self) -> None:
+        """OllamaError should NOT be treated as cloud error."""
+        exc = _FakeOllamaError("Ollama nicht erreichbar")
+        msg = classify_error_for_user(exc)
+        assert "ollama" in msg.lower() or "Ollama" in msg
+
+    def test_cloud_en_locale(self) -> None:
+        set_locale("en")
+        exc = self._make_backend_error("OpenAI HTTP 429: rate limit", status_code=429)
+        msg = classify_error_for_user(exc)
+        assert "rate limit" in msg.lower() or "quota" in msg.lower()
+        set_locale("de")
+
+
 class TestEnglishLocale:
     """Verify error messages work in English locale."""
 

@@ -414,6 +414,22 @@ class OpenAIBackend(LLMBackend):
                 resp = await client.post("/chat/completions", json=payload)
 
             if resp.status_code != 200:
+                if resp.status_code == 429:
+                    raise LLMBackendError(
+                        "OpenAI rate limit exceeded (429). "
+                        "Please wait a moment or check your API quota.",
+                        status_code=429,
+                    )
+                if resp.status_code == 401:
+                    raise LLMBackendError(
+                        "OpenAI authentication failed (401). Please check your API key.",
+                        status_code=401,
+                    )
+                if resp.status_code == 402:
+                    raise LLMBackendError(
+                        "OpenAI quota/billing error (402). Please check your account billing.",
+                        status_code=402,
+                    )
                 raise LLMBackendError(
                     f"OpenAI HTTP {resp.status_code}: {resp.text[:500]}",
                     status_code=resp.status_code,
