@@ -137,15 +137,12 @@ def verify_pack_integrity(locale: str) -> bool:
     Returns ``False`` only on mismatch (tampered pack).
     """
     locale = _safe_locale(locale)
-    locales_root = LOCALES_DIR.resolve()
-    pack_path = (LOCALES_DIR / f"{locale}.json").resolve()
-    hash_path = (LOCALES_DIR / f"{locale}.sha256").resolve()
+    pack_path = _find_pack_file(locale)
+    if pack_path is None:
+        return False
 
-    if not pack_path.is_relative_to(locales_root):
-        return False
-    if not pack_path.exists():
-        return False
-    if not hash_path.is_relative_to(locales_root) or not hash_path.exists():
+    hash_path = _find_hash_file(locale)
+    if hash_path is None:
         return True  # No hash file → unsigned, trust by default
 
     expected = hash_path.read_text(encoding="utf-8").strip().lower()
@@ -167,13 +164,13 @@ def generate_pack_hash(locale: str) -> str:
     Returns the hex digest. Writes ``<locale>.sha256`` sidecar file.
     """
     locale = _safe_locale(locale)
-    locales_root = LOCALES_DIR.resolve()
-    pack_path = (LOCALES_DIR / f"{locale}.json").resolve()
-    if not pack_path.is_relative_to(locales_root) or not pack_path.exists():
+    pack_path = _find_pack_file(locale)
+    if pack_path is None:
         raise FileNotFoundError(f"Language pack not found: {locale}")
 
     digest = _compute_hash(pack_path)
-    hash_path = (LOCALES_DIR / f"{locale}.sha256").resolve()
+    # Write hash sidecar next to the pack file
+    hash_path = pack_path.with_suffix(".sha256")
     hash_path.write_text(digest + "\n", encoding="utf-8")
     return digest
 
@@ -190,20 +187,41 @@ def _safe_locale(locale: str) -> str:
     return locale
 
 
+def _find_pack_file(locale: str) -> Path | None:
+    """Find a locale pack file by scanning the directory (no user input in path).
+
+    Iterates LOCALES_DIR entries and matches by stem, so the returned
+    Path is always derived from the filesystem — never from user input.
+    This satisfies CodeQL's taint tracking for CWE-22/73/99.
+    """
+    if not LOCALES_DIR.is_dir():
+        return None
+    target = f"{locale}.json"
+    for entry in LOCALES_DIR.iterdir():
+        if entry.name == target and entry.is_file():
+            return entry
+    return None
+
+
+def _find_hash_file(locale: str) -> Path | None:
+    """Find a locale hash sidecar by scanning the directory."""
+    if not LOCALES_DIR.is_dir():
+        return None
+    target = f"{locale}.sha256"
+    for entry in LOCALES_DIR.iterdir():
+        if entry.name == target and entry.is_file():
+            return entry
+    return None
+
+
 def _ensure_loaded(locale: str) -> None:
     """Load a language pack if not already cached."""
     if locale in _packs:
         return
 
     locale = _safe_locale(locale)
-    pack_path = (LOCALES_DIR / f"{locale}.json").resolve()
-    # Guard against path traversal: resolved path must stay inside LOCALES_DIR
-    if not pack_path.is_relative_to(LOCALES_DIR.resolve()):
-        logger.warning("i18n_path_traversal_blocked locale=%s", locale)
-        with _lock:
-            _packs[locale] = {}
-        return
-    if not pack_path.exists():
+    pack_path = _find_pack_file(locale)
+    if pack_path is None:
         if locale != _DEFAULT_LOCALE:
             logger.debug("i18n_pack_not_found locale=%s", locale)
         with _lock:
