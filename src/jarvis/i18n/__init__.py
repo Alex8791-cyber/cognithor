@@ -29,6 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import threading
 from pathlib import Path
 from typing import Any
@@ -135,6 +136,7 @@ def verify_pack_integrity(locale: str) -> bool:
     Returns ``True`` if the hash matches or no sidecar exists (unsigned pack).
     Returns ``False`` only on mismatch (tampered pack).
     """
+    locale = _safe_locale(locale)
     pack_path = LOCALES_DIR / f"{locale}.json"
     hash_path = LOCALES_DIR / f"{locale}.sha256"
 
@@ -161,6 +163,7 @@ def generate_pack_hash(locale: str) -> str:
 
     Returns the hex digest. Writes ``<locale>.sha256`` sidecar file.
     """
+    locale = _safe_locale(locale)
     pack_path = LOCALES_DIR / f"{locale}.json"
     if not pack_path.exists():
         raise FileNotFoundError(f"Language pack not found: {pack_path}")
@@ -173,12 +176,22 @@ def generate_pack_hash(locale: str) -> str:
 
 # --- Internal helpers --------------------------------------------------------
 
+_LOCALE_RE = re.compile(r"^[a-zA-Z0-9_-]{1,10}$")
+
+
+def _safe_locale(locale: str) -> str:
+    """Validate locale to prevent path traversal (CWE-22/73/99)."""
+    if not _LOCALE_RE.match(locale):
+        raise ValueError(f"Invalid locale identifier: {locale!r}")
+    return locale
+
 
 def _ensure_loaded(locale: str) -> None:
     """Load a language pack if not already cached."""
     if locale in _packs:
         return
 
+    locale = _safe_locale(locale)
     pack_path = LOCALES_DIR / f"{locale}.json"
     if not pack_path.exists():
         if locale != _DEFAULT_LOCALE:
