@@ -15,6 +15,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
+
 log = logging.getLogger(__name__)
 
 
@@ -74,7 +76,7 @@ class UserPreferenceStore:
             timeout=5.0,
         )
         self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.Lock()
         self._ensure_table()

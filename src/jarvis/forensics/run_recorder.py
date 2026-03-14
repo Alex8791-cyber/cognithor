@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.models import (
     ActionPlan,
     GateDecision,
@@ -125,7 +126,7 @@ class RunRecorder:
             check_same_thread=False,
         )
         self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(_SCHEMA_SQL)
         self._conn.commit()

@@ -382,17 +382,24 @@ class Planner:
 
         # Prompts von Disk laden (mit Fallback auf hardcoded Konstanten)
         self._system_prompt_template = self._load_prompt_from_file(
-            "SYSTEM_PROMPT.md", SYSTEM_PROMPT
+            "SYSTEM_PROMPT.md", SYSTEM_PROMPT, preset_key="plannerSystem"
         )
         self._replan_prompt_template = self._load_prompt_from_file(
-            "REPLAN_PROMPT.md", REPLAN_PROMPT, fallback_txt="REPLAN_PROMPT.txt"
+            "REPLAN_PROMPT.md", REPLAN_PROMPT, fallback_txt="REPLAN_PROMPT.txt",
+            preset_key="replanPrompt"
         )
         self._escalation_prompt_template = self._load_prompt_from_file(
-            "ESCALATION_PROMPT.md", ESCALATION_PROMPT, fallback_txt="ESCALATION_PROMPT.txt"
+            "ESCALATION_PROMPT.md", ESCALATION_PROMPT, fallback_txt="ESCALATION_PROMPT.txt",
+            preset_key="escalationPrompt"
         )
 
-    def _load_prompt_from_file(self, filename: str, fallback: str, fallback_txt: str = "") -> str:
-        """Lädt einen Prompt von Disk (.md bevorzugt, .txt als Migration-Fallback)."""
+    def _load_prompt_from_file(
+        self, filename: str, fallback: str, fallback_txt: str = "", preset_key: str = ""
+    ) -> str:
+        """Lädt einen Prompt von Disk (.md bevorzugt, .txt als Migration-Fallback).
+
+        Priorität: Disk .md → Disk .txt → i18n Preset → Hardcoded Fallback.
+        """
         try:
             prompts_dir = self._config.jarvis_home / "prompts"
             path = prompts_dir / filename
@@ -409,18 +416,30 @@ class Planner:
                         return content
         except Exception:
             pass
+        # i18n Preset Fallback (curated translations)
+        if preset_key:
+            try:
+                from jarvis.i18n.prompt_presets import get_preset
+
+                preset = get_preset(getattr(self._config, "language", "de"))
+                if preset and preset_key in preset:
+                    return preset[preset_key]
+            except Exception:
+                pass
         return fallback
 
     def reload_prompts(self) -> None:
         """Lädt alle Prompt-Templates neu von Disk."""
         self._system_prompt_template = self._load_prompt_from_file(
-            "SYSTEM_PROMPT.md", SYSTEM_PROMPT
+            "SYSTEM_PROMPT.md", SYSTEM_PROMPT, preset_key="plannerSystem"
         )
         self._replan_prompt_template = self._load_prompt_from_file(
-            "REPLAN_PROMPT.md", REPLAN_PROMPT, fallback_txt="REPLAN_PROMPT.txt"
+            "REPLAN_PROMPT.md", REPLAN_PROMPT, fallback_txt="REPLAN_PROMPT.txt",
+            preset_key="replanPrompt"
         )
         self._escalation_prompt_template = self._load_prompt_from_file(
-            "ESCALATION_PROMPT.md", ESCALATION_PROMPT, fallback_txt="ESCALATION_PROMPT.txt"
+            "ESCALATION_PROMPT.md", ESCALATION_PROMPT, fallback_txt="ESCALATION_PROMPT.txt",
+            preset_key="escalationPrompt"
         )
         log.info("planner_prompts_reloaded")
 
@@ -914,19 +933,37 @@ class Planner:
         if tool_schemas:
             schemas_hash = hash(frozenset(tool_schemas.keys()))
             if schemas_hash != self._cached_tools_hash or self._cached_tools_section is None:
-                tools_lines = []
-                for name, schema in tool_schemas.items():
-                    desc = schema.get("description", "No description")
-                    props = schema.get("inputSchema", {}).get("properties", {})
-                    required = set(schema.get("inputSchema", {}).get("required", []))
-                    parts = []
-                    for k, v in props.items():
-                        typ = v.get("type", "?")
-                        req = " [required]" if k in required else ""
-                        parts.append(f"{k}: {typ}{req}")
-                    param_list = ", ".join(parts)
-                    tools_lines.append(f"- **{name}**({param_list}): {desc}")
-                self._cached_tools_section = "\n".join(tools_lines)
+                # Prefer ToolRegistryDB for localized descriptions with examples
+                db_section = None
+                try:
+                    from jarvis.mcp.tool_registry_db import ToolRegistryDB
+
+                    db_path = self._config.jarvis_home / "tool_registry.db"
+                    if db_path.exists():
+                        registry_db = ToolRegistryDB(db_path)
+                        language = getattr(self._config, "language", "de")
+                        db_section = registry_db.get_tool_prompt_section("planner", language)
+                        registry_db.close()
+                except Exception:
+                    pass
+
+                if db_section:
+                    self._cached_tools_section = db_section
+                else:
+                    # Fallback: hand-rolled schema parsing
+                    tools_lines = []
+                    for name, schema in tool_schemas.items():
+                        desc = schema.get("description", "No description")
+                        props = schema.get("inputSchema", {}).get("properties", {})
+                        required = set(schema.get("inputSchema", {}).get("required", []))
+                        parts = []
+                        for k, v in props.items():
+                            typ = v.get("type", "?")
+                            req = " [required]" if k in required else ""
+                            parts.append(f"{k}: {typ}{req}")
+                        param_list = ", ".join(parts)
+                        tools_lines.append(f"- **{name}**({param_list}): {desc}")
+                    self._cached_tools_section = "\n".join(tools_lines)
                 self._cached_tools_hash = schemas_hash
             tools_section = self._cached_tools_section
         else:

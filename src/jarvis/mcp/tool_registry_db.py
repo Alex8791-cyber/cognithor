@@ -810,7 +810,8 @@ CREATE TABLE IF NOT EXISTS tools (
     example_output TEXT DEFAULT '',
     category TEXT DEFAULT 'other',
     agent_roles TEXT DEFAULT 'all',
-    updated_at TEXT DEFAULT ''
+    updated_at TEXT DEFAULT '',
+    locked INTEGER DEFAULT 1
 );
 """
 
@@ -835,6 +836,11 @@ class ToolRegistryDB:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA_SQL)
+        # Migration: add locked column to existing databases
+        try:
+            self._conn.execute("ALTER TABLE tools ADD COLUMN locked INTEGER DEFAULT 1")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         self._conn.commit()
         log.debug("tool_registry_db_init", path=str(db_path))
 
@@ -1109,6 +1115,15 @@ class ToolRegistryDB:
         """Gibt die Gesamtanzahl registrierter Tools zurueck."""
         row = self._conn.execute("SELECT COUNT(*) FROM tools").fetchone()
         return row[0] if row else 0
+
+    def is_locked(self, tool_name: str) -> bool:
+        """Prueft ob ein Tool gegen Prompt-Evolution gesperrt ist."""
+        row = self._conn.execute(
+            "SELECT locked FROM tools WHERE name = ?", (tool_name,)
+        ).fetchone()
+        if row is None:
+            return True  # Unknown tools are locked by default
+        return bool(row[0])
 
     def close(self) -> None:
         """Schliesst die Datenbankverbindung."""

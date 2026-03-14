@@ -422,7 +422,6 @@ class Gateway:
 
         # Versuche DB-gestuetzte Generierung
         tool_count = 0
-        tool_section = ""
         try:
             from jarvis.mcp.tool_registry_db import (
                 _SECTION_HEADERS,
@@ -439,16 +438,13 @@ class Gateway:
                 registry_db.sync_from_mcp(self._mcp_client)
 
             tool_count = registry_db.tool_count()
-            # Planner sees CORE.md — show only planner-relevant tools,
-            # not the full 50+ executor tools that waste context
-            tool_section = registry_db.get_tool_prompt_section("planner", language)
             registry_db.close()
         except Exception:
             log.debug("tool_registry_db_failed_falling_back", exc_info=True)
-            # Fallback: alte statische Methode
-            tool_section = self._sync_core_inventory_legacy()
-            if tool_section is None:
+            # Fallback: legacy method just to validate MCP is alive
+            if self._sync_core_inventory_legacy() is None:
                 return
+            tool_count = 0
 
         # Skill-Liste zusammenstellen
         skill_lines: list[str] = []
@@ -516,9 +512,13 @@ class Gateway:
         skills_title = headers["skills_title"].format(count=len(skill_lines))
         procs_title = headers["procedures_title"].format(count=len(proc_lines))
 
+        # Tool descriptions are injected directly into the Planner prompt
+        # via {tools_section} — no need to duplicate them in CORE.md
+        tool_ref = f"*{tool_count} Tools registriert (werden direkt in den Planner-Prompt injiziert)*"
+
         inventory = (
             f"## {inv_title}\n\n"
-            + tool_section
+            + tool_ref
             + "\n\n"
             + f"### {skills_title}\n"
             + "\n".join(skill_lines)

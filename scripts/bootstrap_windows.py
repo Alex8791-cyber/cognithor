@@ -37,7 +37,7 @@ def _read_version() -> str:
                 text = candidate.read_text(encoding="utf-8")
                 for line in text.splitlines():
                     if line.strip().startswith("version"):
-                        # version = "0.34.4"
+                        # version = "0.35.5"
                         ver = line.split("=", 1)[1].strip().strip('"').strip("'")
                         if ver:
                             return ver

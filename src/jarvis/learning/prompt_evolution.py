@@ -13,6 +13,7 @@ import time as _time
 from datetime import UTC, datetime
 from typing import Any
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +27,7 @@ class PromptVersionStore:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         self._init_schema()
 
     def _init_schema(self) -> None:
@@ -372,6 +373,8 @@ class PromptEvolutionEngine:
             "({tools_section}, {context_section}, etc.)\n"
             "- Klarere Anweisungen fuer schwache Bereiche gibt\n"
             "- Keine neuen Platzhalter einfuehrt\n"
+            "- WICHTIG: Die Tool-Section ({tools_section}) darf NICHT veraendert werden. "
+            "Der Platzhalter {tools_section} muss exakt erhalten bleiben.\n"
             "Antworte NUR mit dem verbesserten Prompt, ohne Erklaerung.\n\n"
             f"Aktueller Prompt (avg reward: {avg_reward:.3f}):\n"
             f"---\n{winner_text}\n---"
@@ -383,6 +386,15 @@ class PromptEvolutionEngine:
                 return None
 
             new_text = new_text.strip()
+
+            # Post-evolution validation: reject if {tools_section} placeholder was removed
+            if "{tools_section}" in winner_text and "{tools_section}" not in new_text:
+                logger.warning(
+                    "prompt_evolution_rejected",
+                    reason="tools_section_placeholder_removed",
+                    template=template_name,
+                )
+                return None
             new_vid = _version_id(template_name, new_text)
 
             # Register the new variant

@@ -23,6 +23,7 @@ from math import exp
 from pathlib import Path
 from typing import Any, Literal
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -200,7 +201,7 @@ class SessionAnalyzer:
             self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA busy_timeout=5000")
+            self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         return self._conn
 
     def _init_db(self) -> None:

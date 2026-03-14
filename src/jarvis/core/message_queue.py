@@ -23,6 +23,8 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -163,7 +165,7 @@ class DurableMessageQueue:
             )
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA busy_timeout=5000")
+            self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(_SCHEMA)
         return self._conn

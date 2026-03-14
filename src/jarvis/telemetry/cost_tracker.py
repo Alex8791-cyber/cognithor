@@ -9,6 +9,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import UTC, date, datetime
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.models import BudgetStatus, CostRecord, CostReport
 from jarvis.utils.logging import get_logger
 
@@ -45,7 +46,7 @@ class CostTracker:
         self._monthly_budget = monthly_budget
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         self._ensure_schema()
 
     def _ensure_schema(self) -> None:

@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
+
 logger = logging.getLogger("jarvis.db.sqlite")
 
 
@@ -77,7 +79,7 @@ class SQLiteBackend:
                 assert self._conn is not None
                 self._conn.execute("PRAGMA journal_mode=WAL")
                 self._conn.execute("PRAGMA synchronous=NORMAL")
-                self._conn.execute("PRAGMA busy_timeout=5000")
+                self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
                 self._conn.execute("PRAGMA foreign_keys=ON")
 
             self._retry_on_locked(_run_pragmas)

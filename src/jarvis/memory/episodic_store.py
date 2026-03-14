@@ -8,6 +8,7 @@ import threading
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.models import EpisodicEntry
 from jarvis.utils.logging import get_logger
 
@@ -31,7 +32,7 @@ class EpisodicStore:
             self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA busy_timeout=5000")
+            self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         return self._conn
 
     def _ensure_schema(self) -> None:

@@ -23,8 +23,8 @@ Cognithor uses a two-branch model:
 
 | Branch | Purpose | Releases |
 |--------|---------|----------|
-| `main` | **Stable** — production-ready code | Tagged releases (`v0.34.4`) published to PyPI |
-| `beta` | **Active development & testing** — new features land here first | Auto-generated pre-releases (`v0.34.4-beta`) on every push |
+| `main` | **Stable** — production-ready code | Tagged releases (`v0.35.5`) published to PyPI |
+| `beta` | **Active development & testing** — new features land here first | Auto-generated pre-releases (`v0.35.5-beta`) on every push |
 
 ### Workflow
 
@@ -35,7 +35,7 @@ Cognithor uses a two-branch model:
 
 ### Version Scheme
 
-- **Patch** (`0.34.4`): Bug fixes, small improvements
+- **Patch** (`0.35.5`): Bug fixes, small improvements
 - **Minor** (`0.28.0`): New features, non-breaking changes
 - **Major** (`1.0.0`): Breaking changes (reserved for future)
 - **Beta tags** (`v0.27.0-beta`): Automatically created from the `beta` branch — not for production use
@@ -44,7 +44,7 @@ Cognithor uses a two-branch model:
 
 ```bash
 # From the beta GitHub release:
-pip install https://github.com/Alex8791-cyber/cognithor/releases/download/v0.34.4-beta/cognithor-0.34.4-py3-none-any.whl
+pip install https://github.com/Alex8791-cyber/cognithor/releases/download/v0.35.5-beta/cognithor-0.35.5-py3-none-any.whl
 
 # Or from source:
 git clone -b beta https://github.com/Alex8791-cyber/cognithor.git
