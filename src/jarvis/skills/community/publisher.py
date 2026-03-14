@@ -157,7 +157,7 @@ class PublisherVerifier:
         marketplace_store: Any | None = None,
     ) -> None:
         self._registry_url = registry_url or (
-            "https://raw.githubusercontent.com/cognithor/skill-registry/main"
+            "https://raw.githubusercontent.com/Alex8791-cyber/skill-registry/main"
         )
         self._marketplace_store = marketplace_store
         self._cache: dict[str, PublisherIdentity] = {}

@@ -1,6 +1,6 @@
 """CommunityRegistryClient: Fetch, Verify & Install von Community-Skills.
 
-Kommuniziert mit dem oeffentlichen GitHub-Repository ``cognithor/skill-registry``
+Kommuniziert mit dem oeffentlichen GitHub-Repository ``Alex8791-cyber/skill-registry``
 ueber die GitHub API (oder Raw-Content-URLs).  Kein eigener Server noetig.
 
 Sicherheitskette bei Installation:
@@ -87,7 +87,7 @@ class CommunityRegistryClient:
     """
 
     # Standard-Registry-URL (GitHub Raw Content)
-    DEFAULT_REGISTRY_URL = "https://raw.githubusercontent.com/cognithor/skill-registry/main"
+    DEFAULT_REGISTRY_URL = "https://raw.githubusercontent.com/Alex8791-cyber/skill-registry/main"
 
     def __init__(
         self,

@@ -607,7 +607,7 @@ class CommunityMarketplaceConfig(BaseModel):
     """Community Skill Marketplace Konfiguration.
 
     Steuert den Zugriff auf das oeffentliche Community-Skill-Registry
-    (GitHub-Repo ``cognithor/skill-registry``).  Community-Skills sind
+    (GitHub-Repo ``Alex8791-cyber/skill-registry``).  Community-Skills sind
     architektonisch malware-sicher: Skills sind Daten (Markdown), nicht Code.
     """
 
@@ -618,7 +618,7 @@ class CommunityMarketplaceConfig(BaseModel):
     """Aktiviert oder deaktiviert den Community Marketplace."""
 
     registry_url: str = Field(
-        default="https://raw.githubusercontent.com/cognithor/skill-registry/main",
+        default="https://raw.githubusercontent.com/Alex8791-cyber/skill-registry/main",
         description="URL des Community-Skill-Registry (GitHub Raw Content)",
     )
     """Basis-URL fuer das Registry-Repo.  Kann auf einen Fork zeigen."""

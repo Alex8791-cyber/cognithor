@@ -45,7 +45,7 @@ class RegistrySync:
     Usage::
 
         sync = RegistrySync(
-            registry_url="https://raw.githubusercontent.com/cognithor/skill-registry/main",
+            registry_url="https://raw.githubusercontent.com/Alex8791-cyber/skill-registry/main",
             community_dir=Path.home() / ".jarvis" / "skills" / "community",
             check_interval=3600,  # 1 Stunde
         )
@@ -64,7 +64,7 @@ class RegistrySync:
         skill_registry: Any | None = None,
     ) -> None:
         self._registry_url = registry_url or (
-            "https://raw.githubusercontent.com/cognithor/skill-registry/main"
+            "https://raw.githubusercontent.com/Alex8791-cyber/skill-registry/main"
         )
         self._community_dir = community_dir or (Path.home() / ".jarvis" / "skills" / "community")
         self._check_interval = check_interval
@@ -155,7 +155,7 @@ class RegistrySync:
         except Exception as exc:
             result.errors.append(str(exc))
             result.sync_time = time.monotonic() - start
-            log.error("registry_sync_failed", error=str(exc), exc_info=True)
+            log.warning("registry_sync_failed", error=str(exc))
 
         return result
 
