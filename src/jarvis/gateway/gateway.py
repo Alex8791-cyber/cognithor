@@ -58,6 +58,7 @@ from jarvis.models import (
     ToolResult,
     WorkingMemory,
 )
+from jarvis.i18n import t
 from jarvis.utils.logging import get_logger, setup_logging
 
 if TYPE_CHECKING:
@@ -1620,10 +1621,7 @@ class Gateway:
                         # LLM hat brauchbaren Text produziert, nur JSON-Artefakte entfernt
                         final_response = _sanitized
                     else:
-                        final_response = (
-                            "Ich konnte die Antwort des Sprachmodells nicht verarbeiten. "
-                            "Bitte versuch es nochmal oder formuliere deine Anfrage anders."
-                        )
+                        final_response = t("gateway.parse_failed")
                 break
 
             # Direkte Antwort — but detect REPLAN text masquerading as response

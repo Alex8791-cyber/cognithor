@@ -233,6 +233,27 @@
     "search_results_for": "搜索结果：{query}",
     "source_comparison_note": "应注意各来源之间的一致性和矛盾之处"
   },
+  "verified_lookup": {
+    "no_webtools": "错误：WebTools 不可用。",
+    "search_failed": "搜索失败：{error}",
+    "no_results": "没有找到搜索结果：{query}",
+    "no_content": "无法从找到的页面中提取内容：{query}",
+    "no_facts": "未找到可验证的事实。",
+    "no_answer": "无回答。",
+    "consensus_failed": "无法确定共识。",
+    "header": "## 已验证的回答（置信度：{confidence}%）\n",
+    "sources_header": "\n### 来源（已检查 {count} 个）",
+    "agreement_header": "\n### 来源对比：{agreement}% 一致",
+    "agreement_high": "高度一致：多个来源确认了事实。",
+    "agreement_medium": "中度一致：部分确认。",
+    "agreement_low": "低度一致：来源之间存在矛盾。",
+    "discrepancies_header": "\n### 差异",
+    "discrepancy_item": "偏差：'{value_a}'（{count_a} 个来源）vs. '{value_b}'（{count_b} 个来源）",
+    "duration": "\n*总耗时：{ms}ms*"
+  },
+  "gateway": {
+    "parse_failed": "我无法处理语言模型的回复。请重试或换一种方式表达您的请求。"
+  },
   "media": {
     "unsupported_image": "不支持的图像格式：{suffix}",
     "unsupported_format": "不支持的格式：{suffix}。支持：PDF、DOCX、TXT、MD、HTML、CSV",

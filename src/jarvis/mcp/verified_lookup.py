@@ -19,6 +19,7 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from jarvis.i18n import t
 from jarvis.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -155,7 +156,7 @@ class VerifiedWebLookup:
         num_sources = max(2, min(num_sources, 5))
 
         if self._web_tools is None:
-            return "Fehler: WebTools nicht verfuegbar."
+            return t("verified_lookup.no_webtools")
 
         # ── Stage 1: URLs finden ─────────────────────────────────────────
         try:
@@ -166,18 +167,18 @@ class VerifiedWebLookup:
             )
         except Exception as exc:
             log.warning("verified_lookup_search_failed", error=str(exc)[:200])
-            return f"Suche fehlgeschlagen: {exc}"
+            return t("verified_lookup.search_failed", error=str(exc))
 
         urls = re.findall(r"URL: (https?://[^\s]+)", search_text)[:num_sources]
         if not urls:
-            return f"Keine Suchergebnisse fuer: {query}"
+            return t("verified_lookup.no_results", query=query)
 
         # ── Stage 2: Parallele Extraktion (Trafilatura + Browser) ────────
         source_results = await self._parallel_extract(urls, num_sources)
 
         successful = [s for s in source_results if s.success and len(s.text) > 50]
         if not successful:
-            return f"Konnte keine Inhalte von den gefundenen Seiten extrahieren fuer: {query}"
+            return t("verified_lookup.no_content", query=query)
 
         # ── Stage 3: Fakten-Extraktion per LLM ──────────────────────────
         all_facts: list[ExtractedFact] = []
@@ -372,7 +373,7 @@ class VerifiedWebLookup:
         """Berechnet Konsens ueber extrahierte Fakten."""
         if not facts and not sources:
             return VerificationResult(
-                answer="Keine verifizierbaren Fakten gefunden.",
+                answer=t("verified_lookup.no_facts"),
                 confidence=0.0,
             )
 
@@ -398,8 +399,13 @@ class VerifiedWebLookup:
                 majority_val = sorted_values[0][0]
                 if val != majority_val:
                     discrepancies.append(
-                        f"Abweichung: '{val}' ({len(urls)} Quelle(n)) "
-                        f"vs. '{majority_val}' ({len(sorted_values[0][1])} Quelle(n))"
+                        t(
+                            "verified_lookup.discrepancy_item",
+                            value_a=val,
+                            count_a=len(urls),
+                            value_b=majority_val,
+                            count_b=len(sorted_values[0][1]),
+                        )
                     )
 
         # LLM-basierter Konsens (wenn verfuegbar)
@@ -413,7 +419,7 @@ class VerifiedWebLookup:
         else:
             # Fallback: Textzusammenfassung aus bestem Ergebnis
             best_source = max(sources, key=lambda s: len(s.text)) if sources else None
-            answer = best_source.text[:500] if best_source else "Keine Antwort."
+            answer = best_source.text[:500] if best_source else t("verified_lookup.no_answer")
             confidence = agreement * 0.7  # Ohne LLM konservativere Konfidenz
 
         return VerificationResult(
@@ -463,7 +469,7 @@ class VerifiedWebLookup:
             # Fallback: bester Fakt
             if facts:
                 return facts[0].claim, 0.4, []
-            return "Konsens konnte nicht ermittelt werden.", 0.2, []
+            return t("verified_lookup.consensus_failed"), 0.2, []
 
     # ── Formatierung ─────────────────────────────────────────────────────
 
@@ -474,35 +480,35 @@ class VerifiedWebLookup:
 
         # Header
         conf_pct = int(result.confidence * 100)
-        parts.append(f"## Verifizierte Antwort (Konfidenz: {conf_pct}%)\n")
+        parts.append(t("verified_lookup.header", confidence=conf_pct))
         parts.append(result.answer)
 
         # Quellen
         successful = [s for s in result.sources if s.success]
         if successful:
-            parts.append(f"\n### Quellen ({len(successful)} geprueft)")
+            parts.append(t("verified_lookup.sources_header", count=len(successful)))
             for i, src in enumerate(successful, 1):
                 parts.append(f"- [{i}] {src.url} ({src.method}, {src.duration_ms:.0f}ms)")
 
         # Uebereinstimmung
         if result.facts:
             agree_pct = int(result.agreement * 100)
-            parts.append(f"\n### Quellenabgleich: {agree_pct}% Uebereinstimmung")
+            parts.append(t("verified_lookup.agreement_header", agreement=agree_pct))
             if result.agreement >= 0.8:
-                parts.append("Hohe Uebereinstimmung: Mehrere Quellen bestaetigen die Fakten.")
+                parts.append(t("verified_lookup.agreement_high"))
             elif result.agreement >= 0.5:
-                parts.append("Mittlere Uebereinstimmung: Teilweise Bestaetigung.")
+                parts.append(t("verified_lookup.agreement_medium"))
             else:
-                parts.append("Geringe Uebereinstimmung: Quellen widersprechen sich.")
+                parts.append(t("verified_lookup.agreement_low"))
 
         # Diskrepanzen
         if result.discrepancies:
-            parts.append("\n### Diskrepanzen")
+            parts.append(t("verified_lookup.discrepancies_header"))
             for disc in result.discrepancies:
                 parts.append(f"- {disc}")
 
         # Performance
-        parts.append(f"\n*Gesamtzeit: {result.duration_ms:.0f}ms*")
+        parts.append(t("verified_lookup.duration", ms=f"{result.duration_ms:.0f}"))
 
         return "\n".join(parts)
 

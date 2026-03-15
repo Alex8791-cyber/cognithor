@@ -233,6 +233,27 @@
     "search_results_for": "Suchergebnisse für: {query}",
     "source_comparison_note": "Übereinstimmungen und Widersprüche zwischen Quellen sollten beachtet werden"
   },
+  "verified_lookup": {
+    "no_webtools": "Fehler: WebTools nicht verfuegbar.",
+    "search_failed": "Suche fehlgeschlagen: {error}",
+    "no_results": "Keine Suchergebnisse fuer: {query}",
+    "no_content": "Konnte keine Inhalte von den gefundenen Seiten extrahieren fuer: {query}",
+    "no_facts": "Keine verifizierbaren Fakten gefunden.",
+    "no_answer": "Keine Antwort.",
+    "consensus_failed": "Konsens konnte nicht ermittelt werden.",
+    "header": "## Verifizierte Antwort (Konfidenz: {confidence}%)\n",
+    "sources_header": "\n### Quellen ({count} geprueft)",
+    "agreement_header": "\n### Quellenabgleich: {agreement}% Uebereinstimmung",
+    "agreement_high": "Hohe Uebereinstimmung: Mehrere Quellen bestaetigen die Fakten.",
+    "agreement_medium": "Mittlere Uebereinstimmung: Teilweise Bestaetigung.",
+    "agreement_low": "Geringe Uebereinstimmung: Quellen widersprechen sich.",
+    "discrepancies_header": "\n### Diskrepanzen",
+    "discrepancy_item": "Abweichung: '{value_a}' ({count_a} Quelle(n)) vs. '{value_b}' ({count_b} Quelle(n))",
+    "duration": "\n*Gesamtzeit: {ms}ms*"
+  },
+  "gateway": {
+    "parse_failed": "Ich konnte die Antwort des Sprachmodells nicht verarbeiten. Bitte versuch es nochmal oder formuliere deine Anfrage anders."
+  },
   "media": {
     "unsupported_image": "Nicht unterstütztes Bildformat: {suffix}",
     "unsupported_format": "Nicht unterstütztes Format: {suffix}. Unterstützt: PDF, DOCX, TXT, MD, HTML, CSV",

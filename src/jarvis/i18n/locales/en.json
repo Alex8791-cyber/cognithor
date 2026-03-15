@@ -233,6 +233,27 @@
     "search_results_for": "Search results for: {query}",
     "source_comparison_note": "Matches and contradictions between sources should be noted"
   },
+  "verified_lookup": {
+    "no_webtools": "Error: WebTools not available.",
+    "search_failed": "Search failed: {error}",
+    "no_results": "No search results for: {query}",
+    "no_content": "Could not extract content from the found pages for: {query}",
+    "no_facts": "No verifiable facts found.",
+    "no_answer": "No answer.",
+    "consensus_failed": "Consensus could not be determined.",
+    "header": "## Verified Answer (Confidence: {confidence}%)\n",
+    "sources_header": "\n### Sources ({count} checked)",
+    "agreement_header": "\n### Source Comparison: {agreement}% agreement",
+    "agreement_high": "High agreement: Multiple sources confirm the facts.",
+    "agreement_medium": "Medium agreement: Partial confirmation.",
+    "agreement_low": "Low agreement: Sources contradict each other.",
+    "discrepancies_header": "\n### Discrepancies",
+    "discrepancy_item": "Deviation: '{value_a}' ({count_a} source(s)) vs. '{value_b}' ({count_b} source(s))",
+    "duration": "\n*Total time: {ms}ms*"
+  },
+  "gateway": {
+    "parse_failed": "I could not process the language model's response. Please try again or rephrase your request."
+  },
   "media": {
     "unsupported_image": "Unsupported image format: {suffix}",
     "unsupported_format": "Unsupported format: {suffix}. Supported: PDF, DOCX, TXT, MD, HTML, CSV",
