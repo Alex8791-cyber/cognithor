@@ -77,22 +77,20 @@ export function useJarvisChat() {
         setStreamText("");
         streamAccRef.current = "";
         addMessage("assistant", data.text || data.content || "");
-        // Finalize pipeline — distribute total time across phases
+        // Finalize pipeline — mark all running phases as done, pending as skipped
         setPipelineState((prev) => {
           if (!prev) return prev;
           const now = Date.now();
-          const totalMs = prev.startMs ? now - prev.startMs : 0;
           const iters = [...prev.iterations];
           const cur = iters[iters.length - 1];
           if (cur) {
             const updated = { ...cur, phases: { ...cur.phases } };
-            // Estimate: Plan 30%, Gate 2%, Execute 50%, Replan 18%
-            const splits = { plan: 0.30, gate: 0.02, execute: 0.50, replan: 0.18 };
-            let elapsed = prev.startMs || now;
             for (const p of ["plan", "gate", "execute", "replan"]) {
-              const dur = Math.round(totalMs * splits[p]);
-              updated.phases[p] = { status: "done", startMs: elapsed, durationMs: dur };
-              elapsed += dur;
+              if (updated.phases[p].status === "running") {
+                updated.phases[p] = { ...updated.phases[p], status: "done", durationMs: now - (updated.phases[p].startMs || now) };
+              } else if (updated.phases[p].status === "pending") {
+                updated.phases[p] = { status: "skipped" };
+              }
             }
             iters[iters.length - 1] = updated;
           }
@@ -139,17 +137,16 @@ export function useJarvisChat() {
         setPipelineState((prev) => {
           if (!prev) return prev;
           const now = Date.now();
-          const totalMs = prev.startMs ? now - prev.startMs : 0;
           const iters = [...prev.iterations];
           const cur = iters[iters.length - 1];
           if (cur) {
             const updated = { ...cur, phases: { ...cur.phases } };
-            const splits = { plan: 0.30, gate: 0.02, execute: 0.50, replan: 0.18 };
-            let elapsed = prev.startMs || now;
             for (const p of ["plan", "gate", "execute", "replan"]) {
-              const dur = Math.round(totalMs * splits[p]);
-              updated.phases[p] = { status: "done", startMs: elapsed, durationMs: dur };
-              elapsed += dur;
+              if (updated.phases[p].status === "running") {
+                updated.phases[p] = { ...updated.phases[p], status: "done", durationMs: now - (updated.phases[p].startMs || now) };
+              } else if (updated.phases[p].status === "pending") {
+                updated.phases[p] = { status: "skipped" };
+              }
             }
             iters[iters.length - 1] = updated;
           }

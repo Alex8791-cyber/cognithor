@@ -686,6 +686,71 @@ def main() -> None:
 
                 log.info("cc_websocket_endpoint_registered")
 
+                # ── WebUI als Channel im Gateway registrieren ───────────
+                # Damit send_status() und send_pipeline_event() den
+                # Browser ueber die bestehenden _ws_connections erreichen.
+                from jarvis.channels.base import Channel, StatusType
+
+                class _WebUIBridge(Channel):
+                    """Leichtgewichtiger Adapter: Gateway-Channel → WS."""
+
+                    @property
+                    def name(self) -> str:
+                        return "webui"
+
+                    async def start(self, handler: Any) -> None:
+                        pass  # WS-Endpoint laeuft bereits
+
+                    async def stop(self) -> None:
+                        pass
+
+                    async def send(self, message: Any) -> None:
+                        pass  # Antworten werden inline im WS-Handler gesendet
+
+                    async def send_streaming_token(self, session_id: str, token: str) -> None:
+                        ws = _ws_connections.get(session_id)
+                        if ws:
+                            await _ws_safe_send(ws, {"type": "stream_token", "token": token})
+
+                    async def request_approval(
+                        self,
+                        session_id: str,
+                        tool: str,
+                        params: dict,
+                        reason: str,
+                    ) -> bool:
+                        return True  # WebUI approval via separatem Mechanismus
+
+                    async def send_status(
+                        self, session_id: str, status: StatusType, text: str
+                    ) -> None:
+                        ws = _ws_connections.get(session_id)
+                        if ws:
+                            await _ws_safe_send(
+                                ws,
+                                {
+                                    "type": "status_update",
+                                    "status": status.value,
+                                    "text": text,
+                                    "session_id": session_id,
+                                },
+                            )
+
+                    async def send_pipeline_event(self, session_id: str, event: dict) -> None:
+                        ws = _ws_connections.get(session_id)
+                        if ws:
+                            await _ws_safe_send(
+                                ws,
+                                {
+                                    "type": "pipeline_event",
+                                    "session_id": session_id,
+                                    **event,
+                                },
+                            )
+
+                gateway.register_channel(_WebUIBridge())
+                log.info("webui_channel_bridge_registered")
+
                 # ── TTS-Endpoint (Piper) ─────────────────────────────────
                 _voice_cfg = getattr(getattr(config, "channels", None), "voice_config", None)
                 _default_piper_voice = (
