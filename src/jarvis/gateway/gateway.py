@@ -1235,7 +1235,9 @@ class Gateway:
                 self._gatekeeper._tool_enforcer.reset_call_count(active_skill.skill.slug)
 
         # Pipeline callback fuer Presearch + PGE-Loop
-        _pipeline_cb = self._make_pipeline_callback(msg.channel, session.session_id)
+        # msg.session_id = WS-URL session_id (vom Client), session.session_id = interner Gateway-Key.
+        # Channels nutzen msg.session_id fuer Connection-Lookup.
+        _pipeline_cb = self._make_pipeline_callback(msg.channel, msg.session_id)
 
         try:
             if presearch_results:
@@ -1610,9 +1612,10 @@ class Gateway:
         _max_no_tool_iters = 2  # After 2 iters without tool execution, stop
 
         # Status callback for progress feedback
-        _status_cb = self._make_status_callback(msg.channel, session.session_id)
+        # Nutze msg.session_id (Client/WS-ID), nicht session.session_id (intern)
+        _status_cb = self._make_status_callback(msg.channel, msg.session_id)
         # Pipeline callback for live PGE visualization (WebUI only)
-        _pipeline_cb = self._make_pipeline_callback(msg.channel, session.session_id)
+        _pipeline_cb = self._make_pipeline_callback(msg.channel, msg.session_id)
 
         while not session.iterations_exhausted and self._running:
             session.iteration_count += 1
