@@ -136,4 +136,4 @@ def register_identity_tools(
         input_schema={"type": "object", "properties": {}},
     )
 
-    log.info("identity_tools_registered", tools=4)
+    log.info("identity_tools_registered tools=%d", 4)
