@@ -48,6 +48,7 @@ export function useJarvisChat() {
   const [activeTool, setActiveTool] = useState(null);
   const [pendingApproval, setPendingApproval] = useState(null);
   const [statusText, setStatusText] = useState("");
+  const [pipelineState, setPipelineState] = useState(null);
 
   const wsRef = useRef(null);
   const retriesRef = useRef(0);
@@ -76,6 +77,8 @@ export function useJarvisChat() {
         setStreamText("");
         streamAccRef.current = "";
         addMessage("assistant", data.text || data.content || "");
+        // Auto-hide pipeline 2s after response arrives
+        setTimeout(() => setPipelineState(null), 2000);
         break;
 
       case "stream_token":
@@ -95,10 +98,38 @@ export function useJarvisChat() {
 
       case "tool_start":
         setActiveTool({ name: data.tool || data.name, args: data.args });
+        // Track sub-tool in pipeline state
+        setPipelineState((prev) => {
+          if (!prev) return prev;
+          const iters = [...prev.iterations];
+          const cur = iters[iters.length - 1];
+          if (cur) {
+            cur.tools = [...(cur.tools || []), { name: data.tool || data.name, status: "running", startMs: Date.now() }];
+            iters[iters.length - 1] = { ...cur };
+          }
+          return { ...prev, iterations: iters };
+        });
         break;
 
       case "tool_result":
         setActiveTool(null);
+        // Mark sub-tool as done in pipeline state
+        setPipelineState((prev) => {
+          if (!prev) return prev;
+          const iters = [...prev.iterations];
+          const cur = iters[iters.length - 1];
+          if (cur && cur.tools) {
+            const toolName = data.tool || data.name || "";
+            const idx = cur.tools.findIndex((t) => t.name === toolName && t.status === "running");
+            if (idx >= 0) {
+              const updated = [...cur.tools];
+              updated[idx] = { ...updated[idx], status: "done", durationMs: Date.now() - updated[idx].startMs };
+              cur.tools = updated;
+              iters[iters.length - 1] = { ...cur };
+            }
+          }
+          return { ...prev, iterations: iters };
+        });
         break;
 
       case "approval_request":
@@ -107,6 +138,67 @@ export function useJarvisChat() {
           tool: data.tool || data.name,
           reason: data.reason || "",
           params: data.params || data.args || {},
+        });
+        break;
+
+      case "pipeline_event":
+        setPipelineState((prev) => {
+          const phase = data.phase;
+          const status = data.status;
+          const iteration = data.iteration || 1;
+          const now = Date.now();
+
+          // Initialize on first event
+          if (!prev || phase === "iteration" && status === "start") {
+            const existing = prev ? prev.iterations : [];
+            return {
+              active: true,
+              iterations: [
+                ...existing,
+                {
+                  number: iteration,
+                  phases: {
+                    plan: { status: "pending" },
+                    gate: { status: "pending" },
+                    execute: { status: "pending" },
+                    replan: { status: "pending" },
+                  },
+                  tools: [],
+                },
+              ],
+            };
+          }
+
+          // Complete event — mark inactive
+          if (phase === "complete") {
+            return { ...prev, active: false, toolsUsed: data.tools_used };
+          }
+
+          // Update phase status in current iteration
+          const iters = [...prev.iterations];
+          let cur = iters[iters.length - 1];
+          if (!cur) return prev;
+          cur = { ...cur, phases: { ...cur.phases } };
+
+          if (status === "start") {
+            cur.phases[phase] = { status: "running", startMs: now };
+          } else if (status === "done") {
+            const existing = cur.phases[phase] || {};
+            const durationMs = existing.startMs ? now - existing.startMs : 0;
+            cur.phases[phase] = {
+              status: "done",
+              startMs: existing.startMs,
+              durationMs,
+              ...(data.tools ? { tools: data.tools } : {}),
+              ...(data.success !== undefined ? { success: data.success, failed: data.failed } : {}),
+              ...(data.blocked !== undefined ? { blocked: data.blocked, allowed: data.allowed } : {}),
+            };
+          } else if (status === "error") {
+            cur.phases[phase] = { ...cur.phases[phase], status: "error" };
+          }
+
+          iters[iters.length - 1] = cur;
+          return { ...prev, iterations: iters };
         });
         break;
 
@@ -337,6 +429,7 @@ export function useJarvisChat() {
     setCanvasHtml("");
     setCanvasTitle("");
     setStatusText("");
+    setPipelineState(null);
     try { sessionStorage.removeItem("jarvis-messages"); } catch {}
   }, []);
 
@@ -350,6 +443,7 @@ export function useJarvisChat() {
     activeTool,
     pendingApproval,
     statusText,
+    pipelineState,
     sendMessage,
     sendFile,
     sendVoice,

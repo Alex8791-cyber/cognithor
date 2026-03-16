@@ -2398,6 +2398,13 @@ export default function App() {
         .cc-tool-spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
         .cc-tool-label { opacity: 0.9; }
 
+        /* Pipeline Canvas */
+        .cc-pipeline { border-top: 1px solid var(--border); background: rgba(0,212,255,0.03); flex-shrink: 0; overflow: hidden; }
+        .cc-pipeline-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 16px; cursor: pointer; user-select: none; }
+        .cc-pipeline-title { font-size: 12px; font-weight: 600; color: var(--text2); letter-spacing: 0.5px; text-transform: uppercase; }
+        .cc-pipeline-chevron { font-size: 10px; color: var(--text2); }
+        .cc-pipeline-svg { display: block; margin: 0 auto; padding-bottom: 8px; }
+
         /* Approval Banner */
         .cc-approval { padding: 10px 16px; background: rgba(255,171,64,0.08); border-top: 1px solid rgba(255,171,64,0.2); flex-shrink: 0; }
         .cc-approval-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

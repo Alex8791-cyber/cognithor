@@ -1531,6 +1531,40 @@ class Gateway:
 
         return _send_status
 
+    def _make_pipeline_callback(
+        self,
+        channel_name: str,
+        session_id: str,
+    ) -> Any:
+        """Creates a fire-and-forget pipeline event callback.
+
+        Returns an async callable for sending structured PGE pipeline
+        events to the frontend for the live pipeline visualization.
+        """
+        _start_mono = time.monotonic()
+
+        async def _send_pipeline(phase: str, status: str, **extra: Any) -> None:
+            channel = self._channels.get(channel_name)
+            if channel is None or not hasattr(channel, "send_pipeline_event"):
+                return
+            try:
+                await asyncio.wait_for(
+                    channel.send_pipeline_event(
+                        session_id,
+                        {
+                            "phase": phase,
+                            "status": status,
+                            "elapsed_ms": int((time.monotonic() - _start_mono) * 1000),
+                            **extra,
+                        },
+                    ),
+                    timeout=2.0,
+                )
+            except Exception:
+                log.debug("pipeline_event_send_failed", exc_info=True)
+
+        return _send_pipeline
+
     async def _run_pge_loop(
         self,
         msg: IncomingMessage,
@@ -1555,9 +1589,12 @@ class Gateway:
 
         # Status callback for progress feedback
         _status_cb = self._make_status_callback(msg.channel, session.session_id)
+        # Pipeline callback for live PGE visualization (WebUI only)
+        _pipeline_cb = self._make_pipeline_callback(msg.channel, session.session_id)
 
         while not session.iterations_exhausted and self._running:
             session.iteration_count += 1
+            await _pipeline_cb("iteration", "start", iteration=session.iteration_count)
 
             # Token-Budget prüfen und ggf. kompaktieren
             self._check_and_compact(wm, session)
@@ -1572,6 +1609,7 @@ class Gateway:
 
             # Status: Thinking
             await _status_cb("thinking", "Thinking...")
+            await _pipeline_cb("plan", "start", iteration=session.iteration_count)
 
             # Planner
             if session.iteration_count == 1:
@@ -1589,6 +1627,13 @@ class Gateway:
                 )
 
             all_plans.append(plan)
+            await _pipeline_cb(
+                "plan",
+                "done",
+                iteration=session.iteration_count,
+                has_actions=plan.has_actions,
+                steps=len(plan.steps) if plan.has_actions else 0,
+            )
 
             if run_id and self._run_recorder:
                 try:
@@ -1708,6 +1753,7 @@ class Gateway:
                 break
 
             # Gatekeeper
+            await _pipeline_cb("gate", "start", iteration=session.iteration_count)
             decisions = self._gatekeeper.evaluate_plan(plan.steps, session)
 
             for step, decision in zip(plan.steps, decisions, strict=False):
@@ -1730,6 +1776,16 @@ class Gateway:
                 decisions,
                 session,
                 msg.channel,
+            )
+
+            _n_blocked = sum(1 for d in approved_decisions if d.status == GateStatus.BLOCK)
+            _n_allowed = sum(1 for d in approved_decisions if d.status != GateStatus.BLOCK)
+            await _pipeline_cb(
+                "gate",
+                "done",
+                iteration=session.iteration_count,
+                blocked=_n_blocked,
+                allowed=_n_allowed,
             )
 
             all_blocked = all(d.status == GateStatus.BLOCK for d in approved_decisions)
@@ -1761,6 +1817,12 @@ class Gateway:
 
             # Set status callback on executor for retry visibility
             self._executor.set_status_callback(_status_cb)
+            await _pipeline_cb(
+                "execute",
+                "start",
+                iteration=session.iteration_count,
+                tools=[s.tool for s in plan.steps],
+            )
 
             # Executor
             if route_decision and route_decision.agent.name != "jarvis":
@@ -1791,6 +1853,14 @@ class Gateway:
                     log.debug("run_recorder_results_failed", exc_info=True)
 
             all_results.extend(results)
+            await _pipeline_cb(
+                "execute",
+                "done",
+                iteration=session.iteration_count,
+                success=sum(1 for r in results if r.success),
+                failed=sum(1 for r in results if r.is_error),
+                total_ms=int(sum(r.duration_ms or 0 for r in results)),
+            )
 
             for result in results:
                 all_audit.append(
@@ -1924,6 +1994,12 @@ class Gateway:
                 "into smaller steps — happy to help!"
             )
 
+        await _pipeline_cb(
+            "complete",
+            "done",
+            iterations=session.iteration_count,
+            tools_used=len(all_results),
+        )
         return final_response, all_results, all_plans, all_audit
 
     async def _run_post_processing(

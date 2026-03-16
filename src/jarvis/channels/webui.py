@@ -61,6 +61,7 @@ class WSMessageType:
     TOOL_RESULT = "tool_result"
     APPROVAL_REQUEST = "approval_request"
     STATUS_UPDATE = "status_update"
+    PIPELINE_EVENT = "pipeline_event"
     ERROR = "error"
     PONG = "pong"
 
@@ -259,6 +260,27 @@ class WebUIChannel(Channel):
                     "data": data or {},
                     "session_id": session_id,
                     "timestamp": datetime.now(UTC).isoformat(),
+                },
+            )
+
+    async def send_pipeline_event(
+        self,
+        session_id: str,
+        event: dict[str, Any],
+    ) -> None:
+        """Sendet ein PGE-Pipeline-Event an den Client.
+
+        Wird vom Gateway bei jedem Phasenwechsel im PGE-Zyklus aufgerufen.
+        Das Frontend nutzt diese Events fuer die Pipeline-Visualisierung.
+        """
+        ws = self._connections.get(session_id)
+        if ws:
+            await self._ws_send(
+                ws,
+                {
+                    "type": WSMessageType.PIPELINE_EVENT,
+                    "session_id": session_id,
+                    **event,
                 },
             )
 

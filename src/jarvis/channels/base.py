@@ -101,3 +101,9 @@ class Channel(ABC):
             status: Art des Status (THINKING, SEARCHING, etc.)
             text: Menschenlesbarer Status-Text
         """
+
+    async def send_pipeline_event(self, session_id: str, event: dict[str, Any]) -> None:
+        """Sendet ein Pipeline-Event fuer die PGE-Visualisierung.
+
+        Default: no-op. Nur WebUI implementiert dies.
+        """

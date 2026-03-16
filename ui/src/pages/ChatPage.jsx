@@ -9,6 +9,7 @@ import { ChatCanvas } from "../components/chat/ChatCanvas";
 import { ToolIndicator } from "../components/chat/ToolIndicator";
 import { ApprovalBanner } from "../components/chat/ApprovalBanner";
 import { VoiceIndicator } from "../components/chat/VoiceIndicator";
+import PipelineCanvas from "../components/chat/PipelineCanvas";
 
 export default function ChatPage() {
   const {
@@ -20,6 +21,7 @@ export default function ChatPage() {
     canvasTitle,
     activeTool,
     pendingApproval,
+    pipelineState,
     sendMessage,
     sendFile,
     sendVoice,
@@ -143,6 +145,15 @@ export default function ChatPage() {
 
         {/* Tool Indicator */}
         <ToolIndicator tool={activeTool} />
+
+        {/* Pipeline Canvas — live PGE visualization */}
+        {pipelineState && (
+          <PipelineCanvas
+            pipeline={pipelineState}
+            collapsed={!pipelineState.active}
+            onToggle={() => {}}
+          />
+        )}
 
         {/* Approval Banner */}
         <ApprovalBanner
