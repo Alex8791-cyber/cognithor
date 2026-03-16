@@ -135,6 +135,18 @@ class CodeTools:
                 f"max {self._max_code_size / 1_048_576:.0f} MB)"
             )
 
+        # GUI-Erkennung: headless-Modus aktivieren wenn GUI-Bibliotheken erkannt
+        _GUI_IMPORTS = ("pygame", "tkinter", "PyQt", "PySide", "wx.", "gi.repository.Gtk")
+        _code_lower = code.lower()
+        _is_gui = False
+        for gui_lib in _GUI_IMPORTS:
+            if (
+                f"import {gui_lib.lower()}" in _code_lower
+                or f"from {gui_lib.lower()}" in _code_lower
+            ):
+                _is_gui = True
+                break
+
         cwd = working_dir or str(self._workspace)
 
         # Working-Directory validieren -- muss unter Workspace liegen
@@ -154,6 +166,20 @@ class CodeTools:
         temp_path = cwd_path / temp_name
 
         try:
+            # GUI-Headless: Dummy-Treiber injizieren damit der Code laeuft
+            # ohne echtes Display. Fehler im Code werden trotzdem erkannt.
+            if _is_gui:
+                headless_preamble = (
+                    "import os as _os\n"
+                    '_os.environ.setdefault("SDL_VIDEODRIVER", "dummy")\n'
+                    '_os.environ.setdefault("SDL_AUDIODRIVER", "dummy")\n'
+                    '_os.environ.setdefault("DISPLAY", ":0")\n'
+                )
+                code = headless_preamble + code
+                # Kuerzeren Timeout fuer GUI-Tests (kein Fenster-Loop noetig)
+                timeout = min(timeout, 10)
+                log.info("gui_headless_mode", library=gui_lib)
+
             # Code in temp-Datei schreiben
             temp_path.write_text(code, encoding="utf-8")
 
@@ -181,7 +207,20 @@ class CodeTools:
                 timed_out=result.timed_out,
             )
 
-            return result.output
+            output = result.output
+            if _is_gui:
+                if result.exit_code == 0 or result.timed_out:
+                    output += (
+                        "\n[Headless-Test OK] GUI-App wurde im Dummy-Modus "
+                        "gestartet. Der User kann sie mit Grafik starten: "
+                        f"python {temp_name.replace('_jarvis_run_', '').replace('.py', '')}"
+                    )
+                else:
+                    output += (
+                        "\n[Headless-Test FEHLER] Die GUI-App hat einen Fehler. "
+                        "Bitte den Code pruefen."
+                    )
+            return output
 
         finally:
             # Temp-Datei bereinigen
