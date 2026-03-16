@@ -101,6 +101,28 @@ export function useJarvisChat() {
         setIsStreaming(true);
         streamAccRef.current += (data.token || data.content || "");
         setStreamText(streamAccRef.current);
+        // First stream token = LLM is responding → advance pipeline to replan/finishing
+        setPipelineState((prev) => {
+          if (!prev || !prev.active) return prev;
+          const iters = [...prev.iterations];
+          const cur = { ...iters[iters.length - 1], phases: { ...iters[iters.length - 1].phases } };
+          const now = Date.now();
+          // Advance any pending/running phases to done
+          if (cur.phases.plan.status === "running") {
+            cur.phases.plan = { status: "done", startMs: cur.phases.plan.startMs, durationMs: now - (cur.phases.plan.startMs || now) };
+          }
+          if (cur.phases.gate.status === "pending") {
+            cur.phases.gate = { status: "done", durationMs: 0 };
+          }
+          if (cur.phases.execute.status === "pending" || cur.phases.execute.status === "running") {
+            cur.phases.execute = { status: "done", startMs: cur.phases.execute.startMs || now, durationMs: now - (cur.phases.execute.startMs || now) };
+          }
+          if (cur.phases.replan.status === "pending") {
+            cur.phases.replan = { status: "running", startMs: now };
+          }
+          iters[iters.length - 1] = cur;
+          return { ...prev, iterations: iters };
+        });
         break;
 
       case "stream_end":
@@ -458,8 +480,21 @@ export function useJarvisChat() {
 
   const sendMessage = useCallback((text) => {
     if (!text.trim()) return;
-    // Reset pipeline state for new message
-    setPipelineState(null);
+    // Start pipeline visualization immediately on send
+    setPipelineState({
+      active: true,
+      startMs: Date.now(),
+      iterations: [{
+        number: 1,
+        phases: {
+          plan: { status: "running", startMs: Date.now() },
+          gate: { status: "pending" },
+          execute: { status: "pending" },
+          replan: { status: "pending" },
+        },
+        tools: [],
+      }],
+    });
     addMessage("user", text.trim());
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
