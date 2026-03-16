@@ -211,14 +211,16 @@ class CodeTools:
             if _is_gui:
                 if result.exit_code == 0 or result.timed_out:
                     output += (
-                        "\n[Headless-Test OK] GUI-App wurde im Dummy-Modus "
-                        "gestartet. Der User kann sie mit Grafik starten: "
-                        f"python {temp_name.replace('_jarvis_run_', '').replace('.py', '')}"
+                        "\n[Headless-Test OK] GUI-App startet fehlerfrei im "
+                        "Dummy-Modus. Der User kann sie mit Grafik starten."
                     )
                 else:
                     output += (
-                        "\n[Headless-Test FEHLER] Die GUI-App hat einen Fehler. "
-                        "Bitte den Code pruefen."
+                        "\n[Headless-Test FEHLER] Exit-Code: "
+                        f"{result.exit_code}. Die GUI-App crashed beim Start. "
+                        "AKTION ERFORDERLICH: Analysiere den Fehler oben, "
+                        "korrigiere den Code mit write_file und teste erneut "
+                        "mit run_python. Wiederhole bis der Test OK ist."
                     )
             return output
 
