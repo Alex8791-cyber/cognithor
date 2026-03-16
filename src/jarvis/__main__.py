@@ -1068,7 +1068,8 @@ def main() -> None:
                         state = gateway._identity_layer.get_state_summary()
                         return state
                     except Exception as e:
-                        return {"error": str(e)[:200]}
+                        log.debug("identity_api_error", exc_info=True)
+                        return {"error": "Internal identity error"}
 
                 @api_app.post("/api/v1/identity/freeze")
                 async def _identity_freeze():
@@ -1102,7 +1103,8 @@ def main() -> None:
                         stats = engine.dream.run(engine)
                         return {"status": "dream_completed", "stats": str(stats)}
                     except Exception as e:
-                        return {"error": str(e)[:200]}
+                        log.debug("identity_api_error", exc_info=True)
+                        return {"error": "Internal identity error"}
 
                 log.info("cc_identity_endpoints_registered")
 
