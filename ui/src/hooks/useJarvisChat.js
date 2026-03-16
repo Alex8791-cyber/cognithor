@@ -332,27 +332,33 @@ export function useJarvisChat() {
 
           if (st === "thinking") {
             // Plan phase
-            if (cur.phases.plan.status === "pending") {
-              cur.phases.plan = { status: "running", startMs: now };
+            if (cur.phases.plan.status !== "done") {
+              cur.phases.plan = { status: "running", startMs: cur.phases.plan.startMs || now };
             }
           } else if (st === "executing") {
             // Mark plan as done, gate as done, execute as running
-            if (cur.phases.plan.status === "running") {
-              cur.phases.plan = { status: "done", startMs: cur.phases.plan.startMs, durationMs: now - (cur.phases.plan.startMs || now) };
+            if (cur.phases.plan.status !== "done") {
+              cur.phases.plan = { status: "done", startMs: cur.phases.plan.startMs || now, durationMs: now - (cur.phases.plan.startMs || now) };
             }
-            if (cur.phases.gate.status === "pending") {
-              cur.phases.gate = { status: "done", durationMs: 0 };
+            if (cur.phases.gate.status !== "done") {
+              cur.phases.gate = { status: "done", startMs: cur.phases.gate.startMs || now, durationMs: now - (cur.phases.gate.startMs || now) };
             }
-            if (cur.phases.execute.status === "pending") {
-              cur.phases.execute = { status: "running", startMs: now, toolText: txt };
+            if (cur.phases.execute.status !== "done") {
+              cur.phases.execute = { status: "running", startMs: cur.phases.execute.startMs || now, toolText: txt };
             }
           } else if (st === "finishing") {
             // Mark execute as done, replan as running
-            if (cur.phases.execute.status === "running") {
-              cur.phases.execute = { status: "done", startMs: cur.phases.execute.startMs, durationMs: now - (cur.phases.execute.startMs || now) };
+            if (cur.phases.plan.status !== "done") {
+              cur.phases.plan = { status: "done", startMs: cur.phases.plan.startMs || now, durationMs: now - (cur.phases.plan.startMs || now) };
             }
-            if (cur.phases.replan.status === "pending") {
-              cur.phases.replan = { status: "running", startMs: now };
+            if (cur.phases.gate.status !== "done") {
+              cur.phases.gate = { status: "done", startMs: cur.phases.gate.startMs || now, durationMs: now - (cur.phases.gate.startMs || now) };
+            }
+            if (cur.phases.execute.status !== "done") {
+              cur.phases.execute = { status: "done", startMs: cur.phases.execute.startMs || now, durationMs: now - (cur.phases.execute.startMs || now) };
+            }
+            if (cur.phases.replan.status !== "done") {
+              cur.phases.replan = { status: "running", startMs: cur.phases.replan.startMs || now };
             }
           }
 
