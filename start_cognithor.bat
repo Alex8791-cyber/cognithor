@@ -9,7 +9,7 @@ color 0F
 ::  startet dann die Web-UI.
 ::
 ::  UI Priority: Flutter pre-built > Flutter SDK > CLI
-::  React UI is deprecated since v0.41.0.
+::  React UI is deprecated since v0.42.0.
 :: ============================================================
 
 call :main
@@ -34,7 +34,7 @@ echo  ^| ^|   ^| ^| ^| ^| ^|  _^|  \^| ^|^| ^|  ^| ^| ^| ^|_^| ^| ^| ^| ^| ^|_^)
 echo  ^| ^|___^| ^|_^| ^| ^|_^| ^| ^|\  ^|^| ^|  ^| ^| ^|  _  ^| ^|_^| ^|  _ ^<
 echo   \____^|\___/ \____^|_^| \_^|___^| ^|_^| ^|_^| ^|_^|\___/^|_^| \_\
 echo.
-echo   v0.41.0 - Flutter UI
+echo   v0.42.0 - Flutter UI
 echo.
 
 set "REPO_ROOT=%~dp0"
@@ -111,7 +111,7 @@ if errorlevel 1 (
 if not exist "%REPO_ROOT%\flutter_app\build\web\index.html" (
     echo   [INFO] Flutter UI not found locally. Downloading pre-built...
     if not exist "%REPO_ROOT%\flutter_app\build" mkdir "%REPO_ROOT%\flutter_app\build"
-    curl -sfL "https://github.com/Alex8791-cyber/cognithor/releases/download/v0.41.0/flutter_web_build.tar.gz" -o "%REPO_ROOT%\flutter_app\build\flutter_web_build.tar.gz" 2>nul
+    curl -sfL "https://github.com/Alex8791-cyber/cognithor/releases/download/v0.42.0/flutter_web_build.tar.gz" -o "%REPO_ROOT%\flutter_app\build\flutter_web_build.tar.gz" 2>nul
     if exist "%REPO_ROOT%\flutter_app\build\flutter_web_build.tar.gz" (
         echo   [INFO] Extracting Flutter UI...
         cd /d "%REPO_ROOT%\flutter_app\build"
