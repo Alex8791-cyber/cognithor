@@ -4,7 +4,8 @@ __pycache__/
 *$py.class
 *.egg-info/
 dist/
-build/
+/build/
+!flutter_app/build/web/
 .eggs/
 *.egg
 *.so
@@ -64,8 +65,12 @@ flutter_app/build/app/
 flutter_app/build/linux/
 flutter_app/build/macos/
 flutter_app/build/windows/
-flutter_app/build/web/
-# Pre-built UI is distributed as release asset (flutter_web_build.tar.gz)
+# flutter_app/build/web/ is tracked — bundled for start_cognithor.bat
+flutter_app/build/web/*.symbols
+flutter_app/build/web/*.map
+flutter_app/build/web/canvaskit/chromium/
+flutter_app/build/web/canvaskit/skwasm*
+flutter_app/build/web/canvaskit/wimp*
 
 # ── Claude Code ──────────────────────────────────────────────────
 .claude/

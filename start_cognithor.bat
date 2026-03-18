@@ -106,28 +106,7 @@ if errorlevel 1 (
 ::  5. UI-Modus waehlen (Flutter-first)
 :: ============================================================
 
-:: --- Modus 1: Pre-built Flutter Web (kein SDK noetig) ---
-:: If no pre-built exists, try to download from GitHub release
-if not exist "%REPO_ROOT%\flutter_app\build\web\index.html" (
-    echo   [INFO] Flutter UI not found locally. Downloading pre-built...
-    if not exist "%REPO_ROOT%\flutter_app\build" mkdir "%REPO_ROOT%\flutter_app\build"
-    curl -sfL "https://github.com/Alex8791-cyber/cognithor/releases/download/v0.42.0/flutter_web_build.tar.gz" -o "%REPO_ROOT%\flutter_app\build\flutter_web_build.tar.gz" 2>nul
-    if exist "%REPO_ROOT%\flutter_app\build\flutter_web_build.tar.gz" (
-        echo   [INFO] Extracting Flutter UI...
-        cd /d "%REPO_ROOT%\flutter_app\build"
-        tar -xzf flutter_web_build.tar.gz 2>nul
-        del flutter_web_build.tar.gz 2>nul
-        cd /d "%REPO_ROOT%"
-        if exist "%REPO_ROOT%\flutter_app\build\web\index.html" (
-            echo   [OK] Flutter UI downloaded and extracted.
-        ) else (
-            echo   [WARNING] Download failed or extraction error.
-        )
-    ) else (
-        echo   [WARNING] Could not download Flutter UI from GitHub.
-    )
-)
-
+:: --- Modus 1: Pre-built Flutter Web (bundled in repo) ---
 if exist "%REPO_ROOT%\flutter_app\build\web\index.html" (
     echo.
     echo   Starting with Flutter UI...
