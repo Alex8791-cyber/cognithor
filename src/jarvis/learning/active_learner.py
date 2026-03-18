@@ -21,17 +21,18 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import os
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from jarvis.memory.ingest import SUPPORTED_EXTENSIONS, TextExtractor
 from jarvis.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from jarvis.memory.manager import MemoryManager
 
 log = get_logger(__name__)
@@ -239,7 +240,9 @@ class ActiveLearner:
     # Directory management
     # ------------------------------------------------------------------
 
-    def add_directory(self, path: str | Path, *, enabled: bool = True, recursive: bool = True) -> None:
+    def add_directory(
+        self, path: str | Path, *, enabled: bool = True, recursive: bool = True,
+    ) -> None:
         """Add a directory to the watch list."""
         p = Path(path).resolve()
         # Avoid duplicates
@@ -302,7 +305,7 @@ class ActiveLearner:
 
         # Process top candidate(s) within rate budget
         budget = self._config.files_per_hour - self._files_this_hour
-        for path, score in scored[:budget]:
+        for path, _score in scored[:budget]:
             if not self._running:
                 break
             try:

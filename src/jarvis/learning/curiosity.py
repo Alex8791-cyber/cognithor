@@ -16,8 +16,6 @@ Integration:
 
 from __future__ import annotations
 
-import asyncio
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any

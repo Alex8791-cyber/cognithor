@@ -110,7 +110,10 @@ class KnowledgeConfidenceManager:
             )
         )
 
-        log.info("confidence_update", entity_id=entity_id, old=f"{old:.2f}", new=f"{new:.2f}", reason=feedback_type)
+        log.info(
+            "confidence_update", entity_id=entity_id,
+            old=f"{old:.2f}", new=f"{new:.2f}", reason=feedback_type,
+        )
         return new
 
     # ------------------------------------------------------------------
