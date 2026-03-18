@@ -97,6 +97,40 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 
 ## What's New
 
+### v0.42.0-beta — Premium UI, Complete Learning System, Issue #35/#36
+
+**World-Class Flutter UI**
+- **Responsive 3-tier navigation** — Desktop: animated side rail (220px expand/collapse), Tablet: compact rail with hover-expand, Mobile: bottom bar
+- **Glassmorphism cards** — `BackdropFilter` frosted glass with gradient highlight edges
+- **Micro-animations everywhere** — `StaggeredList` (cascading entrance, 50ms/item), `AnimatedCounter` (smooth number tweens), `ShimmerLoading` (gradient sweep skeleton), `AnimatedIndexedStack` (fade+slide page transitions)
+- **Gradient background** — Subtle rotating accent glow (60s cycle, 3-5% opacity)
+- **Theme contrast fix** — 30+ hardcoded dark-mode colors replaced with theme-aware `cardColor`/`dividerColor` — light mode fully usable
+- **Centralized design system** — 30+ colors in `jarvis_theme.dart`: entity colors, phase colors, code block colors, Hermes-style semi-transparent accents, Google Fonts Inter typography
+- **Admin Hub** — Master-detail layout (30/70 split) instead of grid, responsive
+- **Dashboard** — Real-time API data (System Status, Performance Metrics, Model Info, Events, Activity Chart), 15s auto-refresh, animated counters
+- **Custom toast system** — Top-of-screen styled toasts with type icons and accent borders
+- **Global keyboard shortcuts** — Ctrl+1-5 for tabs (from any screen), Ctrl+S save, Ctrl+K search
+- **Config export** — Browser file download (not just clipboard)
+
+**Complete Learning System (Issue #36)**
+- **ExplorationExecutor** — Autonomously researches knowledge gaps via memory search
+- **KnowledgeQAStore** — SQLite Q&A knowledge base with confidence tracking and verification
+- **KnowledgeLineageTracker** — Provenance tracking per entity (file/web/conversation/feedback/exploration)
+- **Gateway integration** — ActiveLearner starts on boot, CuriosityEngine scans every 5min, ConfidenceManager decays daily
+- **Confidence persistence** — Feedback API reads/writes actual entity confidence in DB
+- **14 API endpoints** under `/api/v1/learning/*` — stats, gaps, Q&A CRUD, lineage, exploration
+- **Flutter Learning Dashboard** — 5 tabs (Overview, Gaps, Queue, Q&A, Lineage) with directory config
+
+**Issue #35 Bug Fixes**
+- PDF upload, version display, provider clarity, observe panel, search button, markdown rendering, Ollama timeout
+- Identity auto-install in `start_cognithor.bat` and `install.sh`
+- React UI deprecated, Flutter auto-download from GitHub release
+
+**Code Quality**
+- `ruff check src/jarvis/` — 0 errors (was 204)
+- `flutter analyze` — 0 issues
+- All tests passing
+
 ### v0.41.0-beta — Flutter UI, Active Learning, Knowledge Curiosity Engine
 
 **Flutter UI — Full Feature Parity with React Control Center**
