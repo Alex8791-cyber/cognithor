@@ -29,7 +29,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _dashboard;
   List<dynamic>? _events;
-  Map<String, dynamic>? _models;
   Map<String, dynamic>? _status;
   bool _loading = true;
   String? _error;
@@ -69,7 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final dashboard = results[0];
       final eventsResult = results[1];
-      final modelsResult = results[2];
+      // results[2] (model stats) intentionally unused.
       final statusResult = results[3];
 
       if (dashboard.containsKey('error')) {
@@ -83,7 +82,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _dashboard = dashboard;
         _events = eventsResult['events'] as List<dynamic>? ?? [];
-        _models = modelsResult;
         _status = statusResult;
         _loading = false;
         _error = null;

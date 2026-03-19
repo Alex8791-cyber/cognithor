@@ -4,7 +4,7 @@
 /// requests, pipeline state, and canvas content.
 library;
 
-import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
+import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint, kDebugMode;
 import 'package:jarvis_ui/services/websocket_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -55,6 +55,10 @@ class PipelinePhase {
 // Provider
 // ---------------------------------------------------------------------------
 
+void _log(String msg) {
+  if (kDebugMode) debugPrint(msg);
+}
+
 class ChatProvider extends ChangeNotifier {
   ChatProvider();
 
@@ -89,15 +93,15 @@ class ChatProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   void sendMessage(String text) {
-    debugPrint('[Chat] sendMessage: "$text" (messages.length=${messages.length})');
+    _log('[Chat] sendMessage: "$text" (messages.length=${messages.length})');
     messages.add(ChatMessage(role: MessageRole.user, text: text));
     if (_ws != null) {
       _ws!.sendMessage(text);
     } else {
-      debugPrint('[Chat] WARN: no WebSocket attached — message not sent');
+      _log('[Chat] WARN: no WebSocket attached — message not sent');
     }
     statusText = '';
-    debugPrint('[Chat] notifyListeners (messages.length=${messages.length})');
+    _log('[Chat] notifyListeners (messages.length=${messages.length})');
     notifyListeners();
   }
 
@@ -172,7 +176,7 @@ class ChatProvider extends ChangeNotifier {
 
   void _registerListeners() {
     if (_ws == null || _listenersRegistered) return;
-    debugPrint('[Chat] Registering WS listeners');
+    _log('[Chat] Registering WS listeners');
     _ws!.on(WsType.assistantMessage, _onAssistantMessage);
     _ws!.on(WsType.streamToken, _onStreamToken);
     _ws!.on(WsType.streamEnd, _onStreamEnd);
@@ -191,7 +195,7 @@ class ChatProvider extends ChangeNotifier {
 
   void _onAssistantMessage(Map<String, dynamic> msg) {
     final text = msg['text'] as String? ?? '';
-    debugPrint('[Chat] _onAssistantMessage: "${text.length > 100 ? '${text.substring(0, 100)}...' : text}"');
+    _log('[Chat] _onAssistantMessage: "${text.length > 100 ? '${text.substring(0, 100)}...' : text}"');
     // If we were streaming, finalize the buffer instead.
     if (isStreaming) {
       _finalizeStream();
@@ -203,7 +207,7 @@ class ChatProvider extends ChangeNotifier {
     activeTool = null;
     statusText = '';
     pipeline = [];
-    debugPrint('[Chat] notifyListeners (messages.length=${messages.length})');
+    _log('[Chat] notifyListeners (messages.length=${messages.length})');
     notifyListeners();
   }
 
@@ -325,7 +329,7 @@ class ChatProvider extends ChangeNotifier {
 
   void _onError(Map<String, dynamic> msg) {
     final err = msg['error'] as String? ?? 'Unknown error';
-    debugPrint('[Chat] _onError: $err');
+    _log('[Chat] _onError: $err');
     messages.add(ChatMessage(role: MessageRole.system, text: err));
     _logAgent('error', null, err, status: 'error');
     isStreaming = false;

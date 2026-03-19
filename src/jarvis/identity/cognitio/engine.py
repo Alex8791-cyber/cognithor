@@ -325,6 +325,20 @@ class CognitioEngine:
         # Inform RealityCheck of Genesis contents (Layer 0)
         self.reality_check.set_absolute_cores(GENESIS_ANCHOR_CONTENTS)
 
+        # Auto-unfreeze: If the system is frozen from a previous session but
+        # has valid Genesis Anchors (memories > 0), it was NOT explicitly frozen
+        # by the user in this session. The frozen state should only persist when
+        # user_freeze() or kill_switch is actively invoked — not as a default
+        # startup state. A fresh system with character_strength == 0.0 and
+        # Genesis Anchors is simply uninitialised, not intentionally frozen.
+        if self.state.is_frozen and self.memory_store.count() > 0:
+            logger.info(
+                "Auto-unfreeze: system was frozen but has %d memories "
+                "(including Genesis Anchors). Unfreezing for normal operation.",
+                self.memory_store.count(),
+            )
+            self.state.is_frozen = False
+
         # Post-sleep dream cycle — no LLM required, runs immediately
         _sleep_dur = self.temporal.get_sleep_duration()
         _sleep_secs = _sleep_dur.total_seconds() if _sleep_dur else None

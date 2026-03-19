@@ -1440,67 +1440,6 @@ class OfficePainter extends CustomPainter {
     );
   }
 
-  // ── Hanging Plant ────────────────────────────────────────────────
-
-  void _drawHangingPlant(Canvas canvas, Size s, double hx, double hy, int seed) {
-    // Hook on ceiling
-    canvas.drawCircle(
-      Offset(hx, hy),
-      3,
-      Paint()..color = const Color(0xFF888898),
-    );
-
-    // Vines drooping down
-    final vinePaint = Paint()
-      ..color = const Color(0xFF388E3C)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    for (int v = 0; v < 5; v++) {
-      final vx = hx + (v - 2) * 8;
-      final vineLen = s.height * (0.06 + (v % 3) * 0.02);
-      final sway = _osc(0.6 + seed * 0.2, v * 2.0 + seed * 5.0) * 4;
-
-      final path = Path();
-      path.moveTo(hx, hy + 2);
-      path.quadraticBezierTo(
-        vx + sway,
-        hy + vineLen * 0.5,
-        vx + sway * 1.5,
-        hy + vineLen,
-      );
-      canvas.drawPath(path, vinePaint);
-
-      // Small leaves along vine
-      for (int l = 0; l < 3; l++) {
-        final lt = 0.3 + l * 0.25;
-        final lx = hx + (vx - hx + sway) * lt;
-        final ly = hy + 2 + vineLen * lt;
-        final leafSway = _osc(1.0, v * 3.0 + l * 1.5 + seed * 4.0) * 0.15;
-        final leafAngle = pi / 4 + leafSway + (v.isEven ? 0 : pi / 2);
-        const leafLen = 5.0;
-
-        final leafPath = Path();
-        leafPath.moveTo(lx, ly);
-        leafPath.quadraticBezierTo(
-          lx + cos(leafAngle) * leafLen,
-          ly + sin(leafAngle) * leafLen * 0.5,
-          lx + cos(leafAngle) * leafLen * 0.8,
-          ly + sin(leafAngle) * leafLen,
-        );
-        canvas.drawPath(
-          leafPath,
-          Paint()
-            ..color = const Color(0xFF4CAF50).withValues(alpha: 0.8)
-            ..strokeWidth = 2.5
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round,
-        );
-      }
-    }
-  }
-
   // ── Flowers (day/night bloom) ───────────────────────────────────
 
   void _drawFlowers(Canvas canvas, Size s) {

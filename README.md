@@ -7,7 +7,7 @@
     <em>Cognition + Thor — Intelligence with Power</em>
   </p>
   <p align="center">
-    <a href="#llm-providers">16 LLM Providers</a> &middot; <a href="#channels">17 Channels</a> &middot; <a href="#5-tier-cognitive-memory">5-Tier Memory</a> &middot; <a href="#knowledge-vault">Knowledge Vault</a> &middot; <a href="#flutter-ui">Flutter UI</a> &middot; <a href="#security">Security</a> &middot; <a href="LICENSE">Apache 2.0</a>
+    <a href="#llm-providers">16 LLM Providers</a> &middot; <a href="#channels">17 Channels</a> &middot; <a href="#5-tier-cognitive-memory">5-Tier Memory</a> &middot; <a href="#knowledge-vault">Knowledge Vault</a> &middot; <a href="#flutter-command-center">Flutter Command Center</a> &middot; <a href="#security">Security</a> &middot; <a href="LICENSE">Apache 2.0</a>
   </p>
   <p align="center">
     <a href="https://github.com/Alex8791-cyber/cognithor/stargazers"><img src="https://img.shields.io/github/stars/Alex8791-cyber/cognithor?style=flat-square&color=yellow" alt="GitHub Stars"></a>
@@ -31,7 +31,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 10,904 tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 17 channels, 91 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 10,904 tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 ---
 
@@ -44,7 +44,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 | **Core agent loop (PGE)** | Stable — well-tested and functional |
 | **Memory system** | Stable — 5-tier architecture works reliably |
 | **CLI channel** | Stable — primary development interface |
-| **Flutter UI** | Beta — cross-platform, 18 config pages, chat, voice, learning dashboard |
+| **Flutter Command Center** | Beta — Sci-Fi aesthetic, cross-platform, GEPA pipeline visualization, Robot Office pathfinding, 18 config pages, chat, voice, learning dashboard |
 | **Messaging channels** (Telegram, Discord, etc.) | Beta — basic flows work, edge cases may break |
 | **Voice mode / TTS** | Alpha — experimental, hardware-dependent |
 | **Browser automation** | Alpha — requires Playwright setup |
@@ -58,7 +58,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 **Important notes for users:**
 - This project is developed by a solo developer with AI assistance. Code is human-reviewed, but the pace is fast.
 - Breaking changes may occur between minor versions. Pin your version if stability matters.
-- The default language is **German**, switchable to **English** via the Control Center or `config.yaml`. See [Language & Internationalization](#language--internationalization).
+- The default language is **German**, switchable to **English** via the Flutter Command Center or `config.yaml`. See [Language & Internationalization](#language--internationalization).
 - For production use, thorough testing in your specific environment is strongly recommended.
 - Bug reports and contributions are welcome — see [Issues](https://github.com/Alex8791-cyber/cognithor/issues).
 
@@ -96,6 +96,20 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 
 ## What's New
 
+### v0.47.1-beta — Sci-Fi UI, GEPA Pipeline, Robot Office Pathfinding
+
+**Sci-Fi Flutter Command Center**
+- **Sci-Fi aesthetic overhaul** — Dark translucent panels, neon accent glows, holographic card effects, particle background animations
+- **GEPA pipeline visualization** — Real-time Goal-Evaluate-Plan-Act pipeline status with animated phase indicators and timing metrics
+- **Robot Office pathfinding** — Interactive office map with A* pathfinding visualization, room navigation, and agent location tracking
+
+**GEPA (Goal-Evaluate-Plan-Act)**
+- **4-phase cognitive pipeline** — Goal extraction, Evaluation (context + memory retrieval), Planning (tool selection + sequencing), Action (sandboxed execution)
+- **Pipeline observability** — Each phase emits timing, token count, and status events visible in the Flutter Command Center's Observe panel
+
+**Tool Expansion**
+- **MCP tools: 53 → 91** — New tools across filesystem, automation, code analysis, and agent coordination modules
+
 ### v0.42.0-beta — Premium UI, Complete Learning System, Issue #35/#36
 
 **World-Class Flutter UI**
@@ -132,7 +146,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 
 ### v0.41.0-beta — Flutter UI, Active Learning, Knowledge Curiosity Engine
 
-**Flutter UI — Full Feature Parity with React Control Center**
+**Flutter Command Center — Full Feature Parity (React UI now deprecated)**
 - **48 new Flutter files** — Complete cross-platform UI replacing React for mobile/tablet/desktop
 - **18 editable config pages** — General, Language, Providers, Models, Planner, Executor, Memory, Channels, Security, Web, MCP, Cron, Database, Logging, Prompts, Agents, Bindings, System
 - **Form widget library** — 12 custom widgets: Text, Number, Slider, Select, Toggle, List, DomainList, TextArea, JSON Editor, ReadOnly, CollapsibleCard
@@ -177,7 +191,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 
 ### v0.35.6-beta — Community-Reported Fixes (#26, #29, #33)
 
-- **Search Button CSS Fix** — Global search trigger in Control Center was invisible (same background as header). Now uses `--bg3` for proper contrast in both light and dark themes (#26)
+- **Search Button CSS Fix** — Global search trigger in legacy React Control Center was invisible (same background as header). Now uses `--bg3` for proper contrast in both light and dark themes (#26)
 - **i18n Prompt Presets** — System prompts now load curated translations from `prompt_presets.py` (de/en/zh) instead of falling back to hardcoded German. Priority chain: Disk file -> i18n Preset -> Hardcoded (#33)
 - **CORE.md Tool Deduplication** — Tool descriptions no longer dumped into CORE.md AND the Planner prompt. CORE.md now shows a one-line tool count reference; Planner gets localized, categorized descriptions via `ToolRegistryDB` (#29)
 - **Prompt Evolution Guard** — Tool descriptions are now protected against mutation by the PromptEvolutionEngine. `locked` column on tools table + post-evolution validation rejects variants that remove `{tools_section}` (#29)
@@ -196,16 +210,16 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 ### v0.34.3-beta — REPLAN Loop Fix, Full English UI, Tool Schemas
 
 - **REPLAN Loop Fix** — Deep architectural fix to PGE loop: detects bare REPLAN text, consecutive no-tool iterations, and coding task caps to prevent infinite replanning
-- **Full English UI** — All remaining German strings in Control Center translated (cron.js, A2A descriptions, icons, prompts)
+- **Full English UI** — All remaining German strings in legacy React Control Center translated (cron.js, A2A descriptions, icons, prompts)
 - **Tool Schemas in CORE.md** — Auto-inventory now shows full parameter signatures (`tool(param: type *)`) instead of bare names
 - **Chrome Autofill Defense** — GlobalSearch and provider filter inputs protected against Chrome autofill interference
-- **Renamed "MCP & A2A" → "Integrations"** — Clearer page label in Control Center
+- **Renamed "MCP & A2A" → "Integrations"** — Clearer page label in Command Center
 - **Backend Startup Fix** — Vite now verifies jarvis importability before selecting a Python interpreter; bootstrap auto-repairs broken venvs
 
 ### v0.33.0-beta — i18n Language Packs, 4 Critical Bug Fixes
 
 - **i18n Language Pack System** — JSON-based internationalization with dot-notation keys, SHA-256 integrity verification, fallback chain (locale → EN → raw key), thread-safe locale switching. Ships with German and English packs (~250 keys each)
-- **Language Switcher in UI** — Control Center header quick-toggle (DE/EN) + General page dropdown. Language changes are live — no restart needed
+- **Language Switcher in UI** — Command Center header quick-toggle (DE/EN) + General page dropdown. Language changes are live — no restart needed
 - **Bug Fix: Planner JSON Parse Retry** — When the LLM returns malformed JSON, the planner now automatically retries with format hints instead of silently failing ("task failed successfully")
 - **Bug Fix: LLM Timeout Wiring** — Embedding timeouts now respect the configured `timeout_seconds` instead of hardcoded values. LLM timeout is now visible on the Executor page for all backends
 - **Bug Fix: WebSocket Race Condition** — All 12 `send_json()` calls in the WebSocket handler are now protected against disconnection errors via `_ws_safe_send()`. No more "Cannot call send" crashes
@@ -253,7 +267,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 - **Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance module, credential vault, red-teaming, runtime token encryption (Fernet AES-256), TLS support, file-size limits (not independently audited — see [Status & Maturity](#status--maturity))
 - **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
-- **Model Context Protocol (MCP)** — 53 tools across 10 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills) + A2A delegation
+- **Model Context Protocol (MCP)** — 91 tools across 10+ modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, automation, coordination) + A2A delegation
 - **Distributed Locking** — Redis-backed (with file-based fallback) locks for multi-instance deployments
 - **Durable Message Queue** — SQLite-backed persistent queue with priorities, DLQ, and automatic retry
 - **Prometheus Metrics** — /metrics endpoint with Grafana dashboard for production observability
@@ -262,8 +276,8 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 - **Telegram Webhook** — Polling + webhook mode with sub-100ms latency
 - **Auto-Dependency Loading** — Missing optional packages detected and installed at startup
 - **Agent-to-Agent Protocol (A2A)** — Linux Foundation RC v1.0 with full JSON-RPC 2.0 server/client, Planner-level delegation via MCP tools, auto-discovery, SSE streaming
-- **Integrated Chat** — Full chat page in the Control Center with WebSocket streaming, tool indicators, canvas panel, approval banners, and voice mode
-- **Flutter UI** — Cross-platform UI (Web/Desktop/Mobile) with 18 editable config pages, Observe panel, Knowledge Graph, Voice Mode, Learning Dashboard, Light/Dark theme, 4-language i18n
+- **Integrated Chat** — Full chat page in the Flutter Command Center with WebSocket streaming, tool indicators, canvas panel, approval banners, and voice mode
+- **Flutter Command Center** — Cross-platform UI (Flutter 3.41, Web/Desktop/Mobile) with Sci-Fi aesthetic, GEPA pipeline visualization, Robot Office pathfinding, 18 editable config pages, Observe panel, Knowledge Graph, Voice Mode, Learning Dashboard, Light/Dark theme, 4-language i18n
 - **Active Learning & Curiosity** — CuriosityEngine detects knowledge gaps, KnowledgeConfidenceManager with time decay and feedback, ActiveLearner processes files in background during idle time
 - **Human Feel** — Personality Engine (warmth, humor, greetings), sentiment detection (frustrated/urgent/confused/positive), user preference learning, real-time status callbacks, user-friendly German error messages
 - **Auto-Detect Channels** — Channels activate automatically when tokens are present in `.env` — no manual config flags needed
@@ -290,9 +304,9 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│          Flutter UI (Dart, cross-platform: Web/Desktop/Mobile)    │
-│   18 Config Pages · Chat · Voice · Observe · Knowledge Graph     │
-│   Learning Dashboard · Theme Toggle · i18n (EN/DE/ZH/AR)         │
+│      Flutter Command Center (Dart/Flutter 3.41, cross-platform)   │
+│   Sci-Fi UI · GEPA Pipeline · Robot Office · 18 Config Pages     │
+│   Chat · Voice · Observe · Knowledge Graph · Learning Dashboard   │
 ├───────────────────────────────────────────────────────────────────┤
 ├───────────────────────────────────────────────────────────────────┤
 │         Prometheus /metrics · Grafana Dashboard                    │
@@ -316,7 +330,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 51 MCP
 ├─────────────┴──────────────┴──────────────────────────────────────┤
 │  DAG Workflow Engine · Workflow Adapter · Benchmark Suite             │
 ├───────────────────────────────────────────────────────────────────┤
-│                   MCP Tool Layer (51 tools)                          │
+│                   MCP Tool Layer (91 tools)                          │
 │   Filesystem · Shell · Memory · Web · Browser · Media · Vault      │
 │   Synthesis · Skills Marketplace · Remote Registry                  │
 ├───────────────────────────────────────────────────────────────────┤
@@ -507,17 +521,20 @@ JARVIS_HOME=~/my-cognithor cognithor  # Custom home directory
 
 > **Windows:** If `cognithor` is not recognized after `pip install`, use `python -m jarvis` instead — this always works regardless of PATH configuration. Alternatively, add Python's `Scripts` directory to your PATH (typically `%APPDATA%\Python\PythonXY\Scripts` or the `Scripts` folder inside your venv).
 
-**Option C: Control Center UI (Development)**
+**Option C: Flutter Command Center (Development)**
 
 ```bash
-cd ui
-npm install
-npm run dev    # -> http://localhost:5173
+cd flutter_app
+flutter pub get
+flutter run       # Desktop, or:
+flutter run -d chrome  # Web
 ```
 
-Click **Power On** to start the backend directly from the UI. The Vite dev server automatically spawns and manages the Python backend process on port 8741 — including orphan detection, clean shutdown, and process lifecycle management. The **Chat page** opens as the default start page — start talking to Jarvis immediately, or activate **Voice Mode** for hands-free conversation.
+The Flutter Command Center connects to the Python backend on port 8741. Start the backend first (`python -m jarvis --no-cli`), then launch the Flutter app. The **Chat page** opens as the default start page — start talking to Jarvis immediately, or activate **Voice Mode** for hands-free conversation. The Sci-Fi aesthetic features dark translucent panels, neon accents, and GEPA pipeline visualization.
 
 All configuration — agents, prompts, cron jobs, MCP servers, A2A settings — can be edited and saved through the dashboard. Changes persist to YAML files under `~/.jarvis/`.
+
+> **Legacy React UI (deprecated):** The old React + Vite UI in `ui/` is deprecated and will be removed in a future release. Use the Flutter Command Center instead.
 
 > **Windows users:** A desktop shortcut named **Cognithor** is included for convenience.
 
@@ -700,7 +717,7 @@ Current status: **10,904 tests** · **100% pass rate** · **89% coverage** · **
 | Utils | 126 | Logging, helper functions, error messages, installer |
 | Benchmark | 48 | Agent benchmark suite, scoring, regression detection |
 | Cron | 63 | Engine, job store, scheduling |
-| UI API | 55 | Control Center endpoints (config, agents, prompts, cron, MCP, A2A) |
+| UI API | 55 | Command Center endpoints (config, agents, prompts, cron, MCP, A2A) |
 
 ## Code Quality
 
@@ -765,9 +782,9 @@ cognithor/
 │   ├── gateway/
 │   │   ├── gateway.py             # Agent loop, session management, subsystem init
 │   │   └── message_queue.py       # Durable SQLite-backed message queue (priorities, DLQ)
-│   ├── channels/                  # 17 communication channels + Control Center API
+│   ├── channels/                  # 17 communication channels + Command Center API
 │   │   ├── base.py                # Abstract channel interface
-│   │   ├── config_routes.py       # REST API for Control Center (20+ endpoints)
+│   │   ├── config_routes.py       # REST API for Command Center (20+ endpoints)
 │   │   ├── cli.py, api.py         # Core channels
 │   │   ├── telegram.py            # Telegram (polling + webhook mode)
 │   │   ├── discord.py             # Discord
@@ -797,26 +814,19 @@ cognithor/
 │       ├── logging.py             # Structured logging (structlog + Rich)
 │       ├── installer.py           # uv/pip detection and command abstraction
 │       └── error_messages.py      # User-friendly German error templates
-├── ui/                            # Control Center (React 19 + Vite 7)
-│   ├── vite.config.js             # Dev server with backend launcher plugin
+├── flutter_app/                   # Flutter Command Center (Flutter 3.41, Dart)
+│   ├── lib/
+│   │   ├── main.dart              # App entry point
+│   │   ├── theme/                 # Sci-Fi theme, glassmorphism, neon accents
+│   │   ├── pages/                 # 18+ config pages, chat, dashboard, learning
+│   │   ├── widgets/               # GEPA pipeline, Robot Office, observe panel
+│   │   └── providers/             # State management (config, locale, theme)
+│   ├── pubspec.yaml               # Flutter dependencies
+│   └── README.md                  # Flutter-specific docs
+├── ui/                            # Legacy React UI (deprecated — use flutter_app/)
+│   ├── vite.config.js             # Dev server with backend launcher plugin (deprecated)
 │   ├── package.json               # Dependencies (react, vite)
-│   ├── index.html                 # Entry point
-│   └── src/
-│       ├── CognithorControlCenter.jsx  # Main dashboard (1,700 LOC)
-│       ├── pages/
-│       │   └── ChatPage.jsx       # Integrated chat page (default start)
-│       ├── components/chat/
-│       │   ├── MessageList.jsx    # Message display with Markdown
-│       │   ├── ChatInput.jsx      # Rich input bar
-│       │   ├── ChatCanvas.jsx     # Canvas side panel
-│       │   ├── ToolIndicator.jsx  # Tool execution indicators
-│       │   ├── ApprovalBanner.jsx # Inline approval/deny banner
-│       │   └── VoiceIndicator.jsx # Voice mode visual feedback
-│       ├── hooks/
-│       │   ├── useJarvisChat.js   # WebSocket chat hook
-│       │   └── useVoiceMode.js    # Voice mode hook (wake word, STT, TTS)
-│       ├── App.jsx                # App shell
-│       └── main.jsx               # React entry
+│   └── src/                       # React components (deprecated)
 ├── tests/                         # 10,904 tests, ~92,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
@@ -827,7 +837,7 @@ cognithor/
 │   ├── test_skills/               # Skills, marketplace, persistence
 │   ├── test_telemetry/            # Metrics, Prometheus export
 │   ├── test_config_manager.py     # Config manager + API routes
-│   └── test_ui_api_integration.py # 55 Control Center API integration tests
+│   └── test_ui_api_integration.py # 55 Command Center API integration tests
 ├── skills/                        # Built-in skill definitions
 ├── scripts/                       # Backup, deployment, utilities
 ├── deploy/                        # Docker, systemd, nginx, Caddy, bare-metal installer
@@ -892,7 +902,7 @@ journalctl --user -u cognithor -f    # Logs
 ### Health Checks
 
 ```bash
-curl http://localhost:8741/api/v1/health     # Control Center API
+curl http://localhost:8741/api/v1/health     # Command Center API
 curl http://localhost:8080/api/v1/health     # WebUI (standalone)
 curl http://localhost:9090/metrics           # Prometheus metrics
 ```
@@ -909,7 +919,7 @@ See [`deploy/README.md`](deploy/README.md) for full deployment documentation (Do
 
 ## Language & Internationalization
 
-Cognithor ships with a **JSON-based i18n language pack system** (since v0.33.0). The default language is German, switchable to English — or any future language — via the Control Center UI or `config.yaml`.
+Cognithor ships with a **JSON-based i18n language pack system** (since v0.33.0). The default language is German, switchable to English — or any future language — via the Flutter Command Center or `config.yaml`.
 
 ### How It Works
 
@@ -928,7 +938,7 @@ print(t("error.timeout"))  # "The operation timed out..."
 
 ### Switching Language
 
-1. **Control Center**: General → "Sprache / Language" dropdown, or click the language button in the header
+1. **Flutter Command Center**: General → "Sprache / Language" dropdown, or click the language button in the header
 2. **Config file**: Set `language: en` in `~/.jarvis/config.yaml`
 3. **Environment variable**: `JARVIS_LANGUAGE=en`
 
@@ -938,7 +948,7 @@ print(t("error.timeout"))  # "The operation timed out..."
 | **Tool names** | Fully i18n | All 20 MCP tools have translated names |
 | **Personality / Greetings** | Fully i18n | Greetings, empathy, success messages |
 | **System prompts** (Planner) | i18n keys | Prompt templates in language packs |
-| **Control Center UI** | Partial | Config labels still hardcoded (planned) |
+| **Flutter Command Center** | Partial | Config labels still hardcoded (planned) |
 | **Log messages** | English only | structlog keys are not translated |
 
 ### Contributing Translations
@@ -958,7 +968,7 @@ print(t("error.timeout"))  # "The operation timed out..."
 | **Phase 4** | Channels, cron, web tools, model router | Done |
 | **Phase 5** | Multi-agent & security hardening | Done |
 | **Phase 6** | Web UI & voice | Done |
-| **Phase 7** | Control Center UI, API integration, channel auto-detect | Done |
+| **Phase 7** | Command Center UI, API integration, channel auto-detect | Done |
 | **Phase 8** | UI integration into repo, backend launcher, orphan management | Done |
 | **Phase 9** | Security hardening: token encryption, TLS, file-size limits, session persistence | Done |
 | **Phase 10** | Server deployment: Docker prod, bare-metal installer, Nginx/Caddy, health endpoints | Done |
