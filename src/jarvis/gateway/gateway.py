@@ -2361,6 +2361,76 @@ class Gateway:
             except Exception:
                 log.debug("prompt_evolution_record_failed", exc_info=True)
 
+        # GEPA: Collect execution trace
+        if getattr(self, "_trace_store", None):
+            try:
+                from jarvis.learning.execution_trace import ExecutionTrace, TraceStep
+                import uuid as _uuid
+                import time as _time
+
+                # Extract user goal from working memory
+                _goal = ""
+                for _m in wm.messages:
+                    if getattr(_m, "role", None) and _m.role.value == "user":
+                        _goal = getattr(_m, "content", "")[:1000]
+                        break
+
+                _reward = (
+                    agent_result.reflection.success_score
+                    if agent_result.reflection
+                    else (0.8 if agent_result.success else 0.3)
+                )
+                trace = ExecutionTrace(
+                    trace_id=_uuid.uuid4().hex[:16],
+                    session_id=session.session_id,
+                    goal=_goal,
+                    total_duration_ms=int(agent_result.total_duration_ms),
+                    success_score=_reward,
+                    model_used=agent_result.model_used or "",
+                    created_at=_time.time(),
+                )
+                # Build steps from tool_results
+                for _tr in agent_result.tool_results or []:
+                    step = TraceStep(
+                        step_id=_uuid.uuid4().hex[:16],
+                        parent_id=None,
+                        tool_name=getattr(_tr, "tool_name", "") or "",
+                        input_summary=str(getattr(_tr, "input", ""))[:500],
+                        output_summary=str(getattr(_tr, "content", ""))[:500],
+                        status="error" if getattr(_tr, "is_error", False) else "success",
+                        error_detail=str(getattr(_tr, "error_type", ""))
+                        if getattr(_tr, "is_error", False)
+                        else "",
+                        duration_ms=int(getattr(_tr, "duration_ms", 0)),
+                        timestamp=_time.time(),
+                    )
+                    trace.steps.append(step)
+                self._trace_store.save_trace(trace)
+                log.debug("gepa_trace_saved", trace_id=trace.trace_id, steps=len(trace.steps))
+            except Exception:
+                log.debug("gepa_trace_save_failed", exc_info=True)
+
+        # GEPA: Run evolution cycle if due
+        if getattr(self, "_evolution_orchestrator", None):
+            try:
+                import time as _time
+
+                orch = self._evolution_orchestrator
+                gepa_cfg = getattr(self._config, "gepa", None)
+                interval = (gepa_cfg.evolution_interval_hours * 3600) if gepa_cfg else 21600
+                if _time.time() - getattr(orch, "_last_cycle_time", 0) > interval:
+                    evo_result = orch.run_evolution_cycle()
+                    log.info(
+                        "gepa_evolution_cycle_completed",
+                        cycle_id=evo_result.cycle_id,
+                        traces=evo_result.traces_analyzed,
+                        proposals=evo_result.proposals_generated,
+                        applied=evo_result.proposal_applied,
+                        rollbacks=evo_result.auto_rollbacks,
+                    )
+            except Exception:
+                log.debug("gepa_evolution_cycle_failed", exc_info=True)
+
         # Session-Analyse: Failure-Clustering und Feedback-Loop
         if getattr(self, "_session_analyzer", None):
             try:

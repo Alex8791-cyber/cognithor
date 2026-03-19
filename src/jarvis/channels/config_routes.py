@@ -87,6 +87,7 @@ def create_config_routes(
     _register_ingest_routes(app, deps, gateway)
     _register_hermes_routes(app, deps, gateway)
     _register_self_improvement_routes(app, deps, gateway)
+    _register_gepa_evolution_routes(app, deps, gateway)
 
 
 # ======================================================================
@@ -3851,3 +3852,132 @@ def _register_self_improvement_routes(
             return {"error": f"Improvement '{improvement_id}' not found", "status": 404}
 
         return {"applied": True, "improvement_id": improvement_id}
+
+
+# ======================================================================
+# GEPA Evolution routes
+# ======================================================================
+
+
+def _register_gepa_evolution_routes(
+    app: Any,
+    deps: list[Any],
+    gateway: Any,
+) -> None:
+    """REST endpoints for GEPA (Guided Evolution through Pattern Analysis)."""
+
+    def _get_orch() -> Any:
+        return getattr(gateway, "_evolution_orchestrator", None) if gateway else None
+
+    def _get_trace_store() -> Any:
+        return getattr(gateway, "_trace_store", None) if gateway else None
+
+    def _get_proposal_store() -> Any:
+        return getattr(gateway, "_proposal_store", None) if gateway else None
+
+    @app.get("/api/v1/evolution/status", dependencies=deps)
+    async def get_evolution_status() -> dict[str, Any]:
+        orch = _get_orch()
+        if not orch:
+            return {"enabled": False, "message": "GEPA not enabled"}
+        return orch.get_status()
+
+    @app.get("/api/v1/evolution/proposals", dependencies=deps)
+    async def list_evolution_proposals(status: str = "all") -> dict[str, Any]:
+        ps = _get_proposal_store()
+        if not ps:
+            return {"proposals": []}
+        if status == "all":
+            proposals = ps.get_history(limit=50)
+        else:
+            proposals = ps.get_by_status(status)
+        return {"proposals": [_proposal_to_dict(p) for p in proposals]}
+
+    @app.get("/api/v1/evolution/proposals/{proposal_id}", dependencies=deps)
+    async def get_evolution_proposal(proposal_id: str) -> dict[str, Any]:
+        orch = _get_orch()
+        if not orch:
+            return {"error": "GEPA not enabled", "status": 404}
+        detail = orch.get_proposal_detail(proposal_id)
+        if not detail:
+            return {"error": "Proposal not found", "status": 404}
+        return detail
+
+    @app.post("/api/v1/evolution/proposals/{proposal_id}/apply", dependencies=deps)
+    async def apply_evolution_proposal(proposal_id: str) -> dict[str, Any]:
+        orch = _get_orch()
+        if not orch:
+            return {"error": "GEPA not enabled", "status": 404}
+        ok = orch.apply_proposal(proposal_id)
+        return {"applied": ok, "proposal_id": proposal_id}
+
+    @app.post("/api/v1/evolution/proposals/{proposal_id}/reject", dependencies=deps)
+    async def reject_evolution_proposal(proposal_id: str) -> dict[str, Any]:
+        orch = _get_orch()
+        if not orch:
+            return {"error": "GEPA not enabled", "status": 404}
+        ok = orch.reject_proposal(proposal_id)
+        return {"rejected": ok, "proposal_id": proposal_id}
+
+    @app.post("/api/v1/evolution/proposals/{proposal_id}/rollback", dependencies=deps)
+    async def rollback_evolution_proposal(proposal_id: str) -> dict[str, Any]:
+        orch = _get_orch()
+        if not orch:
+            return {"error": "GEPA not enabled", "status": 404}
+        ok = orch.rollback_proposal(proposal_id)
+        return {"rolled_back": ok, "proposal_id": proposal_id}
+
+    @app.get("/api/v1/evolution/traces", dependencies=deps)
+    async def list_evolution_traces(limit: int = 20) -> dict[str, Any]:
+        ts = _get_trace_store()
+        if not ts:
+            return {"traces": []}
+        traces = ts.get_recent_traces(limit=min(limit, 100))
+        return {"traces": [_trace_to_dict(t) for t in traces]}
+
+    @app.post("/api/v1/evolution/run", dependencies=deps)
+    async def trigger_evolution_cycle() -> dict[str, Any]:
+        orch = _get_orch()
+        if not orch:
+            return {"error": "GEPA not enabled", "status": 404}
+        result = orch.run_evolution_cycle()
+        return {
+            "cycle_id": result.cycle_id,
+            "traces_analyzed": result.traces_analyzed,
+            "findings": result.findings_count,
+            "proposals_generated": result.proposals_generated,
+            "proposal_applied": result.proposal_applied,
+            "auto_rollbacks": result.auto_rollbacks,
+            "duration_ms": result.duration_ms,
+        }
+
+
+def _proposal_to_dict(p: Any) -> dict[str, Any]:
+    return {
+        "proposal_id": p.proposal_id,
+        "optimization_type": p.optimization_type,
+        "target": p.target,
+        "description": p.description,
+        "confidence": p.confidence,
+        "estimated_impact": p.estimated_impact,
+        "failure_category": p.failure_category,
+        "tool_name": p.tool_name,
+        "status": p.status,
+        "created_at": p.created_at,
+        "applied_at": p.applied_at,
+    }
+
+
+def _trace_to_dict(t: Any) -> dict[str, Any]:
+    return {
+        "trace_id": t.trace_id,
+        "session_id": t.session_id,
+        "goal": t.goal[:200],
+        "success_score": t.success_score,
+        "model_used": t.model_used,
+        "total_duration_ms": t.total_duration_ms,
+        "step_count": len(t.steps),
+        "failed_steps": len(t.failed_steps),
+        "tool_sequence": t.tool_sequence,
+        "created_at": t.created_at,
+    }

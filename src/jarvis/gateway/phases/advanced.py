@@ -66,6 +66,9 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         "knowledge_ingest": None,
         "self_improver": None,
         "hermes_compat": None,
+        "trace_store": None,
+        "proposal_store": None,
+        "evolution_orchestrator": None,
     }
 
     # Phase 5: Live-Monitoring
@@ -218,6 +221,50 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         result["self_improver"] = SelfImprover()
     except Exception:
         log.debug("self_improver_init_skipped", exc_info=True)
+
+    # GEPA — Execution Trace Store
+    try:
+        from jarvis.learning.execution_trace import TraceStore
+
+        trace_db = str(config.db_path.with_name("memory_traces.db"))
+        result["trace_store"] = TraceStore(Path(trace_db))
+        log.info("trace_store_initialized", db=trace_db)
+    except Exception:
+        log.debug("trace_store_init_skipped", exc_info=True)
+
+    # GEPA — Proposal Store
+    try:
+        from jarvis.learning.trace_optimizer import ProposalStore
+
+        proposal_db = str(config.db_path.with_name("memory_proposals.db"))
+        result["proposal_store"] = ProposalStore(Path(proposal_db))
+        log.info("proposal_store_initialized", db=proposal_db)
+    except Exception:
+        log.debug("proposal_store_init_skipped", exc_info=True)
+
+    # GEPA — Evolution Orchestrator (uses TraceStore + ProposalStore from above)
+    try:
+        from jarvis.learning.causal_attributor import CausalAttributor
+        from jarvis.learning.evolution_orchestrator import EvolutionOrchestrator
+        from jarvis.learning.trace_optimizer import TraceOptimizer
+
+        if getattr(config, "gepa", None) and config.gepa.enabled:
+            ts = result.get("trace_store")
+            ps = result.get("proposal_store")
+            if ts and ps:
+                result["evolution_orchestrator"] = EvolutionOrchestrator(
+                    trace_store=ts,
+                    attributor=CausalAttributor(),
+                    optimizer=TraceOptimizer(proposal_store=ps),
+                    proposal_store=ps,
+                    min_traces=config.gepa.min_traces_for_proposal,
+                    max_active=config.gepa.max_active_optimizations,
+                    rollback_threshold=config.gepa.auto_rollback_threshold,
+                    auto_apply=config.gepa.auto_apply,
+                )
+                log.info("gepa_orchestrator_initialized")
+    except Exception:
+        log.debug("gepa_orchestrator_init_skipped", exc_info=True)
 
     # HermesCompatLayer (agentskills.io SKILL.md import/export)
     try:
@@ -408,5 +455,13 @@ async def init_advanced(
             log.info("replay_engine_initialized")
         except Exception:
             log.debug("replay_engine_init_skipped", exc_info=True)
+
+    # Wire GEPA dependencies from init phase
+    orch = result.get("evolution_orchestrator")
+    if orch:
+        if result.get("prompt_evolution"):
+            orch._prompt_evolution = result["prompt_evolution"]
+        if result.get("session_analyzer"):
+            orch._session_analyzer = result["session_analyzer"]
 
     return result

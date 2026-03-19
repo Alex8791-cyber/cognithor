@@ -1594,6 +1594,17 @@ class PromptEvolutionConfig(BaseModel):
     max_concurrent_tests: int = Field(default=1, ge=1, le=3)
 
 
+class GEPAConfig(BaseModel):
+    """GEPA — Guided Evolution through Pattern Analysis."""
+
+    enabled: bool = False  # Opt-in
+    evolution_interval_hours: int = Field(default=6, ge=1, le=168)
+    min_traces_for_proposal: int = Field(default=10, ge=3, le=100)
+    max_active_optimizations: int = Field(default=1, ge=1, le=3)
+    auto_rollback_threshold: float = Field(default=0.10, ge=0.01, le=0.5)
+    auto_apply: bool = False  # If True, apply proposals automatically
+
+
 # ============================================================================
 # Haupt-Konfiguration
 # ============================================================================
@@ -1725,6 +1736,7 @@ class JarvisConfig(BaseModel):
     )
     improvement: ImprovementGovernanceConfig = Field(default_factory=ImprovementGovernanceConfig)
     prompt_evolution: PromptEvolutionConfig = Field(default_factory=PromptEvolutionConfig)
+    gepa: GEPAConfig = Field(default_factory=GEPAConfig)
 
     # Heartbeat- und Plugin-Konfigurationen
     # Die HeartbeatConfig steuert einen periodischen Check (Heartbeat), der
