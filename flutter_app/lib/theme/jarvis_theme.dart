@@ -1,33 +1,46 @@
 /// Jarvis design system — centralized colors, spacing, typography.
+/// Sci-Fi Command Center aesthetic with Cyberpunk-Neon palette.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class JarvisTheme {
-  // ── Core Palette ──────────────────────────────────────────
-  static const _accent = Color(0xFF00E5FF);
-  static const _accentLight = Color(0xFF4DF0FF);
-  static const _accentDim = Color(0xFF00B8D4);
+  // ── Primary Accents ─────────────────────────────────────
+  static const _violet = Color(0xFF8B5CF6); // Neon Violett (main)
+  static const _violetLight = Color(0xFFA78BFA);
+  static const _gold = Color(0xFFFFD700); // Gold (branding)
+  // ignore: unused_field
+  static const _goldLight = Color(0xFFFFE44D);
+  static const _matrix = Color(0xFF00FF41); // Matrix Green (code/data)
 
-  // Status colors
+  // ── Section Colors — each screen has its own neon identity ──
+  static const sectionChat = Color(0xFF00E5FF); // Electric Cyan
+  static const sectionDashboard = Color(0xFF00FF41); // Neon Green
+  static const sectionAdmin = Color(0xFF8B5CF6); // Neon Violett
+  static const sectionIdentity = Color(0xFFFFD700); // Gold
+  static const sectionSkills = Color(0xFFFF1493); // Neon Pink
+
+  // ── Status Colors ───────────────────────────────────────
   static const _green = Color(0xFF00e676);
   static const _red = Color(0xFFff5252);
   static const _orange = Color(0xFFffab40);
   static const _blue = Color(0xFF448AFF);
   static const _purple = Color(0xFFB388FF);
 
-  // Dark theme surfaces
-  static const _bg = Color(0xFF080B16);
-  static const _surface = Color(0xFF0F1629);
-  static const _surfaceHover = Color(0xFF161D34);
-  static const _border = Color(0xFF1C2340);
-  static const _borderHover = Color(0xFF2A3358);
-  static const _text1 = Color(0xFFe0e0e8);
-  static const _text2 = Color(0xFF8888a0);
-  static const _text3 = Color(0xFF555568);
+  // ── Dark Theme Surfaces ─────────────────────────────────
+  static const _bg = Color(0xFF050510); // Deep space black
+  static const _surface = Color(0xFF0A0F24); // Dark navy
+  static const _surfaceHover = Color(0xFF101833); // Lighter navy
+  static const _border = Color(0xFF1A2044); // Subtle blue border
+  static const _borderHover = Color(0xFF2A3366);
 
-  // Light theme surfaces
+  // ── Text ────────────────────────────────────────────────
+  static const _text1 = Color(0xFFE8ECF4); // Primary (bright white-blue)
+  static const _text2 = Color(0xFF8892B0); // Secondary
+  static const _text3 = Color(0xFF4A5580); // Tertiary
+
+  // ── Light Theme Surfaces ────────────────────────────────
   static const _lightBg = Color(0xFFF5F5F8);
   static const _lightSurface = Color(0xFFFFFFFF);
   // ignore: unused_field
@@ -39,17 +52,19 @@ abstract final class JarvisTheme {
   static const _lightText2 = Color(0xFF6B6B80);
   // ignore: unused_field
   static const _lightText3 = Color(0xFF9999AA);
-  static const _lightAccent = Color(0xFF0077CC);
+  static const _lightAccent = Color(0xFF8B5CF6); // Violet instead of blue
 
   // ── Public Color Accessors ────────────────────────────────
-  static Color get accent => _accent;
-  static Color get accentLight => _accentLight;
-  static Color get accentDim => _accentDim;
+  static Color get accent => _violet;
+  static Color get accentLight => _violetLight;
+  static Color get accentDim => _violet.withValues(alpha: 0.7);
   static Color get green => _green;
   static Color get red => _red;
   static Color get orange => _orange;
   static Color get blue => _blue;
   static Color get purple => _purple;
+  static Color get gold => _gold;
+  static Color get matrix => _matrix;
   static Color get surface => _surface;
   static Color get surfaceHover => _surfaceHover;
   static Color get bg => _bg;
@@ -59,7 +74,7 @@ abstract final class JarvisTheme {
   static Color get textSecondary => _text2;
   static Color get textTertiary => _text3;
 
-  // Semantic aliases
+  // ── Semantic Aliases ────────────────────────────────────
   static Color get success => _green;
   static Color get error => _red;
   static Color get warning => _orange;
@@ -71,33 +86,76 @@ abstract final class JarvisTheme {
     'organization': Color(0xFFB388FF),
     'location': Color(0xFF00e676),
     'product': Color(0xFFffab40),
-    'concept': Color(0xFF8888a0),
+    'concept': Color(0xFF8892B0),
     'unknown': Color(0xFF607D8B),
   };
 
   // ── Pipeline Phase Colors ─────────────────────────────────
   static const phaseColors = {
-    'plan': Color(0xFF00d4ff),
-    'gate': Color(0xFFffab40),
-    'execute': Color(0xFF00e676),
+    'plan': Color(0xFF8B5CF6),
+    'gate': Color(0xFFFFD700),
+    'execute': Color(0xFF00FF41),
     'replan': Color(0xFFffab40),
     'complete': Color(0xFF00e676),
     'error': Color(0xFFff5252),
   };
 
   // ── Code Block Colors ─────────────────────────────────────
-  static const codeBlockBg = Color(0xFF12121E);
-  static const codeBlockBorder = Color(0xFF2A2A40);
+  static const codeBlockBg = Color(0xFF0A0F24);
+  static const codeBlockBorder = Color(0xFF1A2044);
 
   // ── Component-Specific ────────────────────────────────────
-  /// Semi-transparent accent for button backgrounds (Hermes-style)
-  static Color get accentSurface => _accent.withValues(alpha: 0.12);
+  /// Semi-transparent accent for button backgrounds
+  static Color get accentSurface => _violet.withValues(alpha: 0.12);
 
   /// Accent border (subtle)
-  static Color get accentBorder => _accent.withValues(alpha: 0.15);
+  static Color get accentBorder => _violet.withValues(alpha: 0.15);
 
   /// Accent border hover
-  static Color get accentBorderHover => _accent.withValues(alpha: 0.3);
+  static Color get accentBorderHover => _violet.withValues(alpha: 0.3);
+
+  // ── Section Color Helpers ─────────────────────────────────
+  /// Returns the neon color for a navigation tab index.
+  static Color sectionColorFor(int tabIndex) {
+    return switch (tabIndex) {
+      0 => sectionChat,
+      1 => sectionDashboard,
+      2 => sectionSkills,
+      3 => sectionAdmin,
+      4 => sectionIdentity,
+      _ => _violet,
+    };
+  }
+
+  /// Section color names for display.
+  static String sectionNameFor(int tabIndex) {
+    return switch (tabIndex) {
+      0 => 'Chat',
+      1 => 'Dashboard',
+      2 => 'Skills',
+      3 => 'Admin',
+      4 => 'Identity',
+      _ => 'System',
+    };
+  }
+
+  // ── Glass Decoration Factory ──────────────────────────────
+  /// Returns a BoxDecoration suitable for glassmorphism panels.
+  /// Use with ClipRRect + BackdropFilter for full glass effect.
+  static BoxDecoration glassDecoration({
+    Color? tint,
+    double borderRadius = 16,
+    bool glowBorder = false,
+  }) {
+    final color = tint ?? _violet;
+    return BoxDecoration(
+      color: color.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(borderRadius),
+      border: Border.all(
+        color: color.withValues(alpha: glowBorder ? 0.3 : 0.12),
+      ),
+    );
+  }
 
   // ── Spacing ───────────────────────────────────────────────
   static const spacing = 16.0;
@@ -123,6 +181,11 @@ abstract final class JarvisTheme {
   static const animDurationFast = Duration(milliseconds: 150);
   static const animDurationSlow = Duration(milliseconds: 400);
   static const animCurve = Curves.easeOutQuart;
+
+  // ── Mono Text Theme ───────────────────────────────────────
+  /// Monospaced text theme for code and data displays.
+  static TextTheme get monoTextTheme =>
+      GoogleFonts.jetBrainsMonoTextTheme(ThemeData.dark().textTheme);
 
   // ── ThemeData ─────────────────────────────────────────────
   static ThemeData get light {
@@ -215,7 +278,7 @@ abstract final class JarvisTheme {
       brightness: Brightness.dark,
       scaffoldBackgroundColor: _bg,
       colorScheme: const ColorScheme.dark(
-        primary: _accent,
+        primary: _violet,
         secondary: _green,
         surface: _surface,
         error: _red,
@@ -245,7 +308,7 @@ abstract final class JarvisTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(inputRadius),
-          borderSide: const BorderSide(color: _accent),
+          borderSide: const BorderSide(color: _violet),
         ),
       ),
       textTheme: baseText.copyWith(
@@ -271,7 +334,7 @@ abstract final class JarvisTheme {
       iconTheme: const IconThemeData(color: _text2),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _accent,
+          backgroundColor: _violet,
           foregroundColor: _bg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(buttonRadius),
@@ -280,15 +343,15 @@ abstract final class JarvisTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: _accent,
-          side: BorderSide(color: _accent.withValues(alpha: 0.3)),
+          foregroundColor: _violet,
+          side: BorderSide(color: _violet.withValues(alpha: 0.3)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(buttonRadius),
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: _accent),
+        style: TextButton.styleFrom(foregroundColor: _violet),
       ),
     );
   }
