@@ -160,8 +160,8 @@ class PredictiveEngine:
         """
         if not self._error_history:
             return 0.0
-        window = self._error_history[-last_n:]
-        return sum(window) / len(window)
+        window = list(self._error_history)[-last_n:]
+        return sum(window) / len(window) if window else 0.0
 
     def is_trending_surprising(self) -> bool:
         """
@@ -174,8 +174,9 @@ class PredictiveEngine:
         """
         if len(self._error_history) < _MIN_HISTORY * 2:
             return False
-        first_half = self._error_history[-_MIN_HISTORY * 2 : -_MIN_HISTORY]
-        second_half = self._error_history[-_MIN_HISTORY:]
+        hist = list(self._error_history)
+        first_half = hist[-_MIN_HISTORY * 2 : -_MIN_HISTORY]
+        second_half = hist[-_MIN_HISTORY:]
         return (sum(second_half) / _MIN_HISTORY) > (sum(first_half) / _MIN_HISTORY) + 0.1
 
     @property
@@ -187,7 +188,7 @@ class PredictiveEngine:
         """Serialize to a dict."""
         return {
             "last_error": self._last_error,
-            "error_history": self._error_history[-20:],  # last 20 — keep size small
+            "error_history": list(self._error_history)[-20:],  # last 20 — keep size small
             # _expected_embedding is not serialized: session-local, large vector
         }
 
