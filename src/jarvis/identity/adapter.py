@@ -102,16 +102,16 @@ class IdentityLayer:
                 data_dir=str(home),
             )
             logger.info(
-                "identity_layer_initialized",
-                identity_id=identity_id,
-                data_dir=str(home),
-                memories=self._engine.memory_store.count(),
+                "identity_layer_initialized id=%s dir=%s memories=%d",
+                identity_id,
+                str(home),
+                self._engine.memory_store.count(),
             )
         except Exception as exc:
             logger.warning(
-                "identity_layer_init_failed",
-                identity_id=identity_id,
-                error=str(exc)[:200],
+                "identity_layer_init_failed id=%s error=%s",
+                identity_id,
+                str(exc)[:200],
             )
             self._engine = None
 
@@ -175,7 +175,7 @@ class IdentityLayer:
                 "prediction_surprise": surprise,
             }
         except Exception as exc:
-            logger.debug("enrich_context_failed", error=str(exc)[:200])
+            logger.debug("enrich_context_failed error=%s", str(exc)[:200])
             return self._empty_enrichment()
 
     @staticmethod
@@ -210,7 +210,7 @@ class IdentityLayer:
                 emotional_tone=emotional_tone,
             )
         except Exception as exc:
-            logger.debug("process_interaction_failed", error=str(exc)[:200])
+            logger.debug("process_interaction_failed error=%s", str(exc)[:200])
             return {}
 
     # ── Post-Reflection Hooks ────────────────────────────────────────
@@ -241,11 +241,11 @@ class IdentityLayer:
             if self._engine.dream.should_dream(sleep_secs):
                 try:
                     stats = self._engine.dream.run(self._engine)
-                    logger.info("dream_cycle_completed", stats=str(stats)[:200])
+                    logger.info("dream_cycle_completed stats=%s", str(stats)[:200])
                 except Exception as dream_exc:
-                    logger.debug("dream_cycle_failed", error=str(dream_exc)[:100])
+                    logger.debug("dream_cycle_failed error=%s", str(dream_exc)[:100])
         except Exception as exc:
-            logger.debug("reflect_failed", error=str(exc)[:200])
+            logger.debug("reflect_failed error=%s", str(exc)[:200])
 
     # ── Gatekeeper Integration ───────────────────────────────────────
 
@@ -282,7 +282,7 @@ class IdentityLayer:
 
             return False, ""
         except Exception as exc:
-            logger.debug("ethical_check_failed", error=str(exc)[:100])
+            logger.debug("ethical_check_failed error=%s", str(exc)[:100])
             return False, ""
 
     # ── Memory Bridge ────────────────────────────────────────────────
@@ -337,7 +337,7 @@ class IdentityLayer:
                 )
 
         except Exception as exc:
-            logger.debug("store_from_cognithor_failed", error=str(exc)[:200])
+            logger.debug("store_from_cognithor_failed error=%s", str(exc)[:200])
 
     def recall_for_cognithor(self, query: str, top_k: int = 10) -> list[dict]:
         """Recall memories filtered through BiasEngine + RealityCheck."""
@@ -359,7 +359,7 @@ class IdentityLayer:
                 for record, score in results
             ]
         except Exception as exc:
-            logger.debug("recall_for_cognithor_failed", error=str(exc)[:200])
+            logger.debug("recall_for_cognithor_failed error=%s", str(exc)[:200])
             return []
 
     # ── State Management ─────────────────────────────────────────────
@@ -370,7 +370,7 @@ class IdentityLayer:
             try:
                 self._engine.save_state()
             except Exception as exc:
-                logger.debug("identity_save_failed", error=str(exc)[:200])
+                logger.debug("identity_save_failed error=%s", str(exc)[:200])
 
     def load(self) -> None:
         """Reload state from disk."""
@@ -379,7 +379,7 @@ class IdentityLayer:
                 memory_file = str(self._data_dir / "memories.json")
                 self._engine._load_state(memory_file)
             except Exception as exc:
-                logger.debug("identity_load_failed", error=str(exc)[:200])
+                logger.debug("identity_load_failed error=%s", str(exc)[:200])
 
     def get_state_summary(self) -> dict:
         """Returns a summary of the cognitive state."""
