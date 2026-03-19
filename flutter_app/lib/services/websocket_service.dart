@@ -176,8 +176,8 @@ class WebSocketService {
   Future<void> _doConnect() async {
     if (_disposed) return;
 
-    // Ensure we have a token.
-    final token = apiClient.token ?? await apiClient.bootstrap();
+    // Always fetch a fresh token before connecting.
+    final token = await apiClient.bootstrap();
     if (token == null) {
       _scheduleReconnect();
       return;

@@ -705,6 +705,25 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
         if check.returncode == 0 and check.stdout.strip():
             ok(f"jarvis already installed (v{check.stdout.strip()})")
             jarvis_ok = True
+            # Ensure [all] extras are installed (identity, etc.)
+            _identity_check = subprocess.run(
+                [sys.executable, "-c", "import chromadb"],
+                capture_output=True,
+                timeout=10,
+            )
+            if _identity_check.returncode != 0:
+                info("Upgrading to install missing extras ([all])...")
+                _upgrade = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-e", ".[all]", "-q"],
+                    capture_output=True,
+                    text=True,
+                    timeout=600,
+                    cwd=repo_root,
+                )
+                if _upgrade.returncode == 0:
+                    ok("Extras installed (identity, etc.)")
+                else:
+                    result.add_warn("Could not install all extras. Try: pip install -e '.[all]'")
     except Exception:
         pass
 
