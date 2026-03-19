@@ -18,6 +18,7 @@ import 'package:jarvis_ui/widgets/plan_detail_panel.dart';
 import 'package:jarvis_ui/widgets/tool_indicator.dart';
 import 'package:jarvis_ui/widgets/typing_indicator.dart';
 import 'package:jarvis_ui/widgets/voice_indicator.dart';
+import 'package:jarvis_ui/screens/teach_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -274,6 +275,18 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               tooltip: l.voiceMode,
               onPressed: () => voice.toggle(),
+            );
+          },
+        ),
+        // Teach Cognithor
+        IconButton(
+          icon: const Icon(Icons.auto_stories),
+          tooltip: l.teachCognithor,
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const TeachScreen(),
+              ),
             );
           },
         ),

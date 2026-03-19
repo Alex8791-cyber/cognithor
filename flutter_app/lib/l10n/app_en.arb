@@ -885,5 +885,38 @@
   "stopped": "Stopped",
   "@stopped": {},
   "requestsOverTime": "Requests over time",
-  "@requestsOverTime": {}
+  "@requestsOverTime": {},
+
+  "teachCognithor": "Teach Cognithor",
+  "@teachCognithor": {},
+  "uploadFile": "Upload File",
+  "@uploadFile": {},
+  "learnFromUrl": "Learn from Website",
+  "@learnFromUrl": {},
+  "learnFromYoutube": "Learn from Video",
+  "@learnFromYoutube": {},
+  "dropFilesHere": "Drop files here or click to browse",
+  "@dropFilesHere": {},
+  "learningHistory": "Learning History",
+  "@learningHistory": {},
+  "chunksLearned": "{count} chunks learned",
+  "@chunksLearned": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "processingContent": "Processing content...",
+  "@processingContent": {},
+  "learnSuccess": "Successfully learned!",
+  "@learnSuccess": {},
+  "learnFailed": "Learning failed",
+  "@learnFailed": {},
+  "enterUrl": "Enter website URL...",
+  "@enterUrl": {},
+  "enterYoutubeUrl": "Enter YouTube URL...",
+  "@enterYoutubeUrl": {},
+  "adminTeachSubtitle": "Upload files, URLs, videos",
+  "@adminTeachSubtitle": {}
 }

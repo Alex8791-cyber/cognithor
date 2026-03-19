@@ -13,6 +13,7 @@ import 'package:jarvis_ui/screens/credentials_screen.dart';
 import 'package:jarvis_ui/screens/knowledge_graph_screen.dart';
 import 'package:jarvis_ui/screens/vault_screen.dart';
 import 'package:jarvis_ui/screens/learning_screen.dart';
+import 'package:jarvis_ui/screens/teach_screen.dart';
 import 'package:jarvis_ui/screens/workflows_screen.dart';
 
 class AdminHubScreen extends StatefulWidget {
@@ -91,6 +92,12 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
           title: l.learningTitle,
           subtitle: l.adminLearningSubtitle,
           builder: (_) => const LearningScreen(),
+        ),
+        _AdminSection(
+          icon: Icons.auto_stories,
+          title: l.teachCognithor,
+          subtitle: l.adminTeachSubtitle,
+          builder: (_) => const TeachScreen(),
         ),
       ];
 

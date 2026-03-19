@@ -3479,6 +3479,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Requests over time'**
   String get requestsOverTime;
+
+  /// No description provided for @teachCognithor.
+  ///
+  /// In en, this message translates to:
+  /// **'Teach Cognithor'**
+  String get teachCognithor;
+
+  /// No description provided for @uploadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload File'**
+  String get uploadFile;
+
+  /// No description provided for @learnFromUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn from Website'**
+  String get learnFromUrl;
+
+  /// No description provided for @learnFromYoutube.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn from Video'**
+  String get learnFromYoutube;
+
+  /// No description provided for @dropFilesHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop files here or click to browse'**
+  String get dropFilesHere;
+
+  /// No description provided for @learningHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning History'**
+  String get learningHistory;
+
+  /// No description provided for @chunksLearned.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} chunks learned'**
+  String chunksLearned(String count);
+
+  /// No description provided for @processingContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing content...'**
+  String get processingContent;
+
+  /// No description provided for @learnSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully learned!'**
+  String get learnSuccess;
+
+  /// No description provided for @learnFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning failed'**
+  String get learnFailed;
+
+  /// No description provided for @enterUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter website URL...'**
+  String get enterUrl;
+
+  /// No description provided for @enterYoutubeUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter YouTube URL...'**
+  String get enterYoutubeUrl;
+
+  /// No description provided for @adminTeachSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload files, URLs, videos'**
+  String get adminTeachSubtitle;
 }
 
 class _AppLocalizationsDelegate

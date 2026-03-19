@@ -554,5 +554,19 @@
   "directoryMissing": "目录未找到",
   "activityChart": "活动图表",
   "stopped": "已停止",
-  "requestsOverTime": "请求趋势"
+  "requestsOverTime": "请求趋势",
+
+  "teachCognithor": "教导 Cognithor",
+  "uploadFile": "上传文件",
+  "learnFromUrl": "从网站学习",
+  "learnFromYoutube": "从视频学习",
+  "dropFilesHere": "将文件拖放到此处或点击浏览",
+  "learningHistory": "学习历史",
+  "chunksLearned": "已学习 {count} 个片段",
+  "processingContent": "正在处理内容...",
+  "learnSuccess": "学习成功！",
+  "learnFailed": "学习失败",
+  "enterUrl": "输入网站URL...",
+  "enterYoutubeUrl": "输入YouTube URL...",
+  "adminTeachSubtitle": "上传文件、URL、视频"
 }

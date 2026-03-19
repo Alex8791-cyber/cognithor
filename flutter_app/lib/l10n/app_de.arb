@@ -580,5 +580,19 @@
   "explorationComplete": "Erkundung abgeschlossen",
   "activityChart": "Aktivitaet",
   "stopped": "Gestoppt",
-  "requestsOverTime": "Anfragen im Zeitverlauf"
+  "requestsOverTime": "Anfragen im Zeitverlauf",
+
+  "teachCognithor": "Cognithor beibringen",
+  "uploadFile": "Datei hochladen",
+  "learnFromUrl": "Von Website lernen",
+  "learnFromYoutube": "Von Video lernen",
+  "dropFilesHere": "Dateien hier ablegen oder durchsuchen",
+  "learningHistory": "Lernverlauf",
+  "chunksLearned": "{count} Abschnitte gelernt",
+  "processingContent": "Inhalt wird verarbeitet...",
+  "learnSuccess": "Erfolgreich gelernt!",
+  "learnFailed": "Lernen fehlgeschlagen",
+  "enterUrl": "Website-URL eingeben...",
+  "enterYoutubeUrl": "YouTube-URL eingeben...",
+  "adminTeachSubtitle": "Dateien, URLs, Videos hochladen"
 }

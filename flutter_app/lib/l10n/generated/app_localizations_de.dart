@@ -1715,4 +1715,45 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get requestsOverTime => 'Anfragen im Zeitverlauf';
+
+  @override
+  String get teachCognithor => 'Cognithor beibringen';
+
+  @override
+  String get uploadFile => 'Datei hochladen';
+
+  @override
+  String get learnFromUrl => 'Von Website lernen';
+
+  @override
+  String get learnFromYoutube => 'Von Video lernen';
+
+  @override
+  String get dropFilesHere => 'Dateien hier ablegen oder durchsuchen';
+
+  @override
+  String get learningHistory => 'Lernverlauf';
+
+  @override
+  String chunksLearned(String count) {
+    return '$count Abschnitte gelernt';
+  }
+
+  @override
+  String get processingContent => 'Inhalt wird verarbeitet...';
+
+  @override
+  String get learnSuccess => 'Erfolgreich gelernt!';
+
+  @override
+  String get learnFailed => 'Lernen fehlgeschlagen';
+
+  @override
+  String get enterUrl => 'Website-URL eingeben...';
+
+  @override
+  String get enterYoutubeUrl => 'YouTube-URL eingeben...';
+
+  @override
+  String get adminTeachSubtitle => 'Dateien, URLs, Videos hochladen';
 }

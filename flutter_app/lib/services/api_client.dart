@@ -506,6 +506,32 @@ class ApiClient {
       post('learning/explore/run');
 
   // ---------------------------------------------------------------------------
+  // Knowledge Ingestion (Teach)
+  // ---------------------------------------------------------------------------
+
+  Future<Map<String, dynamic>> learnFromFile(
+    List<int> bytes,
+    String filename, {
+    String? description,
+  }) =>
+      uploadFile('learn/file', 'file', bytes, filename,
+          fields:
+              description != null ? {'description': description} : null);
+
+  Future<Map<String, dynamic>> learnFromUrl(String url,
+          {String? description}) =>
+      post('learn/url', {
+        'url': url,
+        if (description != null) 'description': description,
+      });
+
+  Future<Map<String, dynamic>> learnFromYoutube(String url) =>
+      post('learn/youtube', {'url': url});
+
+  Future<Map<String, dynamic>> getLearnHistory() => get('learn/history');
+  Future<Map<String, dynamic>> getLearnStats() => get('learn/stats');
+
+  // ---------------------------------------------------------------------------
   // Internal
   // ---------------------------------------------------------------------------
 

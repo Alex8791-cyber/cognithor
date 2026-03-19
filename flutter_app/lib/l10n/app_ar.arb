@@ -554,5 +554,19 @@
   "directoryMissing": "المجلد غير موجود",
   "activityChart": "النشاط",
   "stopped": "متوقف",
-  "requestsOverTime": "الطلبات بمرور الوقت"
+  "requestsOverTime": "الطلبات بمرور الوقت",
+
+  "teachCognithor": "تعليم Cognithor",
+  "uploadFile": "رفع ملف",
+  "learnFromUrl": "التعلم من موقع ويب",
+  "learnFromYoutube": "التعلم من فيديو",
+  "dropFilesHere": "اسحب الملفات هنا أو انقر للتصفح",
+  "learningHistory": "سجل التعلم",
+  "chunksLearned": "تم تعلم {count} أجزاء",
+  "processingContent": "جارٍ معالجة المحتوى...",
+  "learnSuccess": "تم التعلم بنجاح!",
+  "learnFailed": "فشل التعلم",
+  "enterUrl": "أدخل عنوان URL للموقع...",
+  "enterYoutubeUrl": "أدخل عنوان YouTube...",
+  "adminTeachSubtitle": "رفع الملفات وعناوين URL والفيديو"
 }

@@ -84,6 +84,7 @@ def create_config_routes(
     _register_ui_routes(app, deps, config_manager, gateway)
     _register_workflow_graph_routes(app, deps, gateway)
     _register_learning_routes(app, deps, gateway)
+    _register_ingest_routes(app, deps, gateway)
     _register_hermes_routes(app, deps, gateway)
     _register_self_improvement_routes(app, deps, gateway)
 
@@ -3544,6 +3545,174 @@ def _register_learning_routes(
             "count": len(results),
             "stats": explorer.stats(),
         }
+
+
+# ======================================================================
+# Knowledge Ingestion routes (file upload, URL, YouTube)
+# ======================================================================
+
+
+def _register_ingest_routes(
+    app: Any,
+    deps: list[Any],
+    gateway: Any,
+) -> None:
+    """REST endpoints for knowledge ingestion (files, URLs, YouTube)."""
+
+    def _get_ingest() -> Any:
+        return getattr(gateway, "_knowledge_ingest", None) if gateway else None
+
+    # -- File upload --------------------------------------------------------
+
+    @app.post("/api/v1/learn/file", dependencies=deps)
+    async def learn_file(request: Request) -> dict[str, Any]:
+        """Ingest a file upload (multipart/form-data).
+
+        Expects field 'file' with the document/image.
+        Optional field 'description' with context text.
+        """
+        svc = _get_ingest()
+        if not svc:
+            return {"error": "Knowledge ingest service not initialized", "status": 503}
+
+        try:
+            form = await request.form()
+            file_field = form.get("file")
+            if file_field is None:
+                return {"error": "Field 'file' is required", "code": "MISSING_FIELD"}
+
+            file_bytes = await file_field.read()
+            if not file_bytes:
+                return {"error": "Empty file", "code": "EMPTY_FILE"}
+
+            filename = "upload"
+            if hasattr(file_field, "filename") and file_field.filename:
+                filename = file_field.filename
+
+            result = await svc.ingest_file(filename, file_bytes)
+
+            return {
+                "id": result.id,
+                "source_type": result.source_type,
+                "source_name": result.source_name,
+                "status": result.status,
+                "chunks_created": result.chunks_created,
+                "text_length": result.text_length,
+                "error": result.error,
+                "created_at": result.created_at.isoformat(),
+            }
+        except Exception as exc:
+            log.error("learn_file_error", error=str(exc))
+            return {"error": "File ingestion failed", "code": "INTERNAL_ERROR"}
+
+    # -- URL ingestion ------------------------------------------------------
+
+    @app.post("/api/v1/learn/url", dependencies=deps)
+    async def learn_url(request: Request) -> dict[str, Any]:
+        """Ingest a website URL.
+
+        JSON body: {"url": "https://...", "description": "optional"}
+        """
+        svc = _get_ingest()
+        if not svc:
+            return {"error": "Knowledge ingest service not initialized", "status": 503}
+
+        try:
+            body = await request.json()
+            url = body.get("url", "").strip()
+            if not url:
+                return {"error": "Field 'url' is required", "code": "MISSING_FIELD"}
+
+            result = await svc.ingest_url(url)
+
+            return {
+                "id": result.id,
+                "source_type": result.source_type,
+                "source_name": result.source_name,
+                "status": result.status,
+                "chunks_created": result.chunks_created,
+                "text_length": result.text_length,
+                "error": result.error,
+                "created_at": result.created_at.isoformat(),
+            }
+        except Exception as exc:
+            log.error("learn_url_error", error=str(exc))
+            return {"error": "URL ingestion failed", "code": "INTERNAL_ERROR"}
+
+    # -- YouTube ingestion --------------------------------------------------
+
+    @app.post("/api/v1/learn/youtube", dependencies=deps)
+    async def learn_youtube(request: Request) -> dict[str, Any]:
+        """Ingest a YouTube video transcript.
+
+        JSON body: {"url": "https://youtube.com/watch?v=..."}
+        """
+        svc = _get_ingest()
+        if not svc:
+            return {"error": "Knowledge ingest service not initialized", "status": 503}
+
+        try:
+            body = await request.json()
+            url = body.get("url", "").strip()
+            if not url:
+                return {"error": "Field 'url' is required", "code": "MISSING_FIELD"}
+
+            result = await svc.ingest_youtube(url)
+
+            return {
+                "id": result.id,
+                "source_type": result.source_type,
+                "source_name": result.source_name,
+                "status": result.status,
+                "chunks_created": result.chunks_created,
+                "text_length": result.text_length,
+                "error": result.error,
+                "created_at": result.created_at.isoformat(),
+            }
+        except Exception as exc:
+            log.error("learn_youtube_error", error=str(exc))
+            return {"error": "YouTube ingestion failed", "code": "INTERNAL_ERROR"}
+
+    # -- History & Stats ----------------------------------------------------
+
+    @app.get("/api/v1/learn/history", dependencies=deps)
+    async def learn_history(request: Request) -> dict[str, Any]:
+        """List ingestion results."""
+        svc = _get_ingest()
+        if not svc:
+            return {"error": "Knowledge ingest service not initialized", "status": 503}
+
+        limit = int(request.query_params.get("limit", "50"))
+        results = svc.results
+        # Return most recent first
+        recent = list(reversed(results))[:limit]
+
+        return {
+            "results": [
+                {
+                    "id": r.id,
+                    "source_type": r.source_type,
+                    "source_name": r.source_name,
+                    "status": r.status,
+                    "chunks_created": r.chunks_created,
+                    "text_length": r.text_length,
+                    "error": r.error,
+                    "created_at": r.created_at.isoformat(),
+                }
+                for r in recent
+            ],
+            "count": len(results),
+            "stats": svc.stats(),
+        }
+
+    @app.get("/api/v1/learn/stats", dependencies=deps)
+    async def learn_stats() -> dict[str, Any]:
+        """Return ingestion statistics."""
+        svc = _get_ingest()
+        if not svc:
+            return {"error": "Knowledge ingest service not initialized", "status": 503}
+
+        return svc.stats()
 
 
 # ======================================================================

@@ -7,7 +7,7 @@ Attributes handled:
   _recall_manager, _abuse_reporter, _governance_policy, _interop,
   _governance_hub, _ecosystem_controller, _user_portal, _skill_cli,
   _setup_wizard, _perf_manager, _exploration_executor,
-  _knowledge_qa, _knowledge_lineage
+  _knowledge_qa, _knowledge_lineage, _knowledge_ingest
 """
 
 from __future__ import annotations
@@ -63,6 +63,7 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         "exploration_executor": None,
         "knowledge_qa": None,
         "knowledge_lineage": None,
+        "knowledge_ingest": None,
         "self_improver": None,
         "hermes_compat": None,
     }
@@ -387,6 +388,16 @@ async def init_advanced(
         log.info("knowledge_lineage_initialized", db=str(lin_db))
     except Exception:
         log.debug("knowledge_lineage_init_skipped", exc_info=True)
+
+    # KnowledgeIngestService (unified file/URL/YouTube ingestion)
+    try:
+        from jarvis.learning.knowledge_ingest import KnowledgeIngestService
+
+        mm = getattr(config, "_memory_manager", None)
+        result["knowledge_ingest"] = KnowledgeIngestService(memory=mm)
+        log.info("knowledge_ingest_initialized")
+    except Exception:
+        log.debug("knowledge_ingest_init_skipped", exc_info=True)
 
     # ReplayEngine (needs Gatekeeper for policy re-evaluation)
     if gatekeeper is not None:

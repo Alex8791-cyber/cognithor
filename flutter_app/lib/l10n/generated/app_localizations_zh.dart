@@ -1710,4 +1710,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get requestsOverTime => '请求趋势';
+
+  @override
+  String get teachCognithor => '教导 Cognithor';
+
+  @override
+  String get uploadFile => '上传文件';
+
+  @override
+  String get learnFromUrl => '从网站学习';
+
+  @override
+  String get learnFromYoutube => '从视频学习';
+
+  @override
+  String get dropFilesHere => '将文件拖放到此处或点击浏览';
+
+  @override
+  String get learningHistory => '学习历史';
+
+  @override
+  String chunksLearned(String count) {
+    return '已学习 $count 个片段';
+  }
+
+  @override
+  String get processingContent => '正在处理内容...';
+
+  @override
+  String get learnSuccess => '学习成功！';
+
+  @override
+  String get learnFailed => '学习失败';
+
+  @override
+  String get enterUrl => '输入网站URL...';
+
+  @override
+  String get enterYoutubeUrl => '输入YouTube URL...';
+
+  @override
+  String get adminTeachSubtitle => '上传文件、URL、视频';
 }
