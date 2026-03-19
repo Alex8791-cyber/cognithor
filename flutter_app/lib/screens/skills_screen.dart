@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/skills_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_search_bar.dart';
@@ -286,7 +287,9 @@ class _SkillCard extends StatelessWidget {
     final downloadCount = skill['downloads']?.toString() ?? '0';
     final isVerified = skill['verified'] as bool? ?? false;
 
-    return JarvisCard(
+    return GlassPanel(
+      tint: JarvisTheme.sectionSkills,
+      glowOnHover: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -368,15 +371,20 @@ class _SkillCard extends StatelessWidget {
                   ),
                 )
               else
-                SizedBox(
-                  height: 30,
-                  child: ElevatedButton(
-                    onPressed: onInstall,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      textStyle: const TextStyle(fontSize: 12),
+                NeonGlow(
+                  color: JarvisTheme.sectionSkills,
+                  intensity: 0.2,
+                  blurRadius: 8,
+                  child: SizedBox(
+                    height: 30,
+                    child: ElevatedButton(
+                      onPressed: onInstall,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      child: Text(l.installSkill),
                     ),
-                    child: Text(l.installSkill),
                   ),
                 ),
             ],

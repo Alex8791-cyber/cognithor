@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_section.dart';
 import 'package:jarvis_ui/widgets/jarvis_stat.dart';
@@ -166,7 +166,8 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
           ),
 
           if (_events == null || _events!.isEmpty)
-            JarvisCard(
+            GlassPanel(
+              tint: JarvisTheme.sectionAdmin,
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -184,7 +185,8 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
               final message = e['message']?.toString() ?? '';
               final timestamp = e['timestamp']?.toString() ?? '';
 
-              return JarvisCard(
+              return GlassPanel(
+              tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,

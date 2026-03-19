@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/admin_provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_section.dart';
@@ -133,26 +133,36 @@ class _ModelsScreenState extends State<ModelsScreen> {
             final prov = model['provider']?.toString() ?? '';
             final caps = model['capabilities'] as List<dynamic>? ?? [];
 
-            return JarvisCard(
-              title: name,
-              icon: Icons.model_training,
-              trailing: prov.isNotEmpty
-                  ? JarvisStatusBadge(
-                      label: prov,
-                      color: JarvisTheme.accent,
-                    )
-                  : null,
-              child: caps.isNotEmpty
-                  ? Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: caps
-                          .map<Widget>(
-                            (c) => JarvisChip(label: c.toString()),
-                          )
-                          .toList(),
-                    )
-                  : const SizedBox.shrink(),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GlassPanel(
+                tint: JarvisTheme.sectionAdmin,
+                glowOnHover: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.model_training, size: 18, color: JarvisTheme.sectionAdmin),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(name, style: Theme.of(context).textTheme.titleMedium)),
+                        if (prov.isNotEmpty)
+                          JarvisStatusBadge(label: prov, color: JarvisTheme.accent),
+                      ],
+                    ),
+                    if (caps.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: caps
+                            .map<Widget>((c) => JarvisChip(label: c.toString()))
+                            .toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             );
           }),
 
@@ -189,18 +199,22 @@ class _ModelsScreenState extends State<ModelsScreen> {
             const SizedBox(height: 16),
             JarvisSection(title: l.modelWarnings),
             ...warnings.map<Widget>((w) {
-              return JarvisCard(
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: JarvisTheme.orange, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        w.toString(),
-                        style: TextStyle(color: JarvisTheme.orange, fontSize: 13),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GlassPanel(
+                  tint: JarvisTheme.orange,
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: JarvisTheme.orange, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          w.toString(),
+                          style: TextStyle(color: JarvisTheme.orange, fontSize: 13),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }),
@@ -228,15 +242,27 @@ class _ConfiguredModelCard extends StatelessWidget {
     final name = model['name']?.toString() ?? l.notConfigured;
     final provider = model['provider']?.toString() ?? '';
 
-    return JarvisCard(
-      title: label,
-      icon: icon,
-      trailing: provider.isNotEmpty
-          ? JarvisStatusBadge(label: provider, color: JarvisTheme.accent)
-          : null,
-      child: Text(
-        name,
-        style: Theme.of(context).textTheme.bodyMedium,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassPanel(
+        tint: JarvisTheme.sectionAdmin,
+        glowOnHover: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: JarvisTheme.sectionAdmin),
+                const SizedBox(width: 8),
+                Expanded(child: Text(label, style: Theme.of(context).textTheme.titleMedium)),
+                if (provider.isNotEmpty)
+                  JarvisStatusBadge(label: provider, color: JarvisTheme.accent),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(name, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
       ),
     );
   }

@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 
 import 'package:jarvis_ui/providers/security_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_list_tile.dart';
@@ -180,13 +181,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
         const SizedBox(height: 16),
 
         // Approval rate bar
-        JarvisCard(
-          title: l.approvalRate,
-          icon: Icons.bar_chart,
-          child: JarvisProgressBar(
-            value: approvalRate,
-            label: '${(approvalRate * 100).toStringAsFixed(1)}%',
-            color: JarvisTheme.green,
+        GlassPanel(
+          tint: JarvisTheme.sectionAdmin,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.bar_chart, size: 18, color: JarvisTheme.sectionAdmin),
+                  const SizedBox(width: 8),
+                  Text(l.approvalRate, style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ),
+              const SizedBox(height: 8),
+              JarvisProgressBar(
+                value: approvalRate,
+                label: '${(approvalRate * 100).toStringAsFixed(1)}%',
+                color: JarvisTheme.green,
+              ),
+            ],
           ),
         ),
 
@@ -307,7 +320,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         JarvisSection(title: l.scanStatus),
-        JarvisCard(
+        GlassPanel(
+          tint: JarvisTheme.sectionAdmin,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -333,19 +347,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: available
-              ? () => context
-                  .read<SecurityProvider>()
-                  .runRedteamScan({'scope': 'full'})
-              : null,
-          icon: const Icon(Icons.play_arrow),
-          label: Text(l.runScan),
+        NeonGlow(
+          color: JarvisTheme.sectionAdmin,
+          intensity: 0.2,
+          blurRadius: 8,
+          child: ElevatedButton.icon(
+            onPressed: available
+                ? () => context
+                    .read<SecurityProvider>()
+                    .runRedteamScan({'scope': 'full'})
+                : null,
+            icon: const Icon(Icons.play_arrow),
+            label: Text(l.runScan),
+          ),
         ),
         if (results != null) ...[
           const SizedBox(height: 16),
           JarvisSection(title: l.scanResults),
-          JarvisCard(
+          GlassPanel(
+            tint: JarvisTheme.sectionAdmin,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: results.entries.map<Widget>((e) {
@@ -542,36 +562,47 @@ class _RoleCardState extends State<_RoleCard> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
 
-    return JarvisCard(
-      title: widget.name,
-      icon: Icons.shield,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          JarvisChip(
-            label: '${widget.permissions.length} ${l.permissions}',
-            color: JarvisTheme.accent,
-          ),
-          IconButton(
-            icon: Icon(
-              _expanded ? Icons.expand_less : Icons.expand_more,
-              size: 20,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassPanel(
+        tint: JarvisTheme.sectionAdmin,
+        glowOnHover: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.shield, size: 18, color: JarvisTheme.sectionAdmin),
+                const SizedBox(width: 8),
+                Expanded(child: Text(widget.name, style: Theme.of(context).textTheme.titleMedium)),
+                JarvisChip(
+                  label: '${widget.permissions.length} ${l.permissions}',
+                  color: JarvisTheme.accent,
+                ),
+                IconButton(
+                  icon: Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                ),
+              ],
             ),
-            onPressed: () => setState(() => _expanded = !_expanded),
-          ),
-        ],
+            if (_expanded) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: widget.permissions
+                    .map<Widget>(
+                      (p) => JarvisChip(label: p.toString()),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
+        ),
       ),
-      child: _expanded
-          ? Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: widget.permissions
-                  .map<Widget>(
-                    (p) => JarvisChip(label: p.toString()),
-                  )
-                  .toList(),
-            )
-          : const SizedBox.shrink(),
     );
   }
 }

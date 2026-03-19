@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 
 
 class KnowledgeGraphScreen extends StatefulWidget {
@@ -313,14 +314,13 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
                     ),
                     // Detail panel
                     if (_selectedEntity != null)
-                      Container(
+                      SizedBox(
                         width: 280,
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          border: Border(
-                              left: BorderSide(color: theme.dividerColor)),
+                        child: GlassPanel(
+                          tint: JarvisTheme.sectionAdmin,
+                          borderRadius: 0,
+                          child: _buildDetailPanel(theme),
                         ),
-                        child: _buildDetailPanel(theme),
                       ),
                   ],
                 ),

@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/memory_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_list_tile.dart';
 import 'package:jarvis_ui/widgets/jarvis_loading_skeleton.dart';
@@ -165,7 +166,10 @@ class _MemoryScreenState extends State<MemoryScreen> {
               final type = e['type']?.toString() ?? '';
               final relations = e['relation_count']?.toString() ?? '0';
 
-              return JarvisCard(
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GlassPanel(
+                tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
@@ -178,6 +182,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     color: JarvisTheme.accent,
                   ),
                   dense: true,
+                ),
                 ),
               );
             }),
@@ -237,10 +242,15 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
           // Scan button
           Center(
-            child: ElevatedButton.icon(
-              onPressed: provider.isLoading ? null : _scanHygiene,
-              icon: const Icon(Icons.play_arrow, size: 18),
-              label: Text(l.scanNow),
+            child: NeonGlow(
+              color: JarvisTheme.sectionAdmin,
+              intensity: 0.25,
+              blurRadius: 10,
+              child: ElevatedButton.icon(
+                onPressed: provider.isLoading ? null : _scanHygiene,
+                icon: const Icon(Icons.play_arrow, size: 18),
+                label: Text(l.scanNow),
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -260,7 +270,10 @@ class _MemoryScreenState extends State<MemoryScreen> {
               final reason = q['reason']?.toString() ?? '';
               final timestamp = q['timestamp']?.toString() ?? '';
 
-              return JarvisCard(
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GlassPanel(
+                tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
@@ -274,6 +287,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     size: 20,
                   ),
                   dense: true,
+                ),
                 ),
               );
             }),
@@ -366,7 +380,10 @@ class _MemoryScreenState extends State<MemoryScreen> {
               final confidence =
                   (t['confidence'] as num?)?.toDouble() ?? 0.0;
 
-              return JarvisCard(
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GlassPanel(
+                tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
@@ -380,6 +397,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     icon: Icons.speed,
                   ),
                   dense: true,
+                ),
                 ),
               );
             }),
@@ -395,7 +413,10 @@ class _MemoryScreenState extends State<MemoryScreen> {
               final confidence =
                   (t['confidence'] as num?)?.toDouble() ?? 0.0;
 
-              return JarvisCard(
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GlassPanel(
+                tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
@@ -409,6 +430,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     icon: Icons.warning_amber,
                   ),
                   dense: true,
+                ),
                 ),
               );
             }),

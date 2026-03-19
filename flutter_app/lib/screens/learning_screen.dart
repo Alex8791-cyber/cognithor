@@ -6,7 +6,8 @@ import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/form/jarvis_toggle_field.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_stat.dart';
 import 'package:jarvis_ui/widgets/jarvis_status_badge.dart';
@@ -253,20 +254,43 @@ class _LearningScreenState extends State<LearningScreen> {
         const SizedBox(height: JarvisTheme.spacingLg),
 
         // Learning activity chart
-        JarvisCard(
-          title: l.learningTitle,
-          icon: Icons.show_chart,
-          child: SizedBox(
-            height: 200,
-            child: _buildActivityChart(theme),
+        GlassPanel(
+          tint: JarvisTheme.sectionDashboard,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.show_chart, size: 18, color: JarvisTheme.sectionDashboard),
+                  const SizedBox(width: 8),
+                  Text(l.learningTitle, style: theme.textTheme.titleMedium),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 200,
+                child: _buildActivityChart(theme),
+              ),
+            ],
           ),
         ),
+        const SizedBox(height: 12),
 
         // Confidence history
-        JarvisCard(
-          title: l.confidenceHistory,
-          icon: Icons.history,
-          child: _confidenceHistory.isEmpty
+        GlassPanel(
+          tint: JarvisTheme.sectionDashboard,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.history, size: 18, color: JarvisTheme.sectionDashboard),
+                  const SizedBox(width: 8),
+                  Text(l.confidenceHistory, style: theme.textTheme.titleMedium),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _confidenceHistory.isEmpty
               ? Padding(
                   padding: const EdgeInsets.all(JarvisTheme.spacing),
                   child: Text(l.noData,
@@ -308,24 +332,35 @@ class _LearningScreenState extends State<LearningScreen> {
                     );
                   }).toList(),
                 ),
+            ],
+          ),
         ),
+        const SizedBox(height: 12),
 
         // Watch directories
-        JarvisCard(
-          title: l.watchDirectories,
-          icon: Icons.folder_open,
-          child: _directories.isEmpty
-              ? Padding(
+        GlassPanel(
+          tint: JarvisTheme.sectionDashboard,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.folder_open, size: 18, color: JarvisTheme.sectionDashboard),
+                  const SizedBox(width: 8),
+                  Text(l.watchDirectories, style: theme.textTheme.titleMedium),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_directories.isEmpty)
+                Padding(
                   padding: const EdgeInsets.all(JarvisTheme.spacing),
-                  child: Text(l.noData,
-                      style: theme.textTheme.bodySmall),
+                  child: Text(l.noData, style: theme.textTheme.bodySmall),
                 )
-              : Column(
-                  children: [
-                    for (var i = 0; i < _directories.length; i++)
-                      _buildDirectoryRow(theme, l, i),
-                  ],
-                ),
+              else
+                ...List.generate(_directories.length, (i) =>
+                    _buildDirectoryRow(theme, l, i)),
+            ],
+          ),
         ),
       ],
     );
@@ -495,7 +530,11 @@ class _LearningScreenState extends State<LearningScreen> {
           _ => JarvisTheme.textSecondary,
         };
 
-        return JarvisCard(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: GlassPanel(
+          tint: JarvisTheme.sectionDashboard,
+          glowOnHover: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -536,6 +575,7 @@ class _LearningScreenState extends State<LearningScreen> {
                 ],
               ),
             ],
+          ),
           ),
         );
       },
@@ -677,7 +717,10 @@ class _LearningScreenState extends State<LearningScreen> {
                         final isVerified = qa['verified'] == true;
                         final id = (qa['id'] ?? '').toString();
 
-                        return JarvisCard(
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GlassPanel(
+                          tint: JarvisTheme.sectionDashboard,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -763,6 +806,7 @@ class _LearningScreenState extends State<LearningScreen> {
                                 ],
                               ),
                             ],
+                          ),
                           ),
                         );
                       },
@@ -942,7 +986,8 @@ class _LearningScreenState extends State<LearningScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: JarvisCard(
+                            child: GlassPanel(
+                              tint: JarvisTheme.sectionDashboard,
                               child: Row(
                                 children: [
                                   Icon(
@@ -1033,11 +1078,15 @@ class _GapCard extends StatelessWidget {
       _ => JarvisTheme.orange,
     };
 
-    return JarvisCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Question and status
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassPanel(
+        tint: JarvisTheme.sectionDashboard,
+        glowOnHover: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Question and status
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1124,14 +1173,20 @@ class _GapCard extends StatelessWidget {
                 label: Text(l.dismiss),
               ),
               const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: onExplore,
-                icon: const Icon(Icons.explore, size: 16),
-                label: Text(l.explore),
+              NeonGlow(
+                color: JarvisTheme.sectionDashboard,
+                intensity: 0.2,
+                blurRadius: 8,
+                child: ElevatedButton.icon(
+                  onPressed: onExplore,
+                  icon: const Icon(Icons.explore, size: 16),
+                  label: Text(l.explore),
+                ),
               ),
             ],
           ),
         ],
+        ),
       ),
     );
   }

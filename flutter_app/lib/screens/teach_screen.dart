@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_glow.dart';
 
 /// "Teach Cognithor" screen -- lets users upload files, paste URLs, and submit
 /// YouTube links so the assistant can learn from them.
@@ -270,15 +272,15 @@ class _TeachScreenState extends State<TeachScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(JarvisTheme.spacing),
-        child: Column(
+    return GlassPanel(
+      tint: JarvisTheme.sectionDashboard,
+      padding: const EdgeInsets.all(JarvisTheme.spacing),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                Icon(Icons.cloud_upload, color: colorScheme.primary),
+                Icon(Icons.cloud_upload, color: JarvisTheme.sectionDashboard),
                 const SizedBox(width: 8),
                 Text(l.uploadFile, style: theme.textTheme.titleMedium),
               ],
@@ -364,7 +366,6 @@ class _TeachScreenState extends State<TeachScreen> {
             ],
           ],
         ),
-      ),
     );
   }
 
@@ -374,17 +375,16 @@ class _TeachScreenState extends State<TeachScreen> {
 
   Widget _buildUrlCard(AppLocalizations l) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(JarvisTheme.spacing),
-        child: Column(
+    return GlassPanel(
+      tint: JarvisTheme.sectionDashboard,
+      padding: const EdgeInsets.all(JarvisTheme.spacing),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                Icon(Icons.link, color: colorScheme.primary),
+                Icon(Icons.link, color: JarvisTheme.sectionDashboard),
                 const SizedBox(width: 8),
                 Text(l.learnFromUrl, style: theme.textTheme.titleMedium),
               ],
@@ -400,7 +400,11 @@ class _TeachScreenState extends State<TeachScreen> {
               onSubmitted: (_) => _learnFromUrl(),
             ),
             const SizedBox(height: JarvisTheme.spacingSm),
-            FilledButton.icon(
+            NeonGlow(
+              color: JarvisTheme.sectionDashboard,
+              intensity: 0.2,
+              blurRadius: 8,
+              child: FilledButton.icon(
               onPressed: _urlProcessing ? null : _learnFromUrl,
               icon: _urlProcessing
                   ? const SizedBox(
@@ -412,6 +416,7 @@ class _TeachScreenState extends State<TeachScreen> {
               label: Text(
                 _urlProcessing ? l.processingContent : l.learnFromUrl,
               ),
+            ),
             ),
 
             // Result
@@ -426,7 +431,6 @@ class _TeachScreenState extends State<TeachScreen> {
             ],
           ],
         ),
-      ),
     );
   }
 
@@ -436,17 +440,16 @@ class _TeachScreenState extends State<TeachScreen> {
 
   Widget _buildYoutubeCard(AppLocalizations l) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(JarvisTheme.spacing),
-        child: Column(
+    return GlassPanel(
+      tint: JarvisTheme.sectionDashboard,
+      padding: const EdgeInsets.all(JarvisTheme.spacing),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                Icon(Icons.play_circle, color: colorScheme.primary),
+                Icon(Icons.play_circle, color: JarvisTheme.sectionDashboard),
                 const SizedBox(width: 8),
                 Text(l.learnFromYoutube, style: theme.textTheme.titleMedium),
               ],
@@ -492,7 +495,6 @@ class _TeachScreenState extends State<TeachScreen> {
             ],
           ],
         ),
-      ),
     );
   }
 

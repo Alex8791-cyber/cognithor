@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 // Inline confirmation dialog used for delete
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 
@@ -130,19 +130,37 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
                         final service =
                             (c['service'] ?? '').toString();
                         final key = (c['key'] ?? '').toString();
-                        return JarvisCard(
-                          title: service,
-                          icon: Icons.vpn_key,
-                          trailing: IconButton(
-                            icon: Icon(Icons.delete,
-                                size: 18, color: JarvisTheme.red),
-                            onPressed: () => _delete(service, key),
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GlassPanel(
+                            tint: JarvisTheme.sectionAdmin,
+                            glowOnHover: true,
+                            child: Row(
+                              children: [
+                                Icon(Icons.vpn_key, size: 18, color: JarvisTheme.sectionAdmin),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(service, style: Theme.of(context).textTheme.titleMedium),
+                                      const SizedBox(height: 4),
+                                      Text(key,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(fontFamily: 'monospace')),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete,
+                                      size: 18, color: JarvisTheme.red),
+                                  onPressed: () => _delete(service, key),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Text(key,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(fontFamily: 'monospace')),
                         );
                       },
                     ),

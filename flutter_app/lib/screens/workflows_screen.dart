@@ -6,7 +6,8 @@ import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/workflow_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/dag_graph_painter.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_loading_skeleton.dart';
@@ -200,45 +201,60 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
         ? (category['templates'] as List?)?.length ?? 0
         : 0;
 
-    return JarvisCard(
-      title: name,
-      icon: Icons.category,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (description.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: JarvisTheme.spacingSm),
-              child: Text(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassPanel(
+        tint: JarvisTheme.sectionAdmin,
+        glowOnHover: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.category, size: 18, color: JarvisTheme.sectionAdmin),
+                const SizedBox(width: 8),
+                Expanded(child: Text(name, style: Theme.of(context).textTheme.titleMedium)),
+              ],
+            ),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
                 description,
                 style: Theme.of(context).textTheme.bodySmall,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-            ),
-          Row(
-            children: [
-              JarvisChip(
-                label: '$templates ${l.templates}',
-                icon: Icons.description,
-                color: JarvisTheme.accent,
-              ),
-              const Spacer(),
-              if (category is Map &&
-                  (category['templates'] as List?)?.isNotEmpty == true)
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      _startWorkflow(Map<String, dynamic>.from(category)),
-                  icon: const Icon(Icons.play_arrow, size: 18),
-                  label: Text(l.startComponent),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                  ),
-                ),
             ],
-          ),
-        ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                JarvisChip(
+                  label: '$templates ${l.templates}',
+                  icon: Icons.description,
+                  color: JarvisTheme.accent,
+                ),
+                const Spacer(),
+                if (category is Map &&
+                    (category['templates'] as List?)?.isNotEmpty == true)
+                  NeonGlow(
+                    color: JarvisTheme.sectionAdmin,
+                    intensity: 0.2,
+                    blurRadius: 8,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _startWorkflow(Map<String, dynamic>.from(category)),
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: Text(l.startComponent),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -293,30 +309,45 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
           final progress = (inst['progress'] as num?)?.toDouble() ?? 0;
           final duration = (inst['duration'] ?? '').toString();
 
-          return JarvisCard(
-            title: (inst['template_id'] ?? inst['id'] ?? 'Instance $i')
-                .toString(),
-            icon: Icons.play_circle_outline,
-            trailing: JarvisChip(
-              label: status,
-              color: status == 'running'
-                  ? JarvisTheme.accent
-                  : status == 'complete'
-                      ? JarvisTheme.green
-                      : JarvisTheme.orange,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LinearProgressIndicator(
-                    value: progress,
-                    color: JarvisTheme.accent,
-                    backgroundColor: Theme.of(context).dividerColor),
-                const SizedBox(height: 4),
-                if (duration.isNotEmpty)
-                  Text('Duration: $duration',
-                      style: Theme.of(context).textTheme.bodySmall),
-              ],
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: GlassPanel(
+              tint: JarvisTheme.sectionAdmin,
+              glowOnHover: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.play_circle_outline, size: 18, color: JarvisTheme.sectionAdmin),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          (inst['template_id'] ?? inst['id'] ?? 'Instance $i').toString(),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      JarvisChip(
+                        label: status,
+                        color: status == 'running'
+                            ? JarvisTheme.accent
+                            : status == 'complete'
+                                ? JarvisTheme.green
+                                : JarvisTheme.orange,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                      value: progress,
+                      color: JarvisTheme.accent,
+                      backgroundColor: Theme.of(context).dividerColor),
+                  const SizedBox(height: 4),
+                  if (duration.isNotEmpty)
+                    Text('Duration: $duration',
+                        style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
             ),
           );
         },

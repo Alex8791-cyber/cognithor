@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_section.dart';
 import 'package:jarvis_ui/widgets/jarvis_stat.dart';
@@ -210,10 +211,15 @@ class _IdentityScreenState extends State<IdentityScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              ElevatedButton.icon(
-                onPressed: () => _performAction('dream'),
-                icon: const Icon(Icons.nightlight_round, size: 18),
-                label: Text(l.identityDream),
+              NeonGlow(
+                color: JarvisTheme.sectionIdentity,
+                intensity: 0.25,
+                blurRadius: 10,
+                child: ElevatedButton.icon(
+                  onPressed: () => _performAction('dream'),
+                  icon: const Icon(Icons.nightlight_round, size: 18),
+                  label: Text(l.identityDream),
+                ),
               ),
               if (isFrozen)
                 OutlinedButton.icon(
@@ -251,7 +257,8 @@ class _IdentityScreenState extends State<IdentityScreen> {
           if (anchors.isNotEmpty) ...[
             const SizedBox(height: 24),
             const JarvisSection(title: 'Genesis Anchors'),
-            JarvisCard(
+            GlassPanel(
+              tint: JarvisTheme.sectionIdentity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: anchors.map<Widget>((anchor) {
@@ -263,7 +270,7 @@ class _IdentityScreenState extends State<IdentityScreen> {
                         Icon(
                           Icons.anchor,
                           size: 14,
-                          color: JarvisTheme.accent,
+                          color: JarvisTheme.sectionIdentity,
                         ),
                         const SizedBox(width: 8),
                         Expanded(

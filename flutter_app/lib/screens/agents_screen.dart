@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/admin_provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/jarvis_card.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_section.dart';
@@ -132,71 +132,84 @@ class _AgentCard extends StatelessWidget {
     final allowed = agent['allowed_tools'] as List<dynamic>? ?? [];
     final blocked = agent['blocked_tools'] as List<dynamic>? ?? [];
 
-    return JarvisCard(
-      title: name,
-      icon: Icons.smart_toy,
-      trailing: JarvisStatusBadge(
-        label: enabled ? l.enabled : l.disabled,
-        color: enabled ? JarvisTheme.green : JarvisTheme.red,
-        icon: enabled ? Icons.check_circle : Icons.cancel,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (displayName != name)
-            Text(displayName, style: theme.textTheme.bodyMedium),
-          if (description.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(description, style: theme.textTheme.bodySmall),
-          ],
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              if (model.isNotEmpty)
-                _infoChip(l.model, model, Icons.psychology),
-              if (temperature.isNotEmpty)
-                _infoChip(l.temperature, temperature, Icons.thermostat),
-              if (priority.isNotEmpty)
-                _infoChip(l.priority, priority, Icons.low_priority),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassPanel(
+        tint: JarvisTheme.sectionAdmin,
+        glowOnHover: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.smart_toy, size: 18, color: JarvisTheme.sectionAdmin),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(name, style: theme.textTheme.titleMedium),
+                ),
+                JarvisStatusBadge(
+                  label: enabled ? l.enabled : l.disabled,
+                  color: enabled ? JarvisTheme.green : JarvisTheme.red,
+                  icon: enabled ? Icons.check_circle : Icons.cancel,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (displayName != name)
+              Text(displayName, style: theme.textTheme.bodyMedium),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(description, style: theme.textTheme.bodySmall),
             ],
-          ),
-          if (allowed.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(l.allowedTools, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 4),
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: allowed
-                  .map<Widget>(
-                    (t) => JarvisChip(
-                      label: t.toString(),
-                      color: JarvisTheme.green,
-                    ),
-                  )
-                  .toList(),
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                if (model.isNotEmpty)
+                  _infoChip(l.model, model, Icons.psychology),
+                if (temperature.isNotEmpty)
+                  _infoChip(l.temperature, temperature, Icons.thermostat),
+                if (priority.isNotEmpty)
+                  _infoChip(l.priority, priority, Icons.low_priority),
+              ],
             ),
+            if (allowed.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(l.allowedTools, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: allowed
+                    .map<Widget>(
+                      (t) => JarvisChip(
+                        label: t.toString(),
+                        color: JarvisTheme.green,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            if (blocked.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(l.blockedTools, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: blocked
+                    .map<Widget>(
+                      (t) => JarvisChip(
+                        label: t.toString(),
+                        color: JarvisTheme.red,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
           ],
-          if (blocked.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(l.blockedTools, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: blocked
-                  .map<Widget>(
-                    (t) => JarvisChip(
-                      label: t.toString(),
-                      color: JarvisTheme.red,
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
