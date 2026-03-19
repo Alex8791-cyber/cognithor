@@ -1285,7 +1285,7 @@ def _register_skill_routes(
         try:
             from jarvis.skills.marketplace import SkillMarketplace
 
-            return {"trending": [s.to_dict() for s in SkillMarketplace().trending(window, n)]}
+            return {"trending": [s.to_dict() for s in SkillMarketplace().trending(max_results=n)]}
         except Exception as exc:
             log.error("marketplace_trending_failed", error=str(exc))
             return {"error": "Trending-Skills nicht verfuegbar"}

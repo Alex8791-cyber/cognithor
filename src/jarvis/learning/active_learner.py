@@ -42,11 +42,9 @@ log = get_logger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-#: Default directories to watch (relative to user home).
-_DEFAULT_WATCH_DIRS: list[str] = [
-    "Documents",
-    "Downloads",
-]
+#: Default directories to watch — DISABLED by default for privacy.
+#: Users must explicitly enable directories via the Learning Dashboard.
+_DEFAULT_WATCH_DIRS: list[str] = []
 
 #: Maximum file size for active learning (5 MB -- lighter than ingest).
 MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
