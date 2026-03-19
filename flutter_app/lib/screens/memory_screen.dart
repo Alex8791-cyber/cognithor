@@ -23,14 +23,18 @@ class MemoryScreen extends StatefulWidget {
 
 class _MemoryScreenState extends State<MemoryScreen> {
   int _tabIndex = 0;
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    final provider = context.read<MemoryProvider>();
-    final api = context.read<ConnectionProvider>().api;
-    provider.setApi(api);
-    _loadAll(provider);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      final provider = context.read<MemoryProvider>();
+      final api = context.read<ConnectionProvider>().api;
+      provider.setApi(api);
+      _loadAll(provider);
+    }
   }
 
   void _loadAll(MemoryProvider provider) {

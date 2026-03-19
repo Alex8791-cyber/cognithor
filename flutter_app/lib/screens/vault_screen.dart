@@ -20,9 +20,18 @@ class VaultScreen extends StatefulWidget {
 }
 
 class _VaultScreenState extends State<VaultScreen> {
+  bool _initialized = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _loadData();
+    }
+  }
+
+  void _loadData() {
     final provider = context.read<AdminProvider>();
     final api = context.read<ConnectionProvider>().api;
     provider.setApi(api);

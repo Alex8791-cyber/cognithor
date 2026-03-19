@@ -26,11 +26,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
   String? _severityFilter;
   String? _actionFilter;
   bool _initialLoaded = false;
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _loadAll();
+    }
   }
 
   Future<void> _loadAll() async {

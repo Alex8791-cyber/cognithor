@@ -29,10 +29,24 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
   String? _instancesError;
   String? _dagError;
 
+  bool _initialized = false;
+
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _loadData();
+    }
+  }
+
+  void _loadData() {
     final provider = context.read<WorkflowProvider>();
     provider.setApi(context.read<ConnectionProvider>().api);
     provider.loadCategories();

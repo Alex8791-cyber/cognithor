@@ -20,15 +20,22 @@ class ModelsScreen extends StatefulWidget {
 }
 
 class _ModelsScreenState extends State<ModelsScreen> {
+  bool _initialized = false;
+
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final admin = context.read<AdminProvider>();
-      admin.setApi(context.read<ConnectionProvider>().api);
-      admin.loadModels();
-      admin.loadModelStats();
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _loadData();
+    }
+  }
+
+  void _loadData() {
+    final admin = context.read<AdminProvider>();
+    admin.setApi(context.read<ConnectionProvider>().api);
+    admin.loadModels();
+    admin.loadModelStats();
   }
 
   @override

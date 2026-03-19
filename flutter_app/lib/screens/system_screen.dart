@@ -26,11 +26,15 @@ class _SystemScreenState extends State<SystemScreen> {
   Map<String, dynamic>? _status;
   List<dynamic> _commands = [];
   List<dynamic> _connectors = [];
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    _load();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _load();
+    }
   }
 
   Future<void> _load() async {

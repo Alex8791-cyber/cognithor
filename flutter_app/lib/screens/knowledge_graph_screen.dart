@@ -28,10 +28,15 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
   /// The size used for the last layout computation.
   Size _lastLayoutSize = Size.zero;
 
+  bool _initialized = false;
+
   @override
-  void initState() {
-    super.initState();
-    _loadGraph();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _loadGraph();
+    }
   }
 
   Future<void> _loadGraph() async {

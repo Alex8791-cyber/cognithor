@@ -20,14 +20,21 @@ class AgentsScreen extends StatefulWidget {
 }
 
 class _AgentsScreenState extends State<AgentsScreen> {
+  bool _initialized = false;
+
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final admin = context.read<AdminProvider>();
-      admin.setApi(context.read<ConnectionProvider>().api);
-      admin.loadAgents();
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _loadData();
+    }
+  }
+
+  void _loadData() {
+    final admin = context.read<AdminProvider>();
+    admin.setApi(context.read<ConnectionProvider>().api);
+    admin.loadAgents();
   }
 
   @override
