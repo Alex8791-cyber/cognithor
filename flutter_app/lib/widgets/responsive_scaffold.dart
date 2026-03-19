@@ -327,26 +327,25 @@ class _RailHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
       child: Row(
         children: [
-          // Logo icon
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  JarvisTheme.accent,
-                  JarvisTheme.accent.withValues(alpha: 0.7),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Text(
-                'J',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
+          // Logo
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset(
+              'assets/logo.png',
+              width: 36,
+              height: 36,
+              fit: BoxFit.cover,
+              errorBuilder: (_, e, s) => Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: JarvisTheme.accent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text('C', style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18,
+                  )),
                 ),
               ),
             ),
