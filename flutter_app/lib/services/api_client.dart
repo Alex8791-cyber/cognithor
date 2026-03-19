@@ -224,7 +224,7 @@ class ApiClient {
       get('marketplace/search?q=${Uri.encodeComponent(q)}&max_results=$maxResults');
   Future<Map<String, dynamic>> getMarketplaceStats() =>
       get('marketplace/stats');
-  Future<Map<String, dynamic>> getInstalledSkills() => get('skills/installed');
+  Future<Map<String, dynamic>> getInstalledSkills() => get('skills/registry');
   Future<Map<String, dynamic>> getSkillDetails(String id) => get('skills/$id');
   Future<Map<String, dynamic>> installSkill(String id) =>
       post('skills/$id/install', {});

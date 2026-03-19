@@ -131,7 +131,7 @@ class SecurityProvider extends ChangeNotifier {
         action: action,
         severity: severity,
       );
-      auditEntries = data['entries'] as List<dynamic>? ?? [];
+      auditEntries = data['entries'] is List ? data['entries'] as List : [];
     } catch (e) {
       error = e.toString();
     }

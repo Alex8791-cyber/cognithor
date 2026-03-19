@@ -28,8 +28,8 @@ class NavItem {
 enum _Layout { mobile, tablet, desktop }
 
 _Layout _layoutFor(double width) {
-  if (width >= 1024) return _Layout.desktop;
-  if (width >= 600) return _Layout.tablet;
+  if (width >= 800) return _Layout.desktop;
+  if (width >= 500) return _Layout.tablet;
   return _Layout.mobile;
 }
 

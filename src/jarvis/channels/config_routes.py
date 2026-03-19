@@ -3732,8 +3732,8 @@ def _register_skill_registry_routes(
     def _get_registry() -> Any:
         return getattr(gateway, "_skill_registry", None) if gateway else None
 
-    @app.get("/api/v1/skills/installed", dependencies=deps)
-    async def list_installed_skills() -> dict[str, Any]:
+    @app.get("/api/v1/skills/registry", dependencies=deps)
+    async def list_registry_skills() -> dict[str, Any]:
         reg = _get_registry()
         if not reg:
             return {"installed": [], "count": 0}
