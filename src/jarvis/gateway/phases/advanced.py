@@ -65,6 +65,7 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         "knowledge_lineage": None,
         "knowledge_ingest": None,
         "self_improver": None,
+        "reflexion_memory": None,
         "hermes_compat": None,
         "trace_store": None,
         "proposal_store": None,
@@ -265,6 +266,16 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
                 log.info("gepa_orchestrator_initialized")
     except Exception:
         log.debug("gepa_orchestrator_init_skipped", exc_info=True)
+
+    # Reflexion Memory
+    try:
+        from jarvis.learning.reflexion import ReflexionMemory
+
+        reflexion_dir = Path(getattr(config, "jarvis_home", Path.home() / ".jarvis")) / "memory"
+        result["reflexion_memory"] = ReflexionMemory(data_dir=reflexion_dir)
+        log.info("reflexion_memory_initialized", data_dir=str(reflexion_dir))
+    except Exception:
+        log.debug("reflexion_memory_init_skipped", exc_info=True)
 
     # HermesCompatLayer (agentskills.io SKILL.md import/export)
     try:

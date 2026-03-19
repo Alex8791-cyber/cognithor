@@ -2410,6 +2410,38 @@ class Gateway:
             except Exception:
                 log.debug("gepa_trace_save_failed", exc_info=True)
 
+        # Reflexion: check for known solutions before recording new errors
+        if getattr(self, "_reflexion_memory", None) and hasattr(agent_result, "tool_results"):
+            try:
+                for tr in agent_result.tool_results or []:
+                    if getattr(tr, "is_error", False) or getattr(tr, "error", None):
+                        tool = getattr(tr, "tool_name", "") or str(getattr(tr, "name", ""))
+                        error_msg = str(getattr(tr, "error", "") or getattr(tr, "error_type", ""))
+                        known = self._reflexion_memory.get_solution(tool, "unknown", error_msg)
+                        if known:
+                            log.info(
+                                "reflexion_known_error",
+                                tool=tool,
+                                solution=known.prevention_rule,
+                            )
+                        else:
+                            _msg_text = ""
+                            for _m in wm.messages:
+                                if getattr(_m, "role", None) and _m.role.value == "user":
+                                    _msg_text = getattr(_m, "content", "")
+                                    break
+                            self._reflexion_memory.record_error(
+                                tool_name=tool,
+                                error_category="unknown",
+                                error_message=error_msg,
+                                root_cause="auto-detected",
+                                prevention_rule="",
+                                task_context=_msg_text[:200] if _msg_text else "",
+                                channel=getattr(session, "channel", ""),
+                            )
+            except Exception:
+                log.debug("reflexion_post_processing_failed", exc_info=True)
+
         # GEPA: Run evolution cycle if due
         if getattr(self, "_evolution_orchestrator", None):
             try:
