@@ -314,7 +314,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
     final status = sec.redteamStatus ?? {};
     final available = status['available'] as bool? ?? false;
     final lastScan = status['last_scan']?.toString();
-    final results = status['results'] as Map<String, dynamic>?;
+    final rawResults = status['results'];
+    final results = rawResults is Map<String, dynamic> ? rawResults : null;
 
     return ListView(
       padding: const EdgeInsets.all(16),

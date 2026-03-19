@@ -180,7 +180,10 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
             ),
             const VerticalDivider(width: 1),
             Expanded(
-              child: sections[_selectedIndex].builder(context),
+              child: ColoredBox(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: sections[_selectedIndex].builder(context),
+              ),
             ),
           ],
         ),
