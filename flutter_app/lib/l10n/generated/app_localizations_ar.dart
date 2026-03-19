@@ -1845,4 +1845,44 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get automation => 'أتمتة';
+
+  @override
+  String get newAgent => 'وكيل جديد';
+
+  @override
+  String get editAgent => 'تعديل الوكيل';
+
+  @override
+  String get deleteAgent => 'حذف الوكيل';
+
+  @override
+  String get confirmDeleteAgent =>
+      'هل أنت متأكد من حذف هذا الوكيل؟ لا يمكن التراجع عن هذا.';
+
+  @override
+  String get agentCreated => 'تم إنشاء الوكيل بنجاح';
+
+  @override
+  String get agentSaved => 'تم حفظ الوكيل بنجاح';
+
+  @override
+  String get agentDeleted => 'تم حذف الوكيل';
+
+  @override
+  String get displayName => 'اسم العرض';
+
+  @override
+  String get preferredModel => 'النموذج المفضل';
+
+  @override
+  String get sandboxTimeout => 'مهلة الحماية (ث)';
+
+  @override
+  String get sandboxNetwork => 'شبكة الحماية';
+
+  @override
+  String get canDelegateTo => 'يمكن التفويض إلى';
+
+  @override
+  String get cannotDeleteDefault => 'لا يمكن حذف الوكيل الافتراضي';
 }

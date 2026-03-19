@@ -1848,4 +1848,45 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get automation => 'Automatisierung';
+
+  @override
+  String get newAgent => 'Neuer Agent';
+
+  @override
+  String get editAgent => 'Agent bearbeiten';
+
+  @override
+  String get deleteAgent => 'Agent loeschen';
+
+  @override
+  String get confirmDeleteAgent =>
+      'Bist du sicher, dass du diesen Agenten loeschen moechtest? Dies kann nicht rueckgaengig gemacht werden.';
+
+  @override
+  String get agentCreated => 'Agent erfolgreich erstellt';
+
+  @override
+  String get agentSaved => 'Agent erfolgreich gespeichert';
+
+  @override
+  String get agentDeleted => 'Agent geloescht';
+
+  @override
+  String get displayName => 'Anzeigename';
+
+  @override
+  String get preferredModel => 'Bevorzugtes Modell';
+
+  @override
+  String get sandboxTimeout => 'Sandbox Timeout (s)';
+
+  @override
+  String get sandboxNetwork => 'Sandbox Netzwerk';
+
+  @override
+  String get canDelegateTo => 'Kann delegieren an';
+
+  @override
+  String get cannotDeleteDefault =>
+      'Standard-Agent kann nicht geloescht werden';
 }

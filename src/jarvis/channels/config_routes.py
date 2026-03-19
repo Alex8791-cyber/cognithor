@@ -26,6 +26,14 @@ try:
 except ImportError:
     Request = Any  # type: ignore[assignment,misc]
 
+try:
+    from fastapi import HTTPException
+except ImportError:
+    try:
+        from starlette.exceptions import HTTPException  # type: ignore[assignment]
+    except ImportError:
+        HTTPException = Exception  # type: ignore[assignment,misc]
+
 from jarvis.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -217,6 +225,108 @@ def _register_system_routes(
         except Exception as exc:
             log.error("agents_list_failed", error=str(exc))
             return {"agents": [], "error": "Agenten konnten nicht geladen werden"}
+
+    @app.get("/api/v1/agents/{agent_name}", dependencies=deps)
+    async def get_agent(agent_name: str) -> dict[str, Any]:
+        """Get a single agent by name."""
+        agents_path = config_manager.config.jarvis_home / "agents.yaml"
+        if agents_path.exists():
+            raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
+            for a in raw.get("agents", []):
+                if a.get("name") == agent_name:
+                    return a
+        raise HTTPException(404, f"Agent '{agent_name}' not found")
+
+    @app.post("/api/v1/agents", dependencies=deps)
+    async def create_agent(request: Request) -> dict[str, Any]:
+        """Create a new agent profile."""
+        body = await request.json()
+        name = body.get("name", "").strip().lower().replace(" ", "-")
+        if not name:
+            raise HTTPException(400, "Name is required")
+
+        agents_path = config_manager.config.jarvis_home / "agents.yaml"
+        raw = {}
+        if agents_path.exists():
+            raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
+        agents = raw.get("agents", [])
+
+        # Check duplicate
+        if any(a.get("name") == name for a in agents):
+            raise HTTPException(409, f"Agent '{name}' already exists")
+
+        agent = {
+            "name": name,
+            "display_name": body.get("display_name", name.title()),
+            "description": body.get("description", ""),
+            "system_prompt": body.get("system_prompt", ""),
+            "language": body.get("language", "en"),
+            "preferred_model": body.get("preferred_model", ""),
+            "temperature": body.get("temperature", 0.7),
+            "priority": body.get("priority", 0),
+            "enabled": body.get("enabled", True),
+            "allowed_tools": body.get("allowed_tools") or [],
+            "blocked_tools": body.get("blocked_tools", []),
+            "can_delegate_to": body.get("can_delegate_to", []),
+            "sandbox_timeout": body.get("sandbox_timeout", 30),
+            "sandbox_network": body.get("sandbox_network", "allow"),
+        }
+        agents.append(agent)
+        raw["agents"] = agents
+        agents_path.write_text(yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        return {"status": "created", "agent": agent}
+
+    @app.put("/api/v1/agents/{agent_name}", dependencies=deps)
+    async def update_agent(agent_name: str, request: Request) -> dict[str, Any]:
+        """Update an existing agent profile."""
+        body = await request.json()
+        agents_path = config_manager.config.jarvis_home / "agents.yaml"
+        if not agents_path.exists():
+            raise HTTPException(404, f"Agent '{agent_name}' not found")
+
+        raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
+        agents = raw.get("agents", [])
+        found = False
+        updated_agent = None
+        for i, a in enumerate(agents):
+            if a.get("name") == agent_name:
+                # Update fields (preserve name)
+                for key in ["display_name", "description", "system_prompt", "language",
+                            "preferred_model", "temperature", "priority", "enabled",
+                            "allowed_tools", "blocked_tools", "can_delegate_to",
+                            "sandbox_timeout", "sandbox_network"]:
+                    if key in body:
+                        agents[i][key] = body[key]
+                found = True
+                updated_agent = agents[i]
+                break
+        if not found:
+            raise HTTPException(404, f"Agent '{agent_name}' not found")
+
+        raw["agents"] = agents
+        agents_path.write_text(yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        return {"status": "updated", "agent": updated_agent}
+
+    @app.delete("/api/v1/agents/{agent_name}", dependencies=deps)
+    async def delete_agent(agent_name: str) -> dict[str, Any]:
+        """Delete an agent profile."""
+        if agent_name == "jarvis":
+            raise HTTPException(403, "Cannot delete the default agent")
+
+        agents_path = config_manager.config.jarvis_home / "agents.yaml"
+        if not agents_path.exists():
+            raise HTTPException(404, f"Agent '{agent_name}' not found")
+
+        raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
+        agents = raw.get("agents", [])
+        original_len = len(agents)
+        agents = [a for a in agents if a.get("name") != agent_name]
+        if len(agents) == original_len:
+            raise HTTPException(404, f"Agent '{agent_name}' not found")
+
+        raw["agents"] = agents
+        agents_path.write_text(yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        return {"status": "deleted", "name": agent_name}
 
     # -- Credentials ------------------------------------------------------
 

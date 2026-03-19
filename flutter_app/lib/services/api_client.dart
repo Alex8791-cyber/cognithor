@@ -414,9 +414,12 @@ class ApiClient {
   // Agents CRUD
   // ---------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> createOrUpdateAgent(
+  Future<Map<String, dynamic>> getAgent(String name) => get('agents/$name');
+  Future<Map<String, dynamic>> createAgent(Map<String, dynamic> body) =>
+      post('agents', body);
+  Future<Map<String, dynamic>> updateAgent(
           String name, Map<String, dynamic> body) =>
-      post('agents/$name', body);
+      put('agents/$name', body);
   Future<Map<String, dynamic>> deleteAgent(String name) =>
       delete('agents/$name');
 

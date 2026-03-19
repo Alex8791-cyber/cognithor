@@ -599,5 +599,18 @@
   "research": "بحث",
   "analysis": "تحليل",
   "development": "تطوير",
-  "automation": "أتمتة"
+  "automation": "أتمتة",
+  "newAgent": "وكيل جديد",
+  "editAgent": "تعديل الوكيل",
+  "deleteAgent": "حذف الوكيل",
+  "confirmDeleteAgent": "هل أنت متأكد من حذف هذا الوكيل؟ لا يمكن التراجع عن هذا.",
+  "agentCreated": "تم إنشاء الوكيل بنجاح",
+  "agentSaved": "تم حفظ الوكيل بنجاح",
+  "agentDeleted": "تم حذف الوكيل",
+  "displayName": "اسم العرض",
+  "preferredModel": "النموذج المفضل",
+  "sandboxTimeout": "مهلة الحماية (ث)",
+  "sandboxNetwork": "شبكة الحماية",
+  "canDelegateTo": "يمكن التفويض إلى",
+  "cannotDeleteDefault": "لا يمكن حذف الوكيل الافتراضي"
 }

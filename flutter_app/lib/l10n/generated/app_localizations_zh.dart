@@ -1841,4 +1841,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automation => '自动化';
+
+  @override
+  String get newAgent => '新建代理';
+
+  @override
+  String get editAgent => '编辑代理';
+
+  @override
+  String get deleteAgent => '删除代理';
+
+  @override
+  String get confirmDeleteAgent => '确定要删除此代理吗？此操作无法撤销。';
+
+  @override
+  String get agentCreated => '代理创建成功';
+
+  @override
+  String get agentSaved => '代理保存成功';
+
+  @override
+  String get agentDeleted => '代理已删除';
+
+  @override
+  String get displayName => '显示名称';
+
+  @override
+  String get preferredModel => '首选模型';
+
+  @override
+  String get sandboxTimeout => '沙箱超时 (秒)';
+
+  @override
+  String get sandboxNetwork => '沙箱网络';
+
+  @override
+  String get canDelegateTo => '可委托给';
+
+  @override
+  String get cannotDeleteDefault => '无法删除默认代理';
 }

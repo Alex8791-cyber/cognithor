@@ -3737,6 +3737,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Automation'**
   String get automation;
+
+  /// No description provided for @newAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'New Agent'**
+  String get newAgent;
+
+  /// No description provided for @editAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Agent'**
+  String get editAgent;
+
+  /// No description provided for @deleteAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Agent'**
+  String get deleteAgent;
+
+  /// No description provided for @confirmDeleteAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this agent? This cannot be undone.'**
+  String get confirmDeleteAgent;
+
+  /// No description provided for @agentCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent created successfully'**
+  String get agentCreated;
+
+  /// No description provided for @agentSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent saved successfully'**
+  String get agentSaved;
+
+  /// No description provided for @agentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent deleted'**
+  String get agentDeleted;
+
+  /// No description provided for @displayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display Name'**
+  String get displayName;
+
+  /// No description provided for @preferredModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred Model'**
+  String get preferredModel;
+
+  /// No description provided for @sandboxTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Sandbox Timeout (s)'**
+  String get sandboxTimeout;
+
+  /// No description provided for @sandboxNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Sandbox Network'**
+  String get sandboxNetwork;
+
+  /// No description provided for @canDelegateTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Can Delegate To'**
+  String get canDelegateTo;
+
+  /// No description provided for @cannotDeleteDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot delete the default agent'**
+  String get cannotDeleteDefault;
 }
 
 class _AppLocalizationsDelegate

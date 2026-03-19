@@ -4,13 +4,13 @@ import 'package:provider/provider.dart';
 
 import 'package:jarvis_ui/providers/admin_provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
+import 'package:jarvis_ui/screens/agent_editor_screen.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_section.dart';
 import 'package:jarvis_ui/widgets/jarvis_stat.dart';
-import 'package:jarvis_ui/widgets/jarvis_status_badge.dart';
 
 class AgentsScreen extends StatefulWidget {
   const AgentsScreen({super.key});
@@ -35,6 +35,24 @@ class _AgentsScreenState extends State<AgentsScreen> {
     final admin = context.read<AdminProvider>();
     admin.setApi(context.read<ConnectionProvider>().api);
     admin.loadAgents();
+  }
+
+  Future<void> _openEditor(String? agentName) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AgentEditorScreen(agentName: agentName),
+      ),
+    );
+    if (result == true && mounted) {
+      context.read<AdminProvider>().loadAgents();
+    }
+  }
+
+  Future<void> _toggleAgent(Map<String, dynamic> agent, bool enabled) async {
+    final admin = context.read<AdminProvider>();
+    final name = agent['name']?.toString();
+    if (name == null) return;
+    await admin.updateAgent(name, {'enabled': enabled});
   }
 
   @override
@@ -80,42 +98,60 @@ class _AgentsScreenState extends State<AgentsScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () => context.read<AdminProvider>().loadAgents(),
-      color: JarvisTheme.accent,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Summary
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              JarvisStat(
-                label: l.agentsTitle,
-                value: admin.agents.length.toString(),
-                icon: Icons.smart_toy,
-                color: JarvisTheme.accent,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () => context.read<AdminProvider>().loadAgents(),
+        color: JarvisTheme.accent,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Summary
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                JarvisStat(
+                  label: l.agentsTitle,
+                  value: admin.agents.length.toString(),
+                  icon: Icons.smart_toy,
+                  color: JarvisTheme.accent,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
 
-          JarvisSection(title: l.agentsTitle),
-          ...admin.agents.map<Widget>((agent) {
-            final a = agent as Map<String, dynamic>? ?? {};
-            return _AgentCard(agent: a);
-          }),
-        ],
+            JarvisSection(title: l.agentsTitle),
+            ...admin.agents.map<Widget>((agent) {
+              final a = agent as Map<String, dynamic>? ?? {};
+              return _AgentCard(
+                agent: a,
+                onEdit: () => _openEditor(a['name']?.toString()),
+                onToggle: (enabled) => _toggleAgent(a, enabled),
+              );
+            }),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openEditor(null),
+        icon: const Icon(Icons.add),
+        label: Text(l.newAgent),
+        backgroundColor: JarvisTheme.sectionAdmin,
       ),
     );
   }
 }
 
 class _AgentCard extends StatelessWidget {
-  const _AgentCard({required this.agent});
+  const _AgentCard({
+    required this.agent,
+    this.onEdit,
+    this.onToggle,
+  });
 
   final Map<String, dynamic> agent;
+  final VoidCallback? onEdit;
+  final ValueChanged<bool>? onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -147,10 +183,21 @@ class _AgentCard extends StatelessWidget {
                 Expanded(
                   child: Text(name, style: theme.textTheme.titleMedium),
                 ),
-                JarvisStatusBadge(
-                  label: enabled ? l.enabled : l.disabled,
-                  color: enabled ? JarvisTheme.green : JarvisTheme.red,
-                  icon: enabled ? Icons.check_circle : Icons.cancel,
+                Switch(
+                  value: enabled,
+                  activeTrackColor: JarvisTheme.sectionAdmin,
+                  onChanged: onToggle,
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  onPressed: onEdit,
+                  tooltip: l.editAgent,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                 ),
               ],
             ),

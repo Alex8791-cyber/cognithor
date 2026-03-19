@@ -625,5 +625,18 @@
   "research": "Recherche",
   "analysis": "Analyse",
   "development": "Entwicklung",
-  "automation": "Automatisierung"
+  "automation": "Automatisierung",
+  "newAgent": "Neuer Agent",
+  "editAgent": "Agent bearbeiten",
+  "deleteAgent": "Agent loeschen",
+  "confirmDeleteAgent": "Bist du sicher, dass du diesen Agenten loeschen moechtest? Dies kann nicht rueckgaengig gemacht werden.",
+  "agentCreated": "Agent erfolgreich erstellt",
+  "agentSaved": "Agent erfolgreich gespeichert",
+  "agentDeleted": "Agent geloescht",
+  "displayName": "Anzeigename",
+  "preferredModel": "Bevorzugtes Modell",
+  "sandboxTimeout": "Sandbox Timeout (s)",
+  "sandboxNetwork": "Sandbox Netzwerk",
+  "canDelegateTo": "Kann delegieren an",
+  "cannotDeleteDefault": "Standard-Agent kann nicht geloescht werden"
 }

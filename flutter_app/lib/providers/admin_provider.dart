@@ -55,6 +55,69 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<Map<String, dynamic>?> getAgent(String name) async {
+    if (_api == null) return null;
+    try {
+      final data = await _api!.getAgent(name);
+      if (data.containsKey('error')) return null;
+      return data;
+    } catch (e) {
+      error = e.toString();
+      return null;
+    }
+  }
+
+  Future<bool> createAgent(Map<String, dynamic> body) async {
+    if (_api == null) return false;
+    error = null;
+    try {
+      final res = await _api!.createAgent(body);
+      if (res.containsKey('error')) {
+        error = res['error'].toString();
+        return false;
+      }
+      await loadAgents();
+      return true;
+    } catch (e) {
+      error = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> updateAgent(String name, Map<String, dynamic> body) async {
+    if (_api == null) return false;
+    error = null;
+    try {
+      final res = await _api!.updateAgent(name, body);
+      if (res.containsKey('error')) {
+        error = res['error'].toString();
+        return false;
+      }
+      await loadAgents();
+      return true;
+    } catch (e) {
+      error = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> deleteAgent(String name) async {
+    if (_api == null) return false;
+    error = null;
+    try {
+      final res = await _api!.deleteAgent(name);
+      if (res.containsKey('error')) {
+        error = res['error'].toString();
+        return false;
+      }
+      await loadAgents();
+      return true;
+    } catch (e) {
+      error = e.toString();
+      return false;
+    }
+  }
+
   Future<void> loadModels() async {
     if (_api == null) return;
     isLoading = true;

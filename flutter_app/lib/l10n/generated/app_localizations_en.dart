@@ -1846,4 +1846,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automation => 'Automation';
+
+  @override
+  String get newAgent => 'New Agent';
+
+  @override
+  String get editAgent => 'Edit Agent';
+
+  @override
+  String get deleteAgent => 'Delete Agent';
+
+  @override
+  String get confirmDeleteAgent =>
+      'Are you sure you want to delete this agent? This cannot be undone.';
+
+  @override
+  String get agentCreated => 'Agent created successfully';
+
+  @override
+  String get agentSaved => 'Agent saved successfully';
+
+  @override
+  String get agentDeleted => 'Agent deleted';
+
+  @override
+  String get displayName => 'Display Name';
+
+  @override
+  String get preferredModel => 'Preferred Model';
+
+  @override
+  String get sandboxTimeout => 'Sandbox Timeout (s)';
+
+  @override
+  String get sandboxNetwork => 'Sandbox Network';
+
+  @override
+  String get canDelegateTo => 'Can Delegate To';
+
+  @override
+  String get cannotDeleteDefault => 'Cannot delete the default agent';
 }

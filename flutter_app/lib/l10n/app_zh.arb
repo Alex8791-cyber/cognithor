@@ -599,5 +599,18 @@
   "research": "研究",
   "analysis": "分析",
   "development": "开发",
-  "automation": "自动化"
+  "automation": "自动化",
+  "newAgent": "新建代理",
+  "editAgent": "编辑代理",
+  "deleteAgent": "删除代理",
+  "confirmDeleteAgent": "确定要删除此代理吗？此操作无法撤销。",
+  "agentCreated": "代理创建成功",
+  "agentSaved": "代理保存成功",
+  "agentDeleted": "代理已删除",
+  "displayName": "显示名称",
+  "preferredModel": "首选模型",
+  "sandboxTimeout": "沙箱超时 (秒)",
+  "sandboxNetwork": "沙箱网络",
+  "canDelegateTo": "可委托给",
+  "cannotDeleteDefault": "无法删除默认代理"
 }
