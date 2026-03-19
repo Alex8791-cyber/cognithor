@@ -8,6 +8,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:jarvis_ui/services/api_client.dart';
@@ -190,10 +191,13 @@ class WebSocketService {
     }
 
     final uri = Uri.parse('$wsBaseUrl/ws/$_sessionId');
+    debugPrint('[WS] Connecting to $uri ...');
     try {
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
-    } catch (_) {
+      debugPrint('[WS] Connected successfully');
+    } catch (e) {
+      debugPrint('[WS] Connection failed: $e');
       _channel = null;
       _scheduleReconnect();
       return;
@@ -217,7 +221,8 @@ class WebSocketService {
     final Map<String, dynamic> msg;
     try {
       msg = jsonDecode(raw) as Map<String, dynamic>;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[WS] JSON decode error: $e');
       return;
     }
 
@@ -226,6 +231,8 @@ class WebSocketService {
 
     // Handle pong silently.
     if (type == WsType.pong) return;
+
+    debugPrint('[WS] ← $type');
 
     // On auth error, invalidate token so reconnect fetches a fresh one.
     if (type == WsType.error &&
@@ -237,12 +244,19 @@ class WebSocketService {
     final cbs = _listeners[type];
     if (cbs != null) {
       for (final cb in List<WsMessageCallback>.of(cbs)) {
-        cb(msg);
+        try {
+          cb(msg);
+        } catch (e, st) {
+          debugPrint('[WS] Listener error for $type: $e\n$st');
+        }
       }
+    } else {
+      debugPrint('[WS] No listeners for type: $type');
     }
   }
 
   void _onDone() {
+    debugPrint('[WS] Connection closed (disposed=$_disposed)');
     _heartbeat?.cancel();
     _subscription?.cancel();
     _channel = null;
@@ -265,7 +279,14 @@ class WebSocketService {
   }
 
   void _send(Map<String, dynamic> msg) {
-    if (_channel == null) return;
+    if (_channel == null) {
+      debugPrint('[WS] WARN: _send called but _channel is null (type=${msg['type']})');
+      return;
+    }
+    final type = msg['type'] as String? ?? '?';
+    if (type != WsType.ping) {
+      debugPrint('[WS] → $type');
+    }
     _channel!.sink.add(jsonEncode(msg));
   }
 }

@@ -4,7 +4,7 @@
 /// requests, pipeline state, and canvas content.
 library;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import 'package:jarvis_ui/services/websocket_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -79,9 +79,11 @@ class ChatProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   void sendMessage(String text) {
+    debugPrint('[Chat] sendMessage: "$text" (messages.length=${messages.length})');
     messages.add(ChatMessage(role: MessageRole.user, text: text));
     ws.sendMessage(text);
     statusText = '';
+    debugPrint('[Chat] notifyListeners (messages.length=${messages.length})');
     notifyListeners();
   }
 
@@ -172,6 +174,7 @@ class ChatProvider extends ChangeNotifier {
 
   void _onAssistantMessage(Map<String, dynamic> msg) {
     final text = msg['text'] as String? ?? '';
+    debugPrint('[Chat] _onAssistantMessage: "${text.length > 100 ? '${text.substring(0, 100)}...' : text}"');
     // If we were streaming, finalize the buffer instead.
     if (isStreaming) {
       _finalizeStream();
@@ -183,6 +186,7 @@ class ChatProvider extends ChangeNotifier {
     activeTool = null;
     statusText = '';
     pipeline = [];
+    debugPrint('[Chat] notifyListeners (messages.length=${messages.length})');
     notifyListeners();
   }
 
@@ -304,6 +308,7 @@ class ChatProvider extends ChangeNotifier {
 
   void _onError(Map<String, dynamic> msg) {
     final err = msg['error'] as String? ?? 'Unknown error';
+    debugPrint('[Chat] _onError: $err');
     messages.add(ChatMessage(role: MessageRole.system, text: err));
     _logAgent('error', null, err, status: 'error');
     isStreaming = false;
