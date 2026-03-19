@@ -120,11 +120,32 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   @override
   void didUpdateWidget(covariant RobotOfficeWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isRunning && !_controller.isAnimating) {
-      _controller.repeat();
-    } else if (!widget.isRunning && _controller.isAnimating) {
-      _controller.stop();
+    // Keep animation running always (robots animate in idle too)
+    if (!_controller.isAnimating) _controller.repeat();
+
+    // WAKE UP! When switching from idle to active, all robots rush to work
+    if (widget.isRunning && !oldWidget.isRunning) {
+      _wakeUpAll();
     }
+  }
+
+  /// All robots jump up and rush to their stations — frantic energy!
+  void _wakeUpAll() {
+    for (final r in _robots) {
+      // Everyone gets "!" shock emoji
+      r.emoji = '⚡';
+      r.emojiTimer = 1.5;
+      r.taskMsg = '!!! Anfrage eingetroffen !!!';
+      r.msgTimer = 2.0;
+      // Immediately assign work
+      r.stateTimer = 0;
+      r.typing = false;
+      r.carrying = false;
+      r.state = RobotState.idle; // will trigger _assignWorkBehavior on next tick
+    }
+    // Spark burst for the excitement
+    _particles.emit(ParticleType.spark, 0.5, 0.4,
+        const Color(0xFF00d4ff), count: 20);
   }
 
   @override
@@ -511,50 +532,54 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   // ── Behavior assignment with weighted random ───────────────
 
   void _assignRandomBehavior(Robot r) {
-    final roll = _rng.nextDouble() * 100;
+    // When NOT running (no user request): robots chill, play, rest
+    // When running (user request active): robots work frantically
+    if (!widget.isRunning) {
+      _assignIdleBehavior(r);
+      return;
+    }
+    _assignWorkBehavior(r);
+  }
 
-    if (roll < 20) {
-      // 20% work at desk
-      _assignWorkAtDesk(r);
-    } else if (roll < 30) {
-      // 10% walk to desk/server/board
-      _assignWalk(r);
-    } else if (roll < 38) {
-      // 8% nap
+  /// Idle mode: robots relax, play, nap, chat — no real work.
+  void _assignIdleBehavior(Robot r) {
+    final roll = _rng.nextDouble() * 100;
+    if (roll < 25) {
       _assignNap(r);
-    } else if (roll < 46) {
-      // 8% chat with nearest robot
+    } else if (roll < 45) {
       _assignChat(r);
-    } else if (roll < 51) {
-      // 5% play tag
-      _assignPlayTag(r);
-    } else if (roll < 56) {
-      // 5% prank
-      _assignPrank(r);
-    } else if (roll < 61) {
-      // 5% celebrate
-      _assignCelebrate(r);
-    } else if (roll < 69) {
-      // 8% coffee break
+    } else if (roll < 55) {
       _assignCoffeeBreak(r);
-    } else if (roll < 74) {
-      // 5% stretch
-      _assignStretch(r);
-    } else if (roll < 79) {
-      // 5% high-five
-      _assignHighFive(r);
-    } else if (roll < 84) {
-      // 5% dance
+    } else if (roll < 65) {
+      _assignPlayTag(r);
+    } else if (roll < 75) {
       _assignDance(r);
-    } else if (roll < 89) {
-      // 5% think
-      _assignThink(r);
-    } else if (roll < 95) {
-      // 6% carry document to server
-      _assignCarry(r);
+    } else if (roll < 85) {
+      _assignStretch(r);
+    } else if (roll < 92) {
+      _assignPrank(r);
     } else {
-      // 5% go to kanban board
+      _assignThink(r);
+    }
+  }
+
+  /// Work mode: robots rush to desks, servers, kanban — frantic activity.
+  void _assignWorkBehavior(Robot r) {
+    final roll = _rng.nextDouble() * 100;
+    if (roll < 35) {
+      _assignWorkAtDesk(r);
+    } else if (roll < 50) {
+      _assignWalk(r);
+    } else if (roll < 60) {
+      _assignCarry(r);
+    } else if (roll < 70) {
       _assignKanban(r);
+    } else if (roll < 80) {
+      _assignCelebrate(r);
+    } else if (roll < 90) {
+      _assignHighFive(r);
+    } else {
+      _assignCoffeeBreak(r);
     }
   }
 

@@ -9,6 +9,18 @@ class PipProvider extends ChangeNotifier {
   /// Whether the PiP overlay is visible.
   bool get visible => _visible;
 
+  /// Whether robots should be actively working (user sent a message).
+  bool _busy = false;
+  bool get busy => _busy;
+
+  /// Signal that a user request arrived — robots wake up and work!
+  void setBusy(bool value) {
+    if (_busy != value) {
+      _busy = value;
+      notifyListeners();
+    }
+  }
+
   /// Whether the dashboard should show the Robot Office inline (fullscreen)
   /// instead of using the PiP overlay.
   bool get fullscreenOnDashboard => _fullscreenOnDashboard;

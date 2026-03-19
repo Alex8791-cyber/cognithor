@@ -2,6 +2,8 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:jarvis_ui/providers/pip_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/robot_office/robot_office_widget.dart';
 
@@ -249,8 +251,11 @@ class _RobotOfficePipState extends State<RobotOfficePip>
               child: Stack(
                 children: [
                   // Robot Office animation fills the entire window.
-                  const Positioned.fill(
-                    child: RobotOfficeWidget(isRunning: true),
+                  Positioned.fill(
+                    child: Consumer<PipProvider>(
+                      builder: (ctx, pip, _) =>
+                          RobotOfficeWidget(isRunning: pip.busy),
+                    ),
                   ),
 
                   // Semi-transparent glassmorphism layer on border.

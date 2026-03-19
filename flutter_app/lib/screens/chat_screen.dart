@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/chat_provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
+import 'package:jarvis_ui/providers/pip_provider.dart';
 import 'package:jarvis_ui/providers/voice_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/approval_dialog.dart';
@@ -41,6 +42,18 @@ class _ChatScreenState extends State<ChatScreen> {
       final sessionId = 'flutter_${DateTime.now().millisecondsSinceEpoch}';
       _chat = ChatProvider(ws: conn.ws);
       conn.ws.connect(sessionId);
+      // When response arrives, robots go back to idle
+      _chat.addListener(() {
+        if (!_chat.isStreaming && _chat.activeTool == null && _chat.statusText.isEmpty) {
+          final pip = context.read<PipProvider>();
+          if (pip.busy) {
+            // Small delay so robots finish their celebration
+            Future.delayed(const Duration(seconds: 3), () {
+              if (mounted) pip.setBusy(false);
+            });
+          }
+        }
+      });
       _initialized = true;
     }
   }
@@ -214,6 +227,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       return ChatInput(
                         onSend: (text) {
                           chat.sendMessage(text);
+                          // Wake up the robots!
+                          context.read<PipProvider>().setBusy(true);
                           // Also forward voice transcripts
                           final voice = context.read<VoiceProvider>();
                           if (voice.isActive) {
