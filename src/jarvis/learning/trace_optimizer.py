@@ -307,9 +307,7 @@ class TraceOptimizer:
                 proposal = handler(target, examples)
                 if proposal is not None:
                     proposal.created_at = proposal.created_at or time.time()
-                    proposal.estimated_impact = self.score_proposal(
-                        proposal, trace_store
-                    )
+                    proposal.estimated_impact = self.score_proposal(proposal, trace_store)
                     self._store.save_proposal(proposal)
                     proposals.append(proposal)
                     log.info(
@@ -594,10 +592,7 @@ class TraceOptimizer:
             finding_id=finding_id,
             optimization_type="tool_param",
             target=f"{tool}.rate_limit",
-            description=(
-                f"Tool '{tool}' hitting rate limits. "
-                f"Add caching and backoff strategy."
-            ),
+            description=(f"Tool '{tool}' hitting rate limits. Add caching and backoff strategy."),
             patch_before="",
             patch_after=patch_after,
             estimated_impact=0.0,
@@ -722,8 +717,7 @@ class TraceOptimizer:
         try:
             response = self._llm.generate(prompt)
             text = (
-                response if isinstance(response, str)
-                else getattr(response, "text", str(response))
+                response if isinstance(response, str) else getattr(response, "text", str(response))
             )
             text = text.strip()
             if text and len(text) < 1000:
@@ -784,9 +778,7 @@ def _avg_field(
 ) -> float:
     """Average a numeric attribute across traces."""
     values = [
-        getattr(t, field_name, None)
-        for t in traces
-        if getattr(t, field_name, None) is not None
+        getattr(t, field_name, None) for t in traces if getattr(t, field_name, None) is not None
     ]
     if not values:
         return default

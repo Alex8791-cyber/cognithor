@@ -285,9 +285,7 @@ class TraceStore:
             log.error("traces_by_tool_failed", tool_name=tool_name, error=str(exc))
             return []
 
-    def get_failed_traces(
-        self, since_hours: int = 24, limit: int = 100
-    ) -> list[ExecutionTrace]:
+    def get_failed_traces(self, since_hours: int = 24, limit: int = 100) -> list[ExecutionTrace]:
         """Traces with success_score < 0.5 in the last N hours."""
         try:
             conn = self._get_conn()
@@ -389,8 +387,7 @@ class TraceStore:
                 (cutoff,),
             ).fetchall()
             top_failing_tools = [
-                {"tool_name": r["tool_name"], "fail_count": r["fail_count"]}
-                for r in failing_rows
+                {"tool_name": r["tool_name"], "fail_count": r["fail_count"]} for r in failing_rows
             ]
 
             return {

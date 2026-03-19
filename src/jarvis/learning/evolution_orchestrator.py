@@ -143,7 +143,9 @@ class EvolutionOrchestrator:
 
         try:
             # Step 1: Collect traces since last cycle
-            since = self._last_cycle_time if self._last_cycle_time > 0 else (time.time() - _24H_SECONDS)
+            since = (
+                self._last_cycle_time if self._last_cycle_time > 0 else (time.time() - _24H_SECONDS)
+            )
             traces = self._trace_store.get_traces_since(since)
             traces_analyzed = len(traces)
 
@@ -204,7 +206,9 @@ class EvolutionOrchestrator:
             # Step 6: Generate proposals
             if targets:
                 try:
-                    new_proposals = self._optimizer.propose_optimizations(targets, self._trace_store)
+                    new_proposals = self._optimizer.propose_optimizations(
+                        targets, self._trace_store
+                    )
                     proposals_generated = len(new_proposals)
                     log.info(
                         "evolution_proposals_generated",
@@ -212,7 +216,9 @@ class EvolutionOrchestrator:
                         count=proposals_generated,
                     )
                 except Exception as exc:
-                    log.error("evolution_proposal_generation_failed", cycle_id=cycle_id, error=str(exc))
+                    log.error(
+                        "evolution_proposal_generation_failed", cycle_id=cycle_id, error=str(exc)
+                    )
                     new_proposals = []
             else:
                 new_proposals = []
@@ -535,8 +541,9 @@ class EvolutionOrchestrator:
             # History counts include current state
             history = self._proposals.get_history(limit=1000)
             total_applied = sum(
-                1 for p in history if p.status in ("applied", "rolled_back", "rejected")
-                and p.applied_at > 0
+                1
+                for p in history
+                if p.status in ("applied", "rolled_back", "rejected") and p.applied_at > 0
             )
 
             # Current success rate
@@ -623,7 +630,9 @@ class EvolutionOrchestrator:
                 "created_at": proposal.created_at,
             }
         except Exception as exc:
-            log.error("evolution_get_proposal_detail_failed", proposal_id=proposal_id, error=str(exc))
+            log.error(
+                "evolution_get_proposal_detail_failed", proposal_id=proposal_id, error=str(exc)
+            )
             return None
 
     # ------------------------------------------------------------------

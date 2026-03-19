@@ -61,6 +61,7 @@ _NORM_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CausalFinding:
     """A root cause finding from trace analysis."""
@@ -80,6 +81,7 @@ class CausalFinding:
 # ---------------------------------------------------------------------------
 # Attributor
 # ---------------------------------------------------------------------------
+
 
 class CausalAttributor:
     """Analyzes execution traces to find root causes of failures."""
@@ -105,9 +107,7 @@ class CausalAttributor:
             if s.parent_id:
                 children_map[s.parent_id].append(s.step_id)
 
-        failed_steps = [
-            s for s in trace.steps if s.status in ("error", "timeout")
-        ]
+        failed_steps = [s for s in trace.steps if s.status in ("error", "timeout")]
         if not failed_steps:
             return []
 
@@ -154,17 +154,23 @@ class CausalAttributor:
 
             # Classify
             category = self.classify_failure(
-                root_cause, step_index=step_index,
+                root_cause,
+                step_index=step_index,
             )
 
             # Confidence
             confidence = self._compute_confidence(
-                causal_chain, step_index, category,
+                causal_chain,
+                step_index,
+                category,
             )
 
             error_text = getattr(root_cause, "error_detail", "") or ""
             explanation = self._build_explanation(
-                root_cause, category, len(causal_chain), affected,
+                root_cause,
+                category,
+                len(causal_chain),
+                affected,
             )
 
             findings.append(

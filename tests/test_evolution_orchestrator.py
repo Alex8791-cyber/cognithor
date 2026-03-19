@@ -201,7 +201,9 @@ class TestApplyProposal:
         orch, trace_store, proposal_store = _build_orchestrator(tmp_path, max_active=1)
 
         # Already have one applied proposal
-        existing = _make_proposal(proposal_id="p-existing", status="applied", applied_at=time.time())
+        existing = _make_proposal(
+            proposal_id="p-existing", status="applied", applied_at=time.time()
+        )
         proposal_store.save_proposal(existing)
 
         new = _make_proposal(proposal_id="p-new", status="proposed")
@@ -313,9 +315,7 @@ class TestAutoRollbackOnDegradation:
 
     def test_auto_rollback_on_degradation(self, tmp_path):
         """If success rate drops > threshold after applying, auto-rollback."""
-        orch, trace_store, proposal_store = _build_orchestrator(
-            tmp_path, max_active=1
-        )
+        orch, trace_store, proposal_store = _build_orchestrator(tmp_path, max_active=1)
 
         # Create an applied proposal with good pre-apply metrics
         applied_at = time.time() - 100
@@ -380,9 +380,7 @@ class TestGetStatus:
         now = time.time()
         trace_store.save_trace(_make_trace(created_at=now))
         proposal_store.save_proposal(_make_proposal(status="proposed"))
-        proposal_store.save_proposal(
-            _make_proposal(status="applied", applied_at=now)
-        )
+        proposal_store.save_proposal(_make_proposal(status="applied", applied_at=now))
 
         status = orch.get_status()
         assert "enabled" in status

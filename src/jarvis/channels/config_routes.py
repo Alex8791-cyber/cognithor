@@ -316,7 +316,9 @@ def _register_system_routes(
         }
         agents.append(agent)
         raw["agents"] = agents
-        agents_path.write_text(yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        agents_path.write_text(
+            yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8"
+        )
         return {"status": "created", "agent": agent}
 
     @app.put("/api/v1/agents/{agent_name}", dependencies=deps)
@@ -334,10 +336,21 @@ def _register_system_routes(
         for i, a in enumerate(agents):
             if a.get("name") == agent_name:
                 # Update fields (preserve name)
-                for key in ["display_name", "description", "system_prompt", "language",
-                            "preferred_model", "temperature", "priority", "enabled",
-                            "allowed_tools", "blocked_tools", "can_delegate_to",
-                            "sandbox_timeout", "sandbox_network"]:
+                for key in [
+                    "display_name",
+                    "description",
+                    "system_prompt",
+                    "language",
+                    "preferred_model",
+                    "temperature",
+                    "priority",
+                    "enabled",
+                    "allowed_tools",
+                    "blocked_tools",
+                    "can_delegate_to",
+                    "sandbox_timeout",
+                    "sandbox_network",
+                ]:
                     if key in body:
                         agents[i][key] = body[key]
                 found = True
@@ -347,7 +360,9 @@ def _register_system_routes(
             raise HTTPException(404, f"Agent '{agent_name}' not found")
 
         raw["agents"] = agents
-        agents_path.write_text(yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        agents_path.write_text(
+            yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8"
+        )
         return {"status": "updated", "agent": updated_agent}
 
     @app.delete("/api/v1/agents/{agent_name}", dependencies=deps)
@@ -368,7 +383,9 @@ def _register_system_routes(
             raise HTTPException(404, f"Agent '{agent_name}' not found")
 
         raw["agents"] = agents
-        agents_path.write_text(yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        agents_path.write_text(
+            yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8"
+        )
         return {"status": "deleted", "name": agent_name}
 
     # -- Credentials ------------------------------------------------------
@@ -4047,6 +4064,7 @@ def _register_skill_registry_routes(
 
         # Reload registry from the skill's parent directory
         from pathlib import Path as P
+
         config = getattr(gateway, "_config", None)
         jarvis_home = P(getattr(config, "jarvis_home", P.home() / ".jarvis"))
         reg.load_from_directories([jarvis_home / "skills", P("data/procedures")])
@@ -4074,6 +4092,7 @@ def _register_skill_registry_routes(
 
         # Reload registry
         from pathlib import Path as P
+
         config = getattr(gateway, "_config", None)
         jarvis_home = P(getattr(config, "jarvis_home", P.home() / ".jarvis"))
         reg.load_from_directories([jarvis_home / "skills", P("data/procedures")])
@@ -4111,6 +4130,7 @@ def _register_skill_registry_routes(
 
         try:
             from jarvis.skills.hermes_compat import HermesCompatLayer
+
             skill_dict = {
                 "name": skill.name,
                 "description": skill.description,
