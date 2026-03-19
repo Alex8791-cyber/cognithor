@@ -49,7 +49,7 @@ class Robot {
   final String name;
   final Color color;
   final Color eyeColor;
-  final String role;
+  String role;
   final bool hasAntenna;
 
   double x;

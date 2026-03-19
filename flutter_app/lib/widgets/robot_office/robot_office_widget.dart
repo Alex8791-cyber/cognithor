@@ -11,29 +11,286 @@ import 'package:jarvis_ui/widgets/robot_office/robot_office_painter.dart';
 // Robot Office Widget — animated isometric office with robot agents
 // ---------------------------------------------------------------------------
 
-/// Funny German chat messages for robot conversations.
-const _chatMessages = [
-  'Hast du den neuen Prompt gesehen?',
-  'Mein Context-Window ist voll...',
-  'Wer hat den Server neugestartet?',
-  'Token-Limit erreicht!',
-  'Die API antwortet nicht...',
-  'Kaffee?',
-  'Ja bitte!',
-  'Bug gefunden!',
-  'Wo denn?',
-  'Ich brauche mehr VRAM!',
-  'Das Training dauert ewig...',
-  'Hast du das geloggt?',
-  'Wer hat meinen Prompt geaendert?',
-  'Mittagspause?',
-  'Gleich!',
-  'Der Gatekeeper hat mich blockiert!',
-  'Schon wieder ein Timeout...',
-  'Mein Modell halluziniert!',
-  'Hast du den Patch deployed?',
-  'Ich compile seit Stunden...',
-];
+// ── Localized robot messages ────────────────────────────────────────────────
+
+class _RobotMessages {
+  _RobotMessages._();
+
+  // ── Task messages (shown while robots work) ────────────────────────────
+
+  static List<String> taskMessages(String locale) {
+    switch (locale) {
+      case 'de':
+        return _taskMessagesDe;
+      case 'zh':
+        return _taskMessagesZh;
+      case 'ar':
+        return _taskMessagesAr;
+      default:
+        return _taskMessagesEn;
+    }
+  }
+
+  static const _taskMessagesEn = [
+    'Loading context...', 'Calling API...', 'Parsing data...',
+    'Creating plan...', 'Executing tool...', 'Checking response...',
+    'Saving memory...', 'Validating result...', 'Counting tokens...',
+    'Building chain...', 'Optimizing prompt...', 'Writing logs...',
+  ];
+  static const _taskMessagesDe = [
+    'Kontext laden...', 'API aufrufen...', 'Daten parsen...',
+    'Plan erstellen...', 'Tool ausfuehren...', 'Antwort pruefen...',
+    'Memory speichern...', 'Ergebnis validieren...', 'Tokens zaehlen...',
+    'Chain bauen...', 'Prompt optimieren...', 'Logs schreiben...',
+  ];
+  static const _taskMessagesZh = [
+    '\u52A0\u8F7D\u4E0A\u4E0B\u6587...', '\u8C03\u7528API...', '\u89E3\u6790\u6570\u636E...',
+    '\u521B\u5EFA\u8BA1\u5212...', '\u6267\u884C\u5DE5\u5177...', '\u68C0\u67E5\u54CD\u5E94...',
+    '\u4FDD\u5B58\u8BB0\u5FC6...', '\u9A8C\u8BC1\u7ED3\u679C...', '\u8BA1\u7B97Token...',
+    '\u6784\u5EFA\u94FE...', '\u4F18\u5316\u63D0\u793A\u8BCD...', '\u5199\u5165\u65E5\u5FD7...',
+  ];
+  static const _taskMessagesAr = [
+    '\u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0633\u064A\u0627\u0642...', '\u0627\u0633\u062A\u062F\u0639\u0627\u0621 API...', '\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A...',
+    '\u0625\u0646\u0634\u0627\u0621 \u062E\u0637\u0629...', '\u062A\u0646\u0641\u064A\u0630 \u0623\u062F\u0627\u0629...', '\u0641\u062D\u0635 \u0627\u0644\u0627\u0633\u062A\u062C\u0627\u0628\u0629...',
+    '\u062D\u0641\u0638 \u0627\u0644\u0630\u0627\u0643\u0631\u0629...', '\u0627\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0646\u062A\u064A\u062C\u0629...', '\u0639\u062F \u0627\u0644\u0631\u0645\u0648\u0632...',
+    '\u0628\u0646\u0627\u0621 \u0627\u0644\u0633\u0644\u0633\u0644\u0629...', '\u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0645\u0648\u062C\u0647...', '\u0643\u062A\u0627\u0628\u0629 \u0627\u0644\u0633\u062C\u0644\u0627\u062A...',
+  ];
+
+  // ── Chat messages (robot-to-robot banter) ──────────────────────────────
+
+  static List<String> chatMessages(String locale) {
+    switch (locale) {
+      case 'de':
+        return _chatMessagesDe;
+      case 'zh':
+        return _chatMessagesZh;
+      case 'ar':
+        return _chatMessagesAr;
+      default:
+        return _chatMessagesEn;
+    }
+  }
+
+  static const _chatMessagesEn = [
+    'Have you seen the new prompt?',
+    'My context window is full...',
+    'Who restarted the server?',
+    'Token limit reached!',
+    'The API is not responding...',
+    'Coffee?',
+    'Yes please!',
+    'Bug found!',
+    'Where?',
+    'I need more VRAM!',
+    'Training is taking forever...',
+    'Did you log that?',
+    'Who changed my prompt?',
+    'Lunch break?',
+    'In a minute!',
+    'The gatekeeper blocked me!',
+    'Yet another timeout...',
+    'My model is hallucinating!',
+    'Did you deploy the patch?',
+    'I have been compiling for hours...',
+  ];
+  static const _chatMessagesDe = [
+    'Hast du den neuen Prompt gesehen?',
+    'Mein Context-Window ist voll...',
+    'Wer hat den Server neugestartet?',
+    'Token-Limit erreicht!',
+    'Die API antwortet nicht...',
+    'Kaffee?',
+    'Ja bitte!',
+    'Bug gefunden!',
+    'Wo denn?',
+    'Ich brauche mehr VRAM!',
+    'Das Training dauert ewig...',
+    'Hast du das geloggt?',
+    'Wer hat meinen Prompt geaendert?',
+    'Mittagspause?',
+    'Gleich!',
+    'Der Gatekeeper hat mich blockiert!',
+    'Schon wieder ein Timeout...',
+    'Mein Modell halluziniert!',
+    'Hast du den Patch deployed?',
+    'Ich compile seit Stunden...',
+  ];
+  static const _chatMessagesZh = [
+    '\u4F60\u770B\u8FC7\u65B0\u7684\u63D0\u793A\u8BCD\u4E86\u5417\uFF1F',
+    '\u6211\u7684\u4E0A\u4E0B\u6587\u7A97\u53E3\u6EE1\u4E86...',
+    '\u8C01\u91CD\u542F\u4E86\u670D\u52A1\u5668\uFF1F',
+    'Token\u9650\u5236\u5230\u4E86\uFF01',
+    'API\u6CA1\u6709\u54CD\u5E94...',
+    '\u559D\u5496\u5561\uFF1F',
+    '\u597D\u7684\uFF01',
+    '\u53D1\u73B0Bug\u4E86\uFF01',
+    '\u5728\u54EA\u91CC\uFF1F',
+    '\u6211\u9700\u8981\u66F4\u591A\u663E\u5B58\uFF01',
+    '\u8BAD\u7EC3\u592A\u6162\u4E86...',
+    '\u4F60\u8BB0\u5F55\u4E86\u5417\uFF1F',
+    '\u8C01\u6539\u4E86\u6211\u7684\u63D0\u793A\u8BCD\uFF1F',
+    '\u5348\u4F11\uFF1F',
+    '\u9A6C\u4E0A\uFF01',
+    '\u7F51\u5173\u628A\u6211\u62E6\u4E86\uFF01',
+    '\u53C8\u8D85\u65F6\u4E86...',
+    '\u6211\u7684\u6A21\u578B\u5728\u5E7B\u89C9\uFF01',
+    '\u4F60\u90E8\u7F72\u8865\u4E01\u4E86\u5417\uFF1F',
+    '\u6211\u7F16\u8BD1\u4E86\u597D\u51E0\u4E2A\u5C0F\u65F6...',
+  ];
+  static const _chatMessagesAr = [
+    '\u0647\u0644 \u0631\u0623\u064A\u062A \u0627\u0644\u0645\u0648\u062C\u0647 \u0627\u0644\u062C\u062F\u064A\u062F\u061F',
+    '\u0646\u0627\u0641\u0630\u0629 \u0627\u0644\u0633\u064A\u0627\u0642 \u0645\u0645\u062A\u0644\u0626\u0629...',
+    '\u0645\u0646 \u0623\u0639\u0627\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u062E\u0627\u062F\u0645\u061F',
+    '\u062A\u0645 \u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u062D\u062F Token!',
+    '\u0627\u0644\u0640API \u0644\u0627 \u064A\u0633\u062A\u062C\u064A\u0628...',
+    '\u0642\u0647\u0648\u0629\u061F',
+    '\u0646\u0639\u0645 \u0645\u0646 \u0641\u0636\u0644\u0643!',
+    '\u0648\u062C\u062F\u062A \u062E\u0637\u0623!',
+    '\u0623\u064A\u0646\u061F',
+    '\u0623\u062D\u062A\u0627\u062C \u0630\u0627\u0643\u0631\u0629 \u0623\u0643\u062B\u0631!',
+    '\u0627\u0644\u062A\u062F\u0631\u064A\u0628 \u064A\u0633\u062A\u063A\u0631\u0642 \u0648\u0642\u062A\u0627\u064B \u0637\u0648\u064A\u0644\u0627\u064B...',
+    '\u0647\u0644 \u0633\u062C\u0644\u062A \u0630\u0644\u0643\u061F',
+    '\u0645\u0646 \u063A\u064A\u0631 \u0645\u0648\u062C\u0647\u064A\u061F',
+    '\u0627\u0633\u062A\u0631\u0627\u062D\u0629 \u063A\u062F\u0627\u0621\u061F',
+    '\u062D\u0627\u0644\u0627\u064B!',
+    '\u0627\u0644\u062D\u0627\u0631\u0633 \u062D\u0638\u0631\u0646\u064A!',
+    '\u0627\u0646\u062A\u0647\u062A \u0627\u0644\u0645\u0647\u0644\u0629 \u0645\u062C\u062F\u062F\u0627\u064B...',
+    '\u0646\u0645\u0648\u0630\u062C\u064A \u064A\u0647\u0644\u0648\u0633!',
+    '\u0647\u0644 \u0646\u0634\u0631\u062A \u0627\u0644\u062A\u062D\u062F\u064A\u062B\u061F',
+    '\u0623\u0646\u0627 \u0623\u062C\u0645\u0639 \u0645\u0646\u0630 \u0633\u0627\u0639\u0627\u062A...',
+  ];
+
+  // ── Wake-up message ────────────────────────────────────────────────────
+
+  static String wakeUpMessage(String locale) {
+    switch (locale) {
+      case 'de':
+        return '!!! Anfrage eingetroffen !!!';
+      case 'zh':
+        return '!!! \u6536\u5230\u8BF7\u6C42 !!!';
+      case 'ar':
+        return '!!! \u0648\u0631\u062F \u0637\u0644\u0628 !!!';
+      default:
+        return '!!! Request incoming !!!';
+    }
+  }
+
+  // ── Idle task message ──────────────────────────────────────────────────
+
+  static String waitingMessage(String locale) {
+    switch (locale) {
+      case 'de':
+        return 'Warte auf Aufgabe...';
+      case 'zh':
+        return '\u7B49\u5F85\u4EFB\u52A1...';
+      case 'ar':
+        return '\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u0645\u0647\u0645\u0629...';
+      default:
+        return 'Waiting for task...';
+    }
+  }
+
+  // ── Coffee break message ───────────────────────────────────────────────
+
+  static String coffeeBreakMessage(String locale) {
+    switch (locale) {
+      case 'de':
+        return 'Kaffeepause!';
+      case 'zh':
+        return '\u5496\u5561\u65F6\u95F4\uFF01';
+      case 'ar':
+        return '\u0627\u0633\u062A\u0631\u0627\u062D\u0629 \u0642\u0647\u0648\u0629!';
+      default:
+        return 'Coffee break!';
+    }
+  }
+
+  // ── Carry task message ─────────────────────────────────────────────────
+
+  static String carryMessage(String locale) {
+    switch (locale) {
+      case 'de':
+        return 'Dokument sichern...';
+      case 'zh':
+        return '\u4FDD\u5B58\u6587\u6863...';
+      case 'ar':
+        return '\u062D\u0641\u0638 \u0627\u0644\u0645\u0633\u062A\u0646\u062F...';
+      default:
+        return 'Saving document...';
+    }
+  }
+
+  // ── Board update message ───────────────────────────────────────────────
+
+  static String boardMessage(String locale) {
+    switch (locale) {
+      case 'de':
+        return 'Board aktualisieren...';
+      case 'zh':
+        return '\u66F4\u65B0\u770B\u677F...';
+      case 'ar':
+        return '\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0644\u0648\u062D\u0629...';
+      default:
+        return 'Updating board...';
+    }
+  }
+
+  // ── Robot roles ────────────────────────────────────────────────────────
+
+  static String role(String id, String locale) {
+    switch (locale) {
+      case 'de':
+        return _rolesDe[id] ?? id;
+      case 'zh':
+        return _rolesZh[id] ?? id;
+      case 'ar':
+        return _rolesAr[id] ?? id;
+      default:
+        return _rolesEn[id] ?? id;
+    }
+  }
+
+  static const _rolesEn = {
+    'planner': 'Strategy',
+    'executor': 'Execution',
+    'researcher': 'Research',
+    'gatekeeper': 'Security',
+    'coder': 'Programming',
+    'analyst': 'Data Analysis',
+    'memory': 'Knowledge',
+    'ops': 'Infrastructure',
+  };
+  static const _rolesDe = {
+    'planner': 'Strategie',
+    'executor': 'Ausfuehrung',
+    'researcher': 'Recherche',
+    'gatekeeper': 'Sicherheit',
+    'coder': 'Programmierung',
+    'analyst': 'Datenanalyse',
+    'memory': 'Wissen',
+    'ops': 'Infrastruktur',
+  };
+  static const _rolesZh = {
+    'planner': '\u7B56\u7565',
+    'executor': '\u6267\u884C',
+    'researcher': '\u7814\u7A76',
+    'gatekeeper': '\u5B89\u5168',
+    'coder': '\u7F16\u7A0B',
+    'analyst': '\u6570\u636E\u5206\u6790',
+    'memory': '\u77E5\u8BC6',
+    'ops': '\u57FA\u7840\u8BBE\u65BD',
+  };
+  static const _rolesAr = {
+    'planner': '\u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0629',
+    'executor': '\u062A\u0646\u0641\u064A\u0630',
+    'researcher': '\u0628\u062D\u062B',
+    'gatekeeper': '\u0623\u0645\u0627\u0646',
+    'coder': '\u0628\u0631\u0645\u062C\u0629',
+    'analyst': '\u062A\u062D\u0644\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A',
+    'memory': '\u0645\u0639\u0631\u0641\u0629',
+    'ops': '\u0628\u0646\u064A\u0629 \u062A\u062D\u062A\u064A\u0629',
+  };
+}
 
 class RobotOfficeWidget extends StatefulWidget {
   const RobotOfficeWidget({
@@ -62,24 +319,13 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   final ParticleSystem _particles = ParticleSystem();
   final _rng = Random();
 
-  int _taskCount = 0;
-  String _currentTask = 'Warte auf Aufgabe...';
+  /// Current locale code (e.g. 'en', 'de', 'zh', 'ar').
+  String _locale = 'en';
 
-  // ── Task message pool ───────────────────────────────────────
-  static const _taskMessages = [
-    'Kontext laden...',
-    'API aufrufen...',
-    'Daten parsen...',
-    'Plan erstellen...',
-    'Tool ausfuehren...',
-    'Antwort pruefen...',
-    'Memory speichern...',
-    'Ergebnis validieren...',
-    'Tokens zaehlen...',
-    'Chain bauen...',
-    'Prompt optimieren...',
-    'Logs schreiben...',
-  ];
+  int _taskCount = 0;
+  late String _currentTask;
+
+  // ── Task message pool (now provided by _RobotMessages) ─────
 
   // ── Emoji pools per state ────────────────────────────────────
   static const _workEmojis = ['⚡', '💡', '🔧', '✅', '📊', '🔬'];
@@ -96,6 +342,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   @override
   void initState() {
     super.initState();
+    _currentTask = _RobotMessages.waitingMessage(_locale);
     _robots = _createRobots();
     _dog = OfficePet(
       type: PetType.dog,
@@ -135,7 +382,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       // Everyone gets "!" shock emoji
       r.emoji = '⚡';
       r.emojiTimer = 1.5;
-      r.taskMsg = '!!! Anfrage eingetroffen !!!';
+      r.taskMsg = _RobotMessages.wakeUpMessage(_locale);
       r.msgTimer = 2.0;
       // Immediately assign work
       r.stateTimer = 0;
@@ -159,11 +406,12 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   List<Robot> _createRobots() {
     // Place robots at different positions, each with staggered timers
     // so they don't all start acting simultaneously
+    final l = _locale;
     return [
       Robot(
         id: 'planner', name: 'Planner',
         color: const Color(0xFF6366f1), eyeColor: const Color(0xFFa5b4fc),
-        role: 'Strategie', hasAntenna: true,
+        role: _RobotMessages.role('planner', l), hasAntenna: true,
         x: 0.18, y: 0.72,
         state: RobotState.working, typing: true,
         stateTimer: 3.0 + _rng.nextDouble() * 3,
@@ -171,7 +419,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       Robot(
         id: 'executor', name: 'Executor',
         color: const Color(0xFF10b981), eyeColor: const Color(0xFF6ee7b7),
-        role: 'Ausfuehrung',
+        role: _RobotMessages.role('executor', l),
         x: 0.45, y: 0.58,
         state: RobotState.working, typing: true,
         stateTimer: 2.0 + _rng.nextDouble() * 4,
@@ -179,7 +427,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       Robot(
         id: 'researcher', name: 'Researcher',
         color: const Color(0xFFf59e0b), eyeColor: const Color(0xFFfcd34d),
-        role: 'Recherche', hasAntenna: true,
+        role: _RobotMessages.role('researcher', l), hasAntenna: true,
         x: 0.72, y: 0.75,
         state: RobotState.working, typing: true,
         stateTimer: 1.5 + _rng.nextDouble() * 2,
@@ -187,7 +435,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       Robot(
         id: 'gatekeeper', name: 'Gatekeeper',
         color: const Color(0xFFef4444), eyeColor: const Color(0xFFfca5a5),
-        role: 'Sicherheit',
+        role: _RobotMessages.role('gatekeeper', l),
         x: 0.88, y: 0.42,
         state: RobotState.idle,
         stateTimer: 0.5 + _rng.nextDouble(),
@@ -195,7 +443,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       Robot(
         id: 'coder', name: 'Coder',
         color: const Color(0xFF8b5cf6), eyeColor: const Color(0xFFc4b5fd),
-        role: 'Programmierung',
+        role: _RobotMessages.role('coder', l),
         x: 0.30, y: 0.52,
         state: RobotState.walking,
         stateTimer: 1.0 + _rng.nextDouble() * 2,
@@ -204,7 +452,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       Robot(
         id: 'analyst', name: 'Analyst',
         color: const Color(0xFF06b6d4), eyeColor: const Color(0xFF67e8f9),
-        role: 'Datenanalyse', hasAntenna: true,
+        role: _RobotMessages.role('analyst', l), hasAntenna: true,
         x: 0.08, y: 0.35,
         state: RobotState.thinking,
         stateTimer: 2.0 + _rng.nextDouble() * 2,
@@ -212,7 +460,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       Robot(
         id: 'memory', name: 'Memory',
         color: const Color(0xFFec4899), eyeColor: const Color(0xFFf9a8d4),
-        role: 'Wissen',
+        role: _RobotMessages.role('memory', l),
         x: 0.58, y: 0.28,
         state: RobotState.coffeeBreak,
         stateTimer: 3.0 + _rng.nextDouble() * 2,
@@ -220,7 +468,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       Robot(
         id: 'ops', name: 'DevOps',
         color: const Color(0xFF84cc16), eyeColor: const Color(0xFFbef264),
-        role: 'Infrastruktur', hasAntenna: true,
+        role: _RobotMessages.role('ops', l), hasAntenna: true,
         x: 0.60, y: 0.80,
         state: RobotState.walking,
         stateTimer: 1.0 + _rng.nextDouble(),
@@ -345,7 +593,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       case RobotState.chatting:
         // Alternate chat bubbles
         if (r.chatBubbleTimer <= 0 && r.stateTimer > 1.0) {
-          r.chatBubble = _chatMessages[_rng.nextInt(_chatMessages.length)];
+          r.chatBubble = _RobotMessages.chatMessages(_locale)[_rng.nextInt(_RobotMessages.chatMessages(_locale).length)];
           r.chatBubbleTimer = 1.5 + _rng.nextDouble();
         }
         if (r.stateTimer <= 0) {
@@ -590,7 +838,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.targetY = (desk.y + desk.h + 0.02 + _rng.nextDouble() * 0.03).clamp(0.15, 0.90);
     r.state = RobotState.walking;
     r.stateTimer = 10;
-    r.taskMsg = _taskMessages[_rng.nextInt(_taskMessages.length)];
+    r.taskMsg = _RobotMessages.taskMessages(_locale)[_rng.nextInt(_RobotMessages.taskMessages(_locale).length)];
     r.msgTimer = 3.0;
     _currentTask = r.taskMsg;
     widget.onStateChanged?.call(_currentTask, _taskCount);
@@ -605,7 +853,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.targetY = (target.y + target.h + 0.02 + _rng.nextDouble() * 0.03).clamp(0.15, 0.90);
     r.state = RobotState.walking;
     r.stateTimer = 10;
-    r.taskMsg = _taskMessages[_rng.nextInt(_taskMessages.length)];
+    r.taskMsg = _RobotMessages.taskMessages(_locale)[_rng.nextInt(_RobotMessages.taskMessages(_locale).length)];
     r.msgTimer = 2.5;
   }
 
@@ -625,7 +873,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.state = RobotState.chatting;
     r.stateTimer = 4.0 + _rng.nextDouble() * 3.0;
     r.interactionPartner = partner;
-    r.chatBubble = _chatMessages[_rng.nextInt(_chatMessages.length)];
+    r.chatBubble = _RobotMessages.chatMessages(_locale)[_rng.nextInt(_RobotMessages.chatMessages(_locale).length)];
     r.chatBubbleTimer = 1.5;
 
     partner.state = RobotState.chatting;
@@ -700,7 +948,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.emoji = '☕';
     r.emojiTimer = 2.0;
     r.msgTimer = 2.0;
-    r.taskMsg = 'Kaffeepause!';
+    r.taskMsg = _RobotMessages.coffeeBreakMessage(_locale);
   }
 
   void _assignStretch(Robot r) {
@@ -750,7 +998,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.state = RobotState.carrying;
     r.carrying = true;
     r.stateTimer = 10;
-    r.taskMsg = 'Dokument sichern...';
+    r.taskMsg = _RobotMessages.carryMessage(_locale);
     r.msgTimer = 2.5;
   }
 
@@ -765,7 +1013,7 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.targetY = (board.y + board.h + 0.04).clamp(0.15, 0.90);
     r.state = RobotState.walking;
     r.stateTimer = 10;
-    r.taskMsg = 'Board aktualisieren...';
+    r.taskMsg = _RobotMessages.boardMessage(_locale);
     r.msgTimer = 2.5;
   }
 
@@ -789,6 +1037,11 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
 
   // ── Pet update ──────────────────────────────────────────────
 
+  // Minimum Y for dog (floor level only — never above desks).
+  static const _dogMinY = 0.60;
+  // Minimum Y for cat (can sit on desks/servers, but not fly above them).
+  static const _catMinY = 0.40;
+
   void _updatePet(OfficePet pet, double dt) {
     pet.animPhase += dt * 3;
     pet.stateTimer -= dt;
@@ -807,6 +1060,11 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       pet.y += dy / dist * speed * dt;
       pet.facing = dx >= 0 ? 1 : -1;
     }
+
+    // Clamp positions so pets never fly off-screen or above allowed areas.
+    final minY = pet.type == PetType.dog ? _dogMinY : _catMinY;
+    pet.x = pet.x.clamp(0.05, 0.95);
+    pet.y = pet.y.clamp(minY, 0.92);
 
     // Dog tail wag speed increases near robots
     if (pet.type == PetType.dog) {
@@ -853,48 +1111,50 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     final roll = _rng.nextDouble();
 
     if (pet.type == PetType.dog) {
+      // Dog stays on the floor (y >= _dogMinY) at all times.
       if (roll < 0.25) {
-        // Wander
+        // Wander on the floor
         pet.petState = PetState.wandering;
         pet.targetX = (0.05 + _rng.nextDouble() * 0.90).clamp(0.05, 0.95);
-        pet.targetY = (0.50 + _rng.nextDouble() * 0.40).clamp(0.50, 0.90);
+        pet.targetY = (_dogMinY + _rng.nextDouble() * (0.90 - _dogMinY)).clamp(_dogMinY, 0.90);
         pet.stateTimer = 3.0 + _rng.nextDouble() * 4.0;
       } else if (roll < 0.45) {
-        // Follow a robot
+        // Follow a robot — but stay on the floor
         pet.petState = PetState.followingRobot;
         final target = _robots[_rng.nextInt(_robots.length)];
-        pet.targetX = target.x + 0.03;
-        pet.targetY = target.y + 0.03;
+        pet.targetX = (target.x + 0.03).clamp(0.05, 0.95);
+        pet.targetY = (target.y + 0.03).clamp(_dogMinY, 0.90);
         pet.stateTimer = 4.0 + _rng.nextDouble() * 3.0;
       } else if (roll < 0.60) {
-        // Sleep in corner
+        // Sleep in corner (floor level)
         pet.petState = PetState.sleeping;
         pet.targetX = 0.05;
         pet.targetY = 0.88;
         pet.stateTimer = 5.0 + _rng.nextDouble() * 5.0;
       } else if (roll < 0.80) {
-        // Chase cat
+        // Chase cat — stay on floor level
         pet.petState = PetState.chasingOther;
-        pet.targetX = _cat.x;
-        pet.targetY = _cat.y;
+        pet.targetX = _cat.x.clamp(0.05, 0.95);
+        pet.targetY = _cat.y.clamp(_dogMinY, 0.90);
         pet.stateTimer = 3.0 + _rng.nextDouble() * 2.0;
       } else {
-        // Play (fetch ball)
+        // Play (fetch ball) on the floor
         pet.petState = PetState.playing;
         pet.targetX = (pet.x + (_rng.nextDouble() - 0.5) * 0.2).clamp(0.05, 0.95);
-        pet.targetY = (pet.y + (_rng.nextDouble() - 0.5) * 0.15).clamp(0.50, 0.90);
+        pet.targetY = (pet.y + (_rng.nextDouble() - 0.5) * 0.15).clamp(_dogMinY, 0.90);
         pet.stateTimer = 3.0 + _rng.nextDouble() * 2.0;
       }
     } else {
-      // Cat behaviors
+      // Cat behaviors — cat can be on desks/servers (y >= _catMinY).
       if (roll < 0.30) {
-        // Sleep on server rack (warm!)
+        // Sleep on server rack (warm!) — position at the top of the server
         pet.petState = PetState.sleeping;
         final servers = officeFurniture.where((f) => f.type == 'server').toList();
         if (servers.isNotEmpty) {
           final server = servers.first;
           pet.targetX = server.x + server.w / 2;
-          pet.targetY = server.y - 0.02;
+          // Place cat on top of the server (at server's y, its top edge)
+          pet.targetY = server.y.clamp(_catMinY, 0.90);
         }
         pet.stateTimer = 6.0 + _rng.nextDouble() * 6.0;
       } else if (roll < 0.45) {
@@ -902,26 +1162,26 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
         pet.petState = PetState.washingFace;
         pet.stateTimer = 3.0 + _rng.nextDouble() * 2.0;
       } else if (roll < 0.60) {
-        // Sit on desk watching monitor
+        // Sit on desk watching monitor — on desk surface
         pet.petState = PetState.sittingOnDesk;
         final desks = officeFurniture.where((f) => f.type == 'desk').toList();
         if (desks.isNotEmpty) {
           final desk = desks[_rng.nextInt(desks.length)];
           pet.targetX = desk.x + desk.w / 2;
-          pet.targetY = desk.y;
+          pet.targetY = desk.y.clamp(_catMinY, 0.90);
         }
         pet.stateTimer = 4.0 + _rng.nextDouble() * 3.0;
       } else if (roll < 0.75) {
-        // Run from dog
+        // Run from dog — cat stays within allowed range
         pet.petState = PetState.chasingOther; // fleeing = reversed chase
         pet.targetX = (_dog.x > 0.5 ? 0.1 : 0.9).clamp(0.05, 0.95);
-        pet.targetY = (0.30 + _rng.nextDouble() * 0.3).clamp(0.15, 0.90);
+        pet.targetY = (_catMinY + _rng.nextDouble() * (0.90 - _catMinY)).clamp(_catMinY, 0.90);
         pet.stateTimer = 2.0 + _rng.nextDouble() * 2.0;
       } else {
         // Wander
         pet.petState = PetState.wandering;
         pet.targetX = (0.05 + _rng.nextDouble() * 0.90).clamp(0.05, 0.95);
-        pet.targetY = (0.30 + _rng.nextDouble() * 0.50).clamp(0.15, 0.90);
+        pet.targetY = (_catMinY + _rng.nextDouble() * (0.90 - _catMinY)).clamp(_catMinY, 0.90);
         pet.stateTimer = 3.0 + _rng.nextDouble() * 3.0;
       }
     }
@@ -974,6 +1234,20 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   }
 
   // ── Build ───────────────────────────────────────────────────
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newLocale = Localizations.localeOf(context).languageCode;
+    if (newLocale != _locale) {
+      _locale = newLocale;
+      _currentTask = _RobotMessages.waitingMessage(_locale);
+      // Update robot roles to match new locale
+      for (final r in _robots) {
+        r.role = _RobotMessages.role(r.id, _locale);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -6,9 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 abstract final class JarvisTheme {
   // ── Core Palette ──────────────────────────────────────────
-  static const _accent = Color(0xFF00d4ff);
-  static const _accentLight = Color(0xFF4DE0FF);
-  static const _accentDim = Color(0xFF00A8CC);
+  static const _accent = Color(0xFF00E5FF);
+  static const _accentLight = Color(0xFF4DF0FF);
+  static const _accentDim = Color(0xFF00B8D4);
 
   // Status colors
   static const _green = Color(0xFF00e676);
@@ -18,11 +18,11 @@ abstract final class JarvisTheme {
   static const _purple = Color(0xFFB388FF);
 
   // Dark theme surfaces
-  static const _bg = Color(0xFF0a0a14);
-  static const _surface = Color(0xFF10101a);
-  static const _surfaceHover = Color(0xFF181828);
-  static const _border = Color(0xFF1e1e30);
-  static const _borderHover = Color(0xFF2e2e48);
+  static const _bg = Color(0xFF080B16);
+  static const _surface = Color(0xFF0F1629);
+  static const _surfaceHover = Color(0xFF161D34);
+  static const _border = Color(0xFF1C2340);
+  static const _borderHover = Color(0xFF2A3358);
   static const _text1 = Color(0xFFe0e0e8);
   static const _text2 = Color(0xFF8888a0);
   static const _text3 = Color(0xFF555568);

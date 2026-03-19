@@ -147,9 +147,11 @@ class _FlowerInfo {
 
 // ── Office Landmark Positions (normalized 0..1) ──────────────────────
 
-const _desk1 = Offset(0.18, 0.55);
-const _desk2 = Offset(0.45, 0.52);
-const _desk3 = Offset(0.72, 0.55);
+const _desk1 = Offset(0.18, 0.52);
+const _desk2 = Offset(0.45, 0.50);
+const _desk3 = Offset(0.12, 0.66);
+const _desk4 = Offset(0.38, 0.64);
+const _desk5 = Offset(0.64, 0.66);
 const _server = Offset(0.90, 0.40);
 const _kanban = Offset(0.06, 0.35);
 const _coffee = Offset(0.55, 0.35);
@@ -187,6 +189,7 @@ class OfficePainter extends CustomPainter {
     _drawKanbanBoard(canvas, size);
     _drawCeilingLights(canvas, size);
     _drawFloor(canvas, size);
+    _drawCarpetArea(canvas, size);
     _drawLightBeams(canvas, size);
     _drawCables(canvas, size);
     _drawDesks(canvas, size);
@@ -221,8 +224,8 @@ class OfficePainter extends CustomPainter {
   }
 
   Color _wallColor() => _isDark ? const Color(0xFF1a1a2e) : const Color(0xFFe8e8f0);
-  Color _floorBase() => _isDark ? const Color(0xFF22223a) : const Color(0xFFd0d0dc);
-  Color _floorAlt() => _isDark ? const Color(0xFF2a2a44) : const Color(0xFFdcdce8);
+  Color _floorBase() => _isDark ? const Color(0xFF2E2E3E) : const Color(0xFFD8D0C8);
+  Color _floorAlt() => _isDark ? const Color(0xFF343448) : const Color(0xFFE0D8D0);
   Color _furnitureDark() => _isDark ? const Color(0xFF2c2c44) : const Color(0xFFb8b8c8);
   Color _furnitureLight() => _isDark ? const Color(0xFF3a3a56) : const Color(0xFFcacad8);
   Color _textCol() => _isDark ? JarvisTheme.textPrimary : const Color(0xFF1A1A2E);
@@ -584,24 +587,60 @@ class OfficePainter extends CustomPainter {
       Paint()..color = _isDark ? const Color(0xFF2a2a44) : const Color(0xFFe0e0e8),
     );
 
-    // Column headers
+    // ── "Sprint Board" header strip ──
+    final headerH = bh * 0.10;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(bx, by, bw, headerH),
+        const Radius.circular(3),
+      ),
+      Paint()..color = JarvisTheme.accent.withValues(alpha: 0.25),
+    );
+    final headerTp = TextPainter(
+      text: TextSpan(
+        text: 'Sprint Board',
+        style: TextStyle(
+          color: _textCol(),
+          fontSize: 4.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    headerTp.paint(canvas, Offset(bx + (bw - headerTp.width) / 2, by + 1));
+
+    // Column headers below the sprint header
     final colW = bw / 3;
+    final colHeaderY = by + headerH;
+    final colHeaderH = bh * 0.10;
     final headers = ['To Do', 'WIP', 'Done'];
     final headerColors = [JarvisTheme.orange, JarvisTheme.accent, JarvisTheme.green];
     for (int c = 0; c < 3; c++) {
       final hx = bx + c * colW;
       canvas.drawRect(
-        Rect.fromLTWH(hx, by, colW, bh * 0.15),
-        Paint()..color = headerColors[c].withValues(alpha: 0.3),
+        Rect.fromLTWH(hx, colHeaderY, colW, colHeaderH),
+        Paint()..color = headerColors[c].withValues(alpha: 0.25),
       );
       final tp = TextPainter(
         text: TextSpan(
           text: headers[c],
-          style: TextStyle(color: _textCol(), fontSize: 5, fontWeight: FontWeight.w600),
+          style: TextStyle(color: _textCol(), fontSize: 4.5, fontWeight: FontWeight.w600),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(hx + (colW - tp.width) / 2, by + 2));
+      tp.paint(canvas, Offset(hx + (colW - tp.width) / 2, colHeaderY + 1.5));
+
+      // Column separator line
+      if (c > 0) {
+        canvas.drawLine(
+          Offset(hx, colHeaderY + colHeaderH),
+          Offset(hx, by + bh),
+          Paint()
+            ..color = _furnitureDark().withValues(alpha: 0.4)
+            ..strokeWidth = 0.5,
+        );
+      }
 
       // Sticky notes
       final noteColors = [
@@ -611,13 +650,15 @@ class OfficePainter extends CustomPainter {
         const Color(0xFFFFAB91),
       ];
       final noteCount = c == 0 ? 3 : (c == 1 ? 2 : 2);
+      final noteStartY = colHeaderY + colHeaderH + 2;
       for (int n = 0; n < noteCount; n++) {
-        final ny = by + bh * 0.18 + n * bh * 0.24;
+        final ny = noteStartY + n * bh * 0.22;
         final noteW = colW * 0.7;
-        final noteH = bh * 0.18;
+        final noteH = bh * 0.16;
+        final noteX = hx + (colW - noteW) / 2;
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(hx + (colW - noteW) / 2, ny, noteW, noteH),
+            Rect.fromLTWH(noteX, ny, noteW, noteH),
             const Radius.circular(1.5),
           ),
           Paint()..color = noteColors[(c * 3 + n) % noteColors.length].withValues(alpha: 0.85),
@@ -625,13 +666,25 @@ class OfficePainter extends CustomPainter {
         // Tiny text lines on sticky
         for (int l = 0; l < 2; l++) {
           canvas.drawLine(
-            Offset(hx + (colW - noteW) / 2 + 2, ny + 3 + l * 4),
-            Offset(hx + (colW - noteW) / 2 + noteW - 3, ny + 3 + l * 4),
+            Offset(noteX + 2, ny + 3 + l * 3.5),
+            Offset(noteX + noteW - 3, ny + 3 + l * 3.5),
             Paint()
               ..color = Colors.black26
               ..strokeWidth = 0.5,
           );
         }
+        // Pin/thumbtack dot at top-center of sticky note
+        canvas.drawCircle(
+          Offset(noteX + noteW / 2, ny + 1),
+          1.3,
+          Paint()..color = const Color(0xFFDD3333),
+        );
+        // Pin highlight
+        canvas.drawCircle(
+          Offset(noteX + noteW / 2 - 0.3, ny + 0.6),
+          0.5,
+          Paint()..color = const Color(0xFFFF8888),
+        );
       }
     }
 
@@ -697,45 +750,102 @@ class OfficePainter extends CustomPainter {
     final floorTop = s.height * 0.45;
     final floorHeight = s.height - floorTop;
 
-    // Base floor gradient
+    // Base floor gradient — warm light gray laminate
     final floorPaint = Paint()
       ..shader = ui.Gradient.linear(
         Offset(0, floorTop),
         Offset(0, s.height),
-        [_floorBase(), _floorBase().withValues(alpha: 0.85)],
+        [_floorBase(), _floorAlt()],
       );
     canvas.drawRect(Rect.fromLTWH(0, floorTop, s.width, floorHeight), floorPaint);
 
-    // Checkered tiles with perspective
-    final tileSize = s.width / 16;
-    final rows = (floorHeight / tileSize).ceil() + 1;
-    final cols = (s.width / tileSize).ceil() + 1;
+    // Laminate plank pattern (horizontal long planks)
+    final plankH = s.height * 0.035;
+    final plankRows = (floorHeight / plankH).ceil() + 1;
+    final plankGap = Paint()
+      ..color = (_isDark ? const Color(0xFF252538) : const Color(0xFFC8C0B8))
+      ..strokeWidth = 0.7;
+    final grainLine = Paint()
+      ..color = (_isDark ? Colors.white : Colors.black).withValues(alpha: 0.03)
+      ..strokeWidth = 0.3;
 
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        final tx = c * tileSize;
-        final ty = floorTop + r * tileSize;
-        if (ty >= s.height) continue;
-        final isAlt = (r + c) % 2 == 0;
-        final tilePaint = Paint()
-          ..color = (isAlt ? _floorAlt() : _floorBase()).withValues(
-            alpha: 0.5 + 0.3 * ((ty - floorTop) / floorHeight),
-          );
-        canvas.drawRect(Rect.fromLTWH(tx, ty, tileSize, tileSize), tilePaint);
+    for (int r = 0; r < plankRows; r++) {
+      final py = floorTop + r * plankH;
+      if (py > s.height) break;
+      // Horizontal plank seam
+      canvas.drawLine(Offset(0, py), Offset(s.width, py), plankGap);
+
+      // Staggered vertical joints (offset every other row)
+      final plankW = s.width / 4;
+      final offset = (r.isOdd ? plankW * 0.5 : 0.0);
+      for (double jx = offset; jx < s.width; jx += plankW) {
+        canvas.drawLine(
+          Offset(jx, py),
+          Offset(jx, py + plankH),
+          plankGap,
+        );
+      }
+
+      // Subtle wood-grain direction lines within planks
+      for (int g = 0; g < 3; g++) {
+        final gy = py + plankH * (0.25 + g * 0.25);
+        if (gy < s.height) {
+          canvas.drawLine(Offset(0, gy), Offset(s.width, gy), grainLine);
+        }
       }
     }
 
     // Subtle reflections
     final reflPaint = Paint()
-      ..color = Colors.white.withValues(alpha: _isDark ? 0.02 : 0.04)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      ..color = Colors.white.withValues(alpha: _isDark ? 0.02 : 0.03)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(s.width * 0.5, s.height * 0.65),
-        width: s.width * 0.6,
-        height: s.height * 0.15,
+        width: s.width * 0.5,
+        height: s.height * 0.12,
       ),
       reflPaint,
+    );
+  }
+
+  // ── Carpet Area (under coffee machine) ─────────────────────────────
+
+  void _drawCarpetArea(Canvas canvas, Size s) {
+    final cx = s.width * _coffee.dx;
+    final cy = s.height * _coffee.dy + s.height * 0.06;
+    final cw = s.width * 0.12;
+    final ch = s.height * 0.08;
+
+    // Warm-toned area rug
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx, cy), width: cw, height: ch),
+        const Radius.circular(3),
+      ),
+      Paint()..color = (_isDark ? const Color(0xFF3D2B2B) : const Color(0xFFC4A882)).withValues(alpha: 0.6),
+    );
+    // Rug border pattern
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx, cy), width: cw - 4, height: ch - 4),
+        const Radius.circular(2),
+      ),
+      Paint()
+        ..color = (_isDark ? const Color(0xFF5C3A3A) : const Color(0xFFB8956E)).withValues(alpha: 0.4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+    // Inner rug pattern line
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx, cy), width: cw - 10, height: ch - 10),
+        const Radius.circular(1),
+      ),
+      Paint()
+        ..color = (_isDark ? const Color(0xFF6B4444) : const Color(0xFFA07850)).withValues(alpha: 0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
     );
   }
 
@@ -752,28 +862,39 @@ class OfficePainter extends CustomPainter {
     path.moveTo(s.width * _desk2.dx + s.width * 0.06, s.height * _desk2.dy + s.height * 0.05);
     path.quadraticBezierTo(
       s.width * 0.75,
-      s.height * 0.58,
+      s.height * 0.55,
       s.width * _server.dx,
       s.height * _server.dy + s.height * 0.12,
     );
     canvas.drawPath(path, cablePaint);
 
-    // Cable from desk1 to desk2
+    // Cable from desk1 to desk2 (back row)
     final path2 = Path();
-    path2.moveTo(s.width * _desk1.dx + s.width * 0.06, s.height * _desk1.dy + s.height * 0.06);
+    path2.moveTo(s.width * _desk1.dx + s.width * 0.06, s.height * _desk1.dy + s.height * 0.05);
     path2.quadraticBezierTo(
       s.width * 0.32,
-      s.height * 0.62,
+      s.height * 0.58,
       s.width * _desk2.dx - s.width * 0.02,
       s.height * _desk2.dy + s.height * 0.05,
     );
     canvas.drawPath(path2, cablePaint);
+
+    // Cable from desk5 to server (front row connection)
+    final path3 = Path();
+    path3.moveTo(s.width * _desk5.dx + s.width * 0.06, s.height * _desk5.dy + s.height * 0.05);
+    path3.quadraticBezierTo(
+      s.width * 0.80,
+      s.height * 0.62,
+      s.width * _server.dx,
+      s.height * _server.dy + s.height * 0.18,
+    );
+    canvas.drawPath(path3, cablePaint);
   }
 
   // ── Desks ──────────────────────────────────────────────────────────
 
   void _drawDesks(Canvas canvas, Size s) {
-    final desks = [_desk1, _desk2, _desk3];
+    final desks = [_desk1, _desk2, _desk3, _desk4, _desk5];
     for (int i = 0; i < desks.length; i++) {
       _drawDesk(canvas, s, desks[i], i);
     }
@@ -783,71 +904,167 @@ class OfficePainter extends CustomPainter {
     final dx = s.width * pos.dx;
     final dy = s.height * pos.dy;
     final dw = s.width * 0.12;
-    final dh = s.height * 0.08;
+    final dh = s.height * 0.06;
+    final legH = s.height * 0.06;
 
-    // Desk surface
+    // Wood colors
+    const oakTop = Color(0xFFB8913A); // lighter oak desktop
+    const oakEdge = Color(0xFF8B6914); // darker oak edge
+    const legColor = Color(0xFF6B4F1A); // dark brown legs
+
+    // ── 4 wooden legs (slightly angled outward) ──
+    const legW = 3.5;
+    final legPaint = Paint()..color = legColor;
+    // Front-left
+    canvas.drawRect(
+      Rect.fromLTWH(dx - dw / 2 + 4, dy + dh, legW, legH),
+      legPaint,
+    );
+    // Front-right
+    canvas.drawRect(
+      Rect.fromLTWH(dx + dw / 2 - 4 - legW, dy + dh, legW, legH),
+      legPaint,
+    );
+    // Back-left (slightly inset since it's the back)
+    canvas.drawRect(
+      Rect.fromLTWH(dx - dw / 2 + 7, dy + dh, legW - 0.5, legH * 0.3),
+      legPaint,
+    );
+    // Back-right
+    canvas.drawRect(
+      Rect.fromLTWH(dx + dw / 2 - 7 - legW + 0.5, dy + dh, legW - 0.5, legH * 0.3),
+      legPaint,
+    );
+
+    // ── Wood desktop surface ──
+    final deskRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(dx - dw / 2, dy, dw, dh),
+      const Radius.circular(2),
+    );
+    // Main wood surface with gradient for grain feel
+    canvas.drawRRect(
+      deskRect,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(dx - dw / 2, dy),
+          Offset(dx + dw / 2, dy + dh),
+          [oakTop, oakTop.withValues(alpha: 0.85), oakEdge.withValues(alpha: 0.6)],
+          [0.0, 0.7, 1.0],
+        ),
+    );
+    // Subtle wood grain lines
+    final grainPaint = Paint()
+      ..color = oakEdge.withValues(alpha: 0.12)
+      ..strokeWidth = 0.5;
+    for (int g = 0; g < 4; g++) {
+      final gy = dy + dh * (0.2 + g * 0.2);
+      canvas.drawLine(
+        Offset(dx - dw / 2 + 3, gy),
+        Offset(dx + dw / 2 - 3, gy),
+        grainPaint,
+      );
+    }
+    // Desk edge/lip
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(dx - dw / 2, dy, dw, dh),
-        const Radius.circular(3),
+        Rect.fromLTWH(dx - dw / 2, dy + dh - 2.5, dw, 3),
+        const Radius.circular(1),
       ),
-      Paint()..color = _furnitureLight(),
-    );
-    // Desk edge highlight
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(dx - dw / 2, dy, dw, 3),
-        const Radius.circular(3),
-      ),
-      Paint()..color = _furnitureDark(),
+      Paint()..color = oakEdge,
     );
 
-    // Desk legs
-    final legPaint = Paint()..color = _furnitureDark();
-    canvas.drawRect(Rect.fromLTWH(dx - dw / 2 + 4, dy + dh, 3, s.height * 0.06), legPaint);
-    canvas.drawRect(Rect.fromLTWH(dx + dw / 2 - 7, dy + dh, 3, s.height * 0.06), legPaint);
-
-    // Monitor
+    // ── Flat-screen monitor with bezel ──
     final monW = dw * 0.5;
-    final monH = dh * 0.7;
+    final monH = dh * 0.85;
     final monX = dx - monW / 2;
-    final monY = dy - monH - 4;
+    final monY = dy - monH - 6;
+    const bezel = 2.0;
 
-    // Monitor stand
+    // Monitor stand arm (thin metal)
     canvas.drawRect(
-      Rect.fromLTWH(dx - 2, monY + monH, 4, 5),
-      Paint()..color = const Color(0xFF444466),
+      Rect.fromLTWH(dx - 1.5, monY + monH, 3, 6),
+      Paint()..color = const Color(0xFF606080),
     );
-    canvas.drawRect(
-      Rect.fromLTWH(dx - 8, monY + monH + 4, 16, 2),
-      Paint()..color = const Color(0xFF444466),
+    // Stand base
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(dx - 10, monY + monH + 5, 20, 2.5),
+        const Radius.circular(1),
+      ),
+      Paint()..color = const Color(0xFF606080),
     );
 
-    // Monitor screen
+    // Outer monitor frame (bezel)
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(monX - bezel, monY - bezel, monW + bezel * 2, monH + bezel * 2),
+        const Radius.circular(3),
+      ),
+      Paint()..color = const Color(0xFF222233),
+    );
+
+    // Screen background
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(monX, monY, monW, monH),
-        const Radius.circular(2),
+        const Radius.circular(1),
       ),
-      Paint()..color = const Color(0xFF111122),
+      Paint()..color = const Color(0xFF0C0C1A),
     );
 
-    // Animated screen content (code lines)
-    final screenPaint = Paint()..strokeWidth = 1.0;
+    // Webcam dot on top bezel
+    canvas.drawCircle(
+      Offset(dx, monY - bezel / 2 - 0.5),
+      1.2,
+      Paint()..color = const Color(0xFF333355),
+    );
+    // Webcam active indicator (subtle green)
+    canvas.drawCircle(
+      Offset(dx, monY - bezel / 2 - 0.5),
+      0.7,
+      Paint()..color = const Color(0xFF00E676).withValues(alpha: 0.3 + 0.2 * _osc(1.5, index * 3.0)),
+    );
+
+    // Animated screen content — colored code lines / UI mockup
     final lineRng = Random(index * 7 + 13);
-    for (int l = 0; l < 5; l++) {
-      final ly = monY + 3 + l * (monH - 6) / 5;
-      final lineW = monW * (0.3 + lineRng.nextDouble() * 0.5);
-      // Scroll effect
-      final scrollOffset = (time * 8 + index * 20) % (monH * 2);
-      final adjustedY = ly + scrollOffset % 3;
+    final codeColors = [
+      JarvisTheme.accent,
+      const Color(0xFFFF80AB), // pink
+      const Color(0xFFB388FF), // purple
+      const Color(0xFF80CBC4), // teal
+      const Color(0xFFFFD54F), // yellow (keywords)
+      const Color(0xFF81C784), // green (strings)
+    ];
+    for (int l = 0; l < 6; l++) {
+      final ly = monY + 2.5 + l * (monH - 5) / 6;
+      final indent = lineRng.nextInt(3) * monW * 0.06;
+      final lineW = monW * (0.2 + lineRng.nextDouble() * 0.4);
+      final scrollOffset = (time * 6 + index * 15) % (monH * 2);
+      final adjustedY = ly + scrollOffset % 2.5;
       if (adjustedY < monY + monH - 2) {
-        screenPaint.color = JarvisTheme.accent.withValues(alpha: 0.5 + 0.2 * _osc(3, l + index * 5.0));
+        final colorIdx = (l + index * 2) % codeColors.length;
         canvas.drawLine(
-          Offset(monX + 3, adjustedY),
-          Offset(monX + 3 + lineW, adjustedY),
-          screenPaint,
+          Offset(monX + 3 + indent, adjustedY),
+          Offset(monX + 3 + indent + lineW, adjustedY),
+          Paint()
+            ..color = codeColors[colorIdx].withValues(alpha: 0.45 + 0.15 * _osc(3, l + index * 5.0))
+            ..strokeWidth = 1.0,
         );
+        // Second segment on same line (different color for syntax highlighting)
+        if (lineRng.nextDouble() > 0.4) {
+          final seg2W = monW * (0.1 + lineRng.nextDouble() * 0.2);
+          final seg2Color = codeColors[(colorIdx + 2) % codeColors.length];
+          final seg2Start = monX + 3 + indent + lineW + 2;
+          if (seg2Start + seg2W < monX + monW - 2) {
+            canvas.drawLine(
+              Offset(seg2Start, adjustedY),
+              Offset(seg2Start + seg2W, adjustedY),
+              Paint()
+                ..color = seg2Color.withValues(alpha: 0.35)
+                ..strokeWidth = 1.0,
+            );
+          }
+        }
       }
     }
 
@@ -856,43 +1073,74 @@ class OfficePainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(monX, monY, monW, monH),
-        const Radius.circular(2),
+        const Radius.circular(1),
       ),
       Paint()
         ..color = JarvisTheme.accent.withValues(
-            alpha: 0.04 + nightBoost + 0.02 * _osc(2, index.toDouble()))
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 + nightBoost * 30),
+            alpha: 0.03 + nightBoost + 0.02 * _osc(2, index.toDouble()))
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 5 + nightBoost * 25),
     );
 
-    // Keyboard
+    // ── Keyboard (small dark rectangle with key lines) ──
+    final kbW = dw * 0.35;
+    final kbH = dh * 0.22;
+    final kbX = dx - kbW / 2;
+    final kbY = dy + 3;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(dx - dw * 0.2, dy + 4, dw * 0.4, dh * 0.2),
+        Rect.fromLTWH(kbX, kbY, kbW, kbH),
         const Radius.circular(1),
       ),
-      Paint()..color = const Color(0xFF555568),
+      Paint()..color = const Color(0xFF3A3A50),
+    );
+    // Key rows
+    for (int kr = 0; kr < 2; kr++) {
+      canvas.drawLine(
+        Offset(kbX + 1, kbY + 2 + kr * (kbH * 0.4)),
+        Offset(kbX + kbW - 1, kbY + 2 + kr * (kbH * 0.4)),
+        Paint()
+          ..color = const Color(0xFF555570)
+          ..strokeWidth = 0.4,
+      );
+    }
+
+    // ── Mouse (tiny oval to the right of keyboard) ──
+    canvas.drawOval(
+      Rect.fromLTWH(dx + kbW / 2 + 3, kbY + 1, 5, 7),
+      Paint()..color = const Color(0xFF444460),
     );
 
-    // Small items: coffee cup on desk 0, post-its on desk 1, pen holder on desk 2
-    if (index == 0) {
+    // ── Desk items vary by index ──
+    if (index == 0 || index == 3) {
       // Coffee cup
       final cx = dx + dw * 0.3;
-      final cy = dy + 3;
+      final cy = dy + 2;
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(cx, cy, 6, 8), const Radius.circular(1)),
+        RRect.fromRectAndRadius(Rect.fromLTWH(cx, cy, 5, 7), const Radius.circular(1)),
         Paint()..color = const Color(0xFFDDDDDD),
       );
       // Coffee surface
       canvas.drawRect(
-        Rect.fromLTWH(cx + 1, cy + 1, 4, 3),
+        Rect.fromLTWH(cx + 0.8, cy + 0.8, 3.4, 2.5),
         Paint()..color = const Color(0xFF6B4226),
       );
-    } else if (index == 1) {
+      // Cup handle
+      canvas.drawArc(
+        Rect.fromLTWH(cx + 4, cy + 2, 3, 4),
+        -1.2,
+        2.4,
+        false,
+        Paint()
+          ..color = const Color(0xFFCCCCCC)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+    } else if (index == 1 || index == 4) {
       // Post-it notes stack
       final colors = [const Color(0xFFFFEB3B), const Color(0xFFFF80AB), const Color(0xFF80D8FF)];
       for (int n = 0; n < 3; n++) {
         canvas.drawRect(
-          Rect.fromLTWH(dx + dw * 0.25 + n * 2, dy + 3 + n * 1.5, 8, 8),
+          Rect.fromLTWH(dx + dw * 0.25 + n * 2, dy + 2 + n * 1.2, 7, 7),
           Paint()..color = colors[n].withValues(alpha: 0.8),
         );
       }
@@ -900,7 +1148,7 @@ class OfficePainter extends CustomPainter {
       // Pen holder
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(dx - dw * 0.35, dy + 2, 7, 10),
+          Rect.fromLTWH(dx - dw * 0.35, dy + 2, 6, 9),
           const Radius.circular(1),
         ),
         Paint()..color = const Color(0xFF777790),
@@ -1852,14 +2100,14 @@ class _RobotOfficeState extends State<RobotOffice> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _robots = [
-      Robot(type: _planner, x: _desk1.dx, y: _desk1.dy + 0.12),
-      Robot(type: _executor, x: _desk2.dx, y: _desk2.dy + 0.12),
-      Robot(type: _researcher, x: _desk3.dx, y: _desk3.dy + 0.12),
-      Robot(type: _gatekeeper, x: 0.50, y: 0.70),
-      Robot(type: _coder, x: 0.30, y: 0.68),
-      Robot(type: _analyst, x: 0.65, y: 0.72),
-      Robot(type: _memory, x: 0.80, y: 0.62),
-      Robot(type: _ops, x: 0.38, y: 0.78),
+      Robot(type: _planner, x: _desk1.dx, y: _desk1.dy + 0.10),
+      Robot(type: _executor, x: _desk2.dx, y: _desk2.dy + 0.10),
+      Robot(type: _researcher, x: _desk3.dx, y: _desk3.dy + 0.10),
+      Robot(type: _gatekeeper, x: _desk4.dx, y: _desk4.dy + 0.10),
+      Robot(type: _coder, x: _desk5.dx, y: _desk5.dy + 0.10),
+      Robot(type: _analyst, x: 0.80, y: 0.60),
+      Robot(type: _memory, x: 0.75, y: 0.72),
+      Robot(type: _ops, x: 0.50, y: 0.78),
     ];
 
     _controller = AnimationController(
@@ -1942,9 +2190,9 @@ class _RobotOfficeState extends State<RobotOffice> with SingleTickerProviderStat
 
     if (roll < 0.35) {
       // Go to a random desk
-      final desks = [_desk1, _desk2, _desk3];
+      final desks = [_desk1, _desk2, _desk3, _desk4, _desk5];
       final desk = desks[_rng.nextInt(desks.length)];
-      target = Offset(desk.dx, desk.dy + 0.12);
+      target = Offset(desk.dx, desk.dy + 0.10);
     } else if (roll < 0.50) {
       // Go to server
       target = Offset(_server.dx, _server.dy + 0.12);
