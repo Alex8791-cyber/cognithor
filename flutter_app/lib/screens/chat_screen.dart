@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/chat_provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
+import 'package:jarvis_ui/providers/hacker_mode_provider.dart';
 import 'package:jarvis_ui/providers/pip_provider.dart';
 import 'package:jarvis_ui/providers/voice_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
@@ -11,6 +12,8 @@ import 'package:jarvis_ui/widgets/approval_dialog.dart';
 import 'package:jarvis_ui/widgets/canvas_panel.dart';
 import 'package:jarvis_ui/widgets/chat_bubble.dart';
 import 'package:jarvis_ui/widgets/chat_input.dart';
+import 'package:jarvis_ui/widgets/chat/context_panel.dart';
+import 'package:jarvis_ui/widgets/chat/hacker_chat_view.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/message_actions.dart';
 import 'package:jarvis_ui/widgets/observe/observe_panel.dart';
@@ -127,10 +130,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     },
                   ),
 
-                  // Messages list
+                  // Messages list — switches between normal and hacker view
                   Expanded(
-                    child: Consumer<ChatProvider>(
-                      builder: (context, chat, _) {
+                    child: Consumer2<ChatProvider, HackerModeProvider>(
+                      builder: (context, chat, hackerMode, _) {
                         _scrollToBottom();
 
                         if (chat.messages.isEmpty && !chat.isStreaming) {
@@ -138,6 +141,16 @@ class _ChatScreenState extends State<ChatScreen> {
                             icon: Icons.chat_bubble_outline,
                             title: l.startConversation,
                             subtitle: l.typeMessage,
+                          );
+                        }
+
+                        if (hackerMode.enabled) {
+                          return HackerChatView(
+                            messages: chat.messages,
+                            streamingText: chat.streamingText,
+                            isStreaming: chat.isStreaming,
+                            activeTool: chat.activeTool,
+                            scrollController: _scrollController,
                           );
                         }
 
@@ -246,6 +259,19 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
+            // Context side panel (when tool is active)
+            Consumer<ChatProvider>(
+              builder: (context, chat, _) {
+                if (chat.activeTool == null) {
+                  return const SizedBox.shrink();
+                }
+                return ContextPanel(
+                  activeTool: chat.activeTool,
+                  statusText: chat.statusText,
+                );
+              },
+            ),
+
             // Observe panel
             if (_showObserve)
               Consumer<ChatProvider>(
@@ -302,6 +328,21 @@ class _ChatScreenState extends State<ChatScreen> {
               MaterialPageRoute<void>(
                 builder: (_) => const TeachScreen(),
               ),
+            );
+          },
+        ),
+        // Hacker mode toggle
+        Consumer<HackerModeProvider>(
+          builder: (context, hackerMode, _) {
+            return IconButton(
+              icon: Icon(
+                Icons.terminal,
+                color: hackerMode.enabled
+                    ? const Color(0xFF00FF41)
+                    : null,
+              ),
+              tooltip: 'Hacker Mode',
+              onPressed: () => hackerMode.toggle(),
             );
           },
         ),

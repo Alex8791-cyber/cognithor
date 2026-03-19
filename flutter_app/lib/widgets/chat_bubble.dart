@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jarvis_ui/providers/chat_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 
 class ChatBubble extends StatelessWidget {
   const ChatBubble({
@@ -29,86 +30,155 @@ class ChatBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
         margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: _bubbleDecoration(context, isUser, isSystem),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Flexible(child: _buildContent(context, isUser, isSystem)),
-            if (isStreaming) ...[
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 8,
-                height: 8,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: JarvisTheme.accent,
-                ),
-              ),
-            ],
-          ],
-        ),
+        child: isUser
+            ? _buildUserBubble(context)
+            : isSystem
+                ? _buildSystemBubble(context)
+                : _buildAssistantBubble(context),
       ),
     );
   }
 
-  BoxDecoration _bubbleDecoration(
-      BuildContext context, bool isUser, bool isSystem) {
-    if (isUser) {
-      // User: subtle accent gradient
-      return BoxDecoration(
+  // ── User Bubble ──────────────────────────────────────────────────────
+  Widget _buildUserBubble(BuildContext context) {
+    const baseColor = JarvisTheme.sectionChat;
+    // 20% darker shade
+    final darkerColor = Color.lerp(baseColor, Colors.black, 0.2)!;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            JarvisTheme.accent.withAlpha(35),
-            JarvisTheme.accentDim.withAlpha(20),
+          colors: [baseColor.withValues(alpha: 0.18), darkerColor.withValues(alpha: 0.12)],
+        ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(4), // chat tail
+        ),
+        border: Border.all(
+          color: baseColor.withValues(alpha: 0.20),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: SelectableText(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ),
+          if (isStreaming) ...[
+            const SizedBox(width: 6),
+            const SizedBox(
+              width: 8,
+              height: 8,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: JarvisTheme.sectionChat,
+              ),
+            ),
           ],
-        ),
-        borderRadius: BorderRadius.circular(JarvisTheme.cardRadius),
-        border: Border.all(color: JarvisTheme.accent.withAlpha(60)),
-      );
-    }
-    if (isSystem) {
-      return BoxDecoration(
-        color: JarvisTheme.red.withAlpha(20),
-        borderRadius: BorderRadius.circular(JarvisTheme.cardRadius),
-        border: Border.all(color: JarvisTheme.red.withAlpha(60)),
-      );
-    }
-    // Assistant: clean surface with left accent border
-    return BoxDecoration(
-      color: Theme.of(context).cardColor,
-      borderRadius: BorderRadius.circular(JarvisTheme.cardRadius),
-      border: Border(
-        left: BorderSide(
-          color: JarvisTheme.accent.withAlpha(120),
-          width: 3,
-        ),
-        top: BorderSide(color: Theme.of(context).dividerColor),
-        right: BorderSide(color: Theme.of(context).dividerColor),
-        bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ],
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, bool isUser, bool isSystem) {
-    // User and system messages: plain text
-    if (isUser || isSystem) {
-      return SelectableText(
-        text,
-        style: TextStyle(
-          color: isSystem
-              ? JarvisTheme.red
-              : Theme.of(context).colorScheme.onSurface,
-          fontSize: 14,
-          height: 1.5,
+  // ── Assistant Bubble ─────────────────────────────────────────────────
+  Widget _buildAssistantBubble(BuildContext context) {
+    return GlassPanel(
+      tint: JarvisTheme.sectionChat,
+      borderRadius: 16,
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+          bottomLeft: Radius.circular(4), // chat tail
+          bottomRight: Radius.circular(16),
         ),
-      );
-    }
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left accent bar
+            Container(
+              width: 3,
+              decoration: const BoxDecoration(
+                color: JarvisTheme.sectionChat,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(4),
+                ),
+              ),
+            ),
+            // Content
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(child: _buildMarkdownContent(context)),
+                    if (isStreaming) ...[
+                      const SizedBox(width: 6),
+                      const SizedBox(
+                        width: 8,
+                        height: 8,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: JarvisTheme.sectionChat,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    // Assistant messages: Markdown rendering
+  // ── System Bubble ────────────────────────────────────────────────────
+  Widget _buildSystemBubble(BuildContext context) {
+    return GlassPanel(
+      tint: JarvisTheme.red,
+      borderRadius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: SelectableText(
+              text,
+              style: TextStyle(
+                color: JarvisTheme.red,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Markdown Content ─────────────────────────────────────────────────
+  Widget _buildMarkdownContent(BuildContext context) {
     return MarkdownBody(
       data: text,
       selectable: true,
@@ -124,16 +194,25 @@ class ChatBubble extends StatelessWidget {
           fontSize: 14,
           height: 1.5,
         ),
-        code: TextStyle(
+        code: const TextStyle(
           fontFamily: 'monospace',
           fontSize: 13,
-          color: JarvisTheme.accent,
+          color: JarvisTheme.sectionChat,
           backgroundColor: JarvisTheme.codeBlockBg,
         ),
         codeblockDecoration: BoxDecoration(
           color: JarvisTheme.codeBlockBg,
           borderRadius: BorderRadius.circular(JarvisTheme.spacingSm),
-          border: Border.all(color: JarvisTheme.codeBlockBorder),
+          border: Border.all(
+            color: JarvisTheme.sectionChat.withValues(alpha: 0.15),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: JarvisTheme.sectionChat.withValues(alpha: 0.08),
+              blurRadius: 8,
+              spreadRadius: -1,
+            ),
+          ],
         ),
         codeblockPadding: const EdgeInsets.all(14),
         h1: TextStyle(
@@ -151,14 +230,14 @@ class ChatBubble extends StatelessWidget {
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
-        blockquoteDecoration: BoxDecoration(
+        blockquoteDecoration: const BoxDecoration(
           border: Border(
-            left: BorderSide(color: JarvisTheme.accent, width: 3),
+            left: BorderSide(color: JarvisTheme.sectionChat, width: 3),
           ),
         ),
         blockquotePadding: const EdgeInsets.only(left: 12),
-        listBullet: TextStyle(color: JarvisTheme.accent),
-        a: TextStyle(color: JarvisTheme.accent),
+        listBullet: const TextStyle(color: JarvisTheme.sectionChat),
+        a: const TextStyle(color: JarvisTheme.sectionChat),
         strong: TextStyle(
           color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
@@ -212,7 +291,16 @@ class _CodeBlockWithCopyState extends State<CodeBlockWithCopy> {
       decoration: BoxDecoration(
         color: JarvisTheme.codeBlockBg,
         borderRadius: BorderRadius.circular(JarvisTheme.spacingSm),
-        border: Border.all(color: JarvisTheme.codeBlockBorder),
+        border: Border.all(
+          color: JarvisTheme.sectionChat.withValues(alpha: 0.15),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: JarvisTheme.sectionChat.withValues(alpha: 0.08),
+            blurRadius: 8,
+            spreadRadius: -1,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

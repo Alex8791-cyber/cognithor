@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 
-/// Animated typing dots shown when the assistant is thinking.
+/// Holographic waveform typing indicator shown when the assistant is thinking.
 class TypingIndicator extends StatefulWidget {
   const TypingIndicator({super.key});
 
@@ -18,7 +20,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(seconds: 2),
     )..repeat();
   }
 
@@ -32,43 +34,67 @@ class _TypingIndicatorState extends State<TypingIndicator>
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-            bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(16),
+      child: GlassPanel(
+        tint: JarvisTheme.sectionChat,
+        borderRadius: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: SizedBox(
+          width: 120,
+          height: 40,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              return CustomPaint(
+                painter: WaveformPainter(
+                  time: _controller.value * 2 * pi,
+                  color: JarvisTheme.sectionChat,
+                ),
+              );
+            },
           ),
-          border: Border.all(color: Theme.of(context).dividerColor),
-        ),
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) {
-                final delay = i * 0.2;
-                final t = (_controller.value + delay) % 1.0;
-                final opacity = (t < 0.5) ? t * 2 : (1.0 - t) * 2;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: JarvisTheme.accent
-                        .withAlpha((opacity.clamp(0.3, 1.0) * 255).toInt()),
-                  ),
-                );
-              }),
-            );
-          },
         ),
       ),
     );
   }
+}
+
+/// Draws 3 sine waves at different frequencies for a holographic waveform effect.
+class WaveformPainter extends CustomPainter {
+  const WaveformPainter({
+    required this.time,
+    required this.color,
+  });
+
+  final double time;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (int wave = 0; wave < 3; wave++) {
+      final path = Path();
+      final freq = 2.0 + wave * 0.8;
+      final amp = size.height * (0.15 + wave * 0.08);
+      final phase = wave * 1.2;
+
+      path.moveTo(0, size.height / 2);
+      for (double x = 0; x <= size.width; x += 2) {
+        final y = size.height / 2 +
+            sin((x / size.width) * freq * pi + time * 3 + phase) * amp;
+        path.lineTo(x, y);
+      }
+
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color.withValues(alpha: 0.3 - wave * 0.08)
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(WaveformPainter oldDelegate) =>
+      oldDelegate.time != time || oldDelegate.color != color;
 }
