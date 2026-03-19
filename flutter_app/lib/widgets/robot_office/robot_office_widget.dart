@@ -298,6 +298,10 @@ class RobotOfficeWidget extends StatefulWidget {
     this.isRunning = true,
     this.onTaskCompleted,
     this.onStateChanged,
+    this.cpuUsage = 0,
+    this.memoryUsage = 0,
+    this.activePhase = 0,
+    this.systemLoad = 0,
   });
 
   final bool isRunning;
@@ -305,6 +309,18 @@ class RobotOfficeWidget extends StatefulWidget {
 
   /// Notifies parent about current task text and total completed count.
   final void Function(String currentTask, int taskCount)? onStateChanged;
+
+  /// CPU usage 0.0-1.0 — controls server rack LED blink speed.
+  final double cpuUsage;
+
+  /// Memory usage 0.0-1.0 — LEDs shift toward red when > 0.8.
+  final double memoryUsage;
+
+  /// Active pipeline phase 0-4 — highlights the matching kanban column.
+  final int activePhase;
+
+  /// System load 0.0-1.0 — controls ceiling light brightness.
+  final double systemLoad;
 
   @override
   State<RobotOfficeWidget> createState() => _RobotOfficeWidgetState();
@@ -1504,6 +1520,10 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
                 time: _elapsed,
                 isRunning: true,
                 brightness: Theme.of(context).brightness,
+                cpuUsage: widget.cpuUsage,
+                memoryUsage: widget.memoryUsage,
+                activePhase: widget.activePhase,
+                systemLoad: widget.systemLoad,
               ),
               child: const SizedBox.expand(),
             ),

@@ -167,6 +167,10 @@ class OfficePainter extends CustomPainter {
     this.dog,
     this.cat,
     this.particles,
+    this.cpuUsage = 0,
+    this.memoryUsage = 0,
+    this.activePhase = 0,
+    this.systemLoad = 0,
   });
 
   final List<Robot> robots;
@@ -176,6 +180,18 @@ class OfficePainter extends CustomPainter {
   final dynamic dog;
   final dynamic cat;
   final dynamic particles;
+
+  /// CPU usage 0.0-1.0 — controls server rack LED blink speed.
+  final double cpuUsage;
+
+  /// Memory usage 0.0-1.0 — LEDs shift toward red when > 0.8.
+  final double memoryUsage;
+
+  /// Active pipeline phase 0-4 — highlights the matching kanban column.
+  final int activePhase;
+
+  /// System load 0.0-1.0 — controls ceiling light brightness.
+  final double systemLoad;
 
   // ── Entry Point ────────────────────────────────────────────────────
 
@@ -616,12 +632,22 @@ class OfficePainter extends CustomPainter {
     final colHeaderH = bh * 0.10;
     final headers = ['To Do', 'WIP', 'Done'];
     final headerColors = [JarvisTheme.orange, JarvisTheme.accent, JarvisTheme.green];
+    // Map activePhase (0-4) to kanban columns: 0-1 = To Do, 2-3 = WIP, 4 = Done
+    final highlightCol = activePhase <= 1 ? 0 : (activePhase <= 3 ? 1 : 2);
     for (int c = 0; c < 3; c++) {
       final hx = bx + c * colW;
+      final isActive = c == highlightCol && activePhase > 0;
       canvas.drawRect(
         Rect.fromLTWH(hx, colHeaderY, colW, colHeaderH),
-        Paint()..color = headerColors[c].withValues(alpha: 0.25),
+        Paint()..color = headerColors[c].withValues(alpha: isActive ? 0.55 : 0.25),
       );
+      // Active column glow highlight
+      if (isActive) {
+        canvas.drawRect(
+          Rect.fromLTWH(hx, colHeaderY + colHeaderH, colW, bh - headerH - colHeaderH),
+          Paint()..color = headerColors[c].withValues(alpha: 0.08 + 0.04 * _osc(2.0)),
+        );
+      }
       final tp = TextPainter(
         text: TextSpan(
           text: headers[c],
@@ -702,6 +728,8 @@ class OfficePainter extends CustomPainter {
 
   void _drawCeilingLights(Canvas canvas, Size s) {
     final nightIntensity = 1.0 - _dayFactor; // 1.0 at night, 0.0 during day
+    // systemLoad boosts brightness (0.0 = normal, 1.0 = max brightness)
+    final loadBoost = systemLoad * 0.3;
     for (int i = 0; i < 3; i++) {
       final lx = s.width * (0.22 + i * 0.28);
       final ly = s.height * 0.16;
@@ -717,11 +745,11 @@ class OfficePainter extends CustomPainter {
         Paint()..color = const Color(0xFF888898),
       );
 
-      // Light strip glow — brighter at night, subtle during day
-      final baseAlpha = nightIntensity * 0.3 + 0.03;
-      final glowAlpha = baseAlpha + 0.02 * _osc(0.8, i * 2.0);
-      final glowColor = nightIntensity > 0.3
-          ? const Color(0xFFFFE0A0) // warm yellow at night
+      // Light strip glow — brighter at night and when system load is high
+      final baseAlpha = nightIntensity * 0.3 + 0.03 + loadBoost;
+      final glowAlpha = (baseAlpha + 0.02 * _osc(0.8, i * 2.0)).clamp(0.0, 1.0);
+      final glowColor = (nightIntensity > 0.3 || systemLoad > 0.5)
+          ? const Color(0xFFFFE0A0) // warm yellow at night or high load
           : Colors.white;
       canvas.drawOval(
         Rect.fromCenter(center: Offset(lx, ly + 10), width: lw * 1.3, height: 30),
@@ -730,15 +758,16 @@ class OfficePainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15),
       );
 
-      // Warm light strip on fixture at night
-      if (nightIntensity > 0.1) {
+      // Warm light strip on fixture — visible at night or under high load
+      if (nightIntensity > 0.1 || systemLoad > 0.2) {
+        final stripAlpha = ((nightIntensity + systemLoad) * 0.6).clamp(0.0, 1.0);
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromCenter(center: Offset(lx, ly + 1), width: lw * 0.9, height: 3),
             const Radius.circular(1.5),
           ),
           Paint()
-            ..color = const Color(0xFFFFE0A0).withValues(alpha: nightIntensity * 0.6),
+            ..color = const Color(0xFFFFE0A0).withValues(alpha: stripAlpha),
         );
       }
     }
@@ -1205,19 +1234,18 @@ class OfficePainter extends CustomPainter {
         Paint()..color = const Color(0xFF1a1a30),
       );
 
-      // Blinking LEDs
+      // Blinking LEDs — speed scales with cpuUsage, color shifts with memoryUsage
+      final blinkSpeed = 3.0 + cpuUsage * 8.0; // faster blink when CPU is high
       for (int led = 0; led < 3; led++) {
-        final ledColors = [
-          JarvisTheme.green,
-          JarvisTheme.orange,
-          JarvisTheme.red,
-        ];
-        final blink = sin(time * (3 + led) + i * 1.5 + led * 2.1);
+        final baseColors = memoryUsage > 0.8
+            ? [JarvisTheme.orange, JarvisTheme.red, JarvisTheme.red]
+            : [JarvisTheme.green, JarvisTheme.orange, JarvisTheme.red];
+        final blink = sin(time * (blinkSpeed + led) + i * 1.5 + led * 2.1);
         final on = blink > (led == 2 ? 0.7 : 0.0); // red blinks less
         canvas.drawCircle(
           Offset(rx + 8 + led * 5, sy + sh / 2),
           1.8,
-          Paint()..color = on ? ledColors[led].withValues(alpha: 0.9) : const Color(0xFF333350),
+          Paint()..color = on ? baseColors[led].withValues(alpha: 0.9) : const Color(0xFF333350),
         );
         // LED glow
         if (on) {
@@ -1225,7 +1253,7 @@ class OfficePainter extends CustomPainter {
             Offset(rx + 8 + led * 5, sy + sh / 2),
             4,
             Paint()
-              ..color = ledColors[led].withValues(alpha: 0.15)
+              ..color = baseColors[led].withValues(alpha: 0.15)
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
           );
         }

@@ -6,6 +6,7 @@ import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/config_provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
+import 'package:jarvis_ui/widgets/glass_panel.dart';
 import 'package:jarvis_ui/widgets/jarvis_toast.dart';
 
 import 'package:jarvis_ui/screens/config/general_page.dart';
@@ -27,34 +28,82 @@ import 'package:jarvis_ui/screens/config/agents_page.dart';
 import 'package:jarvis_ui/screens/config/bindings_page.dart';
 import 'package:jarvis_ui/screens/config/system_page.dart';
 
-class _PageDef {
-  const _PageDef(this.icon, this.labelKey, this.key, this.builder);
+// ── Category definition ──────────────────────────────────────────────────────
+
+class _Category {
+  const _Category(this.name, this.icon, this.pageKeys);
+  final String name;
+  final IconData icon;
+  final List<String> pageKeys;
+}
+
+const _categories = [
+  _Category('AI Engine', Icons.psychology, [
+    'providers', 'models', 'planner', 'executor', 'prompts',
+  ]),
+  _Category('Channels', Icons.cell_tower, [
+    'channels',
+  ]),
+  _Category('Knowledge', Icons.storage, [
+    'memory', 'agents', 'bindings', 'web',
+  ]),
+  _Category('Security', Icons.shield, [
+    'security', 'database',
+  ]),
+  _Category('System', Icons.settings, [
+    'general', 'language', 'logging', 'cron', 'mcp', 'system',
+  ]),
+];
+
+// ── Page key → builder + label + icon ────────────────────────────────────────
+
+class _SubPageDef {
+  const _SubPageDef(this.icon, this.labelKey, this.builder);
   final IconData icon;
   final String Function(AppLocalizations l) labelKey;
-  final String? key; // keyboard shortcut digit
   final Widget Function() builder;
 }
 
-final _pages = <_PageDef>[
-  _PageDef(Icons.settings, (l) => l.configPageGeneral, '1', () => const GeneralPage()),
-  _PageDef(Icons.language, (l) => l.configPageLanguage, '2', () => const LanguagePage()),
-  _PageDef(Icons.cloud, (l) => l.configPageProviders, '3', () => const ProvidersPage()),
-  _PageDef(Icons.model_training, (l) => l.configPageModels, '4', () => const ModelsPage()),
-  _PageDef(Icons.architecture, (l) => l.configPagePlanner, '5', () => const PlannerPage()),
-  _PageDef(Icons.play_arrow, (l) => l.configPageExecutor, '6', () => const ExecutorPage()),
-  _PageDef(Icons.memory, (l) => l.configPageMemory, '7', () => const MemoryPage()),
-  _PageDef(Icons.chat, (l) => l.configPageChannels, '8', () => const ChannelsPage()),
-  _PageDef(Icons.shield, (l) => l.configPageSecurity, '9', () => const SecurityPage()),
-  _PageDef(Icons.public, (l) => l.configPageWeb, '0', () => const WebPage()),
-  _PageDef(Icons.dns, (l) => l.configPageMcp, null, () => const McpPage()),
-  _PageDef(Icons.schedule, (l) => l.configPageCron, null, () => const CronPage()),
-  _PageDef(Icons.storage, (l) => l.configPageDatabase, null, () => const DatabasePage()),
-  _PageDef(Icons.article, (l) => l.configPageLogging, null, () => const LoggingPage()),
-  _PageDef(Icons.edit_note, (l) => l.configPagePrompts, null, () => const PromptsPage()),
-  _PageDef(Icons.smart_toy, (l) => l.configPageAgents, null, () => const AgentsConfigPage()),
-  _PageDef(Icons.link, (l) => l.configPageBindings, null, () => const BindingsConfigPage()),
-  _PageDef(Icons.build, (l) => l.configPageSystem, null, () => const SystemConfigPage()),
-];
+final _pageRegistry = <String, _SubPageDef>{
+  'general': _SubPageDef(
+      Icons.settings, (l) => l.configPageGeneral, () => const GeneralPage()),
+  'language': _SubPageDef(
+      Icons.language, (l) => l.configPageLanguage, () => const LanguagePage()),
+  'providers': _SubPageDef(
+      Icons.cloud, (l) => l.configPageProviders, () => const ProvidersPage()),
+  'models': _SubPageDef(Icons.model_training, (l) => l.configPageModels,
+      () => const ModelsPage()),
+  'planner': _SubPageDef(Icons.architecture, (l) => l.configPagePlanner,
+      () => const PlannerPage()),
+  'executor': _SubPageDef(Icons.play_arrow, (l) => l.configPageExecutor,
+      () => const ExecutorPage()),
+  'memory': _SubPageDef(
+      Icons.memory, (l) => l.configPageMemory, () => const MemoryPage()),
+  'channels': _SubPageDef(
+      Icons.chat, (l) => l.configPageChannels, () => const ChannelsPage()),
+  'security': _SubPageDef(
+      Icons.shield, (l) => l.configPageSecurity, () => const SecurityPage()),
+  'web': _SubPageDef(
+      Icons.public, (l) => l.configPageWeb, () => const WebPage()),
+  'mcp':
+      _SubPageDef(Icons.dns, (l) => l.configPageMcp, () => const McpPage()),
+  'cron': _SubPageDef(
+      Icons.schedule, (l) => l.configPageCron, () => const CronPage()),
+  'database': _SubPageDef(Icons.storage, (l) => l.configPageDatabase,
+      () => const DatabasePage()),
+  'logging': _SubPageDef(
+      Icons.article, (l) => l.configPageLogging, () => const LoggingPage()),
+  'prompts': _SubPageDef(Icons.edit_note, (l) => l.configPagePrompts,
+      () => const PromptsPage()),
+  'agents': _SubPageDef(Icons.smart_toy, (l) => l.configPageAgents,
+      () => const AgentsConfigPage()),
+  'bindings': _SubPageDef(
+      Icons.link, (l) => l.configPageBindings, () => const BindingsConfigPage()),
+  'system': _SubPageDef(
+      Icons.build, (l) => l.configPageSystem, () => const SystemConfigPage()),
+};
+
+// ── Config Screen ────────────────────────────────────────────────────────────
 
 class ConfigScreen extends StatefulWidget {
   const ConfigScreen({super.key});
@@ -63,9 +112,35 @@ class ConfigScreen extends StatefulWidget {
   State<ConfigScreen> createState() => _ConfigScreenState();
 }
 
-class _ConfigScreenState extends State<ConfigScreen> {
-  int _selectedPage = 0;
+class _ConfigScreenState extends State<ConfigScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  int _selectedCategory = 0;
+  int _selectedSubPage = 0;
   bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _categories.length, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {
+        _selectedCategory = _tabController.index;
+        _selectedSubPage = 0;
+      });
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -75,12 +150,16 @@ class _ConfigScreenState extends State<ConfigScreen> {
       final cfg = context.read<ConfigProvider>();
       final conn = context.read<ConnectionProvider>();
       cfg.setApi(conn.api);
-      // Only load if not already loaded (avoids reload on navigation back)
       if (cfg.cfg.isEmpty) {
         cfg.loadAll();
       }
     }
   }
+
+  List<String> get _currentPageKeys =>
+      _categories[_selectedCategory].pageKeys;
+
+  String get _currentPageKey => _currentPageKeys[_selectedSubPage];
 
   Future<void> _save() async {
     final cfg = context.read<ConfigProvider>();
@@ -103,9 +182,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
     }
   }
 
-  void _navigateToPage(int index) {
-    if (index >= 0 && index < _pages.length) {
-      setState(() => _selectedPage = index);
+  void _navigateToSubPage(int index) {
+    if (index >= 0 && index < _currentPageKeys.length) {
+      setState(() => _selectedSubPage = index);
     }
   }
 
@@ -114,11 +193,10 @@ class _ConfigScreenState extends State<ConfigScreen> {
     final l = AppLocalizations.of(context);
     final isWide = MediaQuery.sizeOf(context).width > 700;
 
-    // Build keyboard shortcut bindings: Ctrl+1-9,0 for pages, Ctrl+S for save
+    // Keyboard shortcuts: Ctrl+S save, Ctrl+1-0 for sub-pages within category
     final bindings = <ShortcutActivator, VoidCallback>{
       const SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
     };
-    // Ctrl+1 through Ctrl+9 for first 9 pages, Ctrl+0 for 10th
     final digitKeys = [
       LogicalKeyboardKey.digit1, LogicalKeyboardKey.digit2,
       LogicalKeyboardKey.digit3, LogicalKeyboardKey.digit4,
@@ -126,10 +204,10 @@ class _ConfigScreenState extends State<ConfigScreen> {
       LogicalKeyboardKey.digit7, LogicalKeyboardKey.digit8,
       LogicalKeyboardKey.digit9, LogicalKeyboardKey.digit0,
     ];
-    for (var i = 0; i < digitKeys.length && i < _pages.length; i++) {
+    for (var i = 0; i < digitKeys.length && i < _currentPageKeys.length; i++) {
       final idx = i;
       bindings[SingleActivator(digitKeys[i], control: true)] =
-          () => _navigateToPage(idx);
+          () => _navigateToSubPage(idx);
     }
 
     return CallbackShortcuts(
@@ -140,7 +218,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
           appBar: AppBar(
             title: Text(l.configTitle),
             actions: [
-              // Reload button
               Consumer<ConfigProvider>(
                 builder: (context, cfg, _) => IconButton(
                   icon: const Icon(Icons.refresh, size: 20),
@@ -156,10 +233,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              // Show error banner but still allow navigation if we have data
               return Column(
                 children: [
-                  // Error banner (non-blocking)
+                  // Error banner
                   if (cfg.error != null)
                     Container(
                       width: double.infinity,
@@ -182,27 +258,28 @@ class _ConfigScreenState extends State<ConfigScreen> {
                           ),
                           TextButton(
                             onPressed: () => cfg.loadAll(),
-                            child: Text(l.retry, style: const TextStyle(fontSize: 12)),
+                            child: Text(l.retry,
+                                style: const TextStyle(fontSize: 12)),
                           ),
                         ],
                       ),
                     ),
-                  // Main content
+                  // Category tabs
+                  _buildCategoryTabs(context),
+                  // Content area
                   Expanded(
                     child: isWide
                         ? Row(
                             children: [
-                              _buildSidebar(context, l),
+                              _buildSubPageSidebar(context, l),
                               const VerticalDivider(width: 1),
-                              Expanded(child: _pages[_selectedPage].builder()),
+                              Expanded(
+                                child: _pageRegistry[_currentPageKey]!
+                                    .builder(),
+                              ),
                             ],
                           )
-                        : Column(
-                            children: [
-                              _buildHorizontalNav(context, l),
-                              Expanded(child: _pages[_selectedPage].builder()),
-                            ],
-                          ),
+                        : _pageRegistry[_currentPageKey]!.builder(),
                   ),
                   // Save bar
                   _buildSaveBar(context, cfg, l),
@@ -215,68 +292,128 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
   }
 
-  Widget _buildSidebar(BuildContext context, AppLocalizations l) {
-    return SizedBox(
-      width: 180,
-      child: ListView.builder(
-        itemCount: _pages.length,
-        itemBuilder: (context, i) {
-          final page = _pages[i];
-          final selected = i == _selectedPage;
-          return ListTile(
-            dense: true,
-            visualDensity: VisualDensity.compact,
-            leading: Icon(page.icon,
-                size: 18,
-                color:
-                    selected ? JarvisTheme.accent : JarvisTheme.textSecondary),
-            title: Text(page.labelKey(l),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  color: selected
-                      ? JarvisTheme.accent
-                      : Theme.of(context).textTheme.bodyMedium?.color,
-                )),
-            trailing: page.key != null
-                ? Text(
-                    '^${page.key!}',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: JarvisTheme.textTertiary,
-                      fontFamily: 'monospace',
+  Widget _buildCategoryTabs(BuildContext context) {
+    const tint = JarvisTheme.sectionAdmin;
+
+    return GlassPanel(
+      tint: tint,
+      borderRadius: 0,
+      blur: 12,
+      padding: EdgeInsets.zero,
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        indicatorColor: tint,
+        indicatorWeight: 3,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: const UnderlineTabIndicator(
+          borderSide: BorderSide(color: tint, width: 3),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(3)),
+        ),
+        labelColor: tint,
+        unselectedLabelColor: JarvisTheme.textSecondary,
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
+        overlayColor: WidgetStatePropertyAll(tint.withValues(alpha: 0.08)),
+        dividerColor: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        tabs: _categories.map((cat) {
+          final isActive = _categories.indexOf(cat) == _selectedCategory;
+          return Tab(
+            height: 48,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(cat.icon, size: 18),
+                const SizedBox(width: 8),
+                Text(cat.name),
+                if (isActive) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: tint,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: tint.withValues(alpha: 0.6),
+                          blurRadius: 6,
+                        ),
+                      ],
                     ),
-                  )
-                : null,
-            selected: selected,
-            selectedTileColor: JarvisTheme.accent.withValues(alpha: 0.08),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            onTap: () => setState(() => _selectedPage = i),
+                  ),
+                ],
+              ],
+            ),
           );
-        },
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildHorizontalNav(BuildContext context, AppLocalizations l) {
+  Widget _buildSubPageSidebar(BuildContext context, AppLocalizations l) {
+    final keys = _currentPageKeys;
+    const tint = JarvisTheme.sectionAdmin;
+
     return SizedBox(
-      height: 48,
+      width: 200,
       child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        itemCount: _pages.length,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        itemCount: keys.length,
         itemBuilder: (context, i) {
-          final page = _pages[i];
-          final selected = i == _selectedPage;
+          final key = keys[i];
+          final def = _pageRegistry[key]!;
+          final selected = i == _selectedSubPage;
+          final shortcutLabel = i < 9
+              ? '^${i + 1}'
+              : i == 9
+                  ? '^0'
+                  : null;
+
           return Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: ChoiceChip(
-              label: Text(page.labelKey(l), style: const TextStyle(fontSize: 12)),
-              avatar: Icon(page.icon, size: 14),
-              selected: selected,
-              onSelected: (_) => setState(() => _selectedPage = i),
-              selectedColor: JarvisTheme.accent.withValues(alpha: 0.2),
+            padding: const EdgeInsets.only(bottom: 2),
+            child: GlassPanel(
+              tint: selected ? tint : tint.withValues(alpha: 0.3),
+              borderRadius: 8,
+              blur: 8,
+              padding: EdgeInsets.zero,
+              glowOnHover: true,
+              onTap: () => setState(() => _selectedSubPage = i),
+              child: ListTile(
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                leading: Icon(def.icon,
+                    size: 18,
+                    color: selected ? tint : JarvisTheme.textSecondary),
+                title: Text(
+                  def.labelKey(l),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        selected ? FontWeight.w600 : FontWeight.normal,
+                    color: selected
+                        ? tint
+                        : Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                ),
+                trailing: shortcutLabel != null
+                    ? Text(
+                        shortcutLabel,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: JarvisTheme.textTertiary,
+                          fontFamily: 'monospace',
+                        ),
+                      )
+                    : null,
+                selected: selected,
+                selectedTileColor: tint.withValues(alpha: 0.08),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
             ),
           );
         },
@@ -284,38 +421,119 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
   }
 
-  Widget _buildSaveBar(BuildContext context, ConfigProvider cfg, AppLocalizations l) {
+  Widget _buildSaveBar(
+      BuildContext context, ConfigProvider cfg, AppLocalizations l) {
     if (!cfg.hasChanges && !cfg.saving) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+    const tint = JarvisTheme.sectionAdmin;
+
+    return _NeonPulseWrapper(
+      active: cfg.hasChanges,
+      color: tint,
+      child: GlassPanel(
+        tint: tint,
+        borderRadius: 0,
+        blur: 12,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.edit, size: 16, color: JarvisTheme.orange),
+            const SizedBox(width: 8),
+            Text(l.unsavedChanges),
+            const Spacer(),
+            TextButton(
+              onPressed: cfg.saving ? null : () => cfg.discard(),
+              child: Text(l.discard),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: cfg.saving ? null : _save,
+              icon: cfg.saving
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.save, size: 16),
+              label: Text(cfg.saving ? l.saving : l.saveCtrlS),
+            ),
+          ],
+        ),
       ),
-      child: Row(
-        children: [
-          Icon(Icons.edit, size: 16, color: JarvisTheme.orange),
-          const SizedBox(width: 8),
-          Text(l.unsavedChanges),
-          const Spacer(),
-          TextButton(
-            onPressed: cfg.saving ? null : () => cfg.discard(),
-            child: Text(l.discard),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: cfg.saving ? null : _save,
-            icon: cfg.saving
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.save, size: 16),
-            label: Text(cfg.saving ? l.saving : l.saveCtrlS),
-          ),
-        ],
+    );
+  }
+}
+
+// ── Neon pulse animation wrapper for the save bar ────────────────────────────
+
+class _NeonPulseWrapper extends StatefulWidget {
+  const _NeonPulseWrapper({
+    required this.active,
+    required this.color,
+    required this.child,
+  });
+
+  final bool active;
+  final Color color;
+  final Widget child;
+
+  @override
+  State<_NeonPulseWrapper> createState() => _NeonPulseWrapperState();
+}
+
+class _NeonPulseWrapperState extends State<_NeonPulseWrapper>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _opacity = Tween<double>(begin: 0.15, end: 0.4).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    if (widget.active) _controller.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _NeonPulseWrapper old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.active && _controller.isAnimating) {
+      _controller.stop();
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active) return widget.child;
+
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (context, child) => Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: _opacity.value),
+              blurRadius: 16,
+              spreadRadius: -2,
+            ),
+          ],
+        ),
+        child: child,
       ),
+      child: widget.child,
     );
   }
 }
