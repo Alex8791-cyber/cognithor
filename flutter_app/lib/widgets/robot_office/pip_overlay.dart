@@ -40,12 +40,12 @@ class _RobotOfficePipState extends State<RobotOfficePip>
   bool _minimized = false; // just shows a small robot icon
 
   // Small PiP dimensions.
-  static const double _smallWidth = 280;
-  static const double _smallHeight = 180;
+  static const double _smallWidth = 420;
+  static const double _smallHeight = 270;
 
   // Large PiP dimensions.
-  static const double _largeWidth = 500;
-  static const double _largeHeight = 320;
+  static const double _largeWidth = 700;
+  static const double _largeHeight = 450;
 
   // Minimized bubble size.
   static const double _bubbleSize = 48;
