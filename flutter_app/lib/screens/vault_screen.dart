@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/admin_provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_list_tile.dart';
 import 'package:jarvis_ui/widgets/jarvis_loading_skeleton.dart';
@@ -131,7 +131,7 @@ class _VaultScreenState extends State<VaultScreen> {
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: GlassPanel(
+                    child: NeonCard(
                     tint: JarvisTheme.sectionAdmin,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,

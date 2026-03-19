@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:jarvis_ui/providers/security_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
@@ -181,7 +181,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         const SizedBox(height: 16),
 
         // Approval rate bar
-        GlassPanel(
+        NeonCard(
           tint: JarvisTheme.sectionAdmin,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,7 +320,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         JarvisSection(title: l.scanStatus),
-        GlassPanel(
+        NeonCard(
           tint: JarvisTheme.sectionAdmin,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,7 +364,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         if (results != null) ...[
           const SizedBox(height: 16),
           JarvisSection(title: l.scanResults),
-          GlassPanel(
+          NeonCard(
             tint: JarvisTheme.sectionAdmin,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +564,7 @@ class _RoleCardState extends State<_RoleCard> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: GlassPanel(
+      child: NeonCard(
         tint: JarvisTheme.sectionAdmin,
         glowOnHover: true,
         child: Column(

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/jarvis_confirmation_dialog.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_list_tile.dart';
@@ -152,7 +152,7 @@ class _SystemScreenState extends State<SystemScreen> {
           ],
         ),
         const SizedBox(height: JarvisTheme.spacingSm),
-        GlassPanel(
+        NeonCard(
           tint: JarvisTheme.sectionAdmin,
           child: Row(
             children: [
@@ -256,7 +256,7 @@ class _SystemScreenState extends State<SystemScreen> {
   }
 
   Widget _buildDangerZone(AppLocalizations l) {
-    return GlassPanel(
+    return NeonCard(
       tint: JarvisTheme.red,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

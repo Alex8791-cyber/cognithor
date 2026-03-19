@@ -6,7 +6,7 @@ import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/form/jarvis_toggle_field.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_stat.dart';
@@ -254,7 +254,7 @@ class _LearningScreenState extends State<LearningScreen> {
         const SizedBox(height: JarvisTheme.spacingLg),
 
         // Learning activity chart
-        GlassPanel(
+        NeonCard(
           tint: JarvisTheme.sectionDashboard,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +277,7 @@ class _LearningScreenState extends State<LearningScreen> {
         const SizedBox(height: 12),
 
         // Confidence history
-        GlassPanel(
+        NeonCard(
           tint: JarvisTheme.sectionDashboard,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,7 +338,7 @@ class _LearningScreenState extends State<LearningScreen> {
         const SizedBox(height: 12),
 
         // Watch directories
-        GlassPanel(
+        NeonCard(
           tint: JarvisTheme.sectionDashboard,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,7 +532,7 @@ class _LearningScreenState extends State<LearningScreen> {
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: GlassPanel(
+          child: NeonCard(
           tint: JarvisTheme.sectionDashboard,
           glowOnHover: true,
           child: Column(
@@ -719,7 +719,7 @@ class _LearningScreenState extends State<LearningScreen> {
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: GlassPanel(
+                          child: NeonCard(
                           tint: JarvisTheme.sectionDashboard,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -986,7 +986,7 @@ class _LearningScreenState extends State<LearningScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: GlassPanel(
+                            child: NeonCard(
                               tint: JarvisTheme.sectionDashboard,
                               child: Row(
                                 children: [
@@ -1080,7 +1080,7 @@ class _GapCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: GlassPanel(
+      child: NeonCard(
         tint: JarvisTheme.sectionDashboard,
         glowOnHover: true,
         child: Column(

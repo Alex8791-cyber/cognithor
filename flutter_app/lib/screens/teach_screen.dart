@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/neon_glow.dart';
 
 /// "Teach Cognithor" screen -- lets users upload files, paste URLs, and submit
@@ -272,7 +272,7 @@ class _TeachScreenState extends State<TeachScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return GlassPanel(
+    return NeonCard(
       tint: JarvisTheme.sectionDashboard,
       padding: const EdgeInsets.all(JarvisTheme.spacing),
       child: Column(
@@ -376,7 +376,7 @@ class _TeachScreenState extends State<TeachScreen> {
   Widget _buildUrlCard(AppLocalizations l) {
     final theme = Theme.of(context);
 
-    return GlassPanel(
+    return NeonCard(
       tint: JarvisTheme.sectionDashboard,
       padding: const EdgeInsets.all(JarvisTheme.spacing),
       child: Column(
@@ -441,7 +441,7 @@ class _TeachScreenState extends State<TeachScreen> {
   Widget _buildYoutubeCard(AppLocalizations l) {
     final theme = Theme.of(context);
 
-    return GlassPanel(
+    return NeonCard(
       tint: JarvisTheme.sectionDashboard,
       padding: const EdgeInsets.all(JarvisTheme.spacing),
       child: Column(

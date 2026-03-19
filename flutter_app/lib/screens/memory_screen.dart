@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/memory_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/jarvis_list_tile.dart';
@@ -168,7 +168,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: GlassPanel(
+                child: NeonCard(
                 tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -272,7 +272,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: GlassPanel(
+                child: NeonCard(
                 tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -382,7 +382,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: GlassPanel(
+                child: NeonCard(
                 tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -415,7 +415,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: GlassPanel(
+                child: NeonCard(
                 tint: JarvisTheme.sectionAdmin,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,

@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/skills_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 import 'package:jarvis_ui/widgets/neon_glow.dart';
 import 'package:jarvis_ui/widgets/jarvis_chip.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
@@ -287,7 +287,7 @@ class _SkillCard extends StatelessWidget {
     final downloadCount = skill['downloads']?.toString() ?? '0';
     final isVerified = skill['verified'] as bool? ?? false;
 
-    return GlassPanel(
+    return NeonCard(
       tint: JarvisTheme.sectionSkills,
       glowOnHover: true,
       child: Column(

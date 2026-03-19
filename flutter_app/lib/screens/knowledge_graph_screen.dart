@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 
 
 class KnowledgeGraphScreen extends StatefulWidget {
@@ -316,7 +316,7 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
                     if (_selectedEntity != null)
                       SizedBox(
                         width: 280,
-                        child: GlassPanel(
+                        child: NeonCard(
                           tint: JarvisTheme.sectionAdmin,
                           borderRadius: 0,
                           child: _buildDetailPanel(theme),

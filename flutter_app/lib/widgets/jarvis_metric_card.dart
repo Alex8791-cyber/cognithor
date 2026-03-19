@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-import 'package:jarvis_ui/widgets/glass_panel.dart';
+import 'package:jarvis_ui/widgets/neon_card.dart';
 
 class JarvisMetricCard extends StatelessWidget {
   const JarvisMetricCard({
@@ -25,7 +25,7 @@ class JarvisMetricCard extends StatelessWidget {
     final theme = Theme.of(context);
     final effectiveColor = color ?? JarvisTheme.accent;
 
-    return GlassPanel(
+    return NeonCard(
       tint: effectiveColor,
       glowOnHover: true,
       child: Column(
