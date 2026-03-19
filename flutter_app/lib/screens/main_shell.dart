@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
+import 'package:jarvis_ui/providers/pip_provider.dart';
 import 'package:jarvis_ui/providers/theme_provider.dart';
 import 'package:jarvis_ui/screens/admin_hub_screen.dart';
 import 'package:jarvis_ui/screens/chat_screen.dart';
@@ -11,6 +12,7 @@ import 'package:jarvis_ui/screens/identity_screen.dart';
 import 'package:jarvis_ui/screens/skills_screen.dart';
 import 'package:jarvis_ui/widgets/global_search_dialog.dart';
 import 'package:jarvis_ui/widgets/responsive_scaffold.dart';
+import 'package:jarvis_ui/widgets/robot_office/pip_overlay.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -51,6 +53,14 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
+  /// Wraps the scaffold with the Robot Office PiP overlay when visible.
+  Widget _wrapWithPip(PipProvider pip, Widget scaffold) {
+    if (pip.visible) {
+      return RobotOfficePip(child: scaffold);
+    }
+    return scaffold;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -89,6 +99,8 @@ class _MainShellState extends State<MainShell> {
       ),
     ];
 
+    final pipProvider = context.watch<PipProvider>();
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyK, control: true):
@@ -106,14 +118,17 @@ class _MainShellState extends State<MainShell> {
       },
       child: Focus(
         autofocus: true,
-        child: ResponsiveScaffold(
-          screens: _screens,
-          navItems: navItems,
-          currentIndex: _currentIndex,
-          onIndexChanged: _navigateTab,
-          onSearchTap: _openSearch,
-          onThemeToggle: () => themeProvider.toggle(),
-          isDark: themeProvider.isDark,
+        child: _wrapWithPip(
+          pipProvider,
+          ResponsiveScaffold(
+            screens: _screens,
+            navItems: navItems,
+            currentIndex: _currentIndex,
+            onIndexChanged: _navigateTab,
+            onSearchTap: _openSearch,
+            onThemeToggle: () => themeProvider.toggle(),
+            isDark: themeProvider.isDark,
+          ),
         ),
       ),
     );

@@ -11,6 +11,7 @@ import 'package:jarvis_ui/providers/memory_provider.dart';
 import 'package:jarvis_ui/providers/security_provider.dart';
 import 'package:jarvis_ui/providers/skills_provider.dart';
 import 'package:jarvis_ui/providers/theme_provider.dart';
+import 'package:jarvis_ui/providers/pip_provider.dart';
 import 'package:jarvis_ui/providers/voice_provider.dart';
 import 'package:jarvis_ui/providers/workflow_provider.dart';
 import 'package:jarvis_ui/screens/splash_screen.dart';
@@ -38,6 +39,7 @@ class JarvisApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => VoiceProvider()),
+        ChangeNotifierProvider(create: (_) => PipProvider()),
       ],
       child: Consumer2<ThemeProvider, LocaleProvider>(
         builder: (context, themeProvider, localeProvider, _) {

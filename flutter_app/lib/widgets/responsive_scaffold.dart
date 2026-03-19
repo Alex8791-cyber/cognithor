@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:jarvis_ui/providers/pip_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/animated_indexed_stack.dart';
 
@@ -188,6 +190,18 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                   color: JarvisTheme.orange,
                   onTap: widget.onThemeToggle ?? () {},
                 ),
+                Consumer<PipProvider>(
+                  builder: (context, pip, _) {
+                    return _BottomBarAction(
+                      icon: Icons.smart_toy,
+                      label: pip.visible ? 'Hide' : 'Office',
+                      color: pip.visible
+                          ? JarvisTheme.accent
+                          : JarvisTheme.purple,
+                      onTap: () => pip.toggle(),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -275,6 +289,18 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                           label: isDark ? 'Light' : 'Dark',
                           expanded: expanded,
                           onTap: widget.onThemeToggle ?? () {},
+                        ),
+                        const SizedBox(height: 4),
+                        Consumer<PipProvider>(
+                          builder: (context, pip, _) {
+                            return _RailActionButton(
+                              icon: Icons.smart_toy,
+                              label:
+                                  pip.visible ? 'Hide Office' : 'Robot Office',
+                              expanded: expanded,
+                              onTap: () => pip.toggle(),
+                            );
+                          },
                         ),
                       ],
                     ),

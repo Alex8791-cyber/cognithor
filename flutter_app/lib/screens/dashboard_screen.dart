@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -6,12 +7,15 @@ import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jarvis_ui/providers/connection_provider.dart';
+import 'package:jarvis_ui/providers/pip_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
+import 'package:jarvis_ui/widgets/glass_card.dart';
 import 'package:jarvis_ui/widgets/jarvis_card.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/animated_counter.dart';
 import 'package:jarvis_ui/widgets/jarvis_section.dart';
 import 'package:jarvis_ui/widgets/jarvis_status_badge.dart';
+import 'package:jarvis_ui/widgets/robot_office/robot_office_widget.dart';
 import 'package:jarvis_ui/widgets/shimmer_loading.dart';
 import 'package:jarvis_ui/widgets/staggered_list.dart';
 
@@ -34,6 +38,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   String? _error;
   Timer? _refreshTimer;
+
+  // Robot Office state
+  String _robotCurrentTask = 'Warte auf Aufgabe...';
+  int _robotTaskCount = 0;
 
   @override
   void initState() {
@@ -114,6 +122,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.all(JarvisTheme.spacing),
         children: [
+          // ── Robot Office — hero visualization or PiP notice ────
+          Consumer<PipProvider>(
+            builder: (context, pip, _) {
+              if (pip.visible) {
+                // PiP is active — show a compact notice instead of the
+                // full inline office.
+                return _RobotOfficePipNotice(
+                  onShowFullscreen: () => pip.exitFullscreen(),
+                );
+              }
+              // PiP is hidden — show the Robot Office inline at full width.
+              return SizedBox(
+                height: 300,
+                child: Stack(
+                  children: [
+                    RobotOfficeWidget(
+                      isRunning: true,
+                      onStateChanged: (task, count) {
+                        setState(() {
+                          _robotCurrentTask = task;
+                          _robotTaskCount = count;
+                        });
+                      },
+                    ),
+                    // Status overlay at bottom
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: _RobotStatusOverlay(
+                        currentTask: _robotCurrentTask,
+                        taskCount: _robotTaskCount,
+                      ),
+                    ),
+                    // Button to switch to PiP mode
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _PipModeButton(
+                        onTap: () => pip.show(),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: JarvisTheme.spacingSm),
+
+          // ── Agent Cards ────────────────────────────────────────
+          const _AgentCardRow(),
+          const SizedBox(height: JarvisTheme.spacingLg),
+
           StaggeredList(
             children: [
               // -- System Status --
@@ -760,6 +821,286 @@ class ActivityChart extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Robot Status Overlay — glassmorphism bar at bottom of the office scene
+// ---------------------------------------------------------------------------
+
+class _RobotStatusOverlay extends StatelessWidget {
+  const _RobotStatusOverlay({
+    required this.currentTask,
+    required this.taskCount,
+  });
+
+  final String currentTask;
+  final int taskCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(12),
+        bottomRight: Radius.circular(12),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.black : Colors.white)
+                .withValues(alpha: isDark ? 0.45 : 0.55),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: isDark ? 0.06 : 0.2),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF00e676),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  currentTask,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '$taskCount Tasks',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: JarvisTheme.accent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Agent Card Row
+// ---------------------------------------------------------------------------
+
+class _AgentCardRow extends StatelessWidget {
+  const _AgentCardRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Expanded(
+          child: _AgentCard(
+            name: 'Planner',
+            role: 'Strategie',
+            color: Color(0xFF6366f1),
+          ),
+        ),
+        SizedBox(width: JarvisTheme.spacingSm),
+        Expanded(
+          child: _AgentCard(
+            name: 'Executor',
+            role: 'Ausführung',
+            color: Color(0xFF10b981),
+          ),
+        ),
+        SizedBox(width: JarvisTheme.spacingSm),
+        Expanded(
+          child: _AgentCard(
+            name: 'Researcher',
+            role: 'Recherche',
+            color: Color(0xFFf59e0b),
+          ),
+        ),
+        SizedBox(width: JarvisTheme.spacingSm),
+        Expanded(
+          child: _AgentCard(
+            name: 'Gatekeeper',
+            role: 'Sicherheit',
+            color: Color(0xFFef4444),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Agent Card — small glassmorphism card with color accent
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Robot Office PiP Notice — shown when PiP overlay is active
+// ---------------------------------------------------------------------------
+
+class _RobotOfficePipNotice extends StatelessWidget {
+  const _RobotOfficePipNotice({required this.onShowFullscreen});
+
+  final VoidCallback onShowFullscreen;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return JarvisCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: JarvisTheme.spacing,
+        vertical: 14,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.picture_in_picture_alt,
+            size: 20,
+            color: JarvisTheme.accent,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Robot Office is in Picture-in-Picture mode',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: onShowFullscreen,
+            icon: const Icon(Icons.fullscreen, size: 18),
+            label: const Text('Fullscreen'),
+            style: TextButton.styleFrom(
+              foregroundColor: JarvisTheme.accent,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PiP Mode Button — small button to switch from inline to PiP
+// ---------------------------------------------------------------------------
+
+class _PipModeButton extends StatelessWidget {
+  const _PipModeButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.picture_in_picture_alt,
+                size: 14,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'PiP',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Agent Card — small glassmorphism card with color accent
+// ---------------------------------------------------------------------------
+
+class _AgentCard extends StatelessWidget {
+  const _AgentCard({
+    required this.name,
+    required this.role,
+    required this.color,
+  });
+
+  final String name;
+  final String role;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.4),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            name,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            role,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 10,
+              color: color.withValues(alpha: 0.8),
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
