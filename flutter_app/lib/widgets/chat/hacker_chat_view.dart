@@ -1,10 +1,7 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:jarvis_ui/providers/chat_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
-
-/// Matrix green color used throughout hacker mode.
-const _matrixGreen = Color(0xFF00FF41);
+import 'package:jarvis_ui/widgets/chat/matrix_rain_painter.dart';
 
 /// Terminal-style chat view for hacker mode.
 ///
@@ -57,12 +54,12 @@ class _HackerChatViewState extends State<HackerChatView>
         children: [
           // Matrix rain background
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _rainController,
+            child: ListenableBuilder(
+              listenable: _rainController,
               builder: (context, _) {
                 return CustomPaint(
-                  painter: _MatrixRainPainter(
-                    time: _rainController.value,
+                  painter: MatrixRainPainter(
+                    time: _rainController.value * 8, // 8s duration → seconds
                   ),
                 );
               },
@@ -90,7 +87,7 @@ class _HackerChatViewState extends State<HackerChatView>
                   timestamp: DateTime.now(),
                   prefix: 'ASST',
                   text: widget.streamingText,
-                  color: _matrixGreen,
+                  color: matrixGreen,
                   showCursor: true,
                 );
               }
@@ -113,7 +110,7 @@ class _HackerChatViewState extends State<HackerChatView>
     };
     final color = switch (msg.role) {
       MessageRole.user => Colors.white,
-      MessageRole.assistant => _matrixGreen,
+      MessageRole.assistant => matrixGreen,
       MessageRole.system => JarvisTheme.red,
     };
 
@@ -155,7 +152,7 @@ class _HackerChatViewState extends State<HackerChatView>
           children: [
             TextSpan(
               text: '[$ts] ',
-              style: TextStyle(color: _matrixGreen.withValues(alpha: 0.5)),
+              style: TextStyle(color: matrixGreen.withValues(alpha: 0.5)),
             ),
             TextSpan(
               text: '$prefix > ',
@@ -171,7 +168,7 @@ class _HackerChatViewState extends State<HackerChatView>
             if (showCursor)
               const TextSpan(
                 text: '\u2588', // block cursor
-                style: TextStyle(color: _matrixGreen),
+                style: TextStyle(color: matrixGreen),
               ),
           ],
         ),
@@ -182,73 +179,3 @@ class _HackerChatViewState extends State<HackerChatView>
   static String _pad(int n) => n.toString().padLeft(2, '0');
 }
 
-// ── Matrix Rain Background Painter ─────────────────────────────────────
-
-class _MatrixRainPainter extends CustomPainter {
-  _MatrixRainPainter({required this.time});
-
-  final double time;
-
-  // Characters used in the Matrix rain
-  static const _chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#\$%^&*';
-  static final _random = Random(42); // fixed seed for consistent columns
-  // Pre-generate column data once
-  static List<double>? _columnSpeeds;
-  static List<double>? _columnOffsets;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-
-    const charWidth = 14.0;
-    const charHeight = 18.0;
-    final cols = (size.width / charWidth).ceil();
-    final rows = (size.height / charHeight).ceil();
-
-    // Initialize column data once
-    if (_columnSpeeds == null || _columnSpeeds!.length != cols) {
-      _columnSpeeds = List.generate(cols, (_) => 0.3 + _random.nextDouble() * 0.7);
-      _columnOffsets = List.generate(cols, (_) => _random.nextDouble() * rows);
-    }
-
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
-
-    for (int col = 0; col < cols; col++) {
-      final speed = _columnSpeeds![col];
-      final offset = _columnOffsets![col];
-      final currentRow = ((time * speed * rows * 2 + offset) % (rows + 10)).floor();
-
-      for (int row = 0; row < rows; row++) {
-        final distFromHead = currentRow - row;
-        if (distFromHead < 0 || distFromHead > 12) continue;
-
-        // Fade out further from the head
-        final alpha = (1.0 - distFromHead / 12.0) * 0.06; // Very low opacity
-        if (alpha <= 0) continue;
-
-        final charIndex = (col * 17 + row * 31 + (time * 10).floor()) % _chars.length;
-        final char = _chars[charIndex];
-
-        textPainter.text = TextSpan(
-          text: char,
-          style: TextStyle(
-            fontFamily: 'JetBrains Mono',
-            fontSize: 12,
-            color: _matrixGreen.withValues(alpha: alpha),
-          ),
-        );
-        textPainter.layout();
-        textPainter.paint(
-          canvas,
-          Offset(col * charWidth, row * charHeight),
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MatrixRainPainter oldDelegate) =>
-      oldDelegate.time != time;
-}
