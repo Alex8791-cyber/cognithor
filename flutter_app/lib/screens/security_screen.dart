@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/security_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/neon_card.dart';
@@ -48,6 +49,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
+      context.read<SecurityProvider>().setApi(context.read<ConnectionProvider>().api);
       _loadAll();
     }
   }

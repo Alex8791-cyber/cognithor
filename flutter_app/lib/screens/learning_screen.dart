@@ -403,7 +403,9 @@ class _LearningScreenState extends State<LearningScreen> {
   Widget _buildActivityChart(ThemeData theme) {
     // Build spots from stats or use placeholder structure
     final dataPoints =
-        (_stats?['activity_chart'] as List?)?.cast<Map<String, dynamic>>() ??
+        (_stats?['activity_chart'] as List?)
+                ?.whereType<Map<String, dynamic>>()
+                .toList() ??
             [];
 
     if (dataPoints.isEmpty) {

@@ -135,17 +135,17 @@ class _SystemScreenState extends State<SystemScreen> {
           children: [
             JarvisStat(label: l.uptime, value: _formatUptime(uptime)),
             JarvisStat(
-              label: 'Version', // TODO: l10n
+              label: l.backendVersion,
               value: version,
               color: JarvisTheme.accent,
             ),
             JarvisStat(
-              label: 'Owner', // TODO: l10n
+              label: l.owner,
               value: owner,
               color: JarvisTheme.success,
             ),
             JarvisStat(
-              label: 'LLM Backend', // TODO: l10n
+              label: l.llmBackend,
               value: backend,
               color: JarvisTheme.info,
             ),
@@ -173,14 +173,14 @@ class _SystemScreenState extends State<SystemScreen> {
     if (channels.isEmpty) {
       return JarvisEmptyState(
         icon: Icons.podcasts,
-        title: 'Channels', // TODO: l10n
+        title: l.channels,
         subtitle: l.noData,
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const JarvisSection(title: 'Active Channels'), // TODO: l10n
+        JarvisSection(title: l.channels),
         const SizedBox(height: JarvisTheme.spacingSm),
         ...channels.map((ch) {
           final name = ch.toString();
@@ -266,7 +266,7 @@ class _SystemScreenState extends State<SystemScreen> {
               Icon(Icons.warning_amber, color: JarvisTheme.error),
               const SizedBox(width: JarvisTheme.spacingSm),
               Text(
-                'Danger Zone', // TODO: l10n
+                l.dangerZone,
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge

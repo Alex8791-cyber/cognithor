@@ -308,6 +308,9 @@ class _MemoryScreenState extends State<MemoryScreen> {
           backgroundColor: JarvisTheme.green,
         ),
       );
+      // Reload hygiene stats and quarantine after successful scan
+      await provider.loadHygieneStats();
+      await provider.loadQuarantine();
     }
   }
 

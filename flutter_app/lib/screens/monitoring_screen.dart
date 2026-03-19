@@ -46,8 +46,8 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
     try {
       final api = context.read<ConnectionProvider>().api;
       final results = await Future.wait([
-        api.get('/monitoring/dashboard'),
-        api.get('/monitoring/events?n=50'),
+        api.getMonitoringDashboard(),
+        api.getMonitoringEvents(n: 50),
       ]);
 
       final dashboard = results[0];

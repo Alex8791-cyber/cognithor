@@ -62,7 +62,7 @@ class _TeachScreenState extends State<TeachScreen> {
       final res = await api.getLearnHistory();
       final items = res['items'] as List<dynamic>? ?? [];
       setState(() {
-        _history = items.cast<Map<String, dynamic>>();
+        _history = items.whereType<Map<String, dynamic>>().toList();
         _historyLoading = false;
       });
     } catch (_) {
