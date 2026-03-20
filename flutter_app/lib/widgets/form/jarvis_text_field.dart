@@ -100,6 +100,12 @@ class _JarvisTextFieldState extends State<JarvisTextField> {
             controller: _ctrl,
             enabled: widget.enabled,
             obscureText: widget.isPassword && _obscured,
+            onTap: () {
+              // Clear masked placeholder so user can type a new value
+              if (_ctrl.text == '***') {
+                _ctrl.clear();
+              }
+            },
             style: widget.mono
                 ? theme.textTheme.bodyMedium
                     ?.copyWith(fontFamily: 'monospace')
@@ -116,8 +122,10 @@ class _JarvisTextFieldState extends State<JarvisTextField> {
                         _obscured ? Icons.visibility_off : Icons.visibility,
                         size: 18,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscured = !_obscured),
+                      // Disable eye toggle when value is masked from backend
+                      onPressed: _ctrl.text == '***'
+                          ? null
+                          : () => setState(() => _obscured = !_obscured),
                     )
                   : null,
             ),
