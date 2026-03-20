@@ -238,7 +238,7 @@ class ContextPipeline:
                 top_k=self._config.memory_top_k,
             )
         except Exception:
-            logger.debug("context_memory_search_failed", exc_info=True)
+            log.debug("context_memory_search_failed", exc_info=True)
             return []
 
     async def _search_vault(self, query: str) -> list[str]:
@@ -255,7 +255,7 @@ class ContextPipeline:
                 return [result]
             return []
         except Exception:
-            logger.debug("context_vault_search_failed", exc_info=True)
+            log.debug("context_vault_search_failed", exc_info=True)
             return []
 
     def _get_episodes(self) -> list[str]:
@@ -269,7 +269,7 @@ class ContextPipeline:
             recent = episodic.get_recent(days=self._config.episode_days)
             return [f"[{d.isoformat()}] {text[:500]}" for d, text in recent if text.strip()]
         except Exception:
-            logger.debug("context_episode_fetch_failed", exc_info=True)
+            log.debug("context_episode_fetch_failed", exc_info=True)
             return []
 
     def _deduplicate(
