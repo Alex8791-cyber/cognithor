@@ -4361,6 +4361,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} chats'**
   String sessionCount(int count);
+
+  /// No description provided for @idle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get idle;
+
+  /// No description provided for @thinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking...'**
+  String get thinking;
 }
 
 class _AppLocalizationsDelegate

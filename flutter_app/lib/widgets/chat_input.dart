@@ -4,7 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
+import 'package:jarvis_ui/providers/voice_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
+import 'package:provider/provider.dart';
 
 class ChatInput extends StatefulWidget {
   const ChatInput({
@@ -150,15 +152,20 @@ class _ChatInputState extends State<ChatInput> {
           const SizedBox(width: 4),
 
           // Voice button
-          IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l.voiceModeHint)),
+          Consumer<VoiceProvider>(
+            builder: (context, voice, _) {
+              return IconButton(
+                onPressed: () => voice.toggle(),
+                icon: Icon(
+                  voice.isActive ? Icons.mic : Icons.mic_none,
+                  color: voice.isActive
+                      ? JarvisTheme.sectionChat
+                      : JarvisTheme.textSecondary,
+                ),
+                tooltip: l.voiceMode,
+                iconSize: 22,
               );
             },
-            icon: Icon(Icons.mic, color: JarvisTheme.textSecondary),
-            tooltip: l.voiceMode,
-            iconSize: 22,
           ),
 
           // Send / Cancel

@@ -1,0 +1,104 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/alex8791-cyber/cognithor
+  tag: "0.48.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8741
+
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: cognithor.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: cognithor-tls
+  #    hosts:
+  #      - cognithor.local
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 4
+    memory: 8Gi
+
+ollama:
+  enabled: true
+  image: ollama/ollama:latest
+  gpu:
+    enabled: false
+    count: 1
+  models:
+    - qwen3:8b
+    - nomic-embed-text
+  resources:
+    requests:
+      cpu: 1
+      memory: 4Gi
+    limits:
+      cpu: 8
+      memory: 16Gi
+
+persistence:
+  data:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+  ollama:
+    enabled: true
+    size: 50Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+config:
+  language: "en"
+  llm_backend_type: "ollama"
+  operation_mode: "autonomous"
+  extra: {}
+  # Add any extra config.yaml keys here, e.g.:
+  # models:
+  #   planner:
+  #     name: qwen3:32b
+
+probes:
+  liveness:
+    path: /api/v1/health
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  readiness:
+    path: /api/v1/health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  startup:
+    path: /api/v1/health
+    initialDelaySeconds: 60
+    failureThreshold: 30
+    periodSeconds: 10
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}

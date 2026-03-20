@@ -547,6 +547,10 @@ class ApiClient {
       delete('sessions/$sessionId');
   Future<Map<String, dynamic>> renameSession(String sessionId, String title) =>
       patch('sessions/$sessionId', {'title': title});
+  Future<Map<String, dynamic>> moveSessionToFolder(
+          String sessionId, String folder) =>
+      patch('sessions/$sessionId', {'folder': folder});
+  Future<Map<String, dynamic>> listFolders() => get('sessions/folders');
 
   // ---------------------------------------------------------------------------
   // Internal

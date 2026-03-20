@@ -1268,5 +1268,9 @@
         "type": "int"
       }
     }
-  }
+  },
+  "idle": "Idle",
+  "@idle": {},
+  "thinking": "Thinking...",
+  "@thinking": {}
 }

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/glass_panel.dart';
 
@@ -32,26 +33,41 @@ class _TypingIndicatorState extends State<TypingIndicator>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Align(
       alignment: Alignment.centerLeft,
       child: GlassPanel(
         tint: JarvisTheme.sectionChat,
         borderRadius: 16,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: SizedBox(
-          width: 120,
-          height: 40,
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) {
-              return CustomPaint(
-                painter: WaveformPainter(
-                  time: _controller.value * 2 * pi,
-                  color: JarvisTheme.sectionChat,
-                ),
-              );
-            },
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 120,
+              height: 30,
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  return CustomPaint(
+                    painter: WaveformPainter(
+                      time: _controller.value * 2 * pi,
+                      color: JarvisTheme.sectionChat,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              l.thinking,
+              style: const TextStyle(
+                color: JarvisTheme.sectionChat,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

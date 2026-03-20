@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cognithor.fullname" . }}-config
+  labels:
+    {{- include "cognithor.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    language: {{ .Values.config.language | quote }}
+    llm_backend_type: {{ .Values.config.llm_backend_type | quote }}
+    operation_mode: {{ .Values.config.operation_mode | quote }}
+    {{- if .Values.ollama.enabled }}
+    ollama:
+      base_url: {{ include "cognithor.ollamaUrl" . | quote }}
+    {{- end }}
+    {{- if .Values.config.extra }}
+    {{- toYaml .Values.config.extra | nindent 4 }}
+    {{- end }}

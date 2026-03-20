@@ -2195,4 +2195,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionCount(int count) {
     return '$count chats';
   }
+
+  @override
+  String get idle => 'Idle';
+
+  @override
+  String get thinking => 'Thinking...';
 }

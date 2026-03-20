@@ -2182,4 +2182,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String sessionCount(int count) {
     return '$count 个聊天';
   }
+
+  @override
+  String get idle => '空闲';
+
+  @override
+  String get thinking => '思考中...';
 }

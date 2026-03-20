@@ -2192,4 +2192,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String sessionCount(int count) {
     return '$count محادثات';
   }
+
+  @override
+  String get idle => 'خامل';
+
+  @override
+  String get thinking => 'يفكر...';
 }

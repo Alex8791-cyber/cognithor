@@ -706,5 +706,9 @@
   "noFolder": "未分类",
   "renameChat": "重命名",
   "editTitle": "编辑标题",
-  "sessionCount": "{count} 个聊天"
+  "sessionCount": "{count} 个聊天",
+  "idle": "空闲",
+  "@idle": {},
+  "thinking": "思考中...",
+  "@thinking": {}
 }

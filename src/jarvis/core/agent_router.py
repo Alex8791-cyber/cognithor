@@ -569,6 +569,47 @@ class AgentRouter:
         )
         log.info("agents_yaml_saved", path=str(path), count=len(agents_data))
 
+    def reload_from_yaml(self, yaml_path: Path) -> int:
+        """Reload agents from YAML file without creating new instance.
+
+        Clears current agents, re-initializes defaults, then loads
+        custom agents from the given YAML file.
+
+        Args:
+            yaml_path: Path to agents.yaml file.
+
+        Returns:
+            Number of custom agents loaded from YAML.
+        """
+        if not yaml_path.exists():
+            return 0
+
+        custom_agents: list[AgentProfile] = []
+        try:
+            raw = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+            agents_list = raw.get("agents", [])
+            for agent_data in agents_list:
+                custom_agents.append(AgentProfile(**agent_data))
+        except Exception as exc:
+            log.warning(
+                "reload_from_yaml_error",
+                path=str(yaml_path),
+                error=str(exc),
+            )
+            return 0
+
+        # Clear current agents and re-initialize with defaults + custom
+        self._agents.clear()
+        self.initialize(custom_agents)
+
+        log.info(
+            "agents_reloaded_from_yaml",
+            path=str(yaml_path),
+            custom_count=len(custom_agents),
+            total=len(self._agents),
+        )
+        return len(custom_agents)
+
     def remove_agent(self, name: str) -> bool:
         """Entfernt einen Agenten."""
         if name == self._default_agent:

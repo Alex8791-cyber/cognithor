@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cognithor
+description: Cognithor Agent OS - Local-first autonomous agent operating system
+type: application
+version: 0.1.0
+appVersion: "0.48.0"
+maintainers:
+  - name: Alexander Soellner
+keywords:
+  - agent
+  - llm
+  - autonomous
+  - ollama
+home: https://github.com/alex8791-cyber/cognithor

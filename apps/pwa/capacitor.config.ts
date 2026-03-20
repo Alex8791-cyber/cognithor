@@ -1,12 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'dev.jarvis.app',
-  appName: 'Jarvis',
-  webDir: 'dist',
+  appId: 'dev.cognithor.app',
+  appName: 'Cognithor',
+  webDir: '../../flutter_app/build/web',  // Point to Flutter build
   server: {
-    // In development, connect to local Jarvis backend
-    // url: 'http://localhost:8741',
+    url: 'http://localhost:8741',
     cleartext: true,
     allowNavigation: ['localhost', '127.0.0.1', '*.local'],
   },

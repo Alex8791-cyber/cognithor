@@ -706,5 +706,9 @@
   "noFolder": "بدون مجلد",
   "renameChat": "إعادة تسمية",
   "editTitle": "تعديل العنوان",
-  "sessionCount": "{count} محادثات"
+  "sessionCount": "{count} محادثات",
+  "idle": "خامل",
+  "@idle": {},
+  "thinking": "يفكر...",
+  "@thinking": {}
 }

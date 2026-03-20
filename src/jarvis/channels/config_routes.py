@@ -319,6 +319,10 @@ def _register_system_routes(
         agents_path.write_text(
             yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8"
         )
+        # Live-reload agent router
+        router = getattr(gateway, "_agent_router", None)
+        if router and hasattr(router, "reload_from_yaml"):
+            router.reload_from_yaml(agents_path)
         return {"status": "created", "agent": agent}
 
     @app.put("/api/v1/agents/{agent_name}", dependencies=deps)
@@ -363,6 +367,10 @@ def _register_system_routes(
         agents_path.write_text(
             yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8"
         )
+        # Live-reload agent router
+        router = getattr(gateway, "_agent_router", None)
+        if router and hasattr(router, "reload_from_yaml"):
+            router.reload_from_yaml(agents_path)
         return {"status": "updated", "agent": updated_agent}
 
     @app.delete("/api/v1/agents/{agent_name}", dependencies=deps)
@@ -386,6 +394,10 @@ def _register_system_routes(
         agents_path.write_text(
             yaml.dump(raw, default_flow_style=False, allow_unicode=True), encoding="utf-8"
         )
+        # Live-reload agent router
+        router = getattr(gateway, "_agent_router", None)
+        if router and hasattr(router, "reload_from_yaml"):
+            router.reload_from_yaml(agents_path)
         return {"status": "deleted", "name": agent_name}
 
     # -- Credentials ------------------------------------------------------

@@ -1,0 +1,35 @@
+
+=============================================================
+  COGNITHOR Agent OS  v{{ .Chart.AppVersion }}
+=============================================================
+
+1. Get the application URL:
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else if eq .Values.service.type "NodePort" }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "cognithor.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if eq .Values.service.type "LoadBalancer" }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+  kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "cognithor.fullname" . }}
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "cognithor.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  echo "Visit http://127.0.0.1:{{ .Values.service.port }}"
+{{- end }}
+
+2. Check pod status:
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "cognithor.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+{{- if .Values.ollama.enabled }}
+3. Ollama runs as a sidecar container. Models are pulled during init:
+{{- range .Values.ollama.models }}
+   - {{ . }}
+{{- end }}
+   The init container may take several minutes on first deploy.
+{{- end }}
+
+4. Health check:
+  curl http://127.0.0.1:{{ .Values.service.port }}/api/v1/health

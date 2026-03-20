@@ -4,7 +4,7 @@
 > must implement. It serves as the single source of truth for the
 > backend-frontend boundary.
 >
-> **Generated**: 2026-03-17 | **Backend version**: v0.40.0
+> **Generated**: 2026-03-20 | **Backend version**: v0.48.0
 
 ---
 
@@ -313,7 +313,7 @@ session_id: Client-generated UUID (e.g., "flutter_<uuid>")
 
 | Method | Path | Response | Notes |
 |--------|------|----------|-------|
-| GET | `/api/v1/health` | `{ "status": "ok", "version": "0.40.0", "uptime_seconds": 123 }` | Health check |
+| GET | `/api/v1/health` | `{ "status": "ok", "version": "0.48.0", "uptime_seconds": 123 }` | Health check |
 | GET | `/api/v1/bootstrap` | `{ "token": "<token>" }` | Get auth token |
 
 ### 3.2 Chat (auth required)
@@ -339,9 +339,17 @@ session_id: Client-generated UUID (e.g., "flutter_<uuid>")
 | Method | Path | Body | Response |
 |--------|------|------|----------|
 | GET | `/api/v1/agents` | - | Agent profiles list |
-| POST | `/api/v1/agents/{name}` | Agent config | `{ "status": "ok" }` |
+| GET | `/api/v1/agents/{name}` | - | `{ "name": "...", "model": "...", ... }` |
+| POST | `/api/v1/agents` | Agent config JSON | `{ "status": "created", "agent": {...} }` |
+| PUT | `/api/v1/agents/{name}` | Updated fields JSON | `{ "status": "updated", "agent": {...} }` |
+| DELETE | `/api/v1/agents/{name}` | - | `{ "status": "deleted" }` |
+| POST | `/api/v1/agents/{name}` | Agent config (legacy upsert) | `{ "status": "ok" }` |
 | GET | `/api/v1/bindings` | - | Binding rules list |
 | POST | `/api/v1/bindings/{name}` | Binding config | `{ "status": "ok" }` |
+
+> **Note (v0.48.0)**: `POST /api/v1/agents` (no path param) is the new create endpoint.
+> `POST /api/v1/agents/{name}` is the legacy upsert endpoint kept for backward compatibility.
+> The `DELETE` endpoint refuses to delete the default `jarvis` agent.
 
 ### 3.5 Prompts (auth required)
 
@@ -431,6 +439,114 @@ session_id: Client-generated UUID (e.g., "flutter_<uuid>")
 | GET | `/api/v1/monitoring/events` | `?n=50&severity=` | Recent events |
 | GET | `/api/v1/monitoring/audit` | `?skip=0&limit=50` | Audit log |
 
+### 3.15 Skill Registry (auth required) — *NEW in v0.48.0*
+
+> Manages built-in skill definitions (SKILL.md files), separate from the community marketplace.
+
+| Method | Path | Body | Response |
+|--------|------|------|----------|
+| GET | `/api/v1/skill-registry/list` | - | `{ "installed": [...], "count": N }` |
+| GET | `/api/v1/skill-registry/{slug}` | - | Full skill detail with body, stats, file path |
+| POST | `/api/v1/skill-registry/create` | `{ "name": "...", "description": "...", "body": "...", ... }` | `{ "status": "created", "slug": "...", "file_path": "..." }` |
+| PUT | `/api/v1/skill-registry/{slug}` | Updated fields JSON | `{ "status": "updated", "slug": "..." }` |
+| DELETE | `/api/v1/skill-registry/{slug}` | - | `{ "status": "deleted", "slug": "..." }` |
+| PUT | `/api/v1/skill-registry/{slug}/toggle` | - | `{ "slug": "...", "enabled": true/false }` |
+| GET | `/api/v1/skill-registry/{slug}/export` | - | Skill content as SKILL.md format |
+
+**Skill list item shape:**
+```json
+{
+  "name": "Web Research",
+  "slug": "web-research",
+  "description": "Deep web research with source verification",
+  "category": "research",
+  "enabled": true,
+  "source": "builtin",
+  "version": "1.0.0",
+  "author": "",
+  "total_uses": 42,
+  "success_rate": 0.95
+}
+```
+
+**Create/Update body fields:**
+- `name` (string, required for create)
+- `description` (string)
+- `category` (string, default: "general")
+- `trigger_keywords` (string[])
+- `tools_required` (string[])
+- `priority` (int, default: 0)
+- `enabled` (bool, default: true)
+- `model_preference` (string, optional)
+- `agent` (string, optional)
+- `body` (string, the skill instruction text)
+
+> **Note**: `DELETE` is blocked for built-in procedure skills (those under `data/procedures/`).
+
+### 3.16 Sessions (auth required) — *NEW in v0.48.0*
+
+> Chat session management for the history sidebar and multi-session support.
+
+| Method | Path | Query Params | Response |
+|--------|------|------|----------|
+| GET | `/api/v1/sessions/list` | `?channel=webui&limit=50` | `{ "sessions": [...] }` |
+| GET | `/api/v1/sessions/folders` | `?channel=webui` | `{ "folders": ["project-a", "personal", ...] }` |
+| GET | `/api/v1/sessions/{id}/history` | `?limit=100` | `{ "messages": [...], "session_id": "..." }` |
+| POST | `/api/v1/sessions/new` | - | `{ "session_id": "<uuid>" }` |
+| PATCH | `/api/v1/sessions/{id}` | JSON: `{ "title": "...", "folder": "..." }` | `{ "status": "updated", "session_id": "..." }` |
+| DELETE | `/api/v1/sessions/{id}` | - | `{ "status": "deleted", "session_id": "..." }` |
+
+**Session list item shape:**
+```json
+{
+  "session_id": "flutter_abc123",
+  "title": "Weather Research",
+  "message_count": 15,
+  "started_at": 1710000000.0,
+  "last_activity": 1710003600.0
+}
+```
+
+**History message shape:**
+```json
+{
+  "role": "user",
+  "content": "What's the weather?",
+  "timestamp": 1710000000.0
+}
+```
+
+> **Note**: `DELETE` performs a soft-delete (sets `active=0`), preserving data for potential recovery.
+
+### 3.17 GEPA Evolution (auth required) — *NEW in v0.48.0*
+
+> Guided Evolution through Pattern Analysis — self-improvement cycle for prompt/config optimization.
+
+| Method | Path | Body | Response |
+|--------|------|------|----------|
+| GET | `/api/v1/evolution/status` | - | `{ "enabled": true, ... }` or `{ "enabled": false, "message": "GEPA not enabled" }` |
+| GET | `/api/v1/evolution/proposals` | `?status=all` | `{ "proposals": [...] }` |
+| GET | `/api/v1/evolution/proposals/{id}` | - | Proposal detail object |
+| POST | `/api/v1/evolution/proposals/{id}/apply` | - | `{ "applied": true, "proposal_id": "..." }` |
+| POST | `/api/v1/evolution/proposals/{id}/reject` | - | `{ "rejected": true, "proposal_id": "..." }` |
+| POST | `/api/v1/evolution/proposals/{id}/rollback` | - | `{ "rolled_back": true, "proposal_id": "..." }` |
+| GET | `/api/v1/evolution/traces` | `?limit=20` | `{ "traces": [...] }` |
+| POST | `/api/v1/evolution/run` | - | `{ "cycle_id": "...", "traces_analyzed": N, "findings": N, "proposals_generated": N, "proposal_applied": bool, "auto_rollbacks": N, "duration_ms": N }` |
+
+**Proposal shape:**
+```json
+{
+  "proposal_id": "gepa_abc123",
+  "optimization_type": "prompt_tuning",
+  "target": "system_prompt",
+  "description": "Reduce verbosity in error responses",
+  "confidence": 0.85,
+  "estimated_impact": 0.12
+}
+```
+
+> **Note**: The `status` query parameter on `/proposals` accepts: `all`, `pending`, `applied`, `rejected`, `rolled_back`.
+
 ---
 
 ## 4. Implementation Phases
@@ -459,16 +575,20 @@ Config:  GET /api/v1/config  (for wake word, theme, etc.)
 
 ### Phase 3: Full Feature Parity
 
-**Add 30+ endpoints for Control Center features**
+**Add 55+ endpoints for Control Center features**
 
 ```
 Configuration:  14 endpoints (config, agents, bindings, prompts, cron, mcp, a2a)
+Agents CRUD:     5 endpoints (get, create, update, delete + legacy upsert)
+Skill Registry:  7 endpoints (list, detail, create, update, delete, toggle, export)
+Sessions:        6 endpoints (list, folders, history, new, update, delete)
+GEPA Evolution:  8 endpoints (status, proposals CRUD, traces, run)
 Workflows:       6 endpoints
 Memory/Graph:    3 endpoints
 Identity:        2 endpoints
 Monitoring:      4 endpoints
 System Control:  4 endpoints
-Evolution:       3 endpoints
+Prompt Evo:      3 endpoints
 ```
 
 **Flutter screens needed:**
@@ -506,6 +626,36 @@ Evolution:       3 endpoints
 | POST | `/api/v1/vision/analyze` | Bearer | Multipart image upload + optional prompt |
 | GET | `/api/v1/push/vapid-key` | Bearer | VAPID public key for push notifications |
 | POST | `/api/v1/push/register` | Bearer | Register device for push (FCM/APNS) |
+
+### New Endpoints Added (v0.41.0 — v0.48.0)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/skill-registry/list` | Bearer | List all built-in skills |
+| GET | `/api/v1/skill-registry/{slug}` | Bearer | Get skill detail with body and stats |
+| POST | `/api/v1/skill-registry/create` | Bearer | Create new skill from JSON |
+| PUT | `/api/v1/skill-registry/{slug}` | Bearer | Update skill metadata and/or body |
+| DELETE | `/api/v1/skill-registry/{slug}` | Bearer | Delete skill file (built-in protected) |
+| PUT | `/api/v1/skill-registry/{slug}/toggle` | Bearer | Toggle enable/disable |
+| GET | `/api/v1/skill-registry/{slug}/export` | Bearer | Export as SKILL.md format |
+| GET | `/api/v1/sessions/list` | Bearer | List active sessions for channel |
+| GET | `/api/v1/sessions/folders` | Bearer | List distinct folder names |
+| GET | `/api/v1/sessions/{id}/history` | Bearer | Get chat message history |
+| POST | `/api/v1/sessions/new` | Bearer | Create new empty session |
+| PATCH | `/api/v1/sessions/{id}` | Bearer | Update title and/or folder |
+| DELETE | `/api/v1/sessions/{id}` | Bearer | Soft-delete session |
+| GET | `/api/v1/evolution/status` | Bearer | GEPA evolution status |
+| GET | `/api/v1/evolution/proposals` | Bearer | List evolution proposals |
+| GET | `/api/v1/evolution/proposals/{id}` | Bearer | Proposal detail |
+| POST | `/api/v1/evolution/proposals/{id}/apply` | Bearer | Apply proposal |
+| POST | `/api/v1/evolution/proposals/{id}/reject` | Bearer | Reject proposal |
+| POST | `/api/v1/evolution/proposals/{id}/rollback` | Bearer | Rollback applied proposal |
+| GET | `/api/v1/evolution/traces` | Bearer | Recent evolution traces |
+| POST | `/api/v1/evolution/run` | Bearer | Trigger evolution cycle |
+| GET | `/api/v1/agents/{name}` | Bearer | Get single agent profile |
+| POST | `/api/v1/agents` | Bearer | Create agent profile |
+| PUT | `/api/v1/agents/{name}` | Bearer | Update agent profile |
+| DELETE | `/api/v1/agents/{name}` | Bearer | Delete agent profile |
 
 ### Static File Priority
 

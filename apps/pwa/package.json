@@ -1,6 +1,7 @@
 {
-  "name": "jarvis-pwa",
-  "version": "1.0.0",
+  "name": "cognithor-pwa",
+  "version": "0.48.0",
+  "description": "Cognithor Agent OS - Progressive Web App (Capacitor shell for Flutter web build)",
   "private": true,
   "type": "module",
   "scripts": {

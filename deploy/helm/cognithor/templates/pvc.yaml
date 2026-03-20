@@ -1,0 +1,35 @@
+{{- if .Values.persistence.data.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "cognithor.fullname" . }}-data
+  labels:
+    {{- include "cognithor.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.data.accessMode | default "ReadWriteOnce" }}
+  {{- if .Values.persistence.data.storageClass }}
+  storageClassName: {{ .Values.persistence.data.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.data.size }}
+{{- end }}
+---
+{{- if and .Values.ollama.enabled .Values.persistence.ollama.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "cognithor.fullname" . }}-ollama
+  labels:
+    {{- include "cognithor.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.ollama.accessMode | default "ReadWriteOnce" }}
+  {{- if .Values.persistence.ollama.storageClass }}
+  storageClassName: {{ .Values.persistence.ollama.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.ollama.size }}
+{{- end }}

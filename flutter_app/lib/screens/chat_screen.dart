@@ -56,6 +56,12 @@ class _ChatScreenState extends State<ChatScreen> {
       _sessionsInitialized = true;
     }
 
+    // Wire VoiceProvider sendToChat callback
+    final voice = context.read<VoiceProvider>();
+    voice.sendToChat = (text) {
+      context.read<ChatProvider>().sendMessage(text);
+    };
+
     // Attach PipProvider idle callback once
     if (!_pipListenerAttached) {
       final chat = context.read<ChatProvider>();
@@ -320,9 +326,17 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool _showTyping(ChatProvider chat) {
-    return chat.statusText.isNotEmpty &&
+    // Show typing when there's a status text but no streaming/tool activity
+    if (chat.statusText.isNotEmpty &&
         !chat.isStreaming &&
-        chat.activeTool == null;
+        chat.activeTool == null) {
+      return true;
+    }
+    // Also show typing when streaming started but no tokens arrived yet
+    if (chat.isStreaming && chat.streamingText.isEmpty) {
+      return true;
+    }
+    return false;
   }
 
   void _onSelectSession(String sessionId) async {

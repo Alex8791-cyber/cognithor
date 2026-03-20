@@ -732,5 +732,9 @@
   "noFolder": "Ohne Ordner",
   "renameChat": "Umbenennen",
   "editTitle": "Titel bearbeiten",
-  "sessionCount": "{count} Chats"
+  "sessionCount": "{count} Chats",
+  "idle": "Ruhend",
+  "@idle": {},
+  "thinking": "Denkt nach...",
+  "@thinking": {}
 }
