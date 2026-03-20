@@ -2118,4 +2118,42 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get saved => '已保存';
+
+  @override
+  String get chatHistory => '聊天历史';
+
+  @override
+  String get newChat => '新聊天';
+
+  @override
+  String get untitledChat => '未命名聊天';
+
+  @override
+  String get deleteChat => '删除聊天';
+
+  @override
+  String get confirmDeleteChat => '删除这个对话？';
+
+  @override
+  String messagesCount(String count) {
+    return '$count 条消息';
+  }
+
+  @override
+  String get justNow => '刚刚';
+
+  @override
+  String minutesAgo(String count) {
+    return '$count 分钟前';
+  }
+
+  @override
+  String hoursAgo(String count) {
+    return '$count 小时前';
+  }
+
+  @override
+  String daysAgo(String count) {
+    return '$count 天前';
+  }
 }

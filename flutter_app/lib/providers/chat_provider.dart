@@ -144,6 +144,39 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replace all messages with loaded history from API.
+  void loadFromHistory(List<Map<String, dynamic>> historyMessages) {
+    messages.clear();
+    for (final msg in historyMessages) {
+      final role = switch (msg['role']?.toString()) {
+        'user' => MessageRole.user,
+        'assistant' => MessageRole.assistant,
+        _ => MessageRole.system,
+      };
+      messages.add(ChatMessage(
+        role: role,
+        text: msg['content']?.toString() ?? '',
+      ));
+    }
+    notifyListeners();
+  }
+
+  /// Clear all state for a fresh session.
+  void clearForNewSession() {
+    messages.clear();
+    _streamBuffer.clear();
+    isStreaming = false;
+    activeTool = null;
+    statusText = '';
+    pendingApproval = null;
+    pipeline = [];
+    canvasHtml = null;
+    canvasTitle = null;
+    planDetail = null;
+    agentLog.clear();
+    notifyListeners();
+  }
+
   void dismissCanvas() {
     canvasHtml = null;
     canvasTitle = null;

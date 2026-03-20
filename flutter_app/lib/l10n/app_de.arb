@@ -713,5 +713,16 @@
   "catKnowledge": "Wissen",
   "catSecurity": "Sicherheit",
   "catSystem": "System",
-  "saved": "Gespeichert"
+  "saved": "Gespeichert",
+
+  "chatHistory": "Chatverlauf",
+  "newChat": "Neuer Chat",
+  "untitledChat": "Unbenannter Chat",
+  "deleteChat": "Chat loeschen",
+  "confirmDeleteChat": "Diese Unterhaltung loeschen?",
+  "messagesCount": "{count} Nachrichten",
+  "justNow": "Gerade eben",
+  "minutesAgo": "Vor {count} Min.",
+  "hoursAgo": "Vor {count} Std.",
+  "daysAgo": "Vor {count} T."
 }

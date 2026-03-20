@@ -1201,5 +1201,50 @@
   "catSystem": "System",
   "@catSystem": {},
   "saved": "Saved",
-  "@saved": {}
+  "@saved": {},
+
+  "chatHistory": "Chat History",
+  "@chatHistory": {},
+  "newChat": "New Chat",
+  "@newChat": {},
+  "untitledChat": "Untitled Chat",
+  "@untitledChat": {},
+  "deleteChat": "Delete Chat",
+  "@deleteChat": {},
+  "confirmDeleteChat": "Delete this conversation?",
+  "@confirmDeleteChat": {},
+  "messagesCount": "{count} messages",
+  "@messagesCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "justNow": "Just now",
+  "@justNow": {},
+  "minutesAgo": "{count} min ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hoursAgo": "{count}h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "daysAgo": "{count}d ago",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  }
 }

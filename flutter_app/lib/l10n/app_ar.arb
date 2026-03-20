@@ -687,5 +687,16 @@
   "catKnowledge": "المعرفة",
   "catSecurity": "الأمان",
   "catSystem": "النظام",
-  "saved": "تم الحفظ"
+  "saved": "تم الحفظ",
+
+  "chatHistory": "سجل المحادثات",
+  "newChat": "محادثة جديدة",
+  "untitledChat": "محادثة بدون عنوان",
+  "deleteChat": "حذف المحادثة",
+  "confirmDeleteChat": "حذف هذه المحادثة؟",
+  "messagesCount": "{count} رسائل",
+  "justNow": "الآن",
+  "minutesAgo": "منذ {count} دقيقة",
+  "hoursAgo": "منذ {count} ساعة",
+  "daysAgo": "منذ {count} يوم"
 }

@@ -69,6 +69,8 @@ _MIGRATIONS = [
         PRIMARY KEY (channel, mapping_key)
     );
     """,
+    # Migration 4: Title-Spalte für Chat-History-Sidebar
+    "ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT '';",
 ]
 
 
@@ -320,6 +322,137 @@ class SessionStore:
                 max_age_days,
             )
         return count
+
+    # ========================================================================
+    # Chat-History API (für WebUI Sidebar)
+    # ========================================================================
+
+    def list_sessions_for_channel(
+        self,
+        channel: str = "webui",
+        user_id: str = "web_user",
+        limit: int = 50,
+    ) -> list[dict[str, str | int | float]]:
+        """Listet Sessions sortiert nach last_activity DESC.
+
+        Returns:
+            Liste mit id, title, message_count, started_at, last_activity.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT session_id, title, message_count, started_at, last_activity
+            FROM sessions
+            WHERE channel = ? AND user_id = ? AND active = 1
+            ORDER BY last_activity DESC
+            LIMIT ?
+            """,
+            (channel, user_id, limit),
+        ).fetchall()
+        result = []
+        for row in rows:
+            result.append(
+                {
+                    "id": row["session_id"],
+                    "title": row["title"] or "",
+                    "message_count": row["message_count"],
+                    "started_at": row["started_at"],
+                    "last_activity": row["last_activity"],
+                }
+            )
+        return result
+
+    def get_session_history(
+        self,
+        session_id: str,
+        limit: int = 100,
+    ) -> list[dict[str, str | float]]:
+        """Lädt Chat-Messages für eine Session als einfache Dicts.
+
+        Returns:
+            Liste mit role, content, timestamp (chronologisch).
+        """
+        rows = self.conn.execute(
+            """
+            SELECT role, content, timestamp
+            FROM chat_history
+            WHERE session_id = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            (session_id, limit),
+        ).fetchall()
+        return [
+            {
+                "role": row["role"],
+                "content": row["content"],
+                "timestamp": row["timestamp"],
+            }
+            for row in reversed(rows)
+        ]
+
+    def update_session_title(self, session_id: str, title: str) -> bool:
+        """Setzt einen Display-Titel für eine Session.
+
+        Returns:
+            True wenn eine Zeile aktualisiert wurde.
+        """
+        cursor = self.conn.execute(
+            "UPDATE sessions SET title = ? WHERE session_id = ?",
+            (title, session_id),
+        )
+        self.conn.commit()
+        return cursor.rowcount > 0
+
+    def delete_session(self, session_id: str) -> bool:
+        """Soft-Delete: Setzt active=0.
+
+        Returns:
+            True wenn eine Zeile aktualisiert wurde.
+        """
+        cursor = self.conn.execute(
+            "UPDATE sessions SET active = 0 WHERE session_id = ?",
+            (session_id,),
+        )
+        self.conn.commit()
+        return cursor.rowcount > 0
+
+    def auto_title(self, session_id: str) -> str:
+        """Generiert einen Titel aus der ersten User-Message (max 60 Zeichen).
+
+        Setzt den Titel nur, wenn noch keiner existiert.
+
+        Returns:
+            Der gesetzte (oder existierende) Titel.
+        """
+        # Prüfen ob bereits ein Titel existiert
+        row = self.conn.execute(
+            "SELECT title FROM sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+        if row and row["title"]:
+            return row["title"]
+
+        # Erste User-Message finden
+        msg_row = self.conn.execute(
+            """
+            SELECT content FROM chat_history
+            WHERE session_id = ? AND role = 'user'
+            ORDER BY timestamp ASC
+            LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+        if not msg_row:
+            return ""
+
+        title = msg_row["content"].strip()
+        # Newlines entfernen, auf 60 Zeichen kürzen
+        title = title.replace("\n", " ").replace("\r", "")
+        if len(title) > 60:
+            title = title[:57] + "..."
+
+        self.update_session_title(session_id, title)
+        return title
 
     # ========================================================================
     # Channel-Mappings (persistente Session→Chat-ID Zuordnungen)

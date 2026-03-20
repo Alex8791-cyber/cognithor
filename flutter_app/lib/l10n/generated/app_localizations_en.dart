@@ -2131,4 +2131,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get saved => 'Saved';
+
+  @override
+  String get chatHistory => 'Chat History';
+
+  @override
+  String get newChat => 'New Chat';
+
+  @override
+  String get untitledChat => 'Untitled Chat';
+
+  @override
+  String get deleteChat => 'Delete Chat';
+
+  @override
+  String get confirmDeleteChat => 'Delete this conversation?';
+
+  @override
+  String messagesCount(String count) {
+    return '$count messages';
+  }
+
+  @override
+  String get justNow => 'Just now';
+
+  @override
+  String minutesAgo(String count) {
+    return '$count min ago';
+  }
+
+  @override
+  String hoursAgo(String count) {
+    return '${count}h ago';
+  }
+
+  @override
+  String daysAgo(String count) {
+    return '${count}d ago';
+  }
 }

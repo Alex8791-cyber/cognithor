@@ -2128,4 +2128,42 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get saved => 'تم الحفظ';
+
+  @override
+  String get chatHistory => 'سجل المحادثات';
+
+  @override
+  String get newChat => 'محادثة جديدة';
+
+  @override
+  String get untitledChat => 'محادثة بدون عنوان';
+
+  @override
+  String get deleteChat => 'حذف المحادثة';
+
+  @override
+  String get confirmDeleteChat => 'حذف هذه المحادثة؟';
+
+  @override
+  String messagesCount(String count) {
+    return '$count رسائل';
+  }
+
+  @override
+  String get justNow => 'الآن';
+
+  @override
+  String minutesAgo(String count) {
+    return 'منذ $count دقيقة';
+  }
+
+  @override
+  String hoursAgo(String count) {
+    return 'منذ $count ساعة';
+  }
+
+  @override
+  String daysAgo(String count) {
+    return 'منذ $count يوم';
+  }
 }

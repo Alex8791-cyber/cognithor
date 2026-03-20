@@ -2741,6 +2741,12 @@ class Gateway:
                 )
             except Exception as exc:
                 log.warning("session_persist_error", error=str(exc))
+            # Auto-Titel aus erster User-Message generieren
+            if hasattr(self._session_store, "auto_title"):
+                try:
+                    self._session_store.auto_title(session.session_id)
+                except Exception:
+                    pass
 
     # =========================================================================
     # Agent-zu-Agent Delegation

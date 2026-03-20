@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/providers/chat_provider.dart';
+import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/hacker_mode_provider.dart';
 import 'package:jarvis_ui/providers/pip_provider.dart';
+import 'package:jarvis_ui/providers/sessions_provider.dart';
 import 'package:jarvis_ui/providers/voice_provider.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/approval_dialog.dart';
@@ -15,6 +17,7 @@ import 'package:jarvis_ui/widgets/chat/context_panel.dart';
 import 'package:jarvis_ui/widgets/chat/hacker_chat_view.dart';
 import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/message_actions.dart';
+import 'package:jarvis_ui/widgets/chat/chat_history_drawer.dart';
 import 'package:jarvis_ui/widgets/observe/observe_panel.dart';
 import 'package:jarvis_ui/widgets/pipeline_indicator.dart';
 import 'package:jarvis_ui/widgets/plan_detail_panel.dart';
@@ -32,12 +35,26 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _showObserve = false;
   bool _pipListenerAttached = false;
+  bool _sessionsInitialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // Initialize sessions provider once
+    if (!_sessionsInitialized) {
+      final conn = context.read<ConnectionProvider>();
+      if (conn.state == JarvisConnectionState.connected) {
+        final sessions = context.read<SessionsProvider>();
+        sessions.setApi(conn.api);
+        sessions.loadSessions();
+      }
+      _sessionsInitialized = true;
+    }
+
     // Attach PipProvider idle callback once
     if (!_pipListenerAttached) {
       final chat = context.read<ChatProvider>();
@@ -78,7 +95,19 @@ class _ChatScreenState extends State<ChatScreen> {
     final l = AppLocalizations.of(context);
 
     return Scaffold(
+        key: _scaffoldKey,
         appBar: _buildAppBar(l),
+        drawer: Consumer<SessionsProvider>(
+          builder: (context, sessions, _) {
+            return ChatHistoryDrawer(
+              sessions: sessions.sessions,
+              activeSessionId: sessions.activeSessionId,
+              onSelectSession: _onSelectSession,
+              onNewChat: _onNewChat,
+              onDeleteSession: _onDeleteSession,
+            );
+          },
+        ),
         body: Row(
           children: [
             // Main chat area
@@ -292,8 +321,48 @@ class _ChatScreenState extends State<ChatScreen> {
         chat.activeTool == null;
   }
 
+  void _onSelectSession(String sessionId) async {
+    final sessions = context.read<SessionsProvider>();
+    final chat = context.read<ChatProvider>();
+    final conn = context.read<ConnectionProvider>();
+
+    final history = await sessions.loadHistory(sessionId);
+    if (history != null) {
+      chat.loadFromHistory(history);
+    }
+    if (conn.state == JarvisConnectionState.connected) {
+      await conn.ws.switchSession(sessionId);
+      chat.attach(conn.ws);
+    }
+  }
+
+  void _onNewChat() async {
+    final sessions = context.read<SessionsProvider>();
+    final chat = context.read<ChatProvider>();
+    final conn = context.read<ConnectionProvider>();
+
+    final sessionId = await sessions.createNewSession();
+    if (sessionId != null) {
+      chat.clearForNewSession();
+      if (conn.state == JarvisConnectionState.connected) {
+        await conn.ws.switchSession(sessionId);
+        chat.attach(conn.ws);
+      }
+    }
+    if (mounted) Navigator.of(context).pop(); // close drawer
+  }
+
+  void _onDeleteSession(String sessionId) {
+    context.read<SessionsProvider>().deleteSession(sessionId);
+  }
+
   PreferredSizeWidget _buildAppBar(AppLocalizations l) {
     return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.history, color: JarvisTheme.sectionChat),
+        tooltip: l.chatHistory,
+        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
       title: Text(l.appTitle),
       actions: [
         // Voice toggle

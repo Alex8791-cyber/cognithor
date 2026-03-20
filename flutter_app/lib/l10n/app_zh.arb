@@ -687,5 +687,16 @@
   "catKnowledge": "知识",
   "catSecurity": "安全",
   "catSystem": "系统",
-  "saved": "已保存"
+  "saved": "已保存",
+
+  "chatHistory": "聊天历史",
+  "newChat": "新聊天",
+  "untitledChat": "未命名聊天",
+  "deleteChat": "删除聊天",
+  "confirmDeleteChat": "删除这个对话？",
+  "messagesCount": "{count} 条消息",
+  "justNow": "刚刚",
+  "minutesAgo": "{count} 分钟前",
+  "hoursAgo": "{count} 小时前",
+  "daysAgo": "{count} 天前"
 }

@@ -109,6 +109,13 @@ class WebSocketService {
     await _doConnect();
   }
 
+  /// Disconnect and reconnect with a different session.
+  Future<void> switchSession(String newSessionId) async {
+    disconnect();
+    _disposed = false;
+    await connect(newSessionId);
+  }
+
   /// Disconnect gracefully.
   void disconnect() {
     _disposed = true;

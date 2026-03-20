@@ -534,6 +534,21 @@ class ApiClient {
   Future<Map<String, dynamic>> getLearnStats() => get('learn/stats');
 
   // ---------------------------------------------------------------------------
+  // Sessions
+  // ---------------------------------------------------------------------------
+
+  Future<Map<String, dynamic>> listSessions({int limit = 50}) =>
+      get('sessions/list?limit=$limit');
+  Future<Map<String, dynamic>> getSessionHistory(String sessionId,
+          {int limit = 100}) =>
+      get('sessions/$sessionId/history?limit=$limit');
+  Future<Map<String, dynamic>> createSession() => post('sessions/new', {});
+  Future<Map<String, dynamic>> deleteSession(String sessionId) =>
+      delete('sessions/$sessionId');
+  Future<Map<String, dynamic>> renameSession(String sessionId, String title) =>
+      patch('sessions/$sessionId', {'title': title});
+
+  // ---------------------------------------------------------------------------
   // Internal
   // ---------------------------------------------------------------------------
 

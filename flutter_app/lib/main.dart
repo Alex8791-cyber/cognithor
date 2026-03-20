@@ -11,6 +11,7 @@ import 'package:jarvis_ui/providers/connection_provider.dart';
 import 'package:jarvis_ui/providers/memory_provider.dart';
 import 'package:jarvis_ui/providers/navigation_provider.dart';
 import 'package:jarvis_ui/providers/security_provider.dart';
+import 'package:jarvis_ui/providers/sessions_provider.dart';
 import 'package:jarvis_ui/providers/skills_provider.dart';
 import 'package:jarvis_ui/providers/theme_provider.dart';
 import 'package:jarvis_ui/providers/hacker_mode_provider.dart';
@@ -46,6 +47,7 @@ class JarvisApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PipProvider()),
         ChangeNotifierProvider(create: (_) => HackerModeProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => SessionsProvider()),
       ],
       child: Consumer2<ThemeProvider, LocaleProvider>(
         builder: (context, themeProvider, localeProvider, _) {

@@ -1183,6 +1183,72 @@ def _register_session_routes(
             return {"total_violations": 0}
         return vm.firewall.stats()
 
+    # -- Chat-History API (für WebUI Sidebar) ------------------------------
+
+    def _get_session_store() -> Any:
+        """Zugriff auf den SessionStore des Gateways."""
+        return getattr(gateway, "_session_store", None)
+
+    @app.get("/api/v1/sessions/list", dependencies=deps)
+    async def list_sessions(channel: str = "webui", limit: int = 50) -> dict[str, Any]:
+        """Aktive Sessions für die Chat-History-Sidebar auflisten."""
+        store = _get_session_store()
+        if not store:
+            return {"sessions": []}
+        sessions = store.list_sessions_for_channel(channel=channel, limit=limit)
+        return {"sessions": sessions}
+
+    @app.get("/api/v1/sessions/{session_id}/history", dependencies=deps)
+    async def get_session_history(session_id: str, limit: int = 100) -> dict[str, Any]:
+        """Chat-Messages einer bestimmten Session abrufen."""
+        store = _get_session_store()
+        if not store:
+            return {"messages": [], "session_id": session_id}
+        messages = store.get_session_history(session_id, limit=limit)
+        return {"messages": messages, "session_id": session_id}
+
+    @app.patch("/api/v1/sessions/{session_id}", dependencies=deps)
+    async def update_session(session_id: str, request: Request) -> dict[str, Any]:
+        """Session-Metadaten aktualisieren (Titel)."""
+        body = await request.json()
+        store = _get_session_store()
+        if not store:
+            raise HTTPException(status_code=503, detail="Session store not available")
+        title = body.get("title")
+        if title:
+            store.update_session_title(session_id, title)
+        return {"status": "updated", "session_id": session_id}
+
+    @app.delete("/api/v1/sessions/{session_id}", dependencies=deps)
+    async def delete_session(session_id: str) -> dict[str, Any]:
+        """Soft-Delete einer Session (active=0)."""
+        store = _get_session_store()
+        if not store:
+            raise HTTPException(status_code=503, detail="Session store not available")
+        store.delete_session(session_id)
+        return {"status": "deleted", "session_id": session_id}
+
+    @app.post("/api/v1/sessions/new", dependencies=deps)
+    async def create_new_session() -> dict[str, Any]:
+        """Neue leere Session erstellen und ID zurückgeben."""
+        store = _get_session_store()
+        if not store:
+            raise HTTPException(status_code=503, detail="Session store not available")
+        import uuid
+
+        from jarvis.models import SessionContext
+
+        session_id = uuid.uuid4().hex[:16]
+        store.save_session(
+            SessionContext(
+                session_id=session_id,
+                channel="webui",
+                user_id="web_user",
+                agent_name="jarvis",
+            )
+        )
+        return {"session_id": session_id}
+
 
 # ======================================================================
 # Memory / search routes
