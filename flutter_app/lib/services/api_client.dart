@@ -551,6 +551,8 @@ class ApiClient {
           {int limit = 100}) =>
       get('sessions/$sessionId/history?limit=$limit');
   Future<Map<String, dynamic>> createSession() => post('sessions/new', {});
+  Future<Map<String, dynamic>> createIncognitoSession() =>
+      post('sessions/new-incognito', {});
   Future<Map<String, dynamic>> deleteSession(String sessionId) =>
       delete('sessions/$sessionId');
   Future<Map<String, dynamic>> renameSession(String sessionId, String title) =>
@@ -562,6 +564,9 @@ class ApiClient {
   Future<Map<String, dynamic>> listSessionsByFolder(String folder,
           {int limit = 50}) =>
       get('sessions/by-folder/$folder?limit=$limit');
+  Future<Map<String, dynamic>> exportSession(String sessionId) =>
+      get('sessions/$sessionId/export');
+
   Future<bool> shouldNewSession({int timeoutMinutes = 30}) async {
     final data = await get(
       'sessions/should-new?timeout_minutes=$timeoutMinutes',

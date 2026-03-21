@@ -74,6 +74,8 @@ _MIGRATIONS = [
     "ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT '';",
     # Migration 5: Folder-Spalte für Ordner-/Projektsystem
     "ALTER TABLE sessions ADD COLUMN folder TEXT DEFAULT '';",
+    # Migration 6: Incognito-Modus
+    "ALTER TABLE sessions ADD COLUMN incognito INTEGER DEFAULT 0;",
 ]
 
 
@@ -131,8 +133,8 @@ class SessionStore:
             """
             INSERT INTO sessions
                 (session_id, user_id, channel, agent_id, started_at,
-                 last_activity, message_count, active, max_iterations)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 last_activity, message_count, active, max_iterations, incognito)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(session_id) DO UPDATE SET
                 last_activity=excluded.last_activity,
                 message_count=excluded.message_count,
@@ -148,6 +150,7 @@ class SessionStore:
                 session.message_count,
                 int(session.active),
                 session.max_iterations,
+                int(getattr(session, "incognito", False)),
             ),
         )
         self.conn.commit()
@@ -183,6 +186,10 @@ class SessionStore:
             active=bool(row["active"]),
             max_iterations=row["max_iterations"],
         )
+        try:
+            session.incognito = bool(row["incognito"])
+        except (KeyError, IndexError):
+            session.incognito = False
         return session
 
     def deactivate_session(self, session_id: str) -> None:
@@ -355,7 +362,8 @@ class SessionStore:
         """
         rows = self.conn.execute(
             """
-            SELECT session_id, title, message_count, started_at, last_activity, folder
+            SELECT session_id, title, message_count, started_at, last_activity,
+                   folder, incognito
             FROM sessions
             WHERE channel = ? AND user_id = ? AND active = 1
             ORDER BY last_activity DESC
@@ -373,6 +381,7 @@ class SessionStore:
                     "started_at": row["started_at"],
                     "last_activity": row["last_activity"],
                     "folder": row["folder"] or "",
+                    "incognito": bool(row["incognito"]) if "incognito" in row.keys() else False,
                 }
             )
         return result
@@ -539,6 +548,43 @@ class SessionStore:
         self.update_session_title(session_id, title)
         return title
 
+    def search_chat_history(
+        self,
+        query: str,
+        channel: str = "webui",
+        user_id: str = "web_user",
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Full-text search across all chat messages."""
+        pattern = f"%{query}%"
+        rows = self.conn.execute(
+            """
+            SELECT ch.session_id, ch.role, ch.content, ch.timestamp,
+                   s.title, s.folder
+            FROM chat_history ch
+            JOIN sessions s ON ch.session_id = s.session_id
+            WHERE ch.content LIKE ?
+              AND ch.role IN ('user', 'assistant')
+              AND s.active = 1
+              AND s.channel = ?
+              AND s.user_id = ?
+            ORDER BY ch.timestamp DESC
+            LIMIT ?
+            """,
+            (pattern, channel, user_id, limit),
+        ).fetchall()
+        return [
+            {
+                "session_id": r["session_id"],
+                "role": r["role"],
+                "content": r["content"],
+                "timestamp": r["timestamp"],
+                "session_title": r["title"] or "",
+                "folder": r["folder"] or "",
+            }
+            for r in rows
+        ]
+
     # ========================================================================
     # Channel-Mappings (persistente Session→Chat-ID Zuordnungen)
     # ========================================================================
@@ -630,6 +676,28 @@ class SessionStore:
         last = datetime.fromtimestamp(row["last_activity"], tz=UTC)
         age = datetime.now(tz=UTC) - last
         return age.total_seconds() > inactivity_timeout_minutes * 60
+
+    def export_session(self, session_id: str) -> dict[str, Any]:
+        """Export a session with metadata and all messages as JSON-ready dict."""
+        session_row = self.conn.execute(
+            "SELECT * FROM sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+        if not session_row:
+            return {"error": "Session not found"}
+
+        messages = self.get_session_history(session_id, limit=10000)
+
+        return {
+            "session_id": session_id,
+            "title": session_row["title"] or "",
+            "folder": session_row["folder"] or "",
+            "started_at": session_row["started_at"],
+            "last_activity": session_row["last_activity"],
+            "message_count": len(messages),
+            "messages": messages,
+            "exported_at": datetime.now(tz=UTC).isoformat(),
+        }
 
     def close(self) -> None:
         """Schließt die DB-Verbindung."""

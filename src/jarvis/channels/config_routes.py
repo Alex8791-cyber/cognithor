@@ -1220,6 +1220,14 @@ def _register_session_routes(
         messages = store.get_session_history(session_id, limit=limit)
         return {"messages": messages, "session_id": session_id}
 
+    @app.get("/api/v1/sessions/{session_id}/export", dependencies=deps)
+    async def export_session(session_id: str) -> dict[str, Any]:
+        """Export session chat history as JSON."""
+        store = _get_session_store()
+        if not store:
+            return {"error": "Store not available"}
+        return store.export_session(session_id)
+
     @app.get("/api/v1/sessions/folders", dependencies=deps)
     async def list_folders(channel: str = "webui") -> dict[str, Any]:
         """Eindeutige Ordnernamen auflisten."""
@@ -1282,6 +1290,37 @@ def _register_session_routes(
             )
         )
         return {"session_id": session_id}
+
+    @app.post("/api/v1/sessions/new-incognito", dependencies=deps)
+    async def create_incognito_session() -> dict[str, Any]:
+        """Neue Inkognito-Session erstellen (kein Memory, keine Persistierung)."""
+        store = _get_session_store()
+        if not store:
+            raise HTTPException(status_code=503, detail="Session store not available")
+        import uuid
+
+        from jarvis.models import SessionContext
+
+        session_id = uuid.uuid4().hex[:16]
+        store.save_session(
+            SessionContext(
+                session_id=session_id,
+                channel="webui",
+                user_id="web_user",
+                agent_name="jarvis",
+                incognito=True,
+            )
+        )
+        return {"session_id": session_id, "incognito": True}
+
+    @app.get("/api/v1/sessions/search", dependencies=deps)
+    async def search_sessions(q: str = "", limit: int = 20) -> dict[str, Any]:
+        """Full-text search across all chat sessions."""
+        store = _get_session_store()
+        if not store or not q.strip():
+            return {"results": [], "query": q}
+        results = store.search_chat_history(q.strip(), limit=limit)
+        return {"results": results, "query": q}
 
     @app.get("/api/v1/sessions/should-new", dependencies=deps)
     async def should_new_session(
