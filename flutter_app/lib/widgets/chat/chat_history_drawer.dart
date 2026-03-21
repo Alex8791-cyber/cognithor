@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:jarvis_ui/l10n/generated/app_localizations.dart';
 import 'package:jarvis_ui/theme/jarvis_theme.dart';
 import 'package:jarvis_ui/widgets/jarvis_confirmation_dialog.dart';
-import 'package:jarvis_ui/widgets/neon_card.dart';
 
 /// Sidebar drawer showing past chat sessions grouped by folder.
-class ChatHistoryDrawer extends StatelessWidget {
+class ChatHistoryDrawer extends StatefulWidget {
   const ChatHistoryDrawer({
     super.key,
     required this.sessions,
@@ -13,9 +12,13 @@ class ChatHistoryDrawer extends StatelessWidget {
     required this.activeSessionId,
     required this.onSelectSession,
     required this.onNewChat,
+    this.onNewIncognitoChat,
     required this.onDeleteSession,
     required this.onRenameSession,
     required this.onMoveToFolder,
+    this.searchResults = const [],
+    this.onSearchChanged,
+    this.sessionsByProject = const {},
   });
 
   final List<Map<String, dynamic>> sessions;
@@ -23,30 +26,56 @@ class ChatHistoryDrawer extends StatelessWidget {
   final String? activeSessionId;
   final ValueChanged<String> onSelectSession;
   final VoidCallback onNewChat;
+  final VoidCallback? onNewIncognitoChat;
   final ValueChanged<String> onDeleteSession;
   final void Function(String sessionId, String newTitle) onRenameSession;
   final void Function(String sessionId, String folder) onMoveToFolder;
+  final List<Map<String, dynamic>> searchResults;
+  final void Function(String query)? onSearchChanged;
+  final Map<String, List<Map<String, dynamic>>> sessionsByProject;
+
+  @override
+  State<ChatHistoryDrawer> createState() => _ChatHistoryDrawerState();
+}
+
+class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
-    // Group sessions by folder
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-    for (final session in sessions) {
-      final folder = session['folder']?.toString().trim() ?? '';
-      grouped.putIfAbsent(folder, () => []).add(session);
+    // Use sessionsByProject if available, otherwise fall back to folder grouping
+    final Map<String, List<Map<String, dynamic>>> grouped;
+    if (widget.sessionsByProject.isNotEmpty) {
+      grouped = widget.sessionsByProject;
+    } else {
+      grouped = {};
+      for (final session in widget.sessions) {
+        final folder = session['folder']?.toString().trim() ?? '';
+        grouped.putIfAbsent(folder, () => []).add(session);
+      }
     }
 
-    // Sort: named folders first (alphabetically), then unfiled ('')
+    // Sort: 'Allgemein' first, then named folders alphabetically, then unfiled ('')
     final sortedFolders = grouped.keys.toList()
       ..sort((a, b) {
+        if (a == 'Allgemein') return -1;
+        if (b == 'Allgemein') return 1;
         if (a.isEmpty && b.isEmpty) return 0;
         if (a.isEmpty) return 1;
         if (b.isEmpty) return -1;
         return a.compareTo(b);
       });
+
+    final hasSearchResults = widget.searchResults.isNotEmpty;
 
     return Drawer(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -76,8 +105,14 @@ class ChatHistoryDrawer extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (widget.onNewIncognitoChat != null)
+                    IconButton(
+                      icon: const Icon(Icons.visibility_off),
+                      tooltip: 'Inkognito Chat',
+                      onPressed: widget.onNewIncognitoChat,
+                    ),
                   FilledButton.icon(
-                    onPressed: onNewChat,
+                    onPressed: widget.onNewChat,
                     icon: const Icon(Icons.add, size: 18),
                     label: Text(l.newChat),
                     style: FilledButton.styleFrom(
@@ -98,180 +133,186 @@ class ChatHistoryDrawer extends StatelessWidget {
 
             const Divider(height: 1),
 
-            // Sessions list grouped by folder
+            // Search bar
+            if (widget.onSearchChanged != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Chats durchsuchen...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              widget.onSearchChanged!('');
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  onChanged: (query) {
+                    widget.onSearchChanged!(query);
+                    setState(() {});
+                  },
+                ),
+              ),
+
+            // Sessions list — search results or grouped by project
             Expanded(
-              child: sessions.isEmpty
-                  ? Center(
-                      child: Text(
-                        l.noMessages,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.textTheme.bodySmall?.color,
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
+              child: hasSearchResults
+                  ? ListView(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
                       ),
-                      itemCount: sortedFolders.length,
-                      itemBuilder: (context, folderIndex) {
-                        final folderName = sortedFolders[folderIndex];
-                        final folderSessions = grouped[folderName]!;
-                        return _FolderSection(
-                          folderName: folderName,
-                          sessions: folderSessions,
-                          activeSessionId: activeSessionId,
-                          allFolders: folders,
-                          onSelectSession: (id) {
-                            onSelectSession(id);
+                      children: widget.searchResults.map((r) => ListTile(
+                        dense: true,
+                        title: Text(
+                          r['session_title'] as String? ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          r['content'] as String? ?? '',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        onTap: () {
+                          final sid = r['session_id'] as String?;
+                          if (sid != null) {
+                            widget.onSelectSession(sid);
                             Navigator.of(context).pop();
-                          },
-                          onDeleteSession: onDeleteSession,
-                          onRenameSession: onRenameSession,
-                          onMoveToFolder: onMoveToFolder,
-                        );
-                      },
-                    ),
+                          }
+                        },
+                      )).toList(),
+                    )
+                  : widget.sessions.isEmpty
+                      ? Center(
+                          child: Text(
+                            l.noMessages,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.textTheme.bodySmall?.color,
+                            ),
+                          ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          children: [
+                            for (final folderName in sortedFolders)
+                              ExpansionTile(
+                                title: Text(
+                                  folderName.isEmpty ? l.noFolder : folderName,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                                initiallyExpanded: folderName == 'Allgemein' || folderName.isEmpty,
+                                dense: true,
+                                tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                                children: grouped[folderName]!.map((s) {
+                                  final sessionId = s['session_id']?.toString() ??
+                                      s['id']?.toString() ??
+                                      '';
+                                  final isActive = sessionId == widget.activeSessionId;
+                                  final isIncognito = s['incognito'] == true;
+                                  return ListTile(
+                                    dense: true,
+                                    selected: isActive,
+                                    leading: isIncognito
+                                        ? const Icon(Icons.visibility_off, size: 16, color: Colors.purple)
+                                        : null,
+                                    title: Text(
+                                      (s['title'] as String?)?.isNotEmpty == true
+                                          ? s['title'] as String
+                                          : l.untitledChat,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '${s['message_count'] ?? 0} Nachrichten',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                    onTap: () {
+                                      widget.onSelectSession(sessionId);
+                                      Navigator.of(context).pop();
+                                    },
+                                    onLongPress: () => _showSessionMenu(context, s),
+                                  );
+                                }).toList(),
+                              ),
+                          ],
+                        ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _FolderSection extends StatefulWidget {
-  const _FolderSection({
-    required this.folderName,
-    required this.sessions,
-    required this.activeSessionId,
-    required this.allFolders,
-    required this.onSelectSession,
-    required this.onDeleteSession,
-    required this.onRenameSession,
-    required this.onMoveToFolder,
-  });
-
-  final String folderName;
-  final List<Map<String, dynamic>> sessions;
-  final String? activeSessionId;
-  final List<String> allFolders;
-  final ValueChanged<String> onSelectSession;
-  final ValueChanged<String> onDeleteSession;
-  final void Function(String sessionId, String newTitle) onRenameSession;
-  final void Function(String sessionId, String folder) onMoveToFolder;
-
-  @override
-  State<_FolderSection> createState() => _FolderSectionState();
-}
-
-class _FolderSectionState extends State<_FolderSection> {
-  bool _expanded = true;
-
-  @override
-  Widget build(BuildContext context) {
+  void _showSessionMenu(BuildContext context, Map<String, dynamic> session) {
     final l = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final displayName =
-        widget.folderName.isEmpty ? l.noFolder : widget.folderName;
-    final count = widget.sessions.length;
+    final sessionId = session['session_id']?.toString() ??
+        session['id']?.toString() ??
+        '';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Folder header
-        NeonCard(
-          tint: widget.folderName.isEmpty ? null : JarvisTheme.sectionChat,
-          glowOnHover: true,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Row(
-            children: [
-              Icon(
-                widget.folderName.isEmpty
-                    ? Icons.chat_bubble_outline
-                    : (_expanded ? Icons.folder_open : Icons.folder),
-                size: 18,
-                color: widget.folderName.isEmpty
-                    ? theme.iconTheme.color
-                    : JarvisTheme.sectionChat,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  displayName,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: widget.folderName.isEmpty
-                        ? null
-                        : JarvisTheme.sectionChat,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: JarvisTheme.sectionChat.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  l.sessionCount(count),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 11,
-                    color: JarvisTheme.sectionChat,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                _expanded ? Icons.expand_less : Icons.expand_more,
-                size: 18,
-                color: theme.textTheme.bodySmall?.color,
-              ),
-            ],
-          ),
+    showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit, size: 18),
+              title: Text(l.renameChat),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showRenameDialog(context, sessionId, session);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder_outlined, size: 18),
+              title: Text(l.moveToFolder),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showMoveDialog(context, sessionId, session);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, size: 18, color: JarvisTheme.red),
+              title: Text(l.delete, style: TextStyle(color: JarvisTheme.red)),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                final confirmed = await JarvisConfirmationDialog.show(
+                  context,
+                  title: l.deleteChat,
+                  message: l.confirmDeleteChat,
+                  confirmLabel: l.delete,
+                  icon: Icons.delete_outline,
+                );
+                if (confirmed && context.mounted) {
+                  widget.onDeleteSession(sessionId);
+                }
+              },
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-
-        // Session cards
-        if (_expanded)
-          ...widget.sessions.map((session) {
-            final sessionId = session['session_id']?.toString() ??
-                session['id']?.toString() ??
-                '';
-            final isActive = sessionId == widget.activeSessionId;
-            return Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 6),
-              child: _SessionCard(
-                session: session,
-                isActive: isActive,
-                allFolders: widget.allFolders,
-                onTap: () => widget.onSelectSession(sessionId),
-                onDelete: () async {
-                  final confirmed = await JarvisConfirmationDialog.show(
-                    context,
-                    title: l.deleteChat,
-                    message: l.confirmDeleteChat,
-                    confirmLabel: l.delete,
-                    icon: Icons.delete_outline,
-                  );
-                  if (confirmed && context.mounted) {
-                    widget.onDeleteSession(sessionId);
-                  }
-                },
-                onRename: () => _showRenameDialog(context, sessionId, session),
-                onMoveToFolder: (folder) =>
-                    widget.onMoveToFolder(sessionId, folder),
-              ),
-            );
-          }),
-
-        const SizedBox(height: 8),
-      ],
+      ),
     );
   }
 
@@ -328,183 +369,23 @@ class _FolderSectionState extends State<_FolderSection> {
       }
     });
   }
-}
 
-class _SessionCard extends StatelessWidget {
-  const _SessionCard({
-    required this.session,
-    required this.isActive,
-    required this.allFolders,
-    required this.onTap,
-    required this.onDelete,
-    required this.onRename,
-    required this.onMoveToFolder,
-  });
-
-  final Map<String, dynamic> session;
-  final bool isActive;
-  final List<String> allFolders;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-  final VoidCallback onRename;
-  final ValueChanged<String> onMoveToFolder;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final title =
-        session['title']?.toString().trim().isNotEmpty == true
-            ? session['title'].toString()
-            : l.untitledChat;
-    final messageCount = session['message_count'] as int? ?? 0;
-    final lastActivity = session['last_activity']?.toString();
-
-    return NeonCard(
-      tint: isActive ? JarvisTheme.sectionChat : null,
-      glowOnHover: true,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      onTap: onTap,
-      child: Row(
-        children: [
-          // Chat icon
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 18,
-            color: isActive
-                ? JarvisTheme.sectionChat
-                : Theme.of(context).iconTheme.color,
-          ),
-          const SizedBox(width: 10),
-
-          // Title + meta
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: isActive ? FontWeight.w600 : null,
-                        color: isActive ? JarvisTheme.sectionChat : null,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    if (lastActivity != null) ...[
-                      Text(
-                        _formatRelativeTime(lastActivity, l),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: JarvisTheme.sectionChat.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        l.messagesCount(messageCount.toString()),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: JarvisTheme.sectionChat,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // 3-dot menu
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, size: 18,
-                color: Theme.of(context).textTheme.bodySmall?.color),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            itemBuilder: (ctx) => [
-              PopupMenuItem(
-                value: 'rename',
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit, size: 18),
-                    const SizedBox(width: 8),
-                    Text(l.renameChat),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'move',
-                child: Row(
-                  children: [
-                    const Icon(Icons.folder_outlined, size: 18),
-                    const SizedBox(width: 8),
-                    Text(l.moveToFolder),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline, size: 18,
-                        color: JarvisTheme.red),
-                    const SizedBox(width: 8),
-                    Text(l.delete,
-                        style: TextStyle(color: JarvisTheme.red)),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (action) {
-              switch (action) {
-                case 'rename':
-                  onRename();
-                case 'move':
-                  _showMoveToFolderDialog(context);
-                case 'delete':
-                  onDelete();
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showMoveToFolderDialog(BuildContext context) {
+  void _showMoveDialog(
+    BuildContext context,
+    String sessionId,
+    Map<String, dynamic> session,
+  ) {
     showDialog<String>(
       context: context,
       builder: (ctx) => _MoveToFolderDialog(
-        folders: allFolders,
+        folders: widget.folders,
         currentFolder: session['folder']?.toString().trim() ?? '',
       ),
     ).then((folder) {
       if (folder != null) {
-        onMoveToFolder(folder);
+        widget.onMoveToFolder(sessionId, folder);
       }
     });
-  }
-
-  String _formatRelativeTime(String isoTimestamp, AppLocalizations l) {
-    try {
-      final dt = DateTime.parse(isoTimestamp);
-      final now = DateTime.now();
-      final diff = now.difference(dt);
-
-      if (diff.inSeconds < 60) return l.justNow;
-      if (diff.inMinutes < 60) return l.minutesAgo(diff.inMinutes.toString());
-      if (diff.inHours < 24) return l.hoursAgo(diff.inHours.toString());
-      return l.daysAgo(diff.inDays.toString());
-    } catch (_) {
-      return '';
-    }
   }
 }
 

@@ -40,6 +40,15 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _pipListenerAttached = false;
   bool _sessionsInitialized = false;
 
+  bool get _isIncognito {
+    final sessions = context.read<SessionsProvider>();
+    final activeId = sessions.activeSessionId;
+    if (activeId == null) return false;
+    final match = sessions.sessions.where((s) => s['id'] == activeId);
+    if (match.isEmpty) return false;
+    return match.first['incognito'] == true;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -112,9 +121,13 @@ class _ChatScreenState extends State<ChatScreen> {
               activeSessionId: sessions.activeSessionId,
               onSelectSession: _onSelectSession,
               onNewChat: _onNewChat,
+              onNewIncognitoChat: _onNewIncognitoChat,
               onDeleteSession: _onDeleteSession,
               onRenameSession: _onRenameSession,
               onMoveToFolder: _onMoveToFolder,
+              searchResults: sessions.searchResults,
+              onSearchChanged: sessions.searchChats,
+              sessionsByProject: sessions.sessionsByProject,
             );
           },
         ),
@@ -370,6 +383,22 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) Navigator.of(context).pop(); // close drawer
   }
 
+  void _onNewIncognitoChat() async {
+    final sessions = context.read<SessionsProvider>();
+    final chat = context.read<ChatProvider>();
+    final conn = context.read<ConnectionProvider>();
+
+    final sessionId = await sessions.createIncognitoSession();
+    if (sessionId != null) {
+      chat.clearForNewSession();
+      if (conn.state == JarvisConnectionState.connected) {
+        await conn.ws.switchSession(sessionId);
+        chat.attach(conn.ws);
+      }
+    }
+    if (mounted) Navigator.of(context).pop(); // close drawer
+  }
+
   void _onDeleteSession(String sessionId) {
     context.read<SessionsProvider>().deleteSession(sessionId);
   }
@@ -389,7 +418,31 @@ class _ChatScreenState extends State<ChatScreen> {
         tooltip: l.chatHistory,
         onPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
-      title: Text(l.appTitle),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l.appTitle),
+          if (_isIncognito) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.purple.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple.withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.visibility_off, size: 12, color: Colors.purple),
+                  SizedBox(width: 3),
+                  Text('Inkognito', style: TextStyle(fontSize: 10, color: Colors.purple)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
       actions: [
         // Voice toggle
         Consumer<VoiceProvider>(
