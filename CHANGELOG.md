@@ -5,6 +5,28 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.52.0] -- 2026-03-21
+
+### Added
+- **SSH Remote Shell Backend**: Execute commands on remote hosts via SSH. 3 MCP tools (`remote_exec`, `remote_list_hosts`, `remote_test_connection`). Host registration, command validation, dangerous-pattern blocking. `remote_exec` requires ORANGE gatekeeper approval.
+- **GEPA Robustness Overhaul**: Longer evaluation windows (MIN_TRACES 10→20, MIN_SESSIONS_FOR_EVAL 5→15), user approval for high-impact proposals (prompt_patch, guardrail, strategy_change), LLM-powered patch generation (was stub), cascade failure auto-detection. New `GET /api/v1/learning/gepa/status` endpoint.
+- **Docker Real-Life Test Suite**: 15 scenario tests across 7 categories (web research, file ops, remote exec, memory, tool coverage, GEPA safety, session management). Dockerfile + docker-compose for isolated testing.
+- **Research Auto-Escalation**: REPLAN_PROMPT now includes quality self-assessment — checks source count, agreement, gaps. Auto-escalates to `deep_research`/`search_and_read` when results are thin. SYSTEM_PROMPT adds "Gruendlichkeit" principle.
+- **Flutter UI: Incognito Badge**: Purple badge in AppBar when active session is incognito. "Inkognito Chat" button in session drawer.
+- **Flutter UI: Search Bar**: Live full-text search across all chats in session drawer.
+- **Flutter UI: Project Sidebar**: Sessions grouped by folder with ExpansionTile. Incognito sessions show purple icon.
+
+### Fixed
+- **Mobile bottom nav**: Reduced from 8 items to 5 on phones. Removed Search/Light/Office action buttons from mobile bottom bar (remain on tablet/desktop).
+- **Splash screen session reuse**: App no longer creates a new session on every launch. Uses `autoSessionOnStartup()` to resume recent sessions or create new after 30 min inactivity.
+- **Light mode**: `textPrimary`, `textSecondary`, `textTertiary` and `codeBlockBg` are now theme-aware. White text on white background and dark code blocks on light background fixed.
+
+### Testing
+- Full suite: 11,475 tests passing (was 11,447)
+- 15 new real-life scenario tests
+- 11 new tests (remote shell, GEPA robustness, research quality)
+- 0 regressions
+
 ## [0.51.0] -- 2026-03-21
 
 ### Added

@@ -4,7 +4,7 @@
 > must implement. It serves as the single source of truth for the
 > backend-frontend boundary.
 >
-> **Generated**: 2026-03-21 | **Backend version**: v0.51.0
+> **Generated**: 2026-03-21 | **Backend version**: v0.52.0
 
 ---
 
