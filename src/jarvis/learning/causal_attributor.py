@@ -173,19 +173,26 @@ class CausalAttributor:
                 affected,
             )
 
-            findings.append(
-                CausalFinding(
-                    trace_id=trace.trace_id,
-                    root_step_id=root_cause.step_id,
-                    causal_chain=causal_chain,
-                    failure_category=category,
-                    confidence=confidence,
-                    explanation=explanation,
-                    affected_downstream=affected,
-                    tool_name=getattr(root_cause, "tool_name", "") or "",
-                    error_signature=self.normalize_error(error_text),
-                ),
+            finding = CausalFinding(
+                trace_id=trace.trace_id,
+                root_step_id=root_cause.step_id,
+                causal_chain=causal_chain,
+                failure_category=category,
+                confidence=confidence,
+                explanation=explanation,
+                affected_downstream=affected,
+                tool_name=getattr(root_cause, "tool_name", "") or "",
+                error_signature=self.normalize_error(error_text),
             )
+
+            # Enhanced cascade detection: if this failure caused many
+            # downstream failures, reclassify and boost confidence so
+            # it gets prioritized for optimization.
+            if finding.affected_downstream > 2:
+                finding.failure_category = "cascade_failure"
+                finding.confidence = max(finding.confidence, 0.7)
+
+            findings.append(finding)
 
         return findings
 

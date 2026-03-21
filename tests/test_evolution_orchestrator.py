@@ -328,8 +328,9 @@ class TestAutoRollbackOnDegradation:
         proposal_store.save_proposal(p)
 
         # Add traces AFTER the proposal was applied, showing degradation
+        # Need at least MIN_SESSIONS_FOR_EVAL (15) traces for evaluation
         now = time.time()
-        for i in range(6):
+        for i in range(16):
             trace_store.save_trace(
                 _make_trace(
                     success_score=0.2,  # bad scores
@@ -358,7 +359,8 @@ class TestAutoRollbackOnDegradation:
         proposal_store.save_proposal(p)
 
         # Good traces after applying
-        for i in range(6):
+        # Need at least MIN_SESSIONS_FOR_EVAL (15) traces for evaluation
+        for i in range(16):
             trace_store.save_trace(
                 _make_trace(
                     success_score=0.9,

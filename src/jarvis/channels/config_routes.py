@@ -4461,6 +4461,18 @@ def _register_gepa_evolution_routes(
             return {"enabled": False, "message": "GEPA not enabled"}
         return orch.get_status()
 
+    @app.get("/api/v1/learning/gepa/status", dependencies=deps)
+    async def gepa_status() -> dict[str, Any]:
+        """Get GEPA evolution cycle status (alias under /learning/)."""
+        orch = _get_orch()
+        if orch is None:
+            return {"status": "not_initialized"}
+        try:
+            status = orch.get_status()
+            return {"status": "ok", **status}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     @app.get("/api/v1/evolution/proposals", dependencies=deps)
     async def list_evolution_proposals(status: str = "all") -> dict[str, Any]:
         ps = _get_proposal_store()

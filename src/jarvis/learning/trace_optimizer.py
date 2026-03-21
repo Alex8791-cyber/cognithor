@@ -786,18 +786,40 @@ class TraceOptimizer:
             f"Write ONLY the patch text — no explanation, no markdown."
         )
 
+        system_msg = (
+            "Du bist ein Optimierungs-Experte fuer KI-Agenten. "
+            "Generiere konkrete, spezifische Verbesserungsvorschlaege."
+        )
+
         try:
-            response = self._llm.generate(prompt)
-            text = (
-                response if isinstance(response, str) else getattr(response, "text", str(response))
-            )
+            # Try chat-style API first (preferred — supports system message)
+            if hasattr(self._llm, "chat"):
+                response = self._llm.chat(
+                    model="",  # Use default model from router
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.3,
+                )
+                text = (
+                    getattr(response, "content", None)
+                    or getattr(response, "text", None)
+                    or (response if isinstance(response, str) else str(response))
+                )
+            else:
+                # Fallback to generate-style API
+                response = self._llm.generate(prompt)
+                text = (
+                    response if isinstance(response, str) else getattr(response, "text", str(response))
+                )
             text = text.strip()
             if text and len(text) < 1000:
                 return text
             log.warning("LLM patch too long or empty, falling back to template")
             return None
-        except Exception:
-            log.debug("LLM generation failed, using template fallback", exc_info=True)
+        except Exception as exc:
+            log.debug("llm_patch_generation_failed", error=str(exc))
             return None
 
     # -- scoring -------------------------------------------------------------

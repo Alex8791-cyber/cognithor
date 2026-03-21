@@ -5,7 +5,7 @@ test improvements -> apply or rollback.
 
 Safety constraints:
   - Max 1 active optimization at a time
-  - Min 10 traces before proposing
+  - Min 20 traces before proposing
   - Auto-rollback after 5 sessions if no improvement (>10% drop)
   - All changes logged and reversible
 """
@@ -73,17 +73,20 @@ class EvolutionOrchestrator:
 
     Safety:
     - Only 1 active optimization at a time (max_active_optimizations)
-    - Minimum trace count before proposing (min_traces_for_proposal=10)
+    - Minimum trace count before proposing (min_traces_for_proposal=20)
     - Auto-rollback if success_score drops >10% after applying (rollback_threshold=0.10)
     - All applied changes are logged with before/after metrics
     """
 
     # Configuration defaults
-    MIN_TRACES = 10
+    MIN_TRACES = 20  # Was 10 — need more data points for reliable analysis
     MAX_ACTIVE = 1
     ROLLBACK_THRESHOLD = 0.10  # 10% drop = rollback
-    MIN_SESSIONS_FOR_EVAL = 5  # evaluate after 5 sessions
+    MIN_SESSIONS_FOR_EVAL = 15  # Was 5 — too short for high-variance tasks
     MIN_CONFIDENCE = 0.6  # minimum confidence to auto-apply
+
+    # Proposal types that require user review before applying
+    HIGH_IMPACT_TYPES = {"prompt_patch", "guardrail", "strategy_change"}
 
     def __init__(
         self,
@@ -231,21 +234,35 @@ class EvolutionOrchestrator:
                     # Sort by confidence descending, pick the best
                     best = max(new_proposals, key=lambda p: p.confidence)
                     if best.confidence >= self.MIN_CONFIDENCE:
-                        applied = self.apply_proposal(best.proposal_id)
-                        if applied:
-                            proposal_applied = best.proposal_id
-                            log.info(
-                                "evolution_auto_applied",
-                                cycle_id=cycle_id,
-                                proposal_id=best.proposal_id,
-                                confidence=best.confidence,
-                            )
+                        # Only auto-apply tool_param and context_enrichment
+                        # High-impact proposals (prompt_patch, guardrail,
+                        # strategy_change) need user review
+                        if best.optimization_type not in self.HIGH_IMPACT_TYPES:
+                            applied = self.apply_proposal(best.proposal_id)
+                            if applied:
+                                proposal_applied = best.proposal_id
+                                log.info(
+                                    "evolution_auto_applied",
+                                    cycle_id=cycle_id,
+                                    proposal_id=best.proposal_id,
+                                    confidence=best.confidence,
+                                    type=best.optimization_type,
+                                )
+                            else:
+                                log.info(
+                                    "evolution_auto_apply_blocked",
+                                    cycle_id=cycle_id,
+                                    proposal_id=best.proposal_id,
+                                    reason="max_active_reached",
+                                )
                         else:
                             log.info(
-                                "evolution_auto_apply_blocked",
+                                "proposal_pending_review",
                                 cycle_id=cycle_id,
                                 proposal_id=best.proposal_id,
-                                reason="max_active_reached",
+                                type=best.optimization_type,
+                                confidence=best.confidence,
+                                description=best.patch_after[:100] if best.patch_after else "",
                             )
                     else:
                         log.info(
