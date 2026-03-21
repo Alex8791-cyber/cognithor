@@ -2205,4 +2205,51 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get thinking => 'Denkt nach...';
+
+  @override
+  String get chooseBackend => 'LLM-Backend waehlen';
+
+  @override
+  String get claudeSubscription => 'Claude-Subscription';
+
+  @override
+  String get claudeSubscriptionDesc =>
+      'Nutze dein Claude Pro/Max -- kein API-Key noetig';
+
+  @override
+  String get ollamaLocal => 'Ollama (Lokal)';
+
+  @override
+  String get ollamaLocalDesc =>
+      'Kostenlos, laeuft auf deiner GPU -- kein Internet noetig';
+
+  @override
+  String get openaiApi => 'OpenAI API';
+
+  @override
+  String get anthropicApi => 'Anthropic API';
+
+  @override
+  String get connected => 'Verbunden';
+
+  @override
+  String get notInstalled => 'Nicht installiert';
+
+  @override
+  String get noKey => 'Kein API-Key';
+
+  @override
+  String get keyConfigured => 'Key konfiguriert';
+
+  @override
+  String get recommended => 'Empfohlen';
+
+  @override
+  String get switchBackend => 'Backend wechseln';
+
+  @override
+  String get restartRequired => 'Neustart erforderlich fuer volle Wirkung';
+
+  @override
+  String get installClaude => 'Claude Code installieren';
 }

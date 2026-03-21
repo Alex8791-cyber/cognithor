@@ -2198,4 +2198,51 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get thinking => 'يفكر...';
+
+  @override
+  String get chooseBackend => 'اختر واجهة LLM';
+
+  @override
+  String get claudeSubscription => 'اشتراك Claude';
+
+  @override
+  String get claudeSubscriptionDesc =>
+      'استخدم اشتراك Claude Pro/Max -- لا حاجة لمفتاح API';
+
+  @override
+  String get ollamaLocal => 'Ollama (محلي)';
+
+  @override
+  String get ollamaLocalDesc =>
+      'مجاني، يعمل على GPU الخاص بك -- لا حاجة للإنترنت';
+
+  @override
+  String get openaiApi => 'OpenAI API';
+
+  @override
+  String get anthropicApi => 'Anthropic API';
+
+  @override
+  String get connected => 'متصل';
+
+  @override
+  String get notInstalled => 'غير مثبت';
+
+  @override
+  String get noKey => 'لا يوجد مفتاح API';
+
+  @override
+  String get keyConfigured => 'المفتاح مكوّن';
+
+  @override
+  String get recommended => 'موصى به';
+
+  @override
+  String get switchBackend => 'تغيير الواجهة الخلفية';
+
+  @override
+  String get restartRequired => 'يلزم إعادة التشغيل للتأثير الكامل';
+
+  @override
+  String get installClaude => 'تثبيت Claude Code';
 }

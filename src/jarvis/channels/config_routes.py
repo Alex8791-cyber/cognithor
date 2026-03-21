@@ -97,6 +97,7 @@ def create_config_routes(
     _register_skill_registry_routes(app, deps, gateway)
     _register_self_improvement_routes(app, deps, gateway)
     _register_gepa_evolution_routes(app, deps, gateway)
+    _register_backend_routes(app, deps, config_manager, gateway)
 
 
 # ======================================================================
@@ -4495,3 +4496,123 @@ def _trace_to_dict(t: Any) -> dict[str, Any]:
         "tool_sequence": t.tool_sequence,
         "created_at": t.created_at,
     }
+
+
+# ======================================================================
+# Backend status / switch routes
+# ======================================================================
+
+
+def _register_backend_routes(
+    app: Any,
+    deps: list[Any],
+    config_manager: ConfigManager,
+    gateway: Any,
+) -> None:
+    """Endpoints for querying LLM backend availability and switching backends."""
+
+    import shutil
+
+    @app.get("/api/v1/backend/status", dependencies=deps)
+    async def get_backend_status() -> dict[str, Any]:
+        """Check which LLM backends are available and authenticated."""
+        results: dict[str, Any] = {}
+
+        # Claude Code CLI
+        claude_path = shutil.which("claude")
+        results["claude-code"] = {
+            "installed": claude_path is not None,
+            "path": claude_path or "",
+            "authenticated": False,
+            "models": [],
+        }
+        if claude_path:
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    claude_path,
+                    "--version",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
+                if proc.returncode == 0:
+                    results["claude-code"]["authenticated"] = True
+                    results["claude-code"]["version"] = stdout.decode().strip()
+                    results["claude-code"]["models"] = [
+                        "opus",
+                        "sonnet",
+                        "haiku",
+                    ]
+            except Exception:
+                pass
+
+        # Ollama
+        try:
+            import httpx
+
+            async with httpx.AsyncClient() as client:
+                resp = await client.get("http://localhost:11434/api/tags", timeout=3)
+                if resp.status_code == 200:
+                    models = [m["name"] for m in resp.json().get("models", [])]
+                    results["ollama"] = {
+                        "installed": True,
+                        "authenticated": True,
+                        "models": models,
+                    }
+                else:
+                    results["ollama"] = {
+                        "installed": True,
+                        "authenticated": False,
+                        "models": [],
+                    }
+        except Exception:
+            results["ollama"] = {
+                "installed": False,
+                "authenticated": False,
+                "models": [],
+            }
+
+        # OpenAI (check if key is set)
+        cfg = config_manager.config if config_manager else None
+        if cfg:
+            has_openai = bool(getattr(cfg, "openai_api_key", ""))
+            results["openai"] = {
+                "installed": True,
+                "authenticated": has_openai,
+                "models": [],
+            }
+
+            has_anthropic = bool(getattr(cfg, "anthropic_api_key", ""))
+            results["anthropic"] = {
+                "installed": True,
+                "authenticated": has_anthropic,
+                "models": [],
+            }
+
+        # Current backend
+        current = getattr(cfg, "llm_backend_type", "ollama") if cfg else "ollama"
+
+        return {"backends": results, "current": current}
+
+    @app.post("/api/v1/backend/switch", dependencies=deps)
+    async def switch_backend(request: Request) -> dict[str, Any]:
+        """Switch the LLM backend type."""
+        body = await request.json()
+        new_backend = body.get("backend", "")
+
+        valid = ["ollama", "openai", "anthropic", "claude-code"]
+        if new_backend not in valid:
+            raise HTTPException(400, f"Invalid backend: {new_backend}. Valid: {valid}")
+
+        # Update config
+        if config_manager:
+            config_manager.config.llm_backend_type = new_backend
+            # Save to config.yaml
+            with contextlib.suppress(Exception):
+                config_manager.save()
+
+        return {
+            "status": "switched",
+            "backend": new_backend,
+            "note": "Restart required for full effect",
+        }

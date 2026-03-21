@@ -4373,6 +4373,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Thinking...'**
   String get thinking;
+
+  /// No description provided for @chooseBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose LLM Backend'**
+  String get chooseBackend;
+
+  /// No description provided for @claudeSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Subscription'**
+  String get claudeSubscription;
+
+  /// No description provided for @claudeSubscriptionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your Claude Pro/Max -- no API key needed'**
+  String get claudeSubscriptionDesc;
+
+  /// No description provided for @ollamaLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Ollama (Local)'**
+  String get ollamaLocal;
+
+  /// No description provided for @ollamaLocalDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Free, runs on your GPU -- no internet needed'**
+  String get ollamaLocalDesc;
+
+  /// No description provided for @openaiApi.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenAI API'**
+  String get openaiApi;
+
+  /// No description provided for @anthropicApi.
+  ///
+  /// In en, this message translates to:
+  /// **'Anthropic API'**
+  String get anthropicApi;
+
+  /// No description provided for @connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get connected;
+
+  /// No description provided for @notInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get notInstalled;
+
+  /// No description provided for @noKey.
+  ///
+  /// In en, this message translates to:
+  /// **'No API key'**
+  String get noKey;
+
+  /// No description provided for @keyConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Key configured'**
+  String get keyConfigured;
+
+  /// No description provided for @recommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get recommended;
+
+  /// No description provided for @switchBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Backend'**
+  String get switchBackend;
+
+  /// No description provided for @restartRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart required for full effect'**
+  String get restartRequired;
+
+  /// No description provided for @installClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Claude Code'**
+  String get installClaude;
 }
 
 class _AppLocalizationsDelegate

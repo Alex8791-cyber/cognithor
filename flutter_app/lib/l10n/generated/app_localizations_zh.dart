@@ -2188,4 +2188,49 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get thinking => '思考中...';
+
+  @override
+  String get chooseBackend => '选择 LLM 后端';
+
+  @override
+  String get claudeSubscription => 'Claude 订阅';
+
+  @override
+  String get claudeSubscriptionDesc => '使用你的 Claude Pro/Max -- 无需 API 密钥';
+
+  @override
+  String get ollamaLocal => 'Ollama (本地)';
+
+  @override
+  String get ollamaLocalDesc => '免费，使用你的 GPU -- 无需联网';
+
+  @override
+  String get openaiApi => 'OpenAI API';
+
+  @override
+  String get anthropicApi => 'Anthropic API';
+
+  @override
+  String get connected => '已连接';
+
+  @override
+  String get notInstalled => '未安装';
+
+  @override
+  String get noKey => '无 API 密钥';
+
+  @override
+  String get keyConfigured => '密钥已配置';
+
+  @override
+  String get recommended => '推荐';
+
+  @override
+  String get switchBackend => '切换后端';
+
+  @override
+  String get restartRequired => '需要重启才能完全生效';
+
+  @override
+  String get installClaude => '安装 Claude Code';
 }

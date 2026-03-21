@@ -534,6 +534,14 @@ class ApiClient {
   Future<Map<String, dynamic>> getLearnStats() => get('learn/stats');
 
   // ---------------------------------------------------------------------------
+  // Backend Status
+  // ---------------------------------------------------------------------------
+
+  Future<Map<String, dynamic>> getBackendStatus() => get('backend/status');
+  Future<Map<String, dynamic>> switchBackend(String backend) =>
+      post('backend/switch', {'backend': backend});
+
+  // ---------------------------------------------------------------------------
   // Sessions
   // ---------------------------------------------------------------------------
 
