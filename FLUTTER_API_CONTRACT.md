@@ -4,7 +4,7 @@
 > must implement. It serves as the single source of truth for the
 > backend-frontend boundary.
 >
-> **Generated**: 2026-03-20 | **Backend version**: v0.48.0
+> **Generated**: 2026-03-21 | **Backend version**: v0.51.0
 
 ---
 
@@ -495,6 +495,11 @@ session_id: Client-generated UUID (e.g., "flutter_<uuid>")
 | POST | `/api/v1/sessions/new` | - | `{ "session_id": "<uuid>" }` |
 | PATCH | `/api/v1/sessions/{id}` | JSON: `{ "title": "...", "folder": "..." }` | `{ "status": "updated", "session_id": "..." }` |
 | DELETE | `/api/v1/sessions/{id}` | - | `{ "status": "deleted", "session_id": "..." }` |
+| GET | `/api/v1/sessions/should-new` | `?channel=webui&timeout_minutes=30` | `{ "should_new": true }` |
+| GET | `/api/v1/sessions/by-folder/{folder}` | `?limit=50` | `{ "sessions": [...] }` |
+| POST | `/api/v1/sessions/new-incognito` | - | `{ "session_id": "<uuid>", "incognito": true }` |
+| GET | `/api/v1/sessions/{id}/export` | - | `{ "session_id": "...", "title": "...", "messages": [...], "exported_at": "..." }` |
+| GET | `/api/v1/sessions/search` | `?q=<query>&limit=20` | `{ "results": [...], "query": "..." }` |
 
 **Session list item shape:**
 ```json
@@ -503,7 +508,9 @@ session_id: Client-generated UUID (e.g., "flutter_<uuid>")
   "title": "Weather Research",
   "message_count": 15,
   "started_at": 1710000000.0,
-  "last_activity": 1710003600.0
+  "last_activity": 1710003600.0,
+  "folder": "work",
+  "incognito": false
 }
 ```
 

@@ -5,6 +5,33 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.51.0] -- 2026-03-21
+
+### Added
+- **Auto-New-Session**: Automatically creates a fresh chat session after 30 minutes of inactivity instead of resuming stale conversations. Configurable via `config.session.inactivity_timeout_minutes`.
+- **Project Folders**: Group chat sessions into projects/folders. Sidebar groups sessions by folder with filtered API listing (`GET /api/v1/sessions/by-folder/{folder}`).
+- **Incognito Mode**: Sessions that skip memory enrichment (context pipeline) and don't persist chat history. No long-term memory reads or writes. `POST /api/v1/sessions/new-incognito`.
+- **Session Export**: Download any chat session as JSON with full metadata (`GET /api/v1/sessions/{id}/export`).
+- **Full-Text Search**: Search across all chat messages in all sessions (`GET /api/v1/sessions/search?q=...`). Flutter search bar wired.
+- **GDPR Retention Enforcement**: `cleanup_old_sessions()` and `cleanup_channel_mappings()` now run periodically via gateway cron (30-day retention for inactive sessions).
+- **SessionConfig**: New config section with `inactivity_timeout_minutes` (default 30) and `chat_history_limit` (default 100).
+- 19 new tests in `tests/test_session_management/` covering all features.
+
+### Fixed
+- **Chat history leak**: System messages (identity axioms, trust boundary, context pipeline output) and raw tool results (web search HTML) were displayed as chat bubbles when switching sessions. Now only `user` and `assistant` messages are persisted and returned.
+- **Claude Code permission loop**: Planner asked "Ich brauche Freigabe für WebSearch" instead of generating JSON tool plans. Fixed with `_PLANNER_PREFIX` framing and SYSTEM_PROMPT restructuring.
+- **Chat history limit**: Increased from hardcoded 20 to configurable 100 messages on session resume.
+
+### Changed
+- `save_chat_history()` now filters to `_VISIBLE_ROLES = {"user", "assistant"}` — system/tool messages excluded.
+- `get_session_history()` SQL includes `AND role IN ('user', 'assistant')` for legacy data compat.
+- `ClaudeCodeBackend._messages_to_prompt()` prepends planner-framing prefix.
+
+### Testing
+- Full suite: 11,447 tests passing (was 10,904)
+- 19 new session management tests
+- 0 regressions
+
 ## [0.50.0] -- 2026-03-21
 
 ### Added
