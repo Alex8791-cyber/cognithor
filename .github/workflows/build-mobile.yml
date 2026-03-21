@@ -78,15 +78,45 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build iOS (no codesign — for testing/sideload)
-        run: flutter build ios --release --no-codesign
+      - name: Disable code signing in Xcode project
+        run: |
+          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = ""/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer"/CODE_SIGN_IDENTITY = ""/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*/DEVELOPMENT_TEAM = ""/g' ios/Runner.xcodeproj/project.pbxproj
+          # Add CODE_SIGNING_ALLOWED = NO
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER/CODE_SIGNING_ALLOWED = NO;\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER/g' ios/Runner.xcodeproj/project.pbxproj
+
+      - name: Build iOS (unsigned)
+        run: |
+          flutter build ios --release --no-codesign 2>&1 || true
+          # Fallback: build with xcodebuild directly
+          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+            cd ios
+            xcodebuild -workspace Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination generic/platform=iOS \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              DEVELOPMENT_TEAM="" \
+              PROVISIONING_PROFILE_SPECIFIER="" \
+              build
+            cd ..
+          fi
 
       - name: Create IPA from app bundle
         run: |
-          mkdir -p Payload
-          cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -r cognithor-ios.ipa Payload
-          rm -rf Payload
+          APP_PATH=$(find build -name "Runner.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            mkdir -p Payload
+            cp -r "$APP_PATH" Payload/
+            zip -r cognithor-ios.ipa Payload
+            rm -rf Payload
+          else
+            echo "No .app bundle found — iOS build may have failed"
+            exit 1
+          fi
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
