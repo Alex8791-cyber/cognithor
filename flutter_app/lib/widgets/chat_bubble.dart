@@ -203,7 +203,7 @@ class ChatBubble extends StatelessWidget {
           fontSize: 14,
           height: 1.5,
         ),
-        code: const TextStyle(
+        code: TextStyle(
           fontFamily: 'monospace',
           fontSize: 13,
           color: JarvisTheme.sectionChat,
