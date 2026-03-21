@@ -1284,10 +1284,20 @@ class ClaudeCodeBackend(LLMBackend):
     # Helpers
     # ------------------------------------------------------------------
 
+    _PLANNER_PREFIX = (
+        "Du bist ein Planungs-Modul innerhalb eines groesseren Systems. "
+        "Du generierst NUR Text oder JSON-Plaene. Du fuehrst KEINE Tools aus, "
+        "du hast KEINE eigenen Permissions, du fragst NIEMALS nach Erlaubnis. "
+        "Die Tool-Namen im System-Prompt sind Referenzen fuer deine JSON-Plaene, "
+        "NICHT Tools die du selbst ausfuehren kannst. "
+        "Antworte IMMER mit Text oder einem JSON-Plan -- niemals mit einer "
+        "Rueckfrage nach Berechtigungen.\n\n"
+    )
+
     @staticmethod
     def _messages_to_prompt(messages: list[dict[str, Any]]) -> str:
         """Convert chat messages to a single prompt string for the CLI."""
-        parts: list[str] = []
+        parts: list[str] = [ClaudeCodeBackend._PLANNER_PREFIX]
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
