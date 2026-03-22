@@ -98,6 +98,7 @@ def create_config_routes(
     _register_self_improvement_routes(app, deps, gateway)
     _register_gepa_evolution_routes(app, deps, gateway)
     _register_backend_routes(app, deps, config_manager, gateway)
+    _register_autonomous_routes(app, deps, gateway)
 
 
 # ======================================================================
@@ -4692,3 +4693,23 @@ def _register_backend_routes(
             "backend": new_backend,
             "note": "Restart required for full effect",
         }
+
+
+# ======================================================================
+# Autonomous Task Orchestration routes
+# ======================================================================
+
+
+def _register_autonomous_routes(
+    app: Any,
+    deps: list[Any],
+    gateway: Any,
+) -> None:
+    """Endpoints for querying autonomous task execution status."""
+
+    @app.get("/api/v1/autonomous/tasks", dependencies=deps)
+    async def list_autonomous_tasks() -> dict[str, Any]:
+        """List active autonomous tasks."""
+        if not hasattr(gateway, "_autonomous_orchestrator"):
+            return {"tasks": []}
+        return {"tasks": gateway._autonomous_orchestrator.get_active_tasks()}

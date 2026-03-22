@@ -59,6 +59,7 @@ from jarvis.models import (
     ToolResult,
     WorkingMemory,
 )
+from jarvis.core.autonomous_orchestrator import AutonomousOrchestrator
 from jarvis.utils.logging import get_logger, setup_logging
 
 if TYPE_CHECKING:
@@ -415,6 +416,13 @@ class Gateway:
                 )
             except Exception:
                 log.debug("prompt_evolution_cron_registration_skipped", exc_info=True)
+
+        # --- Autonomous Orchestrator (connects PGE + SkillGenerator + Reflector) ---
+        self._autonomous_orchestrator = AutonomousOrchestrator(
+            gateway=self,
+            skill_generator=getattr(self, "_skill_generator", None),
+            reflector=getattr(self, "_reflector", None),
+        )
 
         log.info(
             "gateway_init_complete",
@@ -1399,6 +1407,27 @@ class Gateway:
         except Exception:
             log.debug("channel_flags_skipped", exc_info=True)
 
+        # ── Autonomous Orchestration (complex/recurring tasks) ──
+        auto_task = None
+        if (
+            hasattr(self, "_autonomous_orchestrator")
+            and self._autonomous_orchestrator.should_orchestrate(msg.text)
+        ):
+            auto_task = self._autonomous_orchestrator.create_task(
+                msg.text, session.session_id
+            )
+            orchestration_context = self._autonomous_orchestrator.get_orchestration_prompt(
+                auto_task
+            )
+            wm.add_message(
+                Message(
+                    role=MessageRole.SYSTEM,
+                    content=orchestration_context,
+                    channel=msg.channel,
+                )
+            )
+            log.info("autonomous_orchestration_active", task_id=auto_task.task_id)
+
         all_results: list[ToolResult] = []
         all_plans: list[ActionPlan] = []
         all_audit: list[AuditEntry] = []
@@ -1487,6 +1516,23 @@ class Gateway:
         # Coding-Override aufraeumen
         if self._model_router:
             self._model_router.clear_coding_override()
+
+        # ── Autonomous Task Evaluation ──
+        if auto_task is not None:
+            auto_task.quality_score = self._autonomous_orchestrator.evaluate_result(
+                auto_task, final_response, all_results
+            )
+            auto_task.status = (
+                "completed"
+                if auto_task.quality_score >= AutonomousOrchestrator.QUALITY_THRESHOLD
+                else "needs_improvement"
+            )
+            log.info(
+                "autonomous_task_evaluated",
+                task_id=auto_task.task_id,
+                quality=auto_task.quality_score,
+                status=auto_task.status,
+            )
 
         # User- und Antwort-Nachricht in Working Memory speichern (nach PGE-Loop)
         wm.add_message(Message(role=MessageRole.USER, content=msg.text, channel=msg.channel))
