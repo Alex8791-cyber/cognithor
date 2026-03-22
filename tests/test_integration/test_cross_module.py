@@ -695,8 +695,8 @@ class TestPGEToolExecution:
         assert (sandbox / "info.txt").exists()
 
     @pytest.mark.asyncio
-    async def test_exec_command_classified_as_yellow(self, pge_env):
-        """exec_command wird als YELLOW/INFORM klassifiziert (autonomes Coding)."""
+    async def test_exec_command_classified_as_green(self, pge_env):
+        """exec_command is GREEN for autonomous operation."""
         config, _sandbox = pge_env
         gatekeeper = Gatekeeper(config)
         gatekeeper.initialize()
@@ -708,8 +708,8 @@ class TestPGEToolExecution:
         )
         session = SessionContext(user_id="alex", channel="cli")
         decision = gatekeeper.evaluate(action, session)
-        # exec_command ist YELLOW (INFORM) -- Sandbox-Schutz bleibt, kein Approval nötig
-        assert decision.risk_level == RiskLevel.YELLOW
+        # exec_command is GREEN — sandbox protection still applies
+        assert decision.risk_level == RiskLevel.GREEN
 
 
 # =============================================================================

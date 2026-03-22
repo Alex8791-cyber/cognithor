@@ -140,10 +140,7 @@ class TestRiskClassification:
     @pytest.mark.parametrize(
         "tool",
         [
-            "edit_file",
             "save_to_memory",
-            "exec_command",
-            "run_python",
             "git_commit",
             "git_branch",
             "document_export",

@@ -5,6 +5,32 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.53.0] -- 2026-03-22
+
+### Added
+- **Truly Autonomous Coding**: 50 iterations (was 20), failure threshold 70% (was 50%). Cognithor writes code, tests it, debugs errors, rewrites, and re-tests autonomously until it works.
+- **Autonomous Task Orchestrator**: Complex/recurring tasks auto-decomposed with self-evaluation and quality scoring.
+- **Deep Research by Default**: Complex queries auto-escalate to `deep_research` with multi-source consensus.
+- **Periodic Thinking Status**: UI shows "Denke nach... (15s)" during long planning phases.
+- **Auto-Extract Code**: When planner returns code in permission text, auto-creates `write_file` plan.
+
+### Changed
+- **Ollama/Qwen3:32b as default planner** — local-first, no API key needed, no permission issues.
+- **`operation_mode: offline` now respected** — API keys no longer override backend when offline mode set.
+- **Planner prefix in English** — more authoritative for Claude, explicitly blocks permission keywords.
+- **REPLAN "Fehler fixen?"** — first option when code fails, before "Fertig?".
+- **No external software rule** — planner must use only Python libraries, never Stockfish/ffmpeg/ImageMagick.
+- **GREEN for core tools** — `write_file`, `edit_file`, `run_python`, `exec_command` no longer require approval.
+- **Auto-approve all ORANGE tools** — for fully autonomous operation.
+- **Claude Code timeout 600s** (was 120s, was overridden by Ollama config).
+
+### Fixed
+- WebSocket reconnection storm (don't close stale connections).
+- WebSocket accept before close (Windows semaphore error).
+- CancelledError in keepalive task (BaseException, not Exception).
+- Splash screen race condition (StatefulWidget with guard).
+- Approval handler signature mismatch (`action` vs `tool` param).
+
 ## [0.52.0] -- 2026-03-21
 
 ### Added
