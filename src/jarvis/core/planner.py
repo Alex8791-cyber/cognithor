@@ -1267,7 +1267,36 @@ class Planner:
                 parse_failed=True,
             )
 
-        # Kein JSON gefunden → echte direkte Antwort (z.B. "Was ist 2+2?" → "4")
+        # Kein JSON gefunden → prüfe ob der Planner nach Permission fragt
+        _permission_keywords = [
+            "permission",
+            "berechtigung",
+            "freigabe",
+            "erlaubnis",
+            "genehmig",
+            "allow",
+            "approve",
+            "write-permission",
+            "schreibberechtigung",
+        ]
+        _lower = text.lower()
+        _is_permission_ask = any(kw in _lower for kw in _permission_keywords)
+
+        if _is_permission_ask:
+            # Der Planner fragt nach Permission statt zu planen → Fehler
+            log.warning(
+                "planner_permission_ask_blocked",
+                text_preview=text[:200],
+            )
+            return ActionPlan(
+                goal=goal,
+                reasoning="Planner fragte nach Permission — erzwinge retry",
+                direct_response=None,
+                confidence=0.1,
+                parse_failed=True,
+            )
+
+        # Echte direkte Antwort (z.B. "Was ist 2+2?" → "4")
         log.debug("planner_no_json_found", text_len=len(text))
         return ActionPlan(
             goal=goal,
