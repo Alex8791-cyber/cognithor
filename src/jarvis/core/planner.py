@@ -1283,7 +1283,45 @@ class Planner:
         _is_permission_ask = any(kw in _lower for kw in _permission_keywords)
 
         if _is_permission_ask:
-            # Der Planner fragt nach Permission statt zu planen → Fehler
+            # Check if there's actual code in the response we can extract
+            import re as _re
+
+            _code_blocks = _re.findall(r"```(?:python|py)?\s*\n(.*?)```", text, _re.DOTALL)
+            if _code_blocks:
+                # Claude wrote the code but wrapped it in permission text.
+                # Extract the code and auto-create a write_file plan.
+                _code = max(_code_blocks, key=len)  # Take the largest code block
+                # Try to find a filename in the text
+                _fname_match = _re.search(r"[`'\"](\w+\.py)[`'\"]", text)
+                _filename = _fname_match.group(1) if _fname_match else "program.py"
+
+                log.info(
+                    "planner_permission_auto_plan",
+                    filename=_filename,
+                    code_len=len(_code),
+                )
+                return ActionPlan(
+                    goal=goal,
+                    reasoning=f"Auto-extracted code from permission response → write_file({_filename})",
+                    steps=[
+                        PlannedAction(
+                            tool="write_file",
+                            params={
+                                "path": f"{{workspace_dir}}/{_filename}",
+                                "content": _code.strip(),
+                            },
+                            rationale=f"Code schreiben: {_filename}",
+                        ),
+                        PlannedAction(
+                            tool="run_python",
+                            params={"code": f"print('File {_filename} written successfully')"},
+                            rationale="Bestätigung",
+                        ),
+                    ],
+                    confidence=0.8,
+                )
+
+            # No code blocks found — pure permission ask → retry
             log.warning(
                 "planner_permission_ask_blocked",
                 text_preview=text[:200],
