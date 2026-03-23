@@ -5,6 +5,17 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.54.0] -- 2026-03-23
+
+### Added
+- **Computer Use** — GPT-5.4-style desktop automation: 6 new MCP tools (`computer_screenshot`, `computer_click`, `computer_type`, `computer_hotkey`, `computer_scroll`, `computer_drag`). Takes screenshots, analyzes with vision model, clicks at pixel coordinates. Uses PyAutoGUI + mss.
+- **Deep Research Agent** — Architecture files for deep research capabilities.
+- **`[desktop]` dependency group** — `pip install cognithor[desktop]` for Computer Use (pyautogui, mss, pyperclip, Pillow).
+
+### Fixed
+- Computer Use: hotkey string splitting, Unicode clipboard fallback, primary monitor selection, graceful degradation when deps missing.
+- Gatekeeper tests updated for GREEN tool classification.
+
 ## [0.53.0] -- 2026-03-22
 
 ### Added
