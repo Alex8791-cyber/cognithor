@@ -1291,6 +1291,14 @@ def main() -> None:
 
                 log.info("cc_identity_endpoints_registered")
 
+                # VS Code Extension API
+                try:
+                    from jarvis.channels.vscode_routes import register_vscode_routes
+                    register_vscode_routes(api_app, gateway, _api_deps)
+                    log.info("vscode_api_registered")
+                except Exception:
+                    log.debug("vscode_api_not_registered", exc_info=True)
+
                 # Mount pre-built UI at / (catch-all, MUSS als letztes)
                 # Prioritaet: Flutter-Build > React-Build
                 _repo_root = Path(__file__).resolve().parent.parent.parent
