@@ -101,6 +101,7 @@ _EDITABLE_SECTIONS = frozenset(
         "prompt_evolution",
         "improvement",
         "executor",
+        "tools",
     }
 )
 
