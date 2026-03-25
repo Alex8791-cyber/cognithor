@@ -1897,6 +1897,27 @@ class Gateway:
         # Identity Layer reference (set during Phase init)
         _identity = getattr(self, "_identity_layer", None)
 
+        # Agent-specific LLM overrides (preferred_model, temperature, top_p)
+        _agent_model: str | None = None
+        _agent_temperature: float | None = None
+        _agent_top_p: float | None = None
+        if route_decision and route_decision.agent:
+            _agent = route_decision.agent
+            if _agent.preferred_model:
+                _agent_model = _agent.preferred_model
+            if _agent.temperature is not None:
+                _agent_temperature = _agent.temperature
+            if getattr(_agent, "top_p", None) is not None:
+                _agent_top_p = _agent.top_p
+            if _agent_model or _agent_temperature is not None or _agent_top_p is not None:
+                log.info(
+                    "agent_llm_overrides",
+                    agent=_agent.name,
+                    model=_agent_model,
+                    temperature=_agent_temperature,
+                    top_p=_agent_top_p,
+                )
+
         while not session.iterations_exhausted and self._running:
             # Cancel-Check: User hat /stop oder cancel gesendet
             if msg.session_id in self._cancelled_sessions:
@@ -1969,6 +1990,9 @@ class Gateway:
                     user_message=msg.text,
                     working_memory=wm,
                     tool_schemas=tool_schemas,
+                    model_override=_agent_model,
+                    temperature_override=_agent_temperature,
+                    top_p_override=_agent_top_p,
                 )
             else:
                 plan = await self._planner.replan(
@@ -1976,6 +2000,9 @@ class Gateway:
                     results=all_results,
                     working_memory=wm,
                     tool_schemas=tool_schemas,
+                    model_override=_agent_model,
+                    temperature_override=_agent_temperature,
+                    top_p_override=_agent_top_p,
                 )
 
             # Stop keepalive once planner responds
