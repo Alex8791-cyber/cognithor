@@ -2001,6 +2001,30 @@ def _register_monitoring_routes(
             "log_file": str(gk_log),
         }
 
+    @app.get("/api/v1/audit/timestamps", dependencies=deps)
+    async def list_audit_timestamps() -> dict[str, Any]:
+        """List all RFC 3161 TSA timestamps for audit logs."""
+        try:
+            from jarvis.security.tsa import TSAClient
+
+            tsa_dir = config_manager.config.jarvis_home / "tsa"
+            client = TSAClient(storage_dir=tsa_dir)
+            timestamps = client.list_timestamps()
+            return {
+                "timestamps": timestamps,
+                "count": len(timestamps),
+                "tsa_url": getattr(
+                    getattr(config_manager.config, "audit", None),
+                    "tsa_url", "https://freetsa.org/tsr"
+                ),
+                "tsa_enabled": getattr(
+                    getattr(config_manager.config, "audit", None),
+                    "tsa_enabled", False
+                ),
+            }
+        except Exception as exc:
+            return {"timestamps": [], "count": 0, "error": str(exc)}
+
     @app.get("/api/v1/monitoring/heartbeat", dependencies=deps)
     async def heartbeat_status() -> dict[str, Any]:
         """Heartbeat-Status und Historie."""
