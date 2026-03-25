@@ -2477,6 +2477,14 @@ channels:
   twitch_token: ""
   twitch_channel: ""
 
+# ── Tool Toggles ─────────────────────────────────────────────────
+# Steuert welche Tool-Gruppen aktiv sind.
+# Desktop-Tools sind aus Sicherheitsgruenden standardmaessig deaktiviert.
+
+tools:
+  computer_use_enabled: false   # Desktop-Automation (Screenshot + Klick)
+  desktop_tools_enabled: false  # Clipboard und Screenshots
+
 heartbeat:
   enabled: false
   interval_minutes: 30
