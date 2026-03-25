@@ -48,7 +48,8 @@ AGENTS = [
         "enabled": True,
         "priority": 5,
         "preferred_model": "",
-        "temperature": 0.5,
+        "temperature": 0.3,
+        "top_p": 0.85,
         "system_prompt": (
             "# RESEARCHER -- Analytische Recherche-Einheit\n\n"
             "Du bist der Recherche-Spezialist im Cognithor-System.\n"
@@ -113,7 +114,8 @@ AGENTS = [
         "enabled": True,
         "priority": 5,
         "preferred_model": "qwen3-coder:30b",
-        "temperature": 0.3,
+        "temperature": 0.2,
+        "top_p": 0.8,
         "system_prompt": (
             "# CODER -- Technische Implementierungs-Einheit\n\n"
             "Du bist der Programmier-Spezialist im Cognithor-System.\n"
@@ -182,7 +184,8 @@ AGENTS = [
         "enabled": True,
         "priority": 3,
         "preferred_model": "qwen3:8b",
-        "temperature": 0.6,
+        "temperature": 0.5,
+        "top_p": 0.9,
         "system_prompt": (
             "# OFFICE -- Organisatorische Einheit\n\n"
             "Du bist der Buero- und Organisations-Spezialist im Cognithor-System.\n"
@@ -251,7 +254,8 @@ AGENTS = [
         "enabled": True,
         "priority": 3,
         "preferred_model": "qwen3:8b",
-        "temperature": 0.3,
+        "temperature": 0.2,
+        "top_p": 0.8,
         "system_prompt": (
             "# OPERATOR -- System-Administrations-Einheit\n\n"
             "Du bist der DevOps/SysAdmin-Spezialist im Cognithor-System.\n"
