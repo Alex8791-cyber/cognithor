@@ -1619,6 +1619,30 @@ class AuditConfig(BaseModel):
         description="Aufbewahrungsfrist fuer Audit-Logs in Tagen",
     )
 
+    # RFC 3161 Timestamp Authority
+    tsa_enabled: bool = Field(
+        default=False,
+        description="Taegliche RFC 3161 Timestamps auf Audit-Anchor-Hash",
+    )
+    tsa_url: str = Field(
+        default="https://freetsa.org/tsr",
+        description="URL des TSA-Servers",
+    )
+
+    # WORM Storage (future — prepared config fields)
+    worm_backend: Literal["none", "s3", "minio"] = Field(
+        default="none",
+        description="WORM-Backend: none (lokal), s3 (AWS Object Lock), minio (Self-Hosted)",
+    )
+    worm_bucket: str = Field(
+        default="",
+        description="S3/MinIO Bucket-Name fuer WORM-Storage",
+    )
+    worm_retention_days: int = Field(
+        default=365, ge=30, le=3650,
+        description="WORM Retention-Lock in Tagen",
+    )
+
 
 # ============================================================================
 # Datenbank-Konfiguration
