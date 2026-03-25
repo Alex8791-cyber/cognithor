@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import pytest
 import yaml
 
-from jarvis.config import JarvisConfig, SecurityConfig, ensure_directory_structure
+from jarvis.config import JarvisConfig, SecurityConfig, ToolsConfig, ensure_directory_structure
 from jarvis.core.gatekeeper import Gatekeeper
 from jarvis.models import (
     GateStatus,
@@ -40,6 +40,10 @@ def gk_config(tmp_path: Path) -> JarvisConfig:
         jarvis_home=tmp_path,
         security=SecurityConfig(
             allowed_paths=[str(tmp_path), os.path.join(tempfile.gettempdir(), "jarvis", "")],
+        ),
+        tools=ToolsConfig(
+            computer_use_enabled=True,
+            desktop_tools_enabled=True,
         ),
     )
     ensure_directory_structure(config)

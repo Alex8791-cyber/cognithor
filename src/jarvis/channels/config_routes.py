@@ -1957,10 +1957,10 @@ def _register_monitoring_routes(
     @app.get("/api/v1/audit/verify", dependencies=deps)
     async def verify_audit_integrity() -> dict[str, Any]:
         """Verify the integrity of the gatekeeper audit hash-chain."""
-        import hashlib
         import json as json_mod
 
-        gk_log = config_manager.config.jarvis_home / "logs" / "gatekeeper.jsonl"
+        _cfg = config_manager.config  # noqa: F821
+        gk_log = _cfg.jarvis_home / "logs" / "gatekeeper.jsonl"
         if not gk_log.exists():
             return {"status": "no_log", "message": "No gatekeeper audit log found."}
 
@@ -2007,18 +2007,19 @@ def _register_monitoring_routes(
         try:
             from jarvis.security.tsa import TSAClient
 
-            tsa_dir = config_manager.config.jarvis_home / "tsa"
+            _cfg = config_manager.config  # noqa: F821
+            tsa_dir = _cfg.jarvis_home / "tsa"
             client = TSAClient(storage_dir=tsa_dir)
             timestamps = client.list_timestamps()
             return {
                 "timestamps": timestamps,
                 "count": len(timestamps),
                 "tsa_url": getattr(
-                    getattr(config_manager.config, "audit", None),
+                    getattr(_cfg, "audit", None),
                     "tsa_url", "https://freetsa.org/tsr"
                 ),
                 "tsa_enabled": getattr(
-                    getattr(config_manager.config, "audit", None),
+                    getattr(_cfg, "audit", None),
                     "tsa_enabled", False
                 ),
             }
