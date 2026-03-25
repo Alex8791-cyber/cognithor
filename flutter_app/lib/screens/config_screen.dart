@@ -85,7 +85,7 @@ final _pageRegistry = <String, _SubPageDef>{
   'security': _SubPageDef(
       Icons.shield, (l) => l.configPageSecurity, () => const SecurityPage()),
   'tools': _SubPageDef(
-      Icons.mouse, (l) => l.configPageTools, () => const ToolsPage()),
+      Icons.desktop_windows, (l) => l.configPageTools, () => const ToolsPage()),
   'web': _SubPageDef(
       Icons.public, (l) => l.configPageWeb, () => const WebPage()),
   'mcp':
