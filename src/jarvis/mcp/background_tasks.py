@@ -34,6 +34,7 @@ log = get_logger(__name__)
 __all__ = [
     "BackgroundProcessManager",
     "ProcessMonitor",
+    "register_background_tools",
 ]
 
 # Limits
@@ -519,3 +520,224 @@ class ProcessMonitor:
             except Exception:
                 log.debug("process_monitor_poll_error", exc_info=True)
             await asyncio.sleep(self._default_interval)
+
+
+# ============================================================================
+# MCP Tool Registration
+# ============================================================================
+
+
+def register_background_tools(
+    mcp_client: Any,
+    config: Any,
+    audit_logger: Any = None,
+) -> BackgroundProcessManager:
+    """Register background task MCP tools.
+
+    Returns:
+        BackgroundProcessManager instance (for gateway to start monitor).
+    """
+    jarvis_home = getattr(config, "jarvis_home", Path.home() / ".jarvis")
+    manager = BackgroundProcessManager(
+        db_path=jarvis_home / "background_jobs.db",
+        log_dir=jarvis_home / "workspace" / "background_logs",
+        audit_logger=audit_logger,
+    )
+
+    # Tool 1: start_background
+    async def _start_background(**kwargs: Any) -> str:
+        command = kwargs.get("command", "")
+        if not command.strip():
+            return "Error: 'command' is required."
+        description = kwargs.get("description", "")
+        timeout = int(kwargs.get("timeout_seconds", DEFAULT_TIMEOUT))
+        interval = int(kwargs.get("check_interval", DEFAULT_CHECK_INTERVAL))
+        job_id = await manager.start(
+            command,
+            description=description,
+            timeout_seconds=timeout,
+            check_interval=interval,
+        )
+        return (
+            f"Background job started: {job_id}\n"
+            f"Command: {command[:100]}\n"
+            f"Timeout: {timeout}s, Check interval: {interval}s\n"
+            f"Use check_background_job('{job_id}') to monitor."
+        )
+
+    mcp_client.register_builtin_handler(
+        "start_background",
+        _start_background,
+        description=(
+            "Start a shell command in the background. Returns a job_id for monitoring. "
+            "Use for long-running tasks like downloads, builds, or training runs."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "command": {"type": "string", "description": "Shell command to run"},
+                "description": {"type": "string", "description": "Human-readable description"},
+                "timeout_seconds": {"type": "integer", "description": "Max runtime (default: 3600)", "default": 3600},
+                "check_interval": {"type": "integer", "description": "Monitor poll interval in seconds (default: 30)", "default": 30},
+            },
+            "required": ["command"],
+        },
+    )
+
+    # Tool 2: list_background_jobs
+    async def _list_jobs(**kwargs: Any) -> str:
+        active_only = kwargs.get("active_only", False)
+        jobs = manager.list_jobs(active_only=bool(active_only))
+        if not jobs:
+            return "No background jobs found."
+        lines = []
+        for j in jobs:
+            elapsed = time.time() - j["started_at"]
+            elapsed_str = f"{elapsed:.0f}s" if elapsed < 3600 else f"{elapsed/3600:.1f}h"
+            lines.append(
+                f"  {j['id']} | {j['status']:10s} | {elapsed_str:>8s} | {j['command'][:60]}"
+            )
+        header = f"{'ID':>18s} | {'Status':10s} | {'Elapsed':>8s} | Command"
+        return f"{header}\n" + "\n".join(lines)
+
+    mcp_client.register_builtin_handler(
+        "list_background_jobs",
+        _list_jobs,
+        description="List all background jobs (active and recent completed).",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "active_only": {"type": "boolean", "description": "Only show running jobs", "default": False},
+            },
+        },
+    )
+
+    # Tool 3: check_background_job
+    async def _check_job(**kwargs: Any) -> str:
+        job_id = kwargs.get("job_id", "")
+        if not job_id:
+            return "Error: 'job_id' is required."
+        job = await manager.check_job(job_id)
+        if not job:
+            return f"Job '{job_id}' not found."
+        # Get last 20 lines of output
+        recent = manager.read_log(job_id, tail=20)
+        output_section = "\n".join(recent) if recent else "(no output yet)"
+        stalled = " [STALLED - no new output]" if job.get("_stalled") else ""
+        elapsed = time.time() - job["started_at"]
+        return (
+            f"Job: {job_id}\n"
+            f"Status: {job['status']}{stalled}\n"
+            f"PID: {job.get('pid', '?')}\n"
+            f"Elapsed: {elapsed:.0f}s\n"
+            f"Exit code: {job.get('exit_code', '-')}\n"
+            f"--- Last 20 lines ---\n{output_section}"
+        )
+
+    mcp_client.register_builtin_handler(
+        "check_background_job",
+        _check_job,
+        description="Check status and recent output of a background job.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "job_id": {"type": "string", "description": "Job ID from start_background"},
+            },
+            "required": ["job_id"],
+        },
+    )
+
+    # Tool 4: read_background_log
+    async def _read_log(**kwargs: Any) -> str:
+        job_id = kwargs.get("job_id", "")
+        if not job_id:
+            return "Error: 'job_id' is required."
+        tail = int(kwargs.get("tail", 0))
+        head = int(kwargs.get("head", 0))
+        offset = int(kwargs.get("offset", 0))
+        limit = int(kwargs.get("limit", 100))
+        grep = kwargs.get("grep", "")
+        lines = manager.read_log(
+            job_id, tail=tail, head=head, offset=offset, limit=limit, grep=grep
+        )
+        if not lines:
+            return f"No output for job '{job_id}'."
+        return "\n".join(lines)
+
+    mcp_client.register_builtin_handler(
+        "read_background_log",
+        _read_log,
+        description=(
+            "Read the log/output of a background job. Supports tail (last N lines), "
+            "head (first N lines), offset+limit pagination, and grep filtering."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "job_id": {"type": "string", "description": "Job ID"},
+                "tail": {"type": "integer", "description": "Last N lines (default: 0 = disabled)", "default": 0},
+                "head": {"type": "integer", "description": "First N lines (default: 0 = disabled)", "default": 0},
+                "offset": {"type": "integer", "description": "Skip first N lines", "default": 0},
+                "limit": {"type": "integer", "description": "Max lines to return (default: 100)", "default": 100},
+                "grep": {"type": "string", "description": "Regex filter pattern", "default": ""},
+            },
+            "required": ["job_id"],
+        },
+    )
+
+    # Tool 5: stop_background_job
+    async def _stop_job(**kwargs: Any) -> str:
+        job_id = kwargs.get("job_id", "")
+        if not job_id:
+            return "Error: 'job_id' is required."
+        force = bool(kwargs.get("force", False))
+        ok = await manager.stop_job(job_id, force=force)
+        return f"Job {job_id} stopped." if ok else f"Job {job_id} not running or not found."
+
+    mcp_client.register_builtin_handler(
+        "stop_background_job",
+        _stop_job,
+        description="Stop a running background job. Use force=true for immediate SIGKILL.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "job_id": {"type": "string", "description": "Job ID to stop"},
+                "force": {"type": "boolean", "description": "Force kill (SIGKILL)", "default": False},
+            },
+            "required": ["job_id"],
+        },
+    )
+
+    # Tool 6: wait_background_job
+    async def _wait_job(**kwargs: Any) -> str:
+        job_id = kwargs.get("job_id", "")
+        if not job_id:
+            return "Error: 'job_id' is required."
+        timeout = int(kwargs.get("timeout", 300))
+        job = await manager.wait_job(job_id, timeout=timeout)
+        if not job:
+            return f"Job '{job_id}' not found."
+        return (
+            f"Job {job_id}: {job['status']} (exit_code={job.get('exit_code', '-')})"
+        )
+
+    mcp_client.register_builtin_handler(
+        "wait_background_job",
+        _wait_job,
+        description="Wait for a background job to complete (with timeout).",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "job_id": {"type": "string", "description": "Job ID to wait for"},
+                "timeout": {"type": "integer", "description": "Max wait time in seconds (default: 300)", "default": 300},
+            },
+            "required": ["job_id"],
+        },
+    )
+
+    log.info(
+        "background_tools_registered",
+        tools=["start_background", "list_background_jobs", "check_background_job",
+               "read_background_log", "stop_background_job", "wait_background_job"],
+    )
+    return manager

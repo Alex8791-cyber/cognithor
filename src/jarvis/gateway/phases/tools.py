@@ -475,6 +475,18 @@ async def init_tools(
     else:
         log.info("computer_use_disabled_by_config")
 
+    # Background task tools (long-running shell commands)
+    bg_manager = None
+    try:
+        from jarvis.mcp.background_tasks import register_background_tools
+
+        _audit = getattr(gateway, "_audit_logger", None) if gateway else None
+        bg_manager = register_background_tools(mcp_client, config, audit_logger=_audit)
+        log.info("background_tools_registered")
+    except Exception:
+        log.debug("background_tools_not_registered", exc_info=True)
+    result["bg_manager"] = bg_manager
+
     # Verified Web Lookup (multi-agent fact verification)
     try:
         from jarvis.mcp.verified_lookup import register_verified_lookup_tools

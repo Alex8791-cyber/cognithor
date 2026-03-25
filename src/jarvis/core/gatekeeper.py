@@ -562,6 +562,11 @@ class Gatekeeper:
             # Remote Shell (read-only)
             "remote_list_hosts",
             "remote_test_connection",
+            # Background tasks (monitoring, read-only)
+            "list_background_jobs",
+            "check_background_job",
+            "read_background_log",
+            "wait_background_job",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
@@ -597,6 +602,9 @@ class Gatekeeper:
             "api_connect",
             "api_call",
             "api_disconnect",
+            # Background tasks (state-changing)
+            "start_background",
+            "stop_background_job",
         }
         if tool in yellow_tools:
             return RiskLevel.YELLOW
