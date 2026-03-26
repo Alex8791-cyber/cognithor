@@ -141,9 +141,7 @@ class FeedbackStore:
             "with_comment": with_comment,
         }
 
-    def get_negative_feedback(
-        self, limit: int = 20, agent_name: str = ""
-    ) -> list[dict[str, Any]]:
+    def get_negative_feedback(self, limit: int = 20, agent_name: str = "") -> list[dict[str, Any]]:
         """Get recent negative feedback for learning."""
         with self._conn() as conn:
             if agent_name:
@@ -154,8 +152,7 @@ class FeedbackStore:
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM feedback WHERE rating < 0 "
-                    "ORDER BY created_at DESC LIMIT ?",
+                    "SELECT * FROM feedback WHERE rating < 0 ORDER BY created_at DESC LIMIT ?",
                     (limit,),
                 ).fetchall()
         return [dict(r) for r in rows]
