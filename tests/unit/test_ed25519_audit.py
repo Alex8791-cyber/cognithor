@@ -31,9 +31,7 @@ class TestEd25519Signatures:
         from jarvis.security.audit import AuditTrail
 
         private_bytes, _ = key_pair
-        return AuditTrail(
-            log_path=tmp_path / "ed25519_audit.jsonl", ed25519_key=private_bytes
-        )
+        return AuditTrail(log_path=tmp_path / "ed25519_audit.jsonl", ed25519_key=private_bytes)
 
     @staticmethod
     def _make_entry():
@@ -52,9 +50,7 @@ class TestEd25519Signatures:
     def test_record_includes_ed25519_sig(self, audit_trail, key_pair):
         entry = self._make_entry()
         audit_trail.record(entry)
-        lines = (
-            audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
-        )
+        lines = audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
         record = json.loads(lines[-1])
         assert "ed25519_sig" in record
         assert len(record["ed25519_sig"]) == 128  # 64 bytes hex
@@ -65,9 +61,7 @@ class TestEd25519Signatures:
         _, public_bytes = key_pair
         entry = self._make_entry()
         audit_trail.record(entry)
-        lines = (
-            audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
-        )
+        lines = audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
         record = json.loads(lines[-1])
         assert AuditTrail.verify_signature(record, public_bytes) is True
 
@@ -77,9 +71,7 @@ class TestEd25519Signatures:
         _, public_bytes = key_pair
         entry = self._make_entry()
         audit_trail.record(entry)
-        lines = (
-            audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
-        )
+        lines = audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
         record = json.loads(lines[-1])
         record["hash"] = "tampered_hash_value"
         assert AuditTrail.verify_signature(record, public_bytes) is False
@@ -93,9 +85,7 @@ class TestEd25519Signatures:
 
         entry = self._make_entry()
         audit_trail.record(entry)
-        lines = (
-            audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
-        )
+        lines = audit_trail._log_path.read_text(encoding="utf-8").strip().split("\n")
         record = json.loads(lines[-1])
         wrong_pub = Ed25519PrivateKey.generate().public_key().public_bytes_raw()
         assert AuditTrail.verify_signature(record, wrong_pub) is False
@@ -103,9 +93,7 @@ class TestEd25519Signatures:
     def test_no_sig_when_key_is_none(self, tmp_path):
         from jarvis.security.audit import AuditTrail
 
-        trail = AuditTrail(
-            log_path=tmp_path / "no_ed25519.jsonl", ed25519_key=None
-        )
+        trail = AuditTrail(log_path=tmp_path / "no_ed25519.jsonl", ed25519_key=None)
         entry = self._make_entry()
         trail.record(entry)
         lines = trail._log_path.read_text(encoding="utf-8").strip().split("\n")
@@ -116,14 +104,8 @@ class TestEd25519Signatures:
         from jarvis.security.audit import AuditTrail
 
         assert AuditTrail.verify_signature({}, b"\x00" * 32) is False
-        assert (
-            AuditTrail.verify_signature({"hash": "abc"}, b"\x00" * 32)
-            is False
-        )
-        assert (
-            AuditTrail.verify_signature({"ed25519_sig": "aa"}, b"\x00" * 32)
-            is False
-        )
+        assert AuditTrail.verify_signature({"hash": "abc"}, b"\x00" * 32) is False
+        assert AuditTrail.verify_signature({"ed25519_sig": "aa"}, b"\x00" * 32) is False
 
     def test_verify_chain_with_ed25519(self, audit_trail, key_pair):
         """Chain verification still works when ed25519_sig is present."""

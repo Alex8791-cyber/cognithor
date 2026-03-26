@@ -89,8 +89,7 @@ class WORMUploader:
 
         if not _HAS_BOTO3:
             log.warning(
-                "worm_boto3_missing: boto3 not installed — "
-                "skipping WORM upload (pip install boto3)"
+                "worm_boto3_missing: boto3 not installed — skipping WORM upload (pip install boto3)"
             )
             return []
 
@@ -159,16 +158,12 @@ class WORMUploader:
             return {"locked": False, "error": "boto3 not available"}
 
         try:
-            resp = self._s3_client.get_object_retention(
-                Bucket=self._bucket, Key=key
-            )
+            resp = self._s3_client.get_object_retention(Bucket=self._bucket, Key=key)
             retention = resp.get("Retention", {})
             return {
                 "locked": True,
                 "mode": retention.get("Mode", ""),
-                "retain_until_date": str(
-                    retention.get("RetainUntilDate", "")
-                ),
+                "retain_until_date": str(retention.get("RetainUntilDate", "")),
             }
         except ClientError as exc:
             return {"locked": False, "error": str(exc)}
@@ -180,9 +175,7 @@ class WORMUploader:
         kwargs: dict[str, Any] = {"service_name": "s3"}
 
         if self._backend == "minio":
-            endpoint = os.environ.get(
-                "MINIO_ENDPOINT_URL", "http://localhost:9000"
-            )
+            endpoint = os.environ.get("MINIO_ENDPOINT_URL", "http://localhost:9000")
             kwargs["endpoint_url"] = endpoint
             log.debug("worm_minio_endpoint: %s", endpoint)
 
@@ -245,9 +238,7 @@ class WORMUploader:
         """Return the set of already-uploaded filenames."""
         conn = sqlite3.connect(str(self._db_path))
         try:
-            rows = conn.execute(
-                "SELECT filename FROM worm_uploads"
-            ).fetchall()
+            rows = conn.execute("SELECT filename FROM worm_uploads").fetchall()
         finally:
             conn.close()
         return {r[0] for r in rows}

@@ -14,12 +14,12 @@ def test_computer_use_tools_importable():
 
 
 def test_computer_use_gatekeeper_green():
-    """Computer use tools should be GREEN for autonomous operation."""
+    """Computer use tools should be GREEN when computer_use_enabled=True."""
     from jarvis.core.gatekeeper import Gatekeeper
-    from jarvis.config import JarvisConfig
+    from jarvis.config import JarvisConfig, ToolsConfig
     from jarvis.models import PlannedAction
 
-    gk = Gatekeeper(JarvisConfig())
+    gk = Gatekeeper(JarvisConfig(tools=ToolsConfig(computer_use_enabled=True)))
     for tool in [
         "computer_screenshot",
         "computer_click",

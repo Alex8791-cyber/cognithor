@@ -755,8 +755,7 @@ class Gateway:
                     if channel_name and session_id:
                         cb = self._make_status_callback(channel_name, session_id)
                         await cb("background", text)
-                    log.info("background_job_status_change",
-                             job_id=job_id, old=old, new=new)
+                    log.info("background_job_status_change", job_id=job_id, old=old, new=new)
 
                 self._process_monitor = ProcessMonitor(
                     _bg_manager,
@@ -799,12 +798,12 @@ class Gateway:
                             anchor = self._audit_trail.get_anchor()
                             if anchor["entry_count"] > 0:
                                 date_str = datetime.now(UTC).strftime("%Y-%m-%d")
-                                tsa_url = getattr(self._config.audit, "tsa_url", "https://freetsa.org/tsr")
+                                tsa_url = getattr(
+                                    self._config.audit, "tsa_url", "https://freetsa.org/tsr"
+                                )
                                 tsa_dir = self._config.jarvis_home / "tsa"
                                 tsa_client = TSAClient(tsa_url=tsa_url, storage_dir=tsa_dir)
-                                tsr_path = tsa_client.request_timestamp(
-                                    anchor["hash"], date_str
-                                )
+                                tsr_path = tsa_client.request_timestamp(anchor["hash"], date_str)
                                 if tsr_path:
                                     log.info(
                                         "tsa_daily_timestamp_created",
@@ -826,9 +825,7 @@ class Gateway:
                             from jarvis.audit.worm import WORMUploader
 
                             worm_audit_dir = self._config.jarvis_home / "data" / "audit"
-                            uploader = WORMUploader(
-                                self._config.audit, self._config.jarvis_home
-                            )
+                            uploader = WORMUploader(self._config.audit, self._config.jarvis_home)
                             uploaded = uploader.upload_daily(worm_audit_dir)
                             if uploaded:
                                 log.info(
@@ -882,7 +879,9 @@ class Gateway:
             task.add_done_callback(self._background_tasks.discard)
 
         # Breach detection (GDPR Art. 33)
-        if getattr(self._config, "audit", None) and getattr(self._config.audit, "breach_notification_enabled", True):
+        if getattr(self._config, "audit", None) and getattr(
+            self._config.audit, "breach_notification_enabled", True
+        ):
             try:
                 from jarvis.audit.breach_detector import BreachDetector
 
@@ -908,9 +907,7 @@ class Gateway:
                         except Exception:
                             log.debug("breach_scan_failed", exc_info=True)
 
-                _breach_task = asyncio.create_task(
-                    _breach_scan_loop(), name="breach-detector"
-                )
+                _breach_task = asyncio.create_task(_breach_scan_loop(), name="breach-detector")
                 self._background_tasks.add(_breach_task)
                 _breach_task.add_done_callback(self._background_tasks.discard)
                 log.info("breach_detector_started")

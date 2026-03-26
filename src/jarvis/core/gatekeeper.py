@@ -76,13 +76,24 @@ class Gatekeeper:
     )
 
     # ── Tool Group Toggles ──────────────────────────────────────────
-    _COMPUTER_USE_TOOLS = frozenset({
-        "computer_screenshot", "computer_click", "computer_type",
-        "computer_hotkey", "computer_scroll", "computer_drag",
-    })
-    _DESKTOP_TOOLS = frozenset({
-        "get_clipboard", "set_clipboard", "screenshot_desktop", "screenshot_region",
-    })
+    _COMPUTER_USE_TOOLS = frozenset(
+        {
+            "computer_screenshot",
+            "computer_click",
+            "computer_type",
+            "computer_hotkey",
+            "computer_scroll",
+            "computer_drag",
+        }
+    )
+    _DESKTOP_TOOLS = frozenset(
+        {
+            "get_clipboard",
+            "set_clipboard",
+            "screenshot_desktop",
+            "screenshot_region",
+        }
+    )
 
     def __init__(
         self,

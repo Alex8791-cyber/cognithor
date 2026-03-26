@@ -15,9 +15,11 @@ class TestPlannerAgentOverrides:
 
         config = JarvisConfig()
         mock_ollama = MagicMock()
-        mock_ollama.chat = AsyncMock(return_value={
-            "message": {"content": "Test response"},
-        })
+        mock_ollama.chat = AsyncMock(
+            return_value={
+                "message": {"content": "Test response"},
+            }
+        )
         mock_router = MagicMock(spec=ModelRouter)
         mock_router.select_model.return_value = "qwen3:32b"
         mock_router.get_model_config.return_value = {
@@ -25,18 +27,18 @@ class TestPlannerAgentOverrides:
             "top_p": 0.9,
         }
         planner = Planner(config, ollama=mock_ollama, model_router=mock_router)
+
         async def _passthrough_cb(coro):
             return await coro
 
         planner._llm_circuit_breaker = MagicMock()
-        planner._llm_circuit_breaker.call = AsyncMock(
-            side_effect=_passthrough_cb
-        )
+        planner._llm_circuit_breaker.call = AsyncMock(side_effect=_passthrough_cb)
         return planner
 
     @pytest.fixture
     def empty_wm(self):
         from jarvis.models import WorkingMemory
+
         return WorkingMemory()
 
     @pytest.mark.asyncio
@@ -66,7 +68,9 @@ class TestPlannerAgentOverrides:
     @pytest.mark.asyncio
     async def test_plan_all_overrides(self, mock_planner, empty_wm):
         await mock_planner.plan(
-            "hello", empty_wm, {},
+            "hello",
+            empty_wm,
+            {},
             model_override="test:7b",
             temperature_override=0.1,
             top_p_override=0.7,
@@ -86,7 +90,10 @@ class TestPlannerAgentOverrides:
     @pytest.mark.asyncio
     async def test_replan_accepts_overrides(self, mock_planner, empty_wm):
         await mock_planner.replan(
-            "original goal", [], empty_wm, {},
+            "original goal",
+            [],
+            empty_wm,
+            {},
             model_override="fast:3b",
             temperature_override=0.3,
             top_p_override=0.8,

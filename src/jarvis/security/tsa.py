@@ -91,12 +91,16 @@ class TSAClient:
         try:
             result = subprocess.run(
                 [
-                    self._openssl, "ts", "-query",
-                    "-digest", sha256_hex,
+                    self._openssl,
+                    "ts",
+                    "-query",
+                    "-digest",
+                    sha256_hex,
                     "-sha256",
                     "-cert",
                     "-no_nonce",
-                    "-out", str(output_path),
+                    "-out",
+                    str(output_path),
                 ],
                 capture_output=True,
                 timeout=10,
@@ -201,16 +205,33 @@ class TSAClient:
         #   }
         #   BOOLEAN TRUE (certReq)
         # }
-        sha256_oid = bytes([
-            0x30, 0x0d,  # SEQUENCE (13 bytes)
-            0x06, 0x09,  # OID (9 bytes)
-            0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,  # SHA-256
-            0x05, 0x00,  # NULL
-        ])
-        message_imprint = bytes([0x30, len(sha256_oid) + 2 + len(digest_bytes)]) + \
-            sha256_oid + bytes([0x04, len(digest_bytes)]) + digest_bytes
+        sha256_oid = bytes(
+            [
+                0x30,
+                0x0D,  # SEQUENCE (13 bytes)
+                0x06,
+                0x09,  # OID (9 bytes)
+                0x60,
+                0x86,
+                0x48,
+                0x01,
+                0x65,
+                0x03,
+                0x04,
+                0x02,
+                0x01,  # SHA-256
+                0x05,
+                0x00,  # NULL
+            ]
+        )
+        message_imprint = (
+            bytes([0x30, len(sha256_oid) + 2 + len(digest_bytes)])
+            + sha256_oid
+            + bytes([0x04, len(digest_bytes)])
+            + digest_bytes
+        )
         version = bytes([0x02, 0x01, 0x01])  # INTEGER 1
-        cert_req = bytes([0x01, 0x01, 0xff])  # BOOLEAN TRUE
+        cert_req = bytes([0x01, 0x01, 0xFF])  # BOOLEAN TRUE
         inner = version + message_imprint + cert_req
         tsq_data = bytes([0x30, len(inner)]) + inner
 
@@ -257,11 +278,13 @@ class TSAClient:
             # Extract date from filename: audit_2026-03-25.tsr -> 2026-03-25
             stem = tsr_file.stem  # audit_2026-03-25
             date_str = stem.replace("audit_", "")
-            results.append({
-                "date": date_str,
-                "path": str(tsr_file),
-                "size_bytes": tsr_file.stat().st_size,
-            })
+            results.append(
+                {
+                    "date": date_str,
+                    "path": str(tsr_file),
+                    "size_bytes": tsr_file.stat().st_size,
+                }
+            )
         return results
 
     def get_timestamp(self, date_str: str) -> Path | None:
@@ -299,9 +322,13 @@ class TSAClient:
             return {"verified": False, "error": f"No timestamp for {date_str}"}
 
         cmd = [
-            self._openssl, "ts", "-verify",
-            "-in", str(tsr_path),
-            "-digest", sha256_hex,
+            self._openssl,
+            "ts",
+            "-verify",
+            "-in",
+            str(tsr_path),
+            "-digest",
+            sha256_hex,
             "-sha256",
         ]
         if ca_cert and ca_cert.exists():

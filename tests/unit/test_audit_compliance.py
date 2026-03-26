@@ -111,15 +111,21 @@ class TestBlockchainAnchoring:
     @pytest.fixture
     def audit_trail(self, tmp_path):
         from jarvis.security.audit import AuditTrail
+
         return AuditTrail(log_path=tmp_path / "bc_audit.jsonl")
 
     def test_get_anchor_returns_hash_and_count(self, audit_trail):
         from jarvis.models import AuditEntry as GateAuditEntry, GateStatus, RiskLevel
+
         for i in range(3):
             entry = GateAuditEntry(
-                session_id=f"s{i}", action_tool=f"tool{i}", action_params_hash=f"h{i}",
-                decision_status=GateStatus.ALLOW, decision_reason=f"r{i}",
-                risk_level=RiskLevel.GREEN, policy_name="p",
+                session_id=f"s{i}",
+                action_tool=f"tool{i}",
+                action_params_hash=f"h{i}",
+                decision_status=GateStatus.ALLOW,
+                decision_reason=f"r{i}",
+                risk_level=RiskLevel.GREEN,
+                policy_name="p",
             )
             audit_trail.record(entry)
         anchor = audit_trail.get_anchor()
@@ -130,17 +136,26 @@ class TestBlockchainAnchoring:
 
     def test_anchor_changes_after_new_entry(self, audit_trail):
         from jarvis.models import AuditEntry as GateAuditEntry, GateStatus, RiskLevel
+
         entry = GateAuditEntry(
-            session_id="s1", action_tool="t1", action_params_hash="h1",
-            decision_status=GateStatus.ALLOW, decision_reason="r1",
-            risk_level=RiskLevel.GREEN, policy_name="p",
+            session_id="s1",
+            action_tool="t1",
+            action_params_hash="h1",
+            decision_status=GateStatus.ALLOW,
+            decision_reason="r1",
+            risk_level=RiskLevel.GREEN,
+            policy_name="p",
         )
         audit_trail.record(entry)
         anchor1 = audit_trail.get_anchor()
         entry2 = GateAuditEntry(
-            session_id="s2", action_tool="t2", action_params_hash="h2",
-            decision_status=GateStatus.ALLOW, decision_reason="r2",
-            risk_level=RiskLevel.GREEN, policy_name="p",
+            session_id="s2",
+            action_tool="t2",
+            action_params_hash="h2",
+            decision_status=GateStatus.ALLOW,
+            decision_reason="r2",
+            risk_level=RiskLevel.GREEN,
+            policy_name="p",
         )
         audit_trail.record(entry2)
         anchor2 = audit_trail.get_anchor()
@@ -178,10 +193,12 @@ class TestBreachDetector:
     @pytest.fixture
     def detector(self, tmp_path):
         from jarvis.audit.breach_detector import BreachDetector
+
         return BreachDetector(state_path=tmp_path / "breach_state.json", cooldown_hours=0)
 
     def test_no_breach_on_normal_entries(self, detector, tmp_path):
         from jarvis.audit import AuditLogger
+
         logger = AuditLogger(log_dir=tmp_path)
         logger.log_tool_call("read_file", result="ok")
         breaches = detector.scan(logger)
@@ -189,6 +206,7 @@ class TestBreachDetector:
 
     def test_detects_security_critical_event(self, detector, tmp_path):
         from jarvis.audit import AuditLogger, AuditSeverity
+
         logger = AuditLogger(log_dir=tmp_path)
         logger.log_security("Unauthorized access attempt detected", severity=AuditSeverity.CRITICAL)
         breaches = detector.scan(logger)
@@ -198,6 +216,7 @@ class TestBreachDetector:
     def test_cooldown_prevents_duplicate(self, tmp_path):
         from jarvis.audit.breach_detector import BreachDetector
         from jarvis.audit import AuditLogger, AuditSeverity
+
         detector = BreachDetector(state_path=tmp_path / "breach_state.json", cooldown_hours=24)
         logger = AuditLogger(log_dir=tmp_path)
         logger.log_security("Breach attempt", severity=AuditSeverity.CRITICAL)
@@ -208,6 +227,7 @@ class TestBreachDetector:
 
     def test_breach_report_format(self, detector, tmp_path):
         from jarvis.audit import AuditLogger, AuditSeverity
+
         logger = AuditLogger(log_dir=tmp_path)
         logger.log_security("Data exfiltration attempt", severity=AuditSeverity.CRITICAL)
         breaches = detector.scan(logger)

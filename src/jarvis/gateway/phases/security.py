@@ -178,9 +178,7 @@ async def init_security(config: Any, llm_backend: Any = None) -> PhaseResult:
 
         _hmac_key = None
         if getattr(config, "audit", None) and config.audit.hmac_enabled:
-            key_file = config.audit.hmac_key_file or str(
-                config.jarvis_home / "audit_key"
-            )
+            key_file = config.audit.hmac_key_file or str(config.jarvis_home / "audit_key")
             key_path = _Path(key_file)
             if not key_path.exists():
                 import secrets
@@ -215,7 +213,9 @@ async def init_security(config: Any, llm_backend: Any = None) -> PhaseResult:
                 _ed25519_key = key_path.read_bytes()
 
         result["audit_trail"] = AuditTrail(
-            log_dir=audit_log_dir, hmac_key=_hmac_key, ed25519_key=_ed25519_key,
+            log_dir=audit_log_dir,
+            hmac_key=_hmac_key,
+            ed25519_key=_ed25519_key,
         )
     except Exception:
         log.debug("audit_trail_init_skipped", exc_info=True)

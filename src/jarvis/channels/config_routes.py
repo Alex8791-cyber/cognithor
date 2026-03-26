@@ -2015,13 +2015,9 @@ def _register_monitoring_routes(
                 "timestamps": timestamps,
                 "count": len(timestamps),
                 "tsa_url": getattr(
-                    getattr(_cfg, "audit", None),
-                    "tsa_url", "https://freetsa.org/tsr"
+                    getattr(_cfg, "audit", None), "tsa_url", "https://freetsa.org/tsr"
                 ),
-                "tsa_enabled": getattr(
-                    getattr(_cfg, "audit", None),
-                    "tsa_enabled", False
-                ),
+                "tsa_enabled": getattr(getattr(_cfg, "audit", None), "tsa_enabled", False),
             }
         except Exception as exc:
             return {"timestamps": [], "count": 0, "error": str(exc)}

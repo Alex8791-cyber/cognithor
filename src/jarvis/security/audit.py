@@ -185,9 +185,7 @@ class AuditTrail:
                     Ed25519PrivateKey,
                 )
 
-                private_key = Ed25519PrivateKey.from_private_bytes(
-                    self._ed25519_key[:32]
-                )
+                private_key = Ed25519PrivateKey.from_private_bytes(self._ed25519_key[:32])
                 signature = private_key.sign(record["hash"].encode())
                 record["ed25519_sig"] = signature.hex()
             except ImportError:
@@ -281,7 +279,8 @@ class AuditTrail:
 
                     # Verify hash
                     verify_entry = {
-                        k: v for k, v in entry.items()
+                        k: v
+                        for k, v in entry.items()
                         if k not in ("prev_hash", "hash", "hmac", "ed25519_sig")
                     }
                     data_str = json.dumps(verify_entry, ensure_ascii=False, sort_keys=True)

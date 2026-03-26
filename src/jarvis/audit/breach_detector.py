@@ -91,9 +91,7 @@ class BreachDetector:
                     pass
 
             # Build breach report
-            notification_deadline = datetime.fromisoformat(
-                entry.timestamp
-            ) + timedelta(hours=72)
+            notification_deadline = datetime.fromisoformat(entry.timestamp) + timedelta(hours=72)
 
             breaches.append(
                 {
@@ -125,9 +123,7 @@ class BreachDetector:
     def _load_state(self) -> dict[str, Any]:
         try:
             if self._state_path.exists():
-                return json.loads(
-                    self._state_path.read_text(encoding="utf-8")
-                )
+                return json.loads(self._state_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             log.debug("breach_state_load_failed", exc_info=True)
         return {}

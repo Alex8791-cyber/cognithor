@@ -97,10 +97,7 @@ class BackgroundProcessManager:
         with sqlite3.connect(str(self._db_path)) as conn:
             conn.execute(_SCHEMA)
             # Mark orphaned jobs from previous sessions
-            conn.execute(
-                "UPDATE background_jobs SET status = 'orphaned' "
-                "WHERE status = 'running'"
-            )
+            conn.execute("UPDATE background_jobs SET status = 'orphaned' WHERE status = 'running'")
             conn.commit()
 
     def _conn(self) -> sqlite3.Connection:
@@ -138,9 +135,8 @@ class BackgroundProcessManager:
                 "start_new_session": True,
             }
             if sys.platform == "win32":
-                kwargs["creationflags"] = (
-                    subprocess.CREATE_NEW_PROCESS_GROUP
-                    | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | getattr(
+                    subprocess, "CREATE_NO_WINDOW", 0
                 )
                 kwargs.pop("start_new_session", None)
             if sys.platform == "win32":
@@ -162,10 +158,21 @@ class BackgroundProcessManager:
                 " log_file, last_check_at, last_output_size, working_dir) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
-                    job_id, command, description, agent_name, session_id,
-                    channel, proc.pid, "running", time.time(),
-                    timeout_seconds, check_interval, str(log_file),
-                    time.time(), 0, working_dir or "",
+                    job_id,
+                    command,
+                    description,
+                    agent_name,
+                    session_id,
+                    channel,
+                    proc.pid,
+                    "running",
+                    time.time(),
+                    timeout_seconds,
+                    check_interval,
+                    str(log_file),
+                    time.time(),
+                    0,
+                    working_dir or "",
                 ),
             )
 
@@ -190,9 +197,7 @@ class BackgroundProcessManager:
 
     def get_job(self, job_id: str) -> dict[str, Any] | None:
         with self._conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM background_jobs WHERE id = ?", (job_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM background_jobs WHERE id = ?", (job_id,)).fetchone()
         return dict(row) if row else None
 
     def list_jobs(self, active_only: bool = False) -> list[dict[str, Any]]:
@@ -265,13 +270,11 @@ class BackgroundProcessManager:
 
                 if self._audit:
                     self._audit.log_system(
-                        f"Background job {job_id} {new_status} "
-                        f"(exit_code={exit_code})",
+                        f"Background job {job_id} {new_status} (exit_code={exit_code})",
                     )
             else:
                 conn.execute(
-                    "UPDATE background_jobs SET last_check_at=?, "
-                    "last_output_size=? WHERE id=?",
+                    "UPDATE background_jobs SET last_check_at=?, last_output_size=? WHERE id=?",
                     (now, current_size, job_id),
                 )
 
@@ -313,8 +316,7 @@ class BackgroundProcessManager:
         self._processes.pop(job_id, None)
         with self._conn() as conn:
             conn.execute(
-                "UPDATE background_jobs SET status='killed', finished_at=? "
-                "WHERE id=?",
+                "UPDATE background_jobs SET status='killed', finished_at=? WHERE id=?",
                 (time.time(), job_id),
             )
 
@@ -331,9 +333,7 @@ class BackgroundProcessManager:
 
     # -- Wait ---------------------------------------------------------------
 
-    async def wait_job(
-        self, job_id: str, timeout: int = 300
-    ) -> dict[str, Any] | None:
+    async def wait_job(self, job_id: str, timeout: int = 300) -> dict[str, Any] | None:
         """Wait for a job to complete. Returns final status."""
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -364,9 +364,7 @@ class BackgroundProcessManager:
             return []
 
         try:
-            all_lines = log_path.read_text(
-                encoding="utf-8", errors="replace"
-            ).splitlines()
+            all_lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             return []
 
@@ -405,9 +403,7 @@ class BackgroundProcessManager:
                 if p.exists():
                     p.unlink(missing_ok=True)
                     removed += 1
-                conn.execute(
-                    "DELETE FROM background_jobs WHERE id = ?", (row["id"],)
-                )
+                conn.execute("DELETE FROM background_jobs WHERE id = ?", (row["id"],))
         return removed
 
 
@@ -468,9 +464,7 @@ class ProcessMonitor:
                 changes += 1
                 if self._on_change:
                     try:
-                        await self._on_change(
-                            job["id"], old_status, updated["status"], updated
-                        )
+                        await self._on_change(job["id"], old_status, updated["status"], updated)
                     except Exception:
                         log.debug("monitor_callback_error", exc_info=True)
 
@@ -490,6 +484,7 @@ class ProcessMonitor:
         """Optional resource check via psutil."""
         try:
             import psutil
+
             pid = job.get("pid")
             if pid and psutil.pid_exists(pid):
                 proc = psutil.Process(pid)
@@ -577,8 +572,16 @@ def register_background_tools(
             "properties": {
                 "command": {"type": "string", "description": "Shell command to run"},
                 "description": {"type": "string", "description": "Human-readable description"},
-                "timeout_seconds": {"type": "integer", "description": "Max runtime (default: 3600)", "default": 3600},
-                "check_interval": {"type": "integer", "description": "Monitor poll interval in seconds (default: 30)", "default": 30},
+                "timeout_seconds": {
+                    "type": "integer",
+                    "description": "Max runtime (default: 3600)",
+                    "default": 3600,
+                },
+                "check_interval": {
+                    "type": "integer",
+                    "description": "Monitor poll interval in seconds (default: 30)",
+                    "default": 30,
+                },
             },
             "required": ["command"],
         },
@@ -593,7 +596,7 @@ def register_background_tools(
         lines = []
         for j in jobs:
             elapsed = time.time() - j["started_at"]
-            elapsed_str = f"{elapsed:.0f}s" if elapsed < 3600 else f"{elapsed/3600:.1f}h"
+            elapsed_str = f"{elapsed:.0f}s" if elapsed < 3600 else f"{elapsed / 3600:.1f}h"
             lines.append(
                 f"  {j['id']} | {j['status']:10s} | {elapsed_str:>8s} | {j['command'][:60]}"
             )
@@ -607,7 +610,11 @@ def register_background_tools(
         input_schema={
             "type": "object",
             "properties": {
-                "active_only": {"type": "boolean", "description": "Only show running jobs", "default": False},
+                "active_only": {
+                    "type": "boolean",
+                    "description": "Only show running jobs",
+                    "default": False,
+                },
             },
         },
     )
@@ -675,10 +682,22 @@ def register_background_tools(
             "type": "object",
             "properties": {
                 "job_id": {"type": "string", "description": "Job ID"},
-                "tail": {"type": "integer", "description": "Last N lines (default: 0 = disabled)", "default": 0},
-                "head": {"type": "integer", "description": "First N lines (default: 0 = disabled)", "default": 0},
+                "tail": {
+                    "type": "integer",
+                    "description": "Last N lines (default: 0 = disabled)",
+                    "default": 0,
+                },
+                "head": {
+                    "type": "integer",
+                    "description": "First N lines (default: 0 = disabled)",
+                    "default": 0,
+                },
                 "offset": {"type": "integer", "description": "Skip first N lines", "default": 0},
-                "limit": {"type": "integer", "description": "Max lines to return (default: 100)", "default": 100},
+                "limit": {
+                    "type": "integer",
+                    "description": "Max lines to return (default: 100)",
+                    "default": 100,
+                },
                 "grep": {"type": "string", "description": "Regex filter pattern", "default": ""},
             },
             "required": ["job_id"],
@@ -702,7 +721,11 @@ def register_background_tools(
             "type": "object",
             "properties": {
                 "job_id": {"type": "string", "description": "Job ID to stop"},
-                "force": {"type": "boolean", "description": "Force kill (SIGKILL)", "default": False},
+                "force": {
+                    "type": "boolean",
+                    "description": "Force kill (SIGKILL)",
+                    "default": False,
+                },
             },
             "required": ["job_id"],
         },
@@ -717,9 +740,7 @@ def register_background_tools(
         job = await manager.wait_job(job_id, timeout=timeout)
         if not job:
             return f"Job '{job_id}' not found."
-        return (
-            f"Job {job_id}: {job['status']} (exit_code={job.get('exit_code', '-')})"
-        )
+        return f"Job {job_id}: {job['status']} (exit_code={job.get('exit_code', '-')})"
 
     mcp_client.register_builtin_handler(
         "wait_background_job",
@@ -729,7 +750,11 @@ def register_background_tools(
             "type": "object",
             "properties": {
                 "job_id": {"type": "string", "description": "Job ID to wait for"},
-                "timeout": {"type": "integer", "description": "Max wait time in seconds (default: 300)", "default": 300},
+                "timeout": {
+                    "type": "integer",
+                    "description": "Max wait time in seconds (default: 300)",
+                    "default": 300,
+                },
             },
             "required": ["job_id"],
         },
@@ -737,7 +762,13 @@ def register_background_tools(
 
     log.info(
         "background_tools_registered",
-        tools=["start_background", "list_background_jobs", "check_background_job",
-               "read_background_log", "stop_background_job", "wait_background_job"],
+        tools=[
+            "start_background",
+            "list_background_jobs",
+            "check_background_job",
+            "read_background_log",
+            "stop_background_job",
+            "wait_background_job",
+        ],
     )
     return manager

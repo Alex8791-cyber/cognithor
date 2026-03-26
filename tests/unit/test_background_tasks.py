@@ -54,8 +54,9 @@ class TestBackgroundProcessManager:
     async def test_stop_job_kills_process(self, manager):
         # Start a long-running command
         import sys
+
         job_id = await manager.start(
-            f"{sys.executable} -c \"import time; time.sleep(60)\"",
+            f'{sys.executable} -c "import time; time.sleep(60)"',
             timeout_seconds=300,
         )
         await asyncio.sleep(0.5)
@@ -67,6 +68,7 @@ class TestBackgroundProcessManager:
     @pytest.mark.asyncio
     async def test_read_log_tail(self, manager):
         import sys
+
         job_id = await manager.start(
             f"{sys.executable} -c \"for i in range(20): print(f'line {{i}}')\"",
         )
@@ -83,6 +85,7 @@ class TestBackgroundProcessManager:
     @pytest.mark.asyncio
     async def test_list_active_only(self, manager):
         import sys
+
         job_id = await manager.start(
             f"{sys.executable} -c \"print('done')\"",
         )
@@ -99,6 +102,7 @@ class TestProcessMonitor:
     @pytest.fixture
     def manager(self, tmp_path):
         from jarvis.mcp.background_tasks import BackgroundProcessManager
+
         return BackgroundProcessManager(
             db_path=tmp_path / "jobs.db",
             log_dir=tmp_path / "logs",
@@ -115,6 +119,7 @@ class TestProcessMonitor:
 
         monitor = ProcessMonitor(manager, on_status_change=on_change)
         import sys
+
         job_id = await manager.start(
             f"{sys.executable} -c \"print('done')\"",
             check_interval=1,
@@ -136,8 +141,9 @@ class TestProcessMonitor:
 
         monitor = ProcessMonitor(manager, on_status_change=on_change)
         import sys
+
         job_id = await manager.start(
-            f"{sys.executable} -c \"import time; time.sleep(60)\"",
+            f'{sys.executable} -c "import time; time.sleep(60)"',
             timeout_seconds=1,
             check_interval=1,
         )

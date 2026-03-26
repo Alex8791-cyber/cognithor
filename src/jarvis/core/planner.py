@@ -413,8 +413,12 @@ class Planner:
                 self._ollama.chat(
                     model=model,
                     messages=messages,
-                    temperature=temperature_override if temperature_override is not None else model_config.get("temperature", 0.7),
-                    top_p=top_p_override if top_p_override is not None else model_config.get("top_p", 0.9),
+                    temperature=temperature_override
+                    if temperature_override is not None
+                    else model_config.get("temperature", 0.7),
+                    top_p=top_p_override
+                    if top_p_override is not None
+                    else model_config.get("top_p", 0.9),
                     options=self._build_llm_options(),
                 )
             )
@@ -513,8 +517,12 @@ class Planner:
                 retry_response = await self._ollama.chat(
                     model=model,
                     messages=retry_messages,
-                    temperature=temperature_override if temperature_override is not None else max(0.3, model_config.get("temperature", 0.7) - 0.3),
-                    top_p=top_p_override if top_p_override is not None else model_config.get("top_p", 0.9),
+                    temperature=temperature_override
+                    if temperature_override is not None
+                    else max(0.3, model_config.get("temperature", 0.7) - 0.3),
+                    top_p=top_p_override
+                    if top_p_override is not None
+                    else model_config.get("top_p", 0.9),
                     options=self._build_llm_options(),
                 )
                 retry_text = retry_response.get("message", {}).get("content", "")
@@ -578,8 +586,12 @@ class Planner:
                 response = await self._ollama.chat(
                     model=model,
                     messages=messages,
-                    temperature=temperature_override if temperature_override is not None else model_config.get("temperature", 0.7),
-                    top_p=top_p_override if top_p_override is not None else model_config.get("top_p", 0.9),
+                    temperature=temperature_override
+                    if temperature_override is not None
+                    else model_config.get("temperature", 0.7),
+                    top_p=top_p_override
+                    if top_p_override is not None
+                    else model_config.get("top_p", 0.9),
                     options=self._build_llm_options(),
                 )
                 break
@@ -626,8 +638,12 @@ class Planner:
                 retry_response = await self._ollama.chat(
                     model=model,
                     messages=retry_messages,
-                    temperature=temperature_override if temperature_override is not None else max(0.3, model_config.get("temperature", 0.7) - 0.3),
-                    top_p=top_p_override if top_p_override is not None else model_config.get("top_p", 0.9),
+                    temperature=temperature_override
+                    if temperature_override is not None
+                    else max(0.3, model_config.get("temperature", 0.7) - 0.3),
+                    top_p=top_p_override
+                    if top_p_override is not None
+                    else model_config.get("top_p", 0.9),
                     options=self._build_llm_options(),
                 )
                 retry_text = retry_response.get("message", {}).get("content", "")

@@ -100,32 +100,62 @@ IDEMPOTENT_TOOLS = frozenset(
 
 # Tools die im MCP-Server-Modus fuer externe Clients (VSCode etc.) sicher sind.
 # Kein Shell-Exec, kein Computer-Use, kein Remote-Shell, kein Docker-Run.
-MCP_WORKSPACE_SAFE_TOOLS = frozenset({
-    # Filesystem (workspace-sandboxed)
-    "read_file", "write_file", "edit_file", "list_directory", "find_in_files",
-    # Code (sandboxed execution)
-    "run_python", "analyze_code",
-    # Web (read-only, SSRF-protected)
-    "web_search", "web_fetch", "search_and_read", "web_news_search",
-    # Memory
-    "search_memory", "save_to_memory", "get_entity", "add_entity",
-    "add_relation", "get_core_memory", "get_recent_episodes",
-    "search_procedures", "memory_stats",
-    # Vault (note management)
-    "vault_save", "vault_search", "vault_list", "vault_write",
-    # Git (workspace-scoped)
-    "git_status", "git_log", "git_diff", "git_commit", "git_branch",
-    # Knowledge synthesis
-    "knowledge_synthesize",
-    # Charts and data
-    "create_chart", "create_table_image", "chart_from_csv",
-    # Database (read-only queries)
-    "db_query", "db_schema",
-    # Search
-    "deep_research", "deep_research_v2", "verified_web_lookup",
-    # Browser (read-only navigation)
-    "browse_url", "browse_page_info", "browse_screenshot",
-})
+MCP_WORKSPACE_SAFE_TOOLS = frozenset(
+    {
+        # Filesystem (workspace-sandboxed)
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_directory",
+        "find_in_files",
+        # Code (sandboxed execution)
+        "run_python",
+        "analyze_code",
+        # Web (read-only, SSRF-protected)
+        "web_search",
+        "web_fetch",
+        "search_and_read",
+        "web_news_search",
+        # Memory
+        "search_memory",
+        "save_to_memory",
+        "get_entity",
+        "add_entity",
+        "add_relation",
+        "get_core_memory",
+        "get_recent_episodes",
+        "search_procedures",
+        "memory_stats",
+        # Vault (note management)
+        "vault_save",
+        "vault_search",
+        "vault_list",
+        "vault_write",
+        # Git (workspace-scoped)
+        "git_status",
+        "git_log",
+        "git_diff",
+        "git_commit",
+        "git_branch",
+        # Knowledge synthesis
+        "knowledge_synthesize",
+        # Charts and data
+        "create_chart",
+        "create_table_image",
+        "chart_from_csv",
+        # Database (read-only queries)
+        "db_query",
+        "db_schema",
+        # Search
+        "deep_research",
+        "deep_research_v2",
+        "verified_web_lookup",
+        # Browser (read-only navigation)
+        "browse_url",
+        "browse_page_info",
+        "browse_screenshot",
+    }
+)
 
 
 def _build_annotations(tool_name: str) -> dict[str, Any]:

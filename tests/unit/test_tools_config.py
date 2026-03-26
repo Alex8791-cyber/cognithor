@@ -51,11 +51,18 @@ class TestGatekeeperBlocksDisabledTools:
     """Gatekeeper must block tools from disabled groups even if somehow registered."""
 
     COMPUTER_USE_TOOLS = {
-        "computer_screenshot", "computer_click", "computer_type",
-        "computer_hotkey", "computer_scroll", "computer_drag",
+        "computer_screenshot",
+        "computer_click",
+        "computer_type",
+        "computer_hotkey",
+        "computer_scroll",
+        "computer_drag",
     }
     DESKTOP_TOOLS = {
-        "get_clipboard", "set_clipboard", "screenshot_desktop", "screenshot_region",
+        "get_clipboard",
+        "set_clipboard",
+        "screenshot_desktop",
+        "screenshot_region",
     }
 
     def test_computer_use_blocked_when_disabled(self):

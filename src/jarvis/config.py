@@ -233,8 +233,7 @@ class ToolsConfig(BaseModel):
     desktop_tools_enabled: bool = Field(
         default=False,
         description=(
-            "Clipboard-Zugriff und Screenshot-Tools."
-            " Erfordert pip install cognithor[desktop]."
+            "Clipboard-Zugriff und Screenshot-Tools. Erfordert pip install cognithor[desktop]."
         ),
     )
     """Aktiviert Desktop-Tools (Clipboard, Screenshot)."""
@@ -1619,11 +1618,15 @@ class AuditConfig(BaseModel):
         description="Automatische Breach-Erkennung und Benachrichtigung",
     )
     breach_cooldown_hours: int = Field(
-        default=1, ge=1, le=72,
+        default=1,
+        ge=1,
+        le=72,
         description="Mindestabstand zwischen Breach-Benachrichtigungen in Stunden",
     )
     retention_days: int = Field(
-        default=90, ge=7, le=3650,
+        default=90,
+        ge=7,
+        le=3650,
         description="Aufbewahrungsfrist fuer Audit-Logs in Tagen",
     )
 
@@ -1647,7 +1650,9 @@ class AuditConfig(BaseModel):
         description="S3/MinIO Bucket-Name fuer WORM-Storage",
     )
     worm_retention_days: int = Field(
-        default=365, ge=30, le=3650,
+        default=365,
+        ge=30,
+        le=3650,
         description="WORM Retention-Lock in Tagen",
     )
 
