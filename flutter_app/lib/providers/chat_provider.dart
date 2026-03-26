@@ -28,6 +28,25 @@ class ChatMessage {
   final MessageRole role;
   String text;
   final DateTime timestamp;
+
+  /// Version history for edit support (Claude-style).
+  /// Each entry is a (userText, assistantText) pair.
+  /// [versions.last] is the current version.
+  final List<MessageVersion> versions = [];
+
+  /// Current version index (0-based). -1 = no versioning.
+  int activeVersion = -1;
+
+  bool get hasVersions => versions.length > 1;
+  int get versionCount => versions.length;
+}
+
+/// A single edit version: the user's text and the assistant's response.
+class MessageVersion {
+  MessageVersion({required this.userText, this.assistantText = ''});
+
+  final String userText;
+  String assistantText;
 }
 
 class ApprovalRequest {
@@ -113,23 +132,96 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Edit a user message at [index]: remove it + all messages after it,
-  /// then send the new text. This is the Claude-style "edit and resend"
-  /// behavior where the conversation is rewound to that point.
+  /// Index of the user message currently being edited (for version tracking).
+  int? _editingUserIndex;
+
+  /// Edit a user message at [index]: save old version, update text,
+  /// remove assistant responses after it, and resend.
   void editAndResend(int index, String newText) {
     if (index < 0 || index >= messages.length) return;
     _log('[Chat] editAndResend: index=$index newText="$newText"');
-    // Remove this message and everything after it
-    messages.removeRange(index, messages.length);
+
+    final userMsg = messages[index];
+
+    // Save old version (user text + assistant response) if not already versioned
+    if (userMsg.versions.isEmpty) {
+      // First edit: save the original as version 0
+      String oldAssistantText = '';
+      if (index + 1 < messages.length &&
+          messages[index + 1].role == MessageRole.assistant) {
+        oldAssistantText = messages[index + 1].text;
+      }
+      userMsg.versions.add(MessageVersion(
+        userText: userMsg.text,
+        assistantText: oldAssistantText,
+      ));
+    }
+
+    // Cancel any in-progress streaming
+    isStreaming = false;
+    _streamBuffer.clear();
+    activeTool = null;
+    statusText = '';
+    pipeline = [];
+
+    // Remove all messages after the user message (assistant responses etc.)
+    if (index + 1 < messages.length) {
+      messages.removeRange(index + 1, messages.length);
+    }
+
+    // Update user message text
+    userMsg.text = newText;
+
+    // Add new version (assistant text will be filled when response arrives)
+    userMsg.versions.add(MessageVersion(userText: newText));
+    userMsg.activeVersion = userMsg.versions.length - 1;
+
+    // Track which message we're editing so we can attach the response
+    _editingUserIndex = index;
+
     notifyListeners();
-    // Send as new message (will be appended + sent via WS)
-    sendMessage(newText);
+
+    // Send the new text via WebSocket
+    if (_ws != null) {
+      _ws!.sendMessage(newText);
+    }
+  }
+
+  /// Switch to a different version of an edited message.
+  void switchVersion(int messageIndex, int versionIndex) {
+    if (messageIndex < 0 || messageIndex >= messages.length) return;
+    final msg = messages[messageIndex];
+    if (versionIndex < 0 || versionIndex >= msg.versions.length) return;
+
+    final version = msg.versions[versionIndex];
+    msg.text = version.userText;
+    msg.activeVersion = versionIndex;
+
+    // Update the assistant response too (if it exists right after)
+    if (messageIndex + 1 < messages.length &&
+        messages[messageIndex + 1].role == MessageRole.assistant) {
+      messages[messageIndex + 1].text = version.assistantText;
+    } else if (version.assistantText.isNotEmpty) {
+      // Re-insert assistant message
+      messages.insert(
+        messageIndex + 1,
+        ChatMessage(role: MessageRole.assistant, text: version.assistantText),
+      );
+    }
+
+    notifyListeners();
   }
 
   /// Retry the last assistant response: remove it and resend the
   /// last user message.
   void retryLastResponse() {
-    // Find last assistant message
+    // Cancel any in-progress streaming
+    isStreaming = false;
+    _streamBuffer.clear();
+    activeTool = null;
+    statusText = '';
+    pipeline = [];
+    // Find last assistant message and remove it
     for (var i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role == MessageRole.assistant) {
         messages.removeRange(i, messages.length);
@@ -297,6 +389,16 @@ class ChatProvider extends ChangeNotifier {
     }
     if (text.isNotEmpty) {
       messages.add(ChatMessage(role: MessageRole.assistant, text: text));
+
+      // If this is a response to an edited message, store in version history
+      if (_editingUserIndex != null &&
+          _editingUserIndex! < messages.length - 1) {
+        final userMsg = messages[_editingUserIndex!];
+        if (userMsg.versions.isNotEmpty) {
+          userMsg.versions.last.assistantText = text;
+        }
+        _editingUserIndex = null;
+      }
     }
     _logAgent('complete', null, 'Response complete', status: 'done');
     activeTool = null;

@@ -20,6 +20,7 @@ import 'package:jarvis_ui/widgets/message_actions.dart';
 import 'package:jarvis_ui/widgets/chat/chat_history_drawer.dart';
 import 'package:jarvis_ui/widgets/chat/feedback_buttons.dart';
 import 'package:jarvis_ui/widgets/chat/message_actions.dart';
+import 'package:jarvis_ui/widgets/chat/version_navigator.dart';
 import 'package:jarvis_ui/widgets/observe/observe_panel.dart';
 import 'package:jarvis_ui/widgets/pipeline_indicator.dart';
 import 'package:jarvis_ui/widgets/plan_detail_panel.dart';
@@ -287,10 +288,26 @@ class _ChatScreenState extends State<ChatScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 bubble,
-                                MessageActionButtons(
-                                  text: msg.text,
-                                  isUser: true,
-                                  onEdit: () => _startEdit(index, msg.text),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (msg.hasVersions)
+                                      VersionNavigator(
+                                        currentVersion: msg.activeVersion,
+                                        totalVersions: msg.versionCount,
+                                        onPrevious: () =>
+                                            chat.switchVersion(index, msg.activeVersion - 1),
+                                        onNext: () =>
+                                            chat.switchVersion(index, msg.activeVersion + 1),
+                                      ),
+                                    if (msg.hasVersions) const SizedBox(width: 8),
+                                    MessageActionButtons(
+                                      text: msg.text,
+                                      isUser: true,
+                                      onEdit: () => _startEdit(index, msg.text),
+                                    ),
+                                  ],
                                 ),
                               ],
                             );
