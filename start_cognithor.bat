@@ -151,9 +151,9 @@ if "!HAS_FLUTTER!"=="1" (
         )
 
         :: Build
-        echo   [INFO] Running flutter build web --release...
+        echo   [INFO] Running flutter build web --release --no-tree-shake-icons...
         cd /d "%REPO_ROOT%\flutter_app"
-        cmd /c flutter build web --release
+        cmd /c flutter build web --release --no-tree-shake-icons
         cd /d "%REPO_ROOT%"
 
         if exist "%REPO_ROOT%\flutter_app\build\web\index.html" (
@@ -182,12 +182,12 @@ if "!HAS_FLUTTER!"=="0" (
     echo   To get the Flutter UI:
     echo     1. Install Flutter: https://docs.flutter.dev/get-started/install
     echo     2. cd flutter_app
-    echo     3. flutter build web --release
+    echo     3. flutter build web --release --no-tree-shake-icons
     echo     4. Re-run start_cognithor.bat
 ) else (
     echo   Flutter SDK found but build failed. Try manually:
     echo     cd flutter_app
-    echo     flutter build web --release
+    echo     flutter build web --release --no-tree-shake-icons
 )
 echo.
 echo   Starting in CLI mode...
