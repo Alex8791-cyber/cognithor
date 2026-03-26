@@ -15,6 +15,8 @@ class ChatInput extends StatefulWidget {
     required this.onCancel,
     this.onFile,
     this.isProcessing = false,
+    this.controller,
+    this.focusNode,
   });
 
   final void Function(String text) onSend;
@@ -22,14 +24,26 @@ class ChatInput extends StatefulWidget {
   final void Function(String name, String type, String base64)? onFile;
   final bool isProcessing;
 
+  /// Optional external [TextEditingController] for programmatic text insertion
+  /// (e.g. edit-message). When null an internal controller is used.
+  final TextEditingController? controller;
+
+  /// Optional external [FocusNode]. When null an internal node is used.
+  final FocusNode? focusNode;
+
   @override
   State<ChatInput> createState() => _ChatInputState();
 }
 
 class _ChatInputState extends State<ChatInput> {
-  final _controller = TextEditingController();
-  final _focusNode = FocusNode();
+  TextEditingController? _ownController;
+  FocusNode? _ownFocusNode;
   bool _isUploading = false;
+
+  TextEditingController get _controller =>
+      widget.controller ?? (_ownController ??= TextEditingController());
+  FocusNode get _focusNode =>
+      widget.focusNode ?? (_ownFocusNode ??= FocusNode());
 
   void _submit() {
     final text = _controller.text.trim();
@@ -79,8 +93,8 @@ class _ChatInputState extends State<ChatInput> {
 
   @override
   void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
+    _ownController?.dispose();
+    _ownFocusNode?.dispose();
     super.dispose();
   }
 

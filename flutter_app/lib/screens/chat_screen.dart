@@ -19,6 +19,7 @@ import 'package:jarvis_ui/widgets/jarvis_empty_state.dart';
 import 'package:jarvis_ui/widgets/message_actions.dart';
 import 'package:jarvis_ui/widgets/chat/chat_history_drawer.dart';
 import 'package:jarvis_ui/widgets/chat/feedback_buttons.dart';
+import 'package:jarvis_ui/widgets/chat/message_actions.dart';
 import 'package:jarvis_ui/widgets/observe/observe_panel.dart';
 import 'package:jarvis_ui/widgets/pipeline_indicator.dart';
 import 'package:jarvis_ui/widgets/plan_detail_panel.dart';
@@ -37,6 +38,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _inputController = TextEditingController();
+  final _inputFocusNode = FocusNode();
   bool _showObserve = false;
   bool _pipListenerAttached = false;
   bool _sessionsInitialized = false;
@@ -92,7 +95,15 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _inputController.dispose();
+    _inputFocusNode.dispose();
     super.dispose();
+  }
+
+  void _editMessage(String text) {
+    _inputController.text = text;
+    _inputController.selection = TextSelection.collapsed(offset: text.length);
+    _inputFocusNode.requestFocus();
   }
 
   void _scrollToBottom() {
@@ -236,18 +247,37 @@ class _ChatScreenState extends State<ChatScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   bubble,
-                                  const SizedBox(height: 4),
-                                  FeedbackButtons(
-                                    messageId: msg.id,
-                                    onFeedback: (rating, msgId) {
-                                      chat.sendFeedback(
-                                          rating, msgId, msg.text);
-                                    },
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      MessageActionButtons(
+                                        text: msg.text,
+                                        isUser: false,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      FeedbackButtons(
+                                        messageId: msg.id,
+                                        onFeedback: (rating, msgId) {
+                                          chat.sendFeedback(
+                                              rating, msgId, msg.text);
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ],
                               );
                             }
-                            return bubble;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                bubble,
+                                MessageActionButtons(
+                                  text: msg.text,
+                                  isUser: true,
+                                  onEdit: () => _editMessage(msg.text),
+                                ),
+                              ],
+                            );
                           },
                         );
                       },
@@ -321,6 +351,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   Consumer<ChatProvider>(
                     builder: (context, chat, _) {
                       return ChatInput(
+                        controller: _inputController,
+                        focusNode: _inputFocusNode,
                         onSend: (text) {
                           chat.sendMessage(text);
                           // Wake up the robots!
