@@ -5,6 +5,47 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.56.0] -- 2026-03-26
+
+### Added
+
+#### Skill Marketplace & Community Registry
+- **15 builtin skills published** to [skill-registry](https://github.com/Alex8791-cyber/skill-registry) on GitHub — productivity (7), research (2), analysis (2), development (2), legal (1), automation (1).
+- **`publish_skill` MCP tool** — Publish local skills to the community registry directly from chat. Validates frontmatter, computes SHA-256 hash, uploads to GitHub, updates registry.json. Uses git credential manager for auth.
+- **`publish_builtin_skills.py` script** — Batch-publishes all builtin skills with manifest.json generation and registry index update.
+- **Full marketplace loop**: create_skill → publish_skill → search_community_skills → install_community_skill (5-stage validation) → use.
+
+#### 5 New Builtin Skills
+- **Meeting-Protokoll** (priority 6) — Audio transcription → structured protocol with decisions, action items, deadlines, follow-up emails. Tools: media_transcribe_audio, write_file, email_send, vault_save.
+- **Tages-Report** (priority 6) — End-of-day summary from episodes + memory + calendar. Erledigt / Offen / Morgen format. Tools: get_recent_episodes, search_memory, calendar_upcoming.
+- **Code Review** (priority 6) — 5-dimension review (correctness, security, performance, maintainability, tests) with line-number references. Routed to coder agent. Tools: git_diff, analyze_code, read_file.
+- **Vertrags-Pruefer** (priority 6) — 7-dimension contract analysis (parties, obligations, costs, termination, liability, privacy, red flags) with risk rating and legal disclaimer. Tools: media_extract_text, analyze_document, vault_save.
+- **Workflow-Recorder** (priority 7) — "Show me once, then do it forever." User describes a process → Cognithor creates a reusable skill with trigger keywords and tool mappings. Tools: create_skill, list_skills.
+
+#### Thumbs Up/Down Feedback System
+- **FeedbackStore** (`core/feedback.py`) — SQLite-backed storage for user ratings with session/message/agent tracking.
+- **4 REST endpoints**: POST /feedback, PATCH /feedback/{id}, GET /feedback/stats, GET /feedback/recent.
+- **WebSocket integration** — `feedback` and `feedback_comment` message types for real-time rating from chat.
+- **Follow-up on negative feedback** — On thumbs down, system asks "Was hat nicht gepasst?" via `feedback_followup` message. User's comment is stored for self-improvement.
+- **Flutter FeedbackButtons widget** — Thumbs up/down icons below every assistant message, with confirmation state and inline follow-up banner.
+
+#### Interactive DAG Visualization
+- **InteractiveDagGraph widget** — Pan/zoom (pinch gesture + drag) and node tap detection (30px hit radius) for the workflow DAG view.
+- **DagNodeDetail panel** — Shows node status, duration, retries, type, tool name, output (truncated), and errors when a node is tapped.
+- **Node selection highlight** — Selected node gets glowing border in the graph.
+- **Node detail API** — `GET /api/v1/workflows/dag/runs/{run_id}/nodes/{node_id}` returns single node execution data.
+
+### Changed
+- **123 MCP tools** (was 112). New: publish_skill + 6 background task tools + feedback tools.
+- **15 builtin skills** (was 10). New: meeting-protokoll, tages-report, code-review, vertrag-pruefer, workflow-recorder.
+- **11,609+ tests** (was 11,595).
+
+### Fixed
+- CI lint: F821 `config_manager` scope in audit endpoints — extracted to local variable.
+- CI lint: ruff format on 19 files (feedback.py, gateway.py, skill_tools.py, etc.).
+- Gatekeeper test: `screenshot_desktop` and `computer_screenshot` need `ToolsConfig(enabled=True)` in test fixtures since desktop tools are OFF by default.
+- GitHub Pages landing page: updated from v0.47.1 to v0.55.0 (now v0.56.0), test count badge fixed.
+
 ## [0.55.0] -- 2026-03-26
 
 ### Added

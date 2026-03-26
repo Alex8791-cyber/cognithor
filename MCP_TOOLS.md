@@ -1,6 +1,6 @@
 # Cognithor MCP Tools Reference
 
-> Complete reference for all 79 MCP tools grouped by module.
+> Complete reference for all 123 MCP tools grouped by module.
 > For how to add new tools, see [DEVELOPER.md](DEVELOPER.md#adding-an-mcp-tool).
 
 ## Table of Contents
@@ -25,7 +25,14 @@
 - [Charts](#charts)
 - [API Hub](#api-hub)
 - [Browser](#browser)
+- [Background Tasks](#background-tasks)
+- [Computer Use](#computer-use)
+- [Deep Research](#deep-research)
+- [Verified Lookup](#verified-lookup)
+- [Identity](#identity)
+- [Remote Shell](#remote-shell)
 - [A2A Delegation](#a2a-delegation)
+- [Feedback](#feedback)
 - [Risk Classification](#risk-classification)
 
 ---
@@ -511,3 +518,100 @@ Unknown tools default to **ORANGE**. When adding new tools, register them in
 ### Output Limits
 
 All tool output is capped at **50 KB** per call.
+
+---
+
+## Background Tasks
+
+Long-running shell commands with monitoring. Introduced in v0.55.0.
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| `start_background` | YELLOW | Start a shell command in the background. Returns job_id for monitoring. |
+| `list_background_jobs` | GREEN | List all background jobs (active and recent completed). |
+| `check_background_job` | GREEN | Check status + last 20 lines output of a background job. |
+| `read_background_log` | GREEN | Read log with tail/head/offset/limit/grep support. |
+| `stop_background_job` | YELLOW | Stop a running background job (SIGTERM, then SIGKILL). |
+| `wait_background_job` | GREEN | Wait for a background job to complete (with timeout). |
+
+**ProcessMonitor** polls active jobs every 30 seconds with 5 verification methods:
+1. Process-alive check
+2. Exit-code detection
+3. Output-stall detection (no new output for 2 intervals)
+4. Timeout enforcement
+5. Resource check (optional, via psutil)
+
+## Computer Use
+
+Desktop automation via screenshots and coordinate clicking. Requires `pip install cognithor[desktop]`. Disabled by default — enable via `config.tools.computer_use_enabled: true`.
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| `computer_screenshot` | GREEN | Take desktop screenshot, describe visible UI elements with coordinates. |
+| `computer_click` | GREEN | Click at specific pixel coordinates (left/right/middle, single/double). |
+| `computer_type` | GREEN | Type text using keyboard. Unicode via clipboard fallback. |
+| `computer_hotkey` | GREEN | Press keyboard shortcut (e.g., ctrl+c, alt+tab). |
+| `computer_scroll` | GREEN | Scroll at specific coordinates (up/down). |
+| `computer_drag` | GREEN | Drag from start to end coordinates. |
+
+## Deep Research
+
+Perplexity-style iterative search with multi-source verification.
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| `deep_research` | GREEN | Multi-source search with fact consensus (5+ sources). |
+| `deep_research_v2` | GREEN | Up to 25 search rounds with query decomposition, cross-verification, and confidence scoring. |
+
+## Verified Lookup
+
+Multi-agent fact verification.
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| `verified_web_lookup` | GREEN | Cross-check a claim against 3+ independent sources. Returns verdict + confidence. |
+
+## Identity
+
+Cognitive identity layer (Immortal Mind Protocol).
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| `identity_recall` | GREEN | Recall a memory from the identity layer. |
+| `identity_state` | GREEN | Get current cognitive state. |
+| `identity_reflect` | GREEN | Trigger self-reflection. |
+| `identity_dream` | GREEN | Trigger dream-mode consolidation. |
+
+## Remote Shell
+
+SSH to remote hosts. Requires `pip install cognithor[remote]`.
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| `remote_shell` | ORANGE | Execute command on remote host via SSH. |
+| `remote_list_hosts` | GREEN | List configured SSH hosts. |
+| `remote_test_connection` | GREEN | Test SSH connection to a host. |
+
+## Feedback
+
+User satisfaction tracking. Introduced in v0.56.0.
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| POST `/api/v1/feedback` | — | Submit thumbs up/down rating for a message. |
+| PATCH `/api/v1/feedback/{id}` | — | Add comment to existing feedback (follow-up). |
+| GET `/api/v1/feedback/stats` | — | Feedback statistics (satisfaction rate, counts). |
+| GET `/api/v1/feedback/recent` | — | Recent feedback entries. |
+
+Note: Feedback is submitted via WebSocket (`type: "feedback"`) from the Flutter chat UI, not as MCP tools.
+
+## Skills (updated v0.56.0)
+
+| Tool | Risk | Description |
+|------|------|-------------|
+| `create_skill` | YELLOW | Create a new skill locally (Markdown + YAML frontmatter). |
+| `list_skills` | GREEN | List all registered skills (builtin + personal + community). |
+| `install_community_skill` | YELLOW | Install a skill from the community registry with 5-stage validation. |
+| `search_community_skills` | GREEN | Search the community registry by query and category. |
+| `report_skill` | YELLOW | Report a community skill for abuse. |
+| `publish_skill` | YELLOW | Publish a local skill to the community registry on GitHub. |
