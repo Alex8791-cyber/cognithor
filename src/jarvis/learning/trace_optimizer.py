@@ -20,6 +20,7 @@ from jarvis.utils.logging import get_logger
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .causal_attributor import CausalFinding
     from .execution_trace import ExecutionTrace, TraceStore
 
 log = get_logger(__name__)

@@ -10,6 +10,7 @@ complex queries or explicitly by the user.
 from __future__ import annotations
 
 import logging
+import asyncio
 import sys
 from pathlib import Path
 from typing import Any
