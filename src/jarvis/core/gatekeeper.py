@@ -561,6 +561,11 @@ class Gatekeeper:
             "identity_state",
             "identity_reflect",
             "identity_dream",
+            # Knowledge Synthesis (read-only analysis)
+            "knowledge_synthesize",
+            "knowledge_contradictions",
+            "knowledge_timeline",
+            "knowledge_gaps",
             # Vault (read-only)
             "vault_list",
             "vault_search",
