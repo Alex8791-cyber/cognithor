@@ -3049,7 +3049,7 @@ class Gateway:
                         except Exception:
                             pass  # search_procedures may not exist or fail
 
-                    # Store new pattern as procedure
+                    # Store new pattern as procedure with human-readable name
                     pattern_body = (
                         f"When user asks about {keywords_str}, "
                         f"use tools [{tools_str}]. "
@@ -3058,10 +3058,31 @@ class Gateway:
                     try:
                         from jarvis.models import ProcedureMetadata
 
-                        slug = hashlib.sha256(f"{tools_str}:{keywords_str}".encode()).hexdigest()[
-                            :12
+                        # Generate readable name from keywords (max 5 words, slugified)
+                        _name_words = [
+                            re.sub(r"[^\w]", "", k.lower()) for k in keywords[:3] if len(k) > 2
                         ]
-                        name = f"pattern-{slug}"
+                        if _name_words:
+                            name = "-".join(_name_words)
+                        else:
+                            # Fallback: use first meaningful words from user text
+                            _text_words = [
+                                w.lower()
+                                for w in user_text.split()[:4]
+                                if len(w) > 2 and w.isalpha()
+                            ]
+                            name = "-".join(_text_words) if _text_words else f"auto-{int(now)}"
+                        # Ensure uniqueness by appending short hash if file exists
+                        _base_name = name
+                        if (procedural._dir / f"{name}.md").exists():
+                            _short = hashlib.sha256(
+                                f"{tools_str}:{keywords_str}".encode()
+                            ).hexdigest()[:6]
+                            name = f"{_base_name}-{_short}"
+                            # If even that exists, skip (true duplicate)
+                            if (procedural._dir / f"{name}.md").exists():
+                                log.debug("pattern_duplicate_skipped", name=name)
+                                return
 
                         procedural.save_procedure(
                             name=name,
