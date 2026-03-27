@@ -5,6 +5,39 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.59.0] -- 2026-03-27
+
+### Added
+
+#### Evolution Engine Phase 1 — Hardware-Aware System Profile
+- **SystemDetector** (`src/jarvis/system/detector.py`) — 8 detection targets: OS, CPU (psutil), RAM, GPU (nvidia-smi + Apple Silicon fallback), Disk, Network connectivity, Ollama status + models, LM Studio status.
+- **SystemProfile** — Structured result with tier classification (minimal/standard/power/enterprise), mode recommendation (offline/hybrid/online), save/load to `~/.jarvis/system_profile.json`.
+- **Gateway integration** — Quick-scan on startup, cached stable results, fresh volatile scans.
+- **REST API** — `GET /api/v1/system/profile` returns full hardware profile, `POST /api/v1/system/rescan` forces full re-scan.
+- **Flutter Hardware Page** — New config page under System > Hardware showing tier badge, recommended mode, all detection results with color-coded status badges and expandable raw data.
+- **22 tests** for SystemDetector and SystemProfile.
+
+#### Frontier Agent
+- **Cloud-powered escalation agent** — Priority 8 (highest), triggered by keywords "komplex", "architektur", "refactoring", "advanced", "expert". Uses Cloud model (Claude/GPT) for tasks exceeding local model capabilities. 5-minute timeout, 2GB RAM limit, delegates to jarvis/researcher/coder.
+
+#### Chat Branching Wire-up
+- **ConversationTree nodes stored** — Every user message + assistant response saved as tree nodes in SQLite.
+- **Tree sidebar data loading** — TreeProvider loads via `GET /api/v1/chat/tree/latest` REST endpoint after each message.
+- **Resizable tree sidebar** — Drag right edge (180-450px), tooltips on hover, click to navigate, fork point badges.
+
+### Changed
+- **i18n** — Transliterated German umlauts in 1568 docstring lines + all comment lines across 210+ files. Code comments/docstrings now English, user-facing strings remain German.
+- **11,649+ tests** (was 11,627).
+- **0.0.0.0 API binding** — Default API host changed from 127.0.0.1 to 0.0.0.0 for mobile/network access.
+- **Tailscale + AltServer** — Auto-start/stop alongside Cognithor in start_cognithor.bat.
+
+### Fixed
+- Test assertion "Einzelanfrage" → "Single request" (translated production code).
+- Test assertion "gekuerzt"/"truncated" synced with production output.
+- Test assertion "Pfad" → "Path" (translated gatekeeper message).
+- Test vault_delete moved YELLOW→ORANGE in test fixture.
+- Stray `_status_cb` reference removed from gateway tree_update block.
+
 ## [0.58.0] -- 2026-03-27
 
 ### Added
