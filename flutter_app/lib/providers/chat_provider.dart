@@ -122,6 +122,9 @@ class ChatProvider extends ChangeNotifier {
   /// Pre-flight plan preview data from WebSocket.
   Map<String, dynamic>? preFlightData;
 
+  /// Latest tree update from backend (conversation_id, node IDs).
+  Map<String, dynamic>? lastTreeUpdate;
+
   void dismissPreFlight() {
     preFlightData = null;
     notifyListeners();
@@ -495,6 +498,17 @@ class ChatProvider extends ChangeNotifier {
   void _onStatusUpdate(Map<String, dynamic> msg) {
     final type = msg['type'] as String? ?? msg['status_type'] as String? ?? '';
     final text = msg['text'] as String? ?? msg['status'] as String? ?? '';
+
+    if (type == 'tree_update') {
+      try {
+        final data = json.decode(text) as Map<String, dynamic>;
+        lastTreeUpdate = data;
+      } catch (_) {
+        // ignore parse errors
+      }
+      notifyListeners();
+      return;
+    }
 
     if (type == 'pre_flight') {
       try {

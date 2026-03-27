@@ -1786,6 +1786,51 @@ class Gateway:
 
         wm.add_message(Message(role=MessageRole.ASSISTANT, content=final_response))
 
+        # ── ConversationTree: Store nodes for chat branching ──────
+        if (
+            hasattr(self, "_conversation_tree")
+            and self._conversation_tree
+            and not session.incognito
+        ):
+            try:
+                # Create conversation if not yet assigned
+                if not session.conversation_id:
+                    session.conversation_id = self._conversation_tree.create_conversation(
+                        title=msg.text[:60]
+                    )
+                # Store user message node
+                user_node_id = self._conversation_tree.add_node(
+                    session.conversation_id,
+                    role="user",
+                    text=msg.text,
+                    parent_id=session.active_leaf_id or None,
+                    agent_name=agent_name,
+                )
+                # Store assistant response node
+                asst_node_id = self._conversation_tree.add_node(
+                    session.conversation_id,
+                    role="assistant",
+                    text=final_response,
+                    parent_id=user_node_id,
+                    agent_name=agent_name,
+                )
+                session.active_leaf_id = asst_node_id
+                # Notify frontend about tree state
+                await _status_cb("tree_update", _json.dumps({
+                    "conversation_id": session.conversation_id,
+                    "user_node_id": user_node_id,
+                    "asst_node_id": asst_node_id,
+                    "active_leaf_id": asst_node_id,
+                }))
+                log.debug(
+                    "tree_nodes_stored",
+                    conv=session.conversation_id[:12],
+                    user_node=user_node_id[:12],
+                    asst_node=asst_node_id[:12],
+                )
+            except Exception:
+                log.debug("tree_node_storage_failed", exc_info=True)
+
         # Phase 4: Reflexion, Skill-Tracking, Telemetry, Profiler, Run-Recording
         agent_result = AgentResult(
             response=final_response,

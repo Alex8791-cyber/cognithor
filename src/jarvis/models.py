@@ -344,6 +344,8 @@ class SessionContext(BaseModel):
     max_iterations: int = 10
     iteration_count: int = 0
     incognito: bool = False  # Inkognito-Modus: kein Memory, keine Persistierung
+    conversation_id: str = ""  # ConversationTree ID (for chat branching)
+    active_leaf_id: str = ""  # Current leaf node in the tree
     _blocked_tools: dict[str, int] = PrivateAttr(default_factory=dict)  # Tool → Block-Counter
 
     model_config = {"arbitrary_types_allowed": True}

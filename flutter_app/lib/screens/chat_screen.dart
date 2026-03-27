@@ -214,6 +214,25 @@ class _ChatScreenState extends State<ChatScreen> {
                         debugPrint('[Chat] Consumer2 rebuild: messages=${chat.messages.length} streaming=${chat.isStreaming} id=${identityHashCode(chat)}');
                         _scrollToBottom();
 
+                        // Sync tree provider when backend sends tree_update
+                        if (chat.lastTreeUpdate != null) {
+                          final tree = context.read<TreeProvider>();
+                          final convId = chat.lastTreeUpdate!['conversation_id'] as String?;
+                          if (convId != null && convId.isNotEmpty && tree.conversationId != convId) {
+                            // First update — load full tree
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final conn = context.read<ConnectionProvider>();
+                              tree.setApi(conn.api);
+                              tree.loadTree(convId);
+                            });
+                          } else if (convId != null && tree.conversationId == convId) {
+                            // Subsequent update — reload to get new nodes
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              tree.loadTree(convId);
+                            });
+                          }
+                        }
+
                         if (hackerMode.enabled) {
                           return HackerChatView(
                             messages: chat.messages,
