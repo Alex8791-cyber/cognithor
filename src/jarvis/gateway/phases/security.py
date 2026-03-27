@@ -185,6 +185,9 @@ async def init_security(config: Any, llm_backend: Any = None) -> PhaseResult:
 
                 key_path.parent.mkdir(parents=True, exist_ok=True)
                 key_path.write_bytes(secrets.token_bytes(32))
+                import os, stat
+
+                os.chmod(str(key_path), stat.S_IRUSR | stat.S_IWUSR)  # 0o600
                 log.info("audit_hmac_key_generated", path=str(key_path))
             _hmac_key = key_path.read_bytes()
 
@@ -205,6 +208,9 @@ async def init_security(config: Any, llm_backend: Any = None) -> PhaseResult:
                     key_bytes = private_key.private_bytes_raw()
                     pub_bytes = private_key.public_key().public_bytes_raw()
                     key_path.write_bytes(key_bytes)
+                    import os, stat
+
+                    os.chmod(str(key_path), stat.S_IRUSR | stat.S_IWUSR)  # 0o600
                     key_path.with_suffix(".pub").write_bytes(pub_bytes)
                     log.info("audit_ed25519_key_generated", path=str(key_path))
                 except ImportError:

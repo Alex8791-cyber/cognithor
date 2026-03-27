@@ -605,7 +605,6 @@ class Gatekeeper:
             "publish_skill",
             "vault_save",
             "vault_write",
-            "vault_delete",
             "vault_update",
             "vault_link",
             "delegate_to_remote_agent",
@@ -641,6 +640,12 @@ class Gatekeeper:
             "docker_run",
             # Remote Shell (execution requires approval)
             "remote_exec",
+            # Browser (state-changing, can execute JS)
+            "browse_click",
+            "browse_fill",
+            "browse_execute_js",
+            # Vault (destructive)
+            "vault_delete",
         }
         if tool in orange_tools:
             return RiskLevel.ORANGE

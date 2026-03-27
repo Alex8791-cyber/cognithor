@@ -67,7 +67,7 @@ class BreachDetector:
         last_report_time = self._state.get("last_report_time")
         breaches: list[dict[str, Any]] = []
 
-        for entry in audit_logger._entries:
+        for entry in list(audit_logger._entries):
             # Check category — handle both enum and string
             cat = entry.category
             cat_val = cat.value if hasattr(cat, "value") else str(cat)

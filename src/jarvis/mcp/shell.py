@@ -39,7 +39,7 @@ MAX_REDACTED_LOG_PREFIX = 50
 
 # Pfad-Validierung (Layer 0)
 _NULL_BYTE_RE = re.compile(r"\x00")
-_PATH_TRAVERSAL_RE = re.compile(r"(?:^|[\s;|&])(?:\.\.[/\\]){2,}")
+_PATH_TRAVERSAL_RE = re.compile(r"(?:^|[\s;|&])(?:\.\.[/\\]){1,}")
 _FILE_COMMANDS = frozenset(
     {
         "cat",

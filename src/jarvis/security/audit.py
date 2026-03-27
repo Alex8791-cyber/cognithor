@@ -240,6 +240,25 @@ class AuditTrail:
         record["prev_hash"] = self._last_hash
         record["hash"] = entry_hash
 
+        # HMAC signature (cryptographically binding, not just tamper-evident)
+        if self._hmac_key:
+            record["hmac"] = hmac_mod.new(
+                self._hmac_key, record["hash"].encode(), hashlib.sha256
+            ).hexdigest()
+
+        # Ed25519 asymmetric signature (verify without the secret)
+        if hasattr(self, "_ed25519_key") and self._ed25519_key:
+            try:
+                from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+                    Ed25519PrivateKey,
+                )
+
+                private_key = Ed25519PrivateKey.from_private_bytes(self._ed25519_key[:32])
+                signature = private_key.sign(record["hash"].encode())
+                record["ed25519_sig"] = signature.hex()
+            except ImportError:
+                log.warning("ed25519_requires_cryptography_package")
+
         line = json.dumps(record, ensure_ascii=False)
         try:
             with open(self._log_path, "a", encoding="utf-8") as f:

@@ -314,12 +314,15 @@ class MarketplaceStore:
 
         # Sortierung
         order_map = {
+            "relevance": "install_count DESC, updated_at DESC",
             "newest": "created_at DESC",
             "rating": "CASE WHEN rating_count > 0 THEN rating_sum / rating_count ELSE 0.0 END DESC",
             "installs": "install_count DESC",
             "popularity": "install_count DESC, rating_sum DESC",
         }
-        order = order_map.get(sort, "install_count DESC, updated_at DESC")
+        if sort not in order_map:
+            sort = "relevance"
+        order = order_map[sort]
 
         sql = f"SELECT * FROM listings WHERE {where} ORDER BY {order} LIMIT ?"
         params.append(limit)

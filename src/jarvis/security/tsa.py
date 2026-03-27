@@ -34,8 +34,8 @@ __all__ = ["TSAClient"]
 # Default TSA servers (free, no registration)
 DEFAULT_TSA_URL = "https://freetsa.org/tsr"
 FALLBACK_TSA_URLS = [
-    "http://timestamp.digicert.com",
-    "http://timestamp.apple.com/ts01",
+    "https://timestamp.digicert.com",
+    "https://timestamp.apple.com/ts01",
 ]
 
 
