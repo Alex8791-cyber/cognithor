@@ -236,6 +236,13 @@ class ConfigProvider extends ChangeNotifier {
       'greeting_enabled': true,
       'success_celebration': true,
     },
+    'recovery': {
+      'pre_flight_enabled': true,
+      'pre_flight_timeout_seconds': 3,
+      'pre_flight_min_steps': 2,
+      'correction_learning_enabled': true,
+      'correction_proactive_threshold': 3,
+    },
     'executor': {
       'default_timeout_seconds': 30,
       'max_output_chars': 10000,
@@ -442,7 +449,7 @@ class ConfigProvider extends ChangeNotifier {
         'sandbox', 'logging', 'security', 'heartbeat', 'plugins', 'dashboard',
         'model_overrides', 'web', 'database', 'executor', 'tools', 'audit',
         'improvement', 'prompt_evolution',
-        'browser', 'calendar', 'email', 'identity', 'personality',
+        'browser', 'calendar', 'email', 'identity', 'personality', 'recovery',
       ]) {
         if (_cfg.containsKey(section)) {
           futures.add(_api!.patch('config/$section', _cfg[section] as Map<String, dynamic>)

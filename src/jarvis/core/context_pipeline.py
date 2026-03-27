@@ -76,6 +76,10 @@ class ContextPipeline:
         """Setzt die SkillRegistry fuer Skill-Kontext-Injection."""
         self._skill_registry = sr
 
+    def set_correction_memory(self, cm: Any) -> None:
+        """Setzt die CorrectionMemory fuer Korrektur-Erinnerungen."""
+        self._correction_memory = cm
+
     def set_user_pref_store(self, ups: Any) -> None:
         """Setzt den UserPreferenceStore fuer Preference-Lookup."""
         self._user_pref_store = ups
@@ -198,6 +202,16 @@ class ContextPipeline:
             if len(supplementary) > self._config.max_context_chars:
                 supplementary = supplementary[: self._config.max_context_chars] + "\n[...]"
             wm.injected_procedures.insert(0, supplementary)
+
+        # ── Correction Reminders (Smart Recovery) ────────────────
+        if hasattr(self, "_correction_memory") and self._correction_memory:
+            try:
+                reminder = self._correction_memory.get_reminder(user_message)
+                if reminder and len(wm.injected_procedures) < 3:
+                    wm.injected_procedures.append(reminder)
+                    log.debug("correction_reminder_injected", length=len(reminder))
+            except Exception:
+                log.debug("correction_reminder_failed", exc_info=True)
 
         duration_ms = (time.perf_counter() - t0) * 1000
 

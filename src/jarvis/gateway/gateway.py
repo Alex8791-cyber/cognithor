@@ -447,6 +447,10 @@ class Gateway:
                 proactive_threshold=_proactive,
             )
             log.info("correction_memory_initialized")
+            # Wire into context pipeline
+            if hasattr(self, "_context_pipeline") and self._context_pipeline:
+                self._context_pipeline.set_correction_memory(self._correction_memory)
+                log.debug("correction_memory_wired_to_pipeline")
         except Exception:
             log.debug("correction_memory_init_failed", exc_info=True)
             self._correction_memory = None

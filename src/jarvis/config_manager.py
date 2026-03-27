@@ -106,6 +106,7 @@ _EDITABLE_SECTIONS = frozenset(
         "browser",
         "calendar",
         "email",
+        "recovery",
         "identity",
         "personality",
     }
