@@ -284,13 +284,13 @@ class TestPathValidation:
         safe_path = str(gk_config.workspace_dir / "test.txt")
         action = PlannedAction(tool="read_file", params={"path": safe_path})
         decision = gatekeeper.evaluate(action, session)
-        assert decision.status != GateStatus.BLOCK or "Pfad" not in decision.reason
+        assert decision.status != GateStatus.BLOCK or "Path" not in decision.reason
 
     def test_outside_path_blocked(self, gatekeeper: Gatekeeper, session: SessionContext) -> None:
         action = PlannedAction(tool="read_file", params={"path": "/etc/passwd"})
         decision = gatekeeper.evaluate(action, session)
         assert decision.status == GateStatus.BLOCK
-        assert "Pfad" in decision.reason
+        assert "Path" in decision.reason
 
     def test_traversal_attack_blocked(
         self, gatekeeper: Gatekeeper, session: SessionContext
