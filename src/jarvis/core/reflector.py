@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# Konfiguration
+# Configuration
 # ---------------------------------------------------------------------------
 
 #: Minimale Iterationen, ab denen Reflexion sinnvoll ist.
@@ -47,7 +47,7 @@ MIN_ITERATIONS_FOR_REFLECTION = 1
 #: Minimale Tool-Aufrufe, ab denen eine Prozedur-Synthese versucht wird.
 MIN_TOOL_CALLS_FOR_PROCEDURE = 2
 
-#: Maximale Zeichen für den Reflection-Input (Context-Budget).
+#: Maximum characters for the reflection input (context budget).
 MAX_REFLECTION_INPUT_CHARS = 12_000
 
 # ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ class Reflector:
         self._cost_tracker = cost_tracker
 
     # ------------------------------------------------------------------
-    # Öffentliche API
+    # Public API
     # ------------------------------------------------------------------
 
     def should_reflect(self, agent_result: AgentResult) -> bool:
@@ -194,7 +194,7 @@ class Reflector:
         for meta, body, score in matches[:max_results]:
             if score < min_score:
                 continue
-            # Prozeduren mit genug Daten und schlechter Erfolgsquote überspringen
+            # Skip procedures with enough data and poor success rate
             if meta.total_uses >= 3 and meta.success_rate < 0.5:
                 log.debug(
                     "procedure_skipped_unreliable",
@@ -221,12 +221,12 @@ class Reflector:
         """
         # Normalisieren
         text = text.lower().strip()
-        # Satzzeichen entfernen
+        # Remove punctuation
         text = re.sub(r"[^\w\säöüß]", " ", text)
         # Tokens
         tokens = text.split()
 
-        # Deutsche + englische Stopwörter
+        # German + English stop words
         stop_words = {
             # Deutsch
             "ich",
@@ -404,10 +404,10 @@ class Reflector:
             "then",
         }
 
-        # Filtern: Stopwörter raus, min. 3 Zeichen
+        # Filter: remove stop words, min. 3 characters
         filtered = [t for t in tokens if t not in stop_words and len(t) >= 3]
 
-        # Längste Keywords bevorzugen (informativer)
+        # Prefer longest keywords (more informative)
         filtered.sort(key=len, reverse=True)
 
         return filtered[:8]
@@ -664,7 +664,7 @@ Regeln:
         """Formatiert die Session-Daten für den Reflection-Prompt."""
         parts: list[str] = []
 
-        # Ziel(e) aus den Plänen
+        # Goal(s) from the plans
         goals = [p.goal for p in agent_result.plans if p.goal]
         if goals:
             parts.append(f"ZIELE: {'; '.join(goals)}")
@@ -678,7 +678,7 @@ Regeln:
         if history_lines:
             parts.append("VERLAUF:\n" + "\n".join(history_lines))
 
-        # Tool-Ergebnisse
+        # Tool results
         result_lines: list[str] = []
         for tr in agent_result.tool_results[-10:]:
             status = "OK" if tr.success else "FEHLER"
@@ -698,13 +698,13 @@ Regeln:
         if plan_lines:
             parts.append("PLAN-SCHRITTE:\n" + "\n".join(plan_lines))
 
-        # Fehler & Blockierungen aus Audit
+        # Errors & blocks from audit
         blocks = [a for a in agent_result.audit_entries if a.decision_status == GateStatus.BLOCK]
         if blocks:
             block_lines = [f"BLOCKIERT: {a.action_tool} -- {a.decision_reason}" for a in blocks[:5]]
             parts.append("\n".join(block_lines))
 
-        # Zusammenfügen und kürzen
+        # Combine and truncate
         text = "\n\n".join(parts)
         if len(text) > MAX_REFLECTION_INPUT_CHARS:
             text = text[:MAX_REFLECTION_INPUT_CHARS] + "\n[... gekürzt]"
@@ -815,7 +815,7 @@ Regeln:
         cleaned = re.sub(r"```json\s*", "", text)
         cleaned = re.sub(r"```\s*$", "", cleaned.strip())
 
-        # Versuche vollständigen Text als JSON
+        # Try parsing complete text as JSON
         try:
             data = json.loads(cleaned)
             if isinstance(data, dict):
@@ -939,7 +939,7 @@ Regeln:
             )
             source_ref = f"reflection:{fact.source_session}"
 
-            # Entität anlegen/finden
+            # Create/find entity
             existing = _find_entity_by_name(fact_entity_name)
             if existing:
                 entity_id = existing.id
@@ -1033,7 +1033,7 @@ Regeln:
             existing = procedural.load_procedure(candidate.name)
             if existing:
                 old_meta, old_body = existing
-                # Body zusammenführen -- neues ans Ende
+                # Merge bodies -- append new content at the end
                 merged_body = old_body.rstrip() + "\n\n---\n\n" + body
                 metadata = ProcedureMetadata(
                     name=old_meta.name,

@@ -73,7 +73,7 @@ log = get_logger(__name__)
 _PRESEARCH_NO_RESULTS = "Keine Ergebnisse"
 _PRESEARCH_NO_ENGINE = "Keine Suchengine"
 
-# ── Tool-Status-Map für Progress-Feedback ────────────────────────
+# ── Tool status map for progress feedback ────────────────────────
 
 _TOOL_STATUS_MAP: dict[str, str] = {
     "web_search": "Searching the web...",
@@ -505,7 +505,7 @@ class Gateway:
         content = core_path.read_text(encoding="utf-8")
         language = getattr(self._config, "language", "de")
 
-        # Versuche DB-gestuetzte Generierung
+        # Try DB-backed generation
         tool_count = 0
         try:
             from jarvis.mcp.tool_registry_db import (
@@ -531,7 +531,7 @@ class Gateway:
                 return
             tool_count = 0
 
-        # Skill-Liste zusammenstellen
+        # Compile skill list
         skill_lines: list[str] = []
         if hasattr(self, "_skill_registry") and self._skill_registry:
             try:
@@ -543,7 +543,7 @@ class Gateway:
         if not skill_lines:
             skill_lines = ["- (no skills registered)"]
 
-        # Prozedur-Liste mit Deduplizierung
+        # Procedure list with deduplication
         proc_lines: list[str] = []
         if self._memory_manager:
             try:
@@ -567,7 +567,7 @@ class Gateway:
                 )
             except Exception:
                 log.debug("core_inventory_procedures_dedup_failed", exc_info=True)
-                # Fallback: einfache Liste
+                # Fallback: simple list
                 try:
                     procedural = self._memory_manager.procedural
                     for meta in procedural.list_procedures():
@@ -700,7 +700,7 @@ class Gateway:
         """Startet den Gateway und alle Channels + Cron."""
         self._running = True
 
-        # Signal-Handler für Graceful Shutdown
+        # Signal handler for graceful shutdown
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             with contextlib.suppress(NotImplementedError, OSError):
@@ -1062,7 +1062,7 @@ class Gateway:
             log.info("sessions_persisted", count=saved_count)
             self._session_store.close()
 
-        # Memory-Manager schließen
+        # Close memory manager
         if hasattr(self, "_memory_manager") and self._memory_manager:
             try:
                 await self._memory_manager.close()
@@ -1111,14 +1111,14 @@ class Gateway:
             except Exception:
                 log.debug("governance_agent_close_skipped", exc_info=True)
 
-        # Gatekeeper Audit-Buffer flushen (keine Einträge verlieren)
+        # Flush gatekeeper audit buffer (prevent losing entries)
         if self._gatekeeper:
             try:
                 self._gatekeeper._flush_audit_buffer()
             except Exception:
                 log.debug("gatekeeper_flush_skipped", exc_info=True)
 
-        # UserPreferenceStore schließen
+        # Close UserPreferenceStore
         if hasattr(self, "_user_pref_store") and self._user_pref_store:
             try:
                 self._user_pref_store.close()
@@ -1129,7 +1129,7 @@ class Gateway:
         if self._mcp_client:
             await self._mcp_client.disconnect_all()
 
-        # Ollama-Client schließen
+        # Close Ollama client
         if self._llm:
             await self._llm.close()
 
@@ -1433,7 +1433,7 @@ class Gateway:
                 is_final=True,
             )
 
-        # Prometheus: Zähle eingehende Requests
+        # Prometheus: count incoming requests
         self._record_metric("requests_total", 1, channel=msg.channel)
 
         # User-Feedback erkennen und speichern (vor PGE-Zyklus)
@@ -1473,9 +1473,9 @@ class Gateway:
         if budget_response is not None:
             return budget_response
 
-        # Phase 2.3+2.5: Parallel ausführen (#43 Optimierung)
-        # Context-Pipeline, Coding-Klassifizierung und Presearch sind unabhängig
-        # voneinander und können parallel laufen.
+        # Phase 2.3+2.5: Execute in parallel (#43 optimization)
+        # Context pipeline, coding classification, and presearch are independent
+        # and can run in parallel.
 
         # Tool-Schemas (gefiltert nach Agent-Rechten) — synchron, schnell
         tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
@@ -1780,8 +1780,8 @@ class Gateway:
         # User- und Antwort-Nachricht in Working Memory speichern (nach PGE-Loop)
         wm.add_message(Message(role=MessageRole.USER, content=msg.text, channel=msg.channel))
 
-        # Wichtige Tool-Ergebnisse als TOOL-Messages in Chat-History persistieren,
-        # damit Folge-Requests den vollen Kontext haben (z.B. Vision-Text für PDF-Export)
+        # Persist important tool results as TOOL messages in chat history,
+        # so follow-up requests have full context (e.g. vision text for PDF export)
         self._persist_key_tool_results(wm, all_results)
 
         wm.add_message(Message(role=MessageRole.ASSISTANT, content=final_response))
@@ -1816,12 +1816,17 @@ class Gateway:
                 )
                 session.active_leaf_id = asst_node_id
                 # Notify frontend about tree state
-                await _status_cb("tree_update", _json.dumps({
-                    "conversation_id": session.conversation_id,
-                    "user_node_id": user_node_id,
-                    "asst_node_id": asst_node_id,
-                    "active_leaf_id": asst_node_id,
-                }))
+                await _status_cb(
+                    "tree_update",
+                    _json.dumps(
+                        {
+                            "conversation_id": session.conversation_id,
+                            "user_node_id": user_node_id,
+                            "asst_node_id": asst_node_id,
+                            "active_leaf_id": asst_node_id,
+                        }
+                    ),
+                )
                 log.debug(
                     "tree_nodes_stored",
                     conv=session.conversation_id[:12],
@@ -1858,7 +1863,7 @@ class Gateway:
         if _model_used:
             self._record_metric("tokens_used_total", 1, model=_model_used, role="request")
 
-        # Attachments aus Tool-Ergebnissen extrahieren (z.B. document_export)
+        # Extract attachments from tool results (e.g. document_export)
         attachments = self._extract_attachments(all_results)
 
         # Notify active learner of user activity (resets idle timer)
@@ -1934,7 +1939,7 @@ class Gateway:
                 )
             )
 
-        # Gap Detection: Erkennung expliziter Tool-/Skill-Erstellungswünsche
+        # Gap Detection: detect explicit tool/skill creation requests
         if hasattr(self, "_skill_generator") and self._skill_generator:
             _lower = msg.text.lower()
             _tool_request_triggers = (
@@ -2252,7 +2257,7 @@ class Gateway:
             session.iteration_count += 1
             await _pipeline_cb("iteration", "start", iteration=session.iteration_count)
 
-            # Token-Budget prüfen und ggf. kompaktieren
+            # Check token budget and compact if necessary
             self._check_and_compact(wm, session)
 
             log.info(
@@ -2428,8 +2433,8 @@ class Gateway:
                     confidence=plan.confidence,
                     preview=(plan.direct_response or "")[:200],
                 )
-                # Recovery: wenn bereits erfolgreiche Tool-Ergebnisse vorliegen,
-                # daraus eine saubere Antwort formulieren (statt aufzugeben)
+                # Recovery: if successful tool results already exist,
+                # formulate a clean response from them (instead of giving up)
                 if all_results and any(r.success for r in all_results):
                     await _status_cb("finishing", "Composing response...")
                     final_response = await self._formulate_response(
@@ -2439,7 +2444,7 @@ class Gateway:
                         stream_callback,
                     )
                 else:
-                    # Kein Kontext → Sanitized-Fallback oder Fehlermeldung
+                    # No context -- sanitized fallback or error message
                     _raw = plan.direct_response or ""
                     _sanitized = _sanitize_broken_llm_output(_raw)
                     if _sanitized and len(_sanitized) > 20:
@@ -2747,7 +2752,7 @@ class Gateway:
                         )
                     break
 
-            # Pruefen ob der Plan MEHRERE Schritte hatte (Multi-Step-Task)
+            # Check if the plan had MULTIPLE steps (multi-step task)
             _current_plan = all_plans[-1] if all_plans else None
             _is_multi_step = (
                 _current_plan is not None
@@ -2755,8 +2760,8 @@ class Gateway:
                 and len(_current_plan.steps) > 1
             )
 
-            # Coding-Tools: Nicht sofort breaken -- Replan entscheidet
-            # ob weitere Schritte noetig sind (Code testen, analysieren, fixen)
+            # Coding tools: do not break immediately -- replan decides
+            # whether further steps are needed (test, analyze, fix code)
             _coding_tools = {
                 "run_python",
                 "exec_command",
@@ -2895,7 +2900,7 @@ class Gateway:
                     success=success,
                     score=score,
                 )
-                # Failure-Pattern in Prozedur speichern (für Lerneffekt)
+                # Store failure pattern in procedure (for learning effect)
                 if not success and self._memory_manager and active_skill.procedure_name:
                     try:
                         error_summary = (
@@ -3399,7 +3404,7 @@ class Gateway:
             depth=delegation.depth,
         )
 
-        # Eigene Working Memory für delegierten Agenten
+        # Separate working memory for delegated agent
         sub_wm = WorkingMemory(session_id=session.session_id)
 
         # System-Prompt des Ziel-Agenten injizieren
@@ -3419,13 +3424,13 @@ class Gateway:
             )
         )
 
-        # Workspace des Ziel-Agenten auflösen
+        # Resolve target agent's workspace
         target_workspace = self._agent_router.resolve_agent_workspace(
             to_agent,
             self._config.workspace_dir,
         )
 
-        # Tool-Schemas für Ziel-Agenten filtern
+        # Filter tool schemas for target agent
         tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
         if target.has_tool_restrictions:
             tool_schemas = target.filter_tools(tool_schemas)
@@ -3459,7 +3464,7 @@ class Gateway:
             delegation.success = False
             return delegation.result
 
-        # Gatekeeper prüfen
+        # Check gatekeeper
         if self._gatekeeper is None:
             raise RuntimeError("Gatekeeper nicht initialisiert -- Delegation nicht möglich")
         decisions = self._gatekeeper.evaluate_plan(plan.steps, session)
@@ -3486,7 +3491,7 @@ class Gateway:
         finally:
             self._executor.clear_agent_context()
 
-        # Ergebnis formulieren
+        # Formulate result
         if any(r.success for r in results):
             response = await self._planner.formulate_response(
                 user_message=task,
@@ -3513,9 +3518,9 @@ class Gateway:
     # Private Methoden
     # =========================================================================
 
-    # Tools deren Ergebnisse für Folge-Requests in der Chat-History bleiben sollen.
-    # Ohne diese Persistierung geht der Kontext (z.B. extrahierter Text aus Bildern)
-    # bei clear_for_new_request() verloren.
+    # Tools whose results should persist in chat history for follow-up requests.
+    # Without this persistence, context (e.g. extracted text from images)
+    # is lost on clear_for_new_request().
     _CONTEXT_TOOLS: frozenset[str] = frozenset(
         {
             "media_analyze_image",
@@ -3528,7 +3533,7 @@ class Gateway:
             "search_and_read",
         }
     )
-    # Maximale Zeichenzahl für persistierte Tool-Ergebnisse in Chat-History
+    # Maximum character count for persisted tool results in chat history
     _CONTEXT_RESULT_LIMIT: int = 4000
 
     def _persist_key_tool_results(
@@ -3634,7 +3639,7 @@ class Gateway:
                 continue
             if result.tool_name not in self._ATTACHMENT_TOOLS:
                 continue
-            # content enthält den Dateipfad
+            # content contains the file path
             candidate = result.content.strip()
             if not candidate:
                 continue
@@ -3651,9 +3656,9 @@ class Gateway:
                 continue
         return attachments
 
-    # ── Automatische Vor-Suche für Faktenfragen ────────────────────
+    # ── Automatic pre-search for factual questions ────────────────────
 
-    # Regex-Patterns für Faktenfragen (Wann/Wo/Wer/Was + Verb)
+    # Regex patterns for factual questions (when/where/who/what + verb)
     _FACT_QUESTION_PATTERNS: ClassVar[list[re.Pattern[str]]] = [
         re.compile(
             r"\b(wann|wo|wer|was|wie viele|welche[rsmn]?)\b"
@@ -3698,12 +3703,12 @@ class Gateway:
         if len(text) < 15:
             return False
 
-        # Skip-Patterns prüfen (Befehle, Meinungen, Erklärungen)
+        # Check skip patterns (commands, opinions, explanations)
         for skip_pat in self._SKIP_PRESEARCH_PATTERNS:
             if skip_pat.search(text):
                 return False
 
-        # Faktenfrage-Patterns prüfen
+        # Check factual question patterns
         return any(fact_pat.search(text) for fact_pat in self._FACT_QUESTION_PATTERNS)
 
     async def _classify_coding_task(self, user_message: str) -> tuple[bool, str]:
@@ -3775,7 +3780,7 @@ class Gateway:
             (r"\bvorgestern\b", (today - timedelta(days=2)).strftime("%d.%m.%Y")),
         ]
 
-        # Wochentags-basierte Auflösung: "nächsten Montag", "am Freitag", etc.
+        # Weekday-based resolution: "naechsten Montag", "am Freitag", etc.
         _wochentage = {
             "montag": 0,
             "dienstag": 1,
@@ -3797,7 +3802,7 @@ class Gateway:
                 ),
             )
 
-        # "nächste Woche" / "diese Woche" / "dieses Wochenende"
+        # "naechste Woche" / "diese Woche" / "dieses Wochenende"
         replacements.append(
             (
                 r"\bnächste(?:r|s|n)?\s+woche\b",
@@ -3840,10 +3845,10 @@ class Gateway:
             log.debug("presearch_skip_no_webtools")
             return None
 
-        # Suchanfrage als Keywords formulieren (nicht als Frage)
+        # Formulate search query as keywords (not as a question)
         query = msg.text.strip()
-        # Befehls-Suffixe abschneiden ("Recherchiere das online", etc.)
-        # Längere Phrasen zuerst, damit "bitte such" vor "such" matcht
+        # Strip command suffixes ("Recherchiere das online", etc.)
+        # Longer phrases first so "bitte such" matches before "such"
         for splitter in (
             "recherchiere das",
             "recherchiere",
@@ -3860,7 +3865,7 @@ class Gateway:
                 query = query[:idx].strip()
                 break
         query = query.rstrip("?!.").strip()
-        # Frageworte entfernen für bessere Suchergebnisse
+        # Remove question words for better search results
         for prefix in (
             "wann hat",
             "wann haben",
@@ -3881,7 +3886,7 @@ class Gateway:
                 query = query[len(prefix) :].strip()
                 break
 
-        # Relative Zeitangaben zu konkreten Datumsangaben auflösen
+        # Resolve relative time references to concrete dates
         query = self._resolve_relative_dates(query)
 
         try:
@@ -3933,7 +3938,7 @@ class Gateway:
             "9. Answer DIRECTLY without reasoning process. Brief and factual."
         )
 
-        # /no_think deaktiviert qwen3's internen Reasoning-Modus für schnelle Antwort
+        # /no_think disables qwen3's internal reasoning mode for fast response
         user_prompt = (
             f"SEARCH RESULTS:\n\n{search_results}\n\n"
             f"---\n\n"
@@ -3941,7 +3946,7 @@ class Gateway:
             f"Answer the question ONLY based on the search results above. /no_think"
         )
 
-        # Modell via ModelRouter wählen (Backend-agnostisch)
+        # Select model via ModelRouter (backend-agnostic)
         if self._model_router:
             model = self._model_router.select_model("planning", "high")
         else:
@@ -3959,7 +3964,7 @@ class Gateway:
             )
 
             answer = response.get("message", {}).get("content", "")
-            # qwen3 kann <think>...</think> Blöcke einschließen — entfernen
+            # qwen3 may include <think>...</think> blocks — remove them
             answer = re.sub(r"<think>.*?</think>\s*", "", answer, flags=re.DOTALL)
             if answer.strip():
                 log.info("presearch_answer_generated", chars=len(answer))
@@ -3968,7 +3973,7 @@ class Gateway:
         except Exception as exc:
             log.error("presearch_answer_failed", error=str(exc)[:200])
 
-        # Fallback: regulären PGE-Loop nutzen
+        # Fallback: use regular PGE loop
         return ""
 
     def _cleanup_stale_sessions(self) -> None:
@@ -4059,7 +4064,7 @@ class Gateway:
             self._sessions[key] = session
             self._session_last_accessed[key] = time.monotonic()
 
-        # Persistieren (außerhalb Lock, blockiert nicht andere Sessions)
+        # Persist (outside lock, does not block other sessions)
         if self._session_store:
             self._session_store.save_session(session)
 
@@ -4080,7 +4085,7 @@ class Gateway:
             if session.session_id in self._working_memories:
                 return self._working_memories[session.session_id]
 
-        # Außerhalb Lock erstellen (I/O-Operationen blockieren nicht andere Sessions)
+        # Create outside lock (I/O operations do not block other sessions)
         wm = WorkingMemory(
             session_id=session.session_id,
             max_tokens=self._config.models.planner.context_window,
@@ -4117,7 +4122,7 @@ class Gateway:
                 log.warning("chat_history_load_failed", error=str(exc))
 
         with self._session_lock:
-            # Double-check: anderer Thread könnte schneller gewesen sein
+            # Double-check: another thread may have been faster
             if session.session_id not in self._working_memories:
                 self._working_memories[session.session_id] = wm
             return self._working_memories[session.session_id]

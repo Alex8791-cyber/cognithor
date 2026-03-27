@@ -56,11 +56,11 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_channel
     ON sessions(user_id, channel);
 """
 
-# Schema-Migrationen (idempotent, Reihenfolge wichtig)
+# Schema migrations (idempotent, order matters)
 _MIGRATIONS = [
     "ALTER TABLE sessions ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'jarvis';",
     "CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id, user_id, channel);",
-    # Migration 3: Channel-Mappings für persistente Session→Chat-ID Zuordnungen
+    # Migration 3: Channel mappings for persistent session-to-chat-ID assignments
     """\
     CREATE TABLE IF NOT EXISTS channel_mappings (
         channel       TEXT NOT NULL,
@@ -70,11 +70,11 @@ _MIGRATIONS = [
         PRIMARY KEY (channel, mapping_key)
     );
     """,
-    # Migration 4: Title-Spalte für Chat-History-Sidebar
+    # Migration 4: Title column for chat history sidebar
     "ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT '';",
-    # Migration 5: Folder-Spalte für Ordner-/Projektsystem
+    # Migration 5: Folder column for folder/project system
     "ALTER TABLE sessions ADD COLUMN folder TEXT DEFAULT '';",
-    # Migration 6: Incognito-Modus
+    # Migration 6: Incognito mode
     "ALTER TABLE sessions ADD COLUMN incognito INTEGER DEFAULT 0;",
 ]
 
@@ -117,7 +117,7 @@ class SessionStore:
             self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(_SCHEMA)
-            # Migrationen ausführen (idempotent)
+            # Run migrations (idempotent)
             for migration in _MIGRATIONS:
                 try:
                     self._conn.execute(migration)
@@ -346,7 +346,7 @@ class SessionStore:
         return count
 
     # ========================================================================
-    # Chat-History API (für WebUI Sidebar)
+    # Chat history API (for WebUI sidebar)
     # ========================================================================
 
     def list_sessions_for_channel(
@@ -518,7 +518,7 @@ class SessionStore:
         Returns:
             Der gesetzte (oder existierende) Titel.
         """
-        # Prüfen ob bereits ein Titel existiert
+        # Check if a title already exists
         row = self.conn.execute(
             "SELECT title FROM sessions WHERE session_id = ?",
             (session_id,),
@@ -526,7 +526,7 @@ class SessionStore:
         if row and row["title"]:
             return row["title"]
 
-        # Erste User-Message finden
+        # Find first user message
         msg_row = self.conn.execute(
             """
             SELECT content FROM chat_history
@@ -540,7 +540,7 @@ class SessionStore:
             return ""
 
         title = msg_row["content"].strip()
-        # Newlines entfernen, auf 60 Zeichen kürzen
+        # Remove newlines, truncate to 60 characters
         title = title.replace("\n", " ").replace("\r", "")
         if len(title) > 60:
             title = title[:57] + "..."
@@ -586,7 +586,7 @@ class SessionStore:
         ]
 
     # ========================================================================
-    # Channel-Mappings (persistente Session→Chat-ID Zuordnungen)
+    # Channel mappings (persistent session-to-chat-ID assignments)
     # ========================================================================
 
     def save_channel_mapping(self, channel: str, key: str, value: str) -> None:

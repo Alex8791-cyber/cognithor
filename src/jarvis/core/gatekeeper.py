@@ -66,7 +66,7 @@ class Gatekeeper:
       RED    -> BLOCK   (blocked, manual release required)
     """
 
-    # Tools die auch im OFFLINE-Modus Netzwerkzugriff haben duerfen (Recherche)
+    # Tools that are allowed network access even in OFFLINE mode (research)
     _OFFLINE_ALLOWED_NETWORK_TOOLS: frozenset[str] = frozenset(
         {
             "web_search",
@@ -118,8 +118,8 @@ class Gatekeeper:
         self._audit_buffer: list[str] = []
         self._AUDIT_FLUSH_THRESHOLD = 10
 
-        # atexit-Handler: Flush bei Prozess-Ende (Schutz vor Datenverlust)
-        # weakref verhindert, dass atexit den Gatekeeper am Leben hält
+        # atexit handler: flush on process exit (protection against data loss)
+        # weakref prevents atexit from keeping the gatekeeper alive
         _weak_self = weakref.ref(self)
 
         def _atexit_flush() -> None:
@@ -180,12 +180,12 @@ class Gatekeeper:
         self._disabled_tools = self._build_disabled_tools()
 
     def initialize(self) -> None:
-        """Lädt Policies und kompiliert Regex-Patterns.
+        """Load policies and compile regex patterns.
 
-        Wird einmal beim Start aufgerufen. Kompiliert alle Regex
-        beim Laden, nicht bei jedem evaluate()-Aufruf.
+        Called once at startup. Compiles all regex
+        on load, not on every evaluate() call.
         """
-        # Policies laden
+        # Load policies
         self._policies = self._load_policies()
         self._policies.sort(key=lambda r: r.priority, reverse=True)
 
@@ -195,7 +195,7 @@ class Gatekeeper:
             for pattern in self._config.security.credential_patterns
         ]
 
-        # Blockierte Befehle kompilieren
+        # Compile blocked command patterns
         self._blocked_command_patterns = [
             re.compile(pattern, re.IGNORECASE) for pattern in self._config.security.blocked_commands
         ]
@@ -224,7 +224,7 @@ class Gatekeeper:
         )
 
     def reload_policies(self) -> None:
-        """Lädt Policies neu von Disk (Live-Reload vom UI)."""
+        """Reload policies from disk (live reload from UI)."""
         self._policies = self._load_policies()
         self._policies.sort(key=lambda r: r.priority, reverse=True)
         log.info("gatekeeper_policies_reloaded", policy_count=len(self._policies))
@@ -232,24 +232,24 @@ class Gatekeeper:
     # --- Public Policy API (fuer ReplayEngine u.a.) ---
 
     def get_policies(self) -> list[PolicyRule]:
-        """Gibt eine Kopie der aktuellen Policy-Regeln zurueck."""
+        """Return a copy of the current policy rules."""
         return list(self._policies)
 
     def set_policies(self, policies: list[PolicyRule]) -> None:
-        """Ersetzt die Policy-Regeln (fuer Replay/Testing)."""
+        """Replace the policy rules (for replay/testing)."""
         self._policies = sorted(policies, key=lambda r: r.priority, reverse=True)
 
     def set_reflexion_memory(self, reflexion_memory: Any) -> None:
-        """Setzt die ReflexionMemory-Instanz fuer den ConfidenceChecker."""
+        """Set the ReflexionMemory instance for the ConfidenceChecker."""
         if self._confidence_checker is not None and reflexion_memory is not None:
             self._confidence_checker._reflexion = reflexion_memory
 
     def set_active_skill(self, skill: Skill | None) -> None:
-        """Setzt den aktiven Skill fuer ToolEnforcer-Checks.
+        """Set the active skill for ToolEnforcer checks.
 
-        Wird vom Gateway/PGE-Loop aufgerufen, bevor Actions evaluiert
-        werden.  Wenn ein Community-Skill aktiv ist, werden nur die
-        in tools_required deklarierten Tools erlaubt.
+        Called by the Gateway/PGE loop before actions are evaluated.
+        When a community skill is active, only the tools declared
+        in tools_required are allowed.
         """
         self._active_skill = skill
 
@@ -258,32 +258,32 @@ class Gatekeeper:
         action: PlannedAction,
         context: SessionContext,
     ) -> GateDecision:
-        """Prüft eine einzelne PlannedAction gegen alle Policies. [B§3.2]
+        """Check a single PlannedAction against all policies. [B§3.2]
 
-        Reihenfolge der Prüfungen (first-match wins bei BLOCK):
-          0. ToolEnforcer (Community-Skills: nur tools_required)
-          1. Credential-Scan → MASK wenn gefunden
-          2. Explizite Policy-Regeln → Ergebnis der Regel
-          3. Pfad-Validierung → BLOCK wenn außerhalb
-          4. Destruktive Befehls-Patterns → BLOCK
-          5. Default-Risiko-Klassifizierung → GREEN/YELLOW/ORANGE/RED
+        Order of checks (first-match wins for BLOCK):
+          0. ToolEnforcer (community skills: only tools_required)
+          1. Credential scan -> MASK if found
+          2. Explicit policy rules -> result of the rule
+          3. Path validation -> BLOCK if outside allowed dirs
+          4. Destructive command patterns -> BLOCK
+          5. Default risk classification -> GREEN/YELLOW/ORANGE/RED
 
         Args:
-            action: Die zu prüfende Aktion
-            context: Session-Kontext (für kontextabhängige Regeln)
+            action: The action to check.
+            context: Session context (for context-dependent rules).
 
         Returns:
-            GateDecision mit Status, Grund, und ggf. maskierten Params
+            GateDecision with status, reason, and optionally masked params.
         """
         if not self._initialized:
             self.initialize()
 
-        # --- Schritt -1: Community-Skill ToolEnforcer ---
+        # --- Step -1: Community skill ToolEnforcer ---
         skill_block = self._enforce_skill_tools(action, context)
         if skill_block is not None:
             return skill_block
 
-        # --- Schritt 0: OperationMode-Enforcement ---
+        # --- Step 0: OperationMode enforcement ---
         if self._operation_mode == OperationMode.OFFLINE:
             tool_lower = action.tool.lower()
             if tool_lower not in self._OFFLINE_ALLOWED_NETWORK_TOOLS:
@@ -309,7 +309,7 @@ class Gatekeeper:
                     self._write_audit(action, decision, context)
                     return decision
 
-        # --- Schritt 1: Credential-Scan ---
+        # --- Step 1: Credential scan ---
         masked_params, has_credentials = self._scan_credentials(action.params)
         if has_credentials:
             decision = GateDecision(
@@ -323,7 +323,7 @@ class Gatekeeper:
             self._write_audit(action, decision, context)
             return decision
 
-        # --- Schritt 2: Explizite Policy-Regeln (höchste Priorität zuerst) ---
+        # --- Step 2: Explicit policy rules (highest priority first) ---
         for rule in self._policies:
             if self._matches_rule(action, rule):
                 risk = self._status_to_risk(rule.action)
@@ -343,13 +343,13 @@ class Gatekeeper:
                 )
                 return decision
 
-        # --- Schritt 3: Pfad-Validierung ---
+        # --- Step 3: Path validation ---
         path_check = self._validate_paths(action)
         if path_check is not None:
             self._write_audit(action, path_check, context)
             return path_check
 
-        # --- Schritt 4a: Gefährlicher Python-Code ---
+        # --- Step 4a: Dangerous Python code ---
         if action.tool == "run_python":
             code = str(action.params.get("code", ""))
             code_check = self._check_python_code(code, action)
@@ -357,7 +357,7 @@ class Gatekeeper:
                 self._write_audit(action, code_check, context)
                 return code_check
 
-        # --- Schritt 4b: Destruktive Shell-Befehle ---
+        # --- Step 4b: Destructive shell commands ---
         if action.tool in ("exec_command", "shell_exec", "shell"):
             cmd = str(action.params.get("command", ""))
             cmd_check = self._check_command(cmd, action)
@@ -365,7 +365,7 @@ class Gatekeeper:
                 self._write_audit(action, cmd_check, context)
                 return cmd_check
 
-        # --- Schritt 5: Capability-Matrix-Check (optional) ---
+        # --- Step 5: Capability matrix check (optional) ---
         if self._capability_matrix is not None:
             try:
                 # Only check known tools -- unknown tools fall through to default
@@ -387,11 +387,11 @@ class Gatekeeper:
             except Exception:
                 pass  # Matrix-Fehler ignorieren, Fallback auf Default
 
-        # --- Schritt 6: Default-Risiko-Klassifizierung ---
+        # --- Step 6: Default risk classification ---
         risk = self._classify_risk(action)
         status = self._risk_to_status(risk)
 
-        # --- Schritt 7: Pre-Execution Confidence Check (advisory) ---
+        # --- Step 7: Pre-execution confidence check (advisory) ---
         confidence_score: float | None = None
         if self._confidence_checker is not None:
             try:
@@ -434,7 +434,7 @@ class Gatekeeper:
         steps: list[PlannedAction],
         context: SessionContext,
     ) -> list[GateDecision]:
-        """Prüft alle Schritte eines Plans.
+        """Check all steps of a plan.
 
         Returns:
             Liste von GateDecisions, eine pro Step.
@@ -588,7 +588,7 @@ class Gatekeeper:
         if tool in green_tools:
             return RiskLevel.GREEN
 
-        # YELLOW: Schreibende aber ungefährliche Operationen (lokal, kein Netzwerk)
+        # YELLOW: Write operations but non-dangerous (local, no network)
         # Note: write_file, edit_file, run_python, exec_command moved to GREEN
         # for autonomous operation. Path validation still enforced in the tools.
         yellow_tools = {
@@ -628,7 +628,7 @@ class Gatekeeper:
         if tool in yellow_tools:
             return RiskLevel.YELLOW
 
-        # ORANGE: Operationen die User-Bestätigung brauchen
+        # ORANGE: Operations that require user confirmation
         orange_tools = {
             "email_send",
             "calendar_create_event",
@@ -678,7 +678,7 @@ class Gatekeeper:
         return mapping.get(risk, GateStatus.BLOCK)
 
     def _status_to_risk(self, status: GateStatus) -> RiskLevel:
-        """Konvertiert GateStatus in RiskLevel (für Audit)."""
+        """Convert GateStatus to RiskLevel (for audit)."""
         mapping = {
             GateStatus.ALLOW: RiskLevel.GREEN,
             GateStatus.INFORM: RiskLevel.YELLOW,
@@ -689,7 +689,7 @@ class Gatekeeper:
         return mapping.get(status, RiskLevel.RED)
 
     def _matches_rule(self, action: PlannedAction, rule: PolicyRule) -> bool:
-        """Prüft ob eine Aktion zu einer Policy-Regel passt."""
+        """Check whether an action matches a policy rule."""
         match = rule.match
 
         # Tool-Match
@@ -712,7 +712,7 @@ class Gatekeeper:
         return True
 
     def _param_matches(self, value: str, match: PolicyParamMatch) -> bool:
-        """Prüft ob ein einzelner Parameter-Wert zu einem Match passt."""
+        """Check whether a single parameter value matches."""
         # Regex
         if match.regex is not None:
             try:
@@ -762,16 +762,16 @@ class Gatekeeper:
         params: dict[str, Any],
         match: PolicyParamMatch,
     ) -> bool:
-        """Prüft ob irgendein Parameter zu einem Match passt (Wildcard *)."""
+        """Check whether any parameter matches (wildcard *)."""
         return any(self._param_matches(str(value), match) for value in params.values())
 
     def _validate_paths(self, action: PlannedAction) -> GateDecision | None:
-        """Prüft ob Dateipfade in den Parametern erlaubt sind. [B§3.2]
+        """Check whether file paths in the parameters are allowed. [B§3.2]
 
         Returns:
-            GateDecision(BLOCK) wenn ein Pfad ungültig ist, sonst None.
+            GateDecision(BLOCK) if a path is invalid, otherwise None.
         """
-        # Nur für Datei-Operationen relevant
+        # Only relevant for file operations
         file_tools = {"read_file", "write_file", "edit_file", "list_directory", "delete_file"}
         if action.tool.lower() not in file_tools:
             return None
@@ -782,8 +782,8 @@ class Gatekeeper:
 
         try:
             expanded = Path(path_str).expanduser()
-            # Relative Pfade gegen Workspace auflösen (nicht CWD).
-            # So funktioniert "erstelle test.txt" ohne absoluten Pfad.
+            # Resolve relative paths against workspace (not CWD).
+            # This way "erstelle test.txt" works without an absolute path.
             if not expanded.is_absolute():
                 workspace = self._config.jarvis_home / "workspace"
                 target = (workspace / expanded).resolve()
@@ -794,24 +794,24 @@ class Gatekeeper:
         except (ValueError, OSError):
             return GateDecision(
                 status=GateStatus.BLOCK,
-                reason=f"Ungültiger Pfad: {path_str}",
+                reason=f"Invalid path: {path_str}",
                 risk_level=RiskLevel.RED,
                 original_action=action,
                 policy_name="path_validation",
             )
 
-        # Prüfe ob Pfad in einem erlaubten Verzeichnis liegt
+        # Check whether path is in an allowed directory
         for allowed in self._allowed_paths:
             try:
-                # resolve() verhindert Symlink-Tricks und ../../ Traversals
+                # resolve() prevents symlink tricks and ../../ traversals
                 target.relative_to(allowed)
-                return None  # Pfad ist erlaubt
+                return None  # Path is allowed
             except ValueError:
                 continue
 
         return GateDecision(
             status=GateStatus.BLOCK,
-            reason=f"Pfad außerhalb erlaubter Verzeichnisse: {path_str}",
+            reason=f"Path outside allowed directories: {path_str}",
             risk_level=RiskLevel.RED,
             original_action=action,
             policy_name="path_validation",
@@ -880,10 +880,10 @@ class Gatekeeper:
         code: str,
         action: PlannedAction,
     ) -> GateDecision | None:
-        """Prüft Python-Code auf gefährliche Patterns (os.system, subprocess, etc.).
+        """Check Python code for dangerous patterns (os.system, subprocess, etc.).
 
         Returns:
-            GateDecision(BLOCK) wenn gefährlicher Code erkannt, sonst None.
+            GateDecision(BLOCK) if dangerous code detected, otherwise None.
         """
         if not code.strip():
             return None
@@ -892,7 +892,7 @@ class Gatekeeper:
             if pattern.search(code):
                 return GateDecision(
                     status=GateStatus.BLOCK,
-                    reason=f"Gefährlicher Python-Code erkannt: {description}",
+                    reason=f"Dangerous Python code detected: {description}",
                     risk_level=RiskLevel.RED,
                     original_action=action,
                     policy_name="blocked_python_code",
@@ -905,7 +905,7 @@ class Gatekeeper:
         command: str,
         action: PlannedAction,
     ) -> GateDecision | None:
-        """Prüft einen Shell-Befehl gegen destruktive Patterns.
+        """Check a shell command against destructive patterns.
 
         Returns:
             GateDecision(BLOCK) wenn destruktiv, sonst None.
@@ -960,7 +960,7 @@ class Gatekeeper:
         return masked, has_credentials
 
     def _load_policies(self) -> list[PolicyRule]:
-        """Lädt Policy-Regeln aus YAML-Dateien."""
+        """Load policy rules from YAML files."""
         rules: list[PolicyRule] = []
 
         for policy_file in [
@@ -1010,8 +1010,8 @@ class Gatekeeper:
                 elif isinstance(param_criteria, str):
                     params_match[param_name] = PolicyParamMatch(equals=param_criteria)
 
-        # Backwards-Kompatibilität: Dotted-Notation (z.B. "params.command")
-        # Ältere Policy-Dateien nutzen "params.command:" statt "params: command:"
+        # Backwards compatibility: dotted notation (e.g. "params.command")
+        # Older policy files use "params.command:" instead of "params: command:"
         for key in list(match_data.keys()):
             if key.startswith("params.") and key != "params":
                 param_name = key[len("params.") :]

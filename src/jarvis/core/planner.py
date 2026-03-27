@@ -50,7 +50,7 @@ log = get_logger(__name__)
 
 
 # =============================================================================
-# System-Prompts (optimiert für Qwen3)
+# System prompts (optimized for Qwen3)
 # =============================================================================
 
 SYSTEM_PROMPT = """\
@@ -267,7 +267,7 @@ class Planner:
         except Exception:
             self._context_window = 32768
 
-        # Circuit Breaker für LLM-Calls (#42 Optimierung)
+        # Circuit breaker for LLM calls (#42 optimization)
         from jarvis.utils.circuit_breaker import CircuitBreaker
 
         self._llm_circuit_breaker = CircuitBreaker(
@@ -308,7 +308,7 @@ class Planner:
                 content = path.read_text(encoding="utf-8").strip()
                 if content and isinstance(content, str):
                     return content
-            # Migration: alte .txt-Datei als Fallback prüfen
+            # Migration: check old .txt file as fallback
             if fallback_txt:
                 txt_path = prompts_dir / fallback_txt
                 if txt_path.exists():
@@ -490,12 +490,12 @@ class Planner:
         # Antwort parsen
         assistant_text = response.get("message", {}).get("content", "")
 
-        # Prüfe ob die Antwort Tool-Calls enthält (Ollama native)
+        # Check if the response contains tool calls (Ollama native)
         tool_calls = response.get("message", {}).get("tool_calls", [])
         if tool_calls:
             return self._parse_tool_calls(tool_calls, user_message)
 
-        # Prüfe ob JSON-Plan in der Antwort steckt
+        # Check if JSON plan is embedded in the response
         plan = self._extract_plan(assistant_text, user_message)
 
         # Retry once if JSON parsing failed (LLM produced malformed JSON)
@@ -558,7 +558,7 @@ class Planner:
             model = self._router.select_model("planning", "high")
         model_config = self._router.get_model_config(model)
 
-        # Ergebnisse formatieren
+        # Format results
         results_text = self._format_results(results)
 
         # System-Prompt + Replan-Prompt
@@ -612,7 +612,7 @@ class Planner:
         self._record_cost(response, model, session_id=working_memory.session_id)
         assistant_text = response.get("message", {}).get("content", "")
 
-        # Prüfe ob Tool-Calls in der Antwort
+        # Check if tool calls are in the response
         tool_calls = response.get("message", {}).get("tool_calls", [])
         if tool_calls:
             return self._parse_tool_calls(tool_calls, original_goal)
@@ -745,7 +745,7 @@ class Planner:
                 if _fmt_attempt == 0:
                     await asyncio.sleep(1.0)  # Retry nach kurzer Pause
                     continue
-                # Zweiter Fehlschlag: Ergebnisse als Fallback direkt zurueckgeben
+                # Second failure: return results directly as fallback
                 raw_results = "\n".join(
                     f"[{r.tool_name}] {r.content[:300]}" for r in results if r.success
                 )
@@ -1049,7 +1049,7 @@ class Planner:
             context_parts.append(f"### Kern-Wissen\n{core_text}")
 
         if working_memory.injected_memories:
-            # Nach Score sortieren (höchster zuerst) mit Token-Budget
+            # Sort by score (highest first) with token budget
             sorted_mems = sorted(
                 working_memory.injected_memories,
                 key=lambda m: getattr(m, "score", 0.0),
@@ -1068,7 +1068,7 @@ class Planner:
         if working_memory.injected_procedures:
             for proc in working_memory.injected_procedures[:2]:
                 if "Web-Suchergebnis" in proc:
-                    # Presearch: Web-Ergebnisse mit passender Überschrift und mehr Platz
+                    # Presearch: web results with matching heading and more space
                     context_parts.append(
                         f"### AKTUELLE FAKTEN AUS DEM INTERNET (vertraue diesen Daten!)\n"
                         f"{proc[:proc_budget]}"
@@ -1172,13 +1172,13 @@ class Planner:
             {"role": "system", "content": system_prompt},
         ]
 
-        # Chat-History einfügen (neueste zuerst, bis Budget erschöpft)
+        # Insert chat history (newest first, until budget exhausted)
         for msg in working_memory.chat_history:
             role = msg.role.value
             content = msg.content
 
-            # TOOL-Messages als assistant mit Präfix darstellen,
-            # da nicht alle LLM-Backends die "tool"-Rolle unterstützen
+            # Render TOOL messages as assistant with prefix,
+            # since not all LLM backends support the "tool" role
             if msg.role == MessageRole.TOOL:
                 role = "assistant"
                 tool_label = msg.name or "tool"
@@ -1211,8 +1211,8 @@ class Planner:
 
         Gültige JSON-Escapes: \\\", \\\\, \\/, \\b, \\f, \\n, \\r, \\t, \\uXXXX
         """
-        # Ersetze Backslashes die kein gültiges JSON-Escape einleiten
-        # Negative Lookahead: Backslash gefolgt von etwas das KEIN gültiges Escape ist
+        # Replace backslashes that do not introduce a valid JSON escape
+        # Negative lookahead: backslash followed by something that is NOT a valid escape
         return re.sub(
             r'\\(?!["\\/bfnrtu])',
             r"\\\\",
@@ -1234,7 +1234,7 @@ class Planner:
         except json.JSONDecodeError:
             pass
 
-        # 2. Ungültige Escapes reparieren
+        # 2. Fix invalid escapes
         sanitized = self._sanitize_json_escapes(json_str)
         try:
             data = json.loads(sanitized)
@@ -1266,7 +1266,7 @@ class Planner:
         Versucht JSON zu parsen. Wenn kein JSON gefunden wird,
         wird der Text als direkte Antwort interpretiert.
         """
-        # Versuche JSON-Block zu finden (```json ... ```)
+        # Try to find JSON block (```json ... ```)
         json_match = re.search(
             r"```(?:json)?\s*\n?(.*?)\n?\s*```",
             text,
@@ -1279,8 +1279,8 @@ class Planner:
             if data is not None:
                 return self._parse_plan_json(data, goal)
 
-        # Versuche rohen JSON zu parsen (ohne Code-Block)
-        # Finde erstes { und letztes }
+        # Try to parse raw JSON (without code block)
+        # Find first { and last }
         first_brace = text.find("{")
         last_brace = text.rfind("}")
         if first_brace >= 0 and last_brace > first_brace:
@@ -1293,7 +1293,7 @@ class Planner:
         # presence of braces or json markers signals a parse failure,
         # not a genuine direct answer.
         # Tightened check: einzelne { in Freitext (z.B. "Python {dict}")
-        # sind KEIN Indikator fuer kaputtes JSON. Wir prüfen auf
+        # are NOT an indicator of broken JSON. We check for
         # kombinierte Signale: { + JSON-Keys, oder ``` + json-Marker.
         _has_plan_keys = '"steps"' in text or '"goal"' in text
         _has_json_block = json_match is not None
@@ -1319,7 +1319,7 @@ class Planner:
                 parse_failed=True,
             )
 
-        # Kein JSON gefunden → prüfe ob der Planner nach Permission fragt
+        # No JSON found -- check if the planner is asking for permission
         _permission_keywords = [
             "permission",
             "berechtigung",
@@ -1471,7 +1471,7 @@ class Planner:
             confidence=0.7,
         )
 
-    # Tools deren Ergebnisse mehr Kontext brauchen (größeres Content-Limit)
+    # Tools whose results need more context (larger content limit)
     _HIGH_CONTEXT_TOOLS: frozenset[str] = frozenset(
         {
             "web_search",

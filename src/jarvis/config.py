@@ -2405,7 +2405,7 @@ def load_config(config_path: Path | None = None) -> JarvisConfig:
 
 
 # ============================================================================
-# Verzeichnisstruktur erstellen
+# Create directory structure
 # ============================================================================
 
 
@@ -2471,7 +2471,7 @@ werden.
 """
 
 _DEFAULT_POLICY = """\
-# Jarvis · Standard-Policies
+# Jarvis · Default policies
 # Architektur-Bibel §3.2
 
 rules:
@@ -2518,10 +2518,10 @@ rules:
 """
 
 _DEFAULT_CONFIG = """\
-# Jarvis · Hauptkonfiguration
-# Generiert beim ersten Start. Anpassen nach Bedarf.
+# Jarvis · Main configuration
+# Generated on first start. Customize as needed.
 
-# Name des Benutzers -- wird in Prompts und Begrüßungen verwendet.
+# Name of the user -- used in prompts and greetings.
 owner_name: User
 
 ollama:
@@ -2638,7 +2638,7 @@ jobs:
 _DEFAULT_MCP_CONFIG = """\
 # Jarvis · MCP-Server Konfiguration
 #
-# Builtin-Tools (automatisch aktiv, keine Konfiguration nötig):
+# Builtin tools (automatically active, no configuration needed):
 #   Filesystem: read_file, write_file, edit_file, list_directory, delete_file
 #   Shell:      exec_command
 #   Code:       run_python, analyze_code
@@ -2647,18 +2647,18 @@ _DEFAULT_MCP_CONFIG = """\
 #               update_core_section, save_episode, get_working_context
 #   Web:        web_search, web_fetch
 #
-# Externe MCP-Server hier registrieren.
-# Diese werden beim Gateway-Start automatisch verbunden.
+# Register external MCP servers here.
+# These are automatically connected on gateway start.
 
 servers: {}
-  # Beispiel: Eigener MCP-Server (Python)
+  # Example: Custom MCP server (Python)
   # mein_server:
   #   transport: stdio
   #   command: python
   #   args: ["-m", "mein_mcp_modul"]
   #   enabled: true
   #
-  # Beispiel: NPX-basierter MCP-Server
+  # Example: NPX-based MCP server
   # github_server:
   #   transport: stdio
   #   command: npx
@@ -2668,11 +2668,11 @@ servers: {}
   #   enabled: false
 
 # ── MCP-Server-Modus (OPTIONAL) ─────────────────────────────────
-# Exponiert Jarvis selbst als MCP-Server, damit externe Clients
-# (Claude Desktop, Cursor, VS Code, andere Agenten) sich verbinden können.
+# Exposes Jarvis itself as an MCP server so external clients
+# (Claude Desktop, Cursor, VS Code, other agents) can connect.
 #
-# Modus: disabled (Standard), stdio, http, both
-# ACHTUNG: Standardmäßig deaktiviert! Nur aktivieren wenn benötigt.
+# Mode: disabled (default), stdio, http, both
+# WARNING: Disabled by default! Only enable when needed.
 
 server_mode:
   mode: disabled
@@ -2688,11 +2688,11 @@ server_mode:
 
 # ── A2A Protocol (OPTIONAL) ──────────────────────────────────────
 # Agent-zu-Agent-Kommunikation nach Linux Foundation A2A RC v1.0.
-# Ermöglicht Jarvis Tasks von anderen Agenten zu empfangen und
+# Allows Jarvis to receive tasks from other agents and
 # selbst Tasks an Remote-Agenten zu delegieren.
-# JSON-RPC 2.0 über HTTP, SSE-Streaming, Push Notifications.
+# JSON-RPC 2.0 over HTTP, SSE streaming, push notifications.
 #
-# ACHTUNG: Standardmäßig deaktiviert! Nur aktivieren wenn benötigt.
+# WARNING: Disabled by default! Only enable when needed.
 
 a2a:
   enabled: false
@@ -2709,11 +2709,11 @@ a2a:
   # remotes: []  # Liste von Remote-Agenten: [{endpoint: "http://...", auth_token: ""}]
 """
 
-# Heartbeat-Checkliste -- wird beim ersten Start in ``~/.jarvis/HEARTBEAT.md``
-# angelegt, falls keine vorhandene Datei existiert. Nutzer können diese
-# Datei anpassen, um Aufgaben zu definieren, die Jarvis periodisch prüfen
-# soll. Jede Zeile repräsentiert eine Aufgabe oder ein Element der
-# Checkliste. Jarvis sendet den Inhalt unverändert als Heartbeat-Nachricht.
+# Heartbeat checklist -- created on first start in ``~/.jarvis/HEARTBEAT.md``
+# if no existing file is found. Users can customize this file to define
+# tasks that Jarvis should periodically check. Each line represents a task
+# or checklist item. Jarvis sends the content unchanged as a heartbeat
+# message.
 _DEFAULT_HEARTBEAT_MD = """\
 # Heartbeat Checkliste
 

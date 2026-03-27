@@ -79,7 +79,7 @@ def _build_sandbox_env(*, working_dir: str = "") -> dict[str, str]:
 
 
 # ============================================================================
-# Konfiguration
+# Configuration
 # ============================================================================
 
 
@@ -103,10 +103,10 @@ class NetworkPolicy(StrEnum):
 class SandboxConfig:
     """Sandbox-Konfiguration."""
 
-    # Bevorzugtes Level (Fallback automatisch)
+    # Preferred level (automatic fallback)
     preferred_level: SandboxLevel = SandboxLevel.BWRAP
 
-    # Dateisystem
+    # Filesystem
     workspace_dir: Path = field(default_factory=lambda: Path.home() / ".jarvis" / "workspace")
     allowed_read_paths: list[str] = field(
         default_factory=lambda: (
@@ -131,17 +131,17 @@ class SandboxConfig:
     )
     allowed_write_paths: list[str] = field(default_factory=list)
 
-    # Netzwerk
+    # Network
     network: NetworkPolicy = NetworkPolicy.ALLOW
 
-    # Resource-Limits
+    # Resource limits
     max_memory_mb: int = 512
     max_file_size_mb: int = 100
     max_processes: int = 64
     default_timeout: int = 30
     max_cpu_seconds: int = 10
 
-    # Umgebungsvariablen die durchgereicht werden
+    # Environment variables to pass through
     env_passthrough: list[str] = field(
         default_factory=lambda: [
             "PATH",
@@ -154,7 +154,7 @@ class SandboxConfig:
 
 
 # ============================================================================
-# Sandbox-Ergebnis
+# Sandbox result
 # ============================================================================
 
 
@@ -196,7 +196,7 @@ class SandboxResult:
 
 
 # ============================================================================
-# Sandbox-Implementierungen
+# Sandbox implementations
 # ============================================================================
 
 
@@ -230,51 +230,51 @@ class BwrapSandbox:
 
         args = ["bwrap"]
 
-        # --- Dateisystem-Mounts ---
+        # --- Filesystem mounts ---
 
-        # Basis: leeres Root
+        # Base: empty root
         args += ["--unshare-all"]
 
-        # Nur PID unsharen wenn kein Netzwerk benötigt wird
-        # (--unshare-all macht alles auf einmal)
+        # Only unshare PID when network is not needed
+        # (--unshare-all does everything at once)
         if cfg.network == NetworkPolicy.ALLOW:
             args += ["--share-net"]
 
-        # /proc und /dev (minimal, für Prozess-Info)
+        # /proc and /dev (minimal, for process info)
         args += ["--proc", "/proc"]
         args += ["--dev", "/dev"]
 
-        # Eigenes tmpfs für /tmp
+        # Own tmpfs for /tmp
         args += ["--tmpfs", "/tmp"]
 
-        # Systemverzeichnisse read-only
+        # System directories read-only
         for path in cfg.allowed_read_paths:
             if Path(path).exists():
                 args += ["--ro-bind", path, path]
 
-        # Workspace read-write (das einzige beschreibbare Verzeichnis)
+        # Workspace read-write (the only writable directory)
         Path(workspace).mkdir(parents=True, exist_ok=True)
         args += ["--bind", workspace, workspace]
 
-        # Zusätzliche Write-Pfade
+        # Additional write paths
         for path in cfg.allowed_write_paths:
             if Path(path).exists():
                 args += ["--bind", path, path]
 
-        # HOME auf Workspace setzen
+        # Set HOME to workspace
         args += ["--setenv", "HOME", workspace]
 
-        # --- Umgebungsvariablen ---
+        # --- Environment variables ---
         for var in cfg.env_passthrough:
             val = os.environ.get(var)
             if val:
                 args += ["--setenv", var, val]
 
-        # Deutsche Locale
+        # German locale
         args += ["--setenv", "LANG", "de_DE.UTF-8"]
         args += ["--setenv", "LC_ALL", "de_DE.UTF-8"]
 
-        # --- Resource-Limits via ulimit im Shell-Befehl ---
+        # --- Resource limits via ulimit in shell command ---
         ulimits = (
             f"ulimit -v {cfg.max_memory_mb * 1024} 2>/dev/null; "
             f"ulimit -f {cfg.max_file_size_mb * 1024} 2>/dev/null; "
@@ -284,7 +284,7 @@ class BwrapSandbox:
         # Working Directory
         args += ["--chdir", working_dir]
 
-        # Shell mit Befehl
+        # Shell with command
         args += ["--", "/bin/sh", "-c", ulimits + command]
 
         return args
@@ -317,16 +317,16 @@ class FirejailSandbox:
             "--novideo",
         ]
 
-        # Netzwerk
+        # Network
         if cfg.network == NetworkPolicy.BLOCK:
             args.append("--net=none")
 
-        # Resource-Limits
+        # Resource limits
         args.append(f"--rlimit-as={cfg.max_memory_mb * 1024 * 1024}")
         args.append(f"--rlimit-fsize={cfg.max_file_size_mb * 1024 * 1024}")
         args.append(f"--rlimit-nproc={cfg.max_processes}")
 
-        # Nur Workspace beschreibbar
+        # Only workspace is writable
         for path in cfg.allowed_read_paths:
             if Path(path).exists():
                 args.append(f"--whitelist={path}")
@@ -445,7 +445,7 @@ class WindowsJobObjectSandbox:
             # 4. Subprocess starten mit minimaler Umgebung
             env = _build_sandbox_env(working_dir=working_dir)
 
-            # Windows: cmd.exe /c für Shell-Features (Pipes, Redirects)
+            # Windows: cmd.exe /c for shell features (pipes, redirects)
             exec_args = ["cmd.exe", "/c", command]
 
             proc = await asyncio.create_subprocess_exec(
@@ -518,7 +518,7 @@ class WindowsJobObjectSandbox:
                 exit_code=-1,
             )
         finally:
-            # 8. Handles schließen
+            # 8. Close handles
             if proc_handle:
                 kernel32.CloseHandle(proc_handle)
             if job_handle:
@@ -526,7 +526,7 @@ class WindowsJobObjectSandbox:
 
 
 # ============================================================================
-# Sandbox-Executor
+# Sandbox executor
 # ============================================================================
 
 
@@ -551,7 +551,7 @@ class SandboxExecutor:
         self._firejail: FirejailSandbox | None = None
         self._jobobject: WindowsJobObjectSandbox | None = None
 
-        # Bestes verfügbares Level ermitteln
+        # Determine best available sandbox level
         self._detect_sandbox()
 
     def _detect_sandbox(self) -> None:
@@ -573,7 +573,7 @@ class SandboxExecutor:
             log.info("sandbox_detected", level="firejail", isolation="good")
             return
 
-        # Fallback: bwrap trotzdem versuchen wenn nicht explizit firejail gewählt
+        # Fallback: try bwrap anyway if firejail was not explicitly chosen
         if BwrapSandbox.is_available():
             self._bwrap = BwrapSandbox(self._config)
             self._level = SandboxLevel.BWRAP
@@ -586,7 +586,7 @@ class SandboxExecutor:
             log.info("sandbox_detected", level="firejail", isolation="good")
             return
 
-        # Windows: Job Objects als Sandbox nutzen (vor bare-Fallback)
+        # Windows: use Job Objects as sandbox (before bare fallback)
         if WindowsJobObjectSandbox.is_available():
             self._jobobject = WindowsJobObjectSandbox(self._config)
             self._level = SandboxLevel.JOBOBJECT
@@ -634,15 +634,15 @@ class SandboxExecutor:
         timeout = timeout or self._config.default_timeout
         cwd = working_dir or str(self._config.workspace_dir)
 
-        # Working-Dir sicherstellen
+        # Ensure working directory exists
         Path(cwd).mkdir(parents=True, exist_ok=True)
 
-        # Lokale Kopie fuer thread-sichere Overrides (Config wird nicht mutiert)
+        # Local copy for thread-safe overrides (config is not mutated)
         eff_network = network if network is not None else self._config.network
         eff_memory = max_memory_mb if max_memory_mb is not None else self._config.max_memory_mb
         eff_processes = max_processes if max_processes is not None else self._config.max_processes
 
-        # Lock fuer concurrency-sichere Config-Mutation (Sandbox-Builder lesen self._config)
+        # Lock for concurrency-safe config mutation (sandbox builders read self._config)
         async with self._config_lock:
             saved = (self._config.network, self._config.max_memory_mb, self._config.max_processes)
             self._config.network = eff_network
@@ -673,7 +673,7 @@ class SandboxExecutor:
                         eff_processes,
                     )
 
-                # Bare-Modus (kein Sandbox)
+                # Bare mode (no sandbox)
                 return await self._exec_bare(command, cwd, timeout)
 
             finally:
@@ -805,7 +805,7 @@ class SandboxExecutor:
         env = _build_sandbox_env(working_dir=cwd)
 
         try:
-            # Shell-Features (Pipes, Redirects) werden über sh -c / cmd /c bereitgestellt.
+            # Shell features (pipes, redirects) are provided via sh -c / cmd /c.
             if sys.platform == "win32":
                 exec_args = ["cmd.exe", "/c", command]
             else:
