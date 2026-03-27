@@ -3021,6 +3021,32 @@ def _register_ui_routes(
             log.error("system_stop_failed", error=str(exc))
             return {"error": "Shutdown fehlgeschlagen", "status": 500}
 
+    # -- System Detector (hardware profiling) -----------------------------
+
+    @app.get("/api/v1/system/profile", dependencies=deps)
+    async def get_system_profile() -> dict[str, Any]:
+        """Get hardware/software system profile."""
+        profile = getattr(gateway, "_system_profile", None)
+        if not profile:
+            return {"error": "System profile not available"}
+        return profile.to_dict()
+
+    @app.post("/api/v1/system/rescan", dependencies=deps)
+    async def rescan_system() -> dict[str, Any]:
+        """Force a full system re-scan."""
+        try:
+            from jarvis.system.detector import SystemDetector
+
+            detector = SystemDetector()
+            profile = detector.run_full_scan()
+            cache = config_manager.config.jarvis_home / "system_profile.json"
+            profile.save(cache)
+            if gateway:
+                gateway._system_profile = profile
+            return profile.to_dict()
+        except Exception as exc:
+            return {"error": str(exc)}
+
     # -- 3.4: POST /agents/{name} ----------------------------------------
 
     @app.post("/api/v1/agents/{name}", dependencies=deps)

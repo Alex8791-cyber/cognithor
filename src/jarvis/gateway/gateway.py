@@ -468,6 +468,24 @@ class Gateway:
             log.debug("conversation_tree_init_failed", exc_info=True)
             self._conversation_tree = None
 
+        # System Detector (hardware profiling)
+        try:
+            from jarvis.system.detector import SystemDetector
+
+            _detector = SystemDetector()
+            _cache = self._config.jarvis_home / "system_profile.json"
+            self._system_profile = _detector.run_quick_scan(cache_path=_cache)
+            self._system_profile.save(_cache)
+            log.info(
+                "system_profile_detected",
+                tier=self._system_profile.get_tier(),
+                mode=self._system_profile.get_recommended_mode(),
+                results=len(self._system_profile.results),
+            )
+        except Exception:
+            log.debug("system_detector_failed", exc_info=True)
+            self._system_profile = None
+
         log.info(
             "gateway_init_complete",
             llm_available=llm_ok,
