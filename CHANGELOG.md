@@ -5,6 +5,68 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.58.0] -- 2026-03-27
+
+### Added
+
+#### Smart Recovery & Transparency System
+- **Pre-Flight Plan Preview** — Before complex plans (2+ steps), Cognithor shows a compact plan card with 3-second auto-execute countdown. User can cancel but doesn't have to. Agentic-first: never blocks.
+- **Live Correction Detection** — User types "Nein", "Stopp", "Stattdessen X" during execution → system cancels current plan, injects correction context, replans. No edit/rewind needed.
+- **Post-Correction Learning** — `CorrectionMemory` (SQLite) stores user corrections. After 3 similar corrections, Cognithor proactively asks before acting. Reminders injected into Planner context via ContextPipeline.
+- **RecoveryConfig** — Configurable: pre_flight_enabled, timeout (3s), min_steps (2), correction_learning, proactive_threshold (3).
+
+#### Chat Branching — Full Conversation Tree
+- **ConversationTree** — Every message is a node with parentId/childIds. SQLite persistence, fork detection, path computation, replay support. 11 tests.
+- **Branch-Aware Gateway** — `switch_branch()` replays message history into fresh WorkingMemory. Session-lock protected.
+- **WebSocket branch_switch** — Real-time branch switching from Flutter UI.
+- **REST API** — `GET /api/v1/chat/tree/{id}`, `GET /api/v1/chat/path/{id}/{leaf}`, `POST /api/v1/chat/branch`.
+- **TreeProvider** (Flutter) — Active path tracking, fork point detection, branch navigation.
+- **BranchNavigator** — Inline `< 1/3 >` controls at fork points.
+- **TreeSidebar** — Optional collapsible tree overview panel (toggle via toolbar).
+
+#### Chat UX Improvements
+- **Claude-style Edit** — Edit rewrites conversation from that point. Old + new versions preserved.
+- **Version Navigator** — `< 1/2 >` arrows to switch between edit versions.
+- **Copy Message** — Copy icon on all messages (user + assistant).
+- **Retry** — Refresh icon on last assistant message to regenerate.
+- **Edit + Copy + Retry icons** — Visible on every message bubble.
+
+### Fixed
+
+#### Security Audit (8 Fixes)
+- **Browser tools classified** — `browse_click`, `browse_fill`, `browse_execute_js` now ORANGE in Gatekeeper (were unclassified → accidental ORANGE).
+- **SQL injection fixed** — `persistence.py` ORDER BY clause now uses strict allowlist instead of f-string interpolation.
+- **HMAC/Ed25519 in record_event()** — `AuditTrail.record_event()` now signs entries like `record()` does. Previously unsigned entries created gaps in the cryptographic chain.
+- **Key file permissions** — HMAC and Ed25519 key files now `chmod 0o600` after generation.
+- **Path traversal regex** — `shell.py` regex now catches single `../` (was `{2,}`, now `{1,}`).
+- **vault_delete → ORANGE** — Destructive operation moved from YELLOW (inform) to ORANGE (approve).
+- **TSA fallback URLs → HTTPS** — DigiCert and Apple timestamp servers now use HTTPS.
+- **BreachDetector thread-safe** — `_entries` access wrapped in `list()` copy.
+
+#### Gateway Audit (10 Fixes)
+- **shutdown() cancels background tasks** — Infinite loops (retention, breach, curiosity) now properly cancelled before resource cleanup.
+- **switch_branch() session-locked** — `_working_memories` write protected by `_session_lock`.
+- **OpenAI empty choices guard** — `data.get("choices") or [{}]` prevents IndexError on content-filtered responses.
+- **Pre-flight timeout capped** — Hard upper bound of 30 seconds prevents indefinite blocking.
+- **_pattern_record_timestamps → instance var** — Was ClassVar shared across instances, now per-instance.
+- **Delegation session_id** — `execute_delegation()` now passes `session_id` to `set_agent_context()`.
+- **Presearch LLM guard** — `_answer_from_presearch()` returns early if `self._llm` is None.
+- **_keepalive_task tracked** — Added to `_background_tasks` set for proper cleanup.
+- **database_tools fetchone() guard** — All 8 `fetchone()[0]` patterns now check for None.
+- **Silent except → log.debug** — Pattern search `except Exception: pass` now logs.
+
+#### Config + Flutter Audit (8 Fixes)
+- **`/api/v1/health` unauthenticated** — Removed auth dependency (was breaking bootstrap flow).
+- **factory-reset endpoint** — `POST /api/v1/config/factory-reset` now exists.
+- **Flutter browser defaults** — Fixed field names (was headless/timeout/max_pages → correct BrowserConfig fields).
+- **Flutter email defaults** — `password` → `password_env`, `smtp_port` 587 → 465.
+- **LMStudio defaults** — `lmstudio_api_key` and `lmstudio_base_url` added to Flutter.
+- **German tooltips → English** — Edit/Copy/Retry tooltips now English (locale-neutral).
+- **TreeProvider registered** — Added to `main.dart` MultiProvider (was missing → crash).
+
+### Changed
+- **11,627+ tests** (was 11,609).
+
 ## [0.57.0] -- 2026-03-26
 
 ### Fixed
