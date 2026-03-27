@@ -52,6 +52,9 @@ class EvolutionLoop:
         resource_monitor: ResourceMonitor | None = None,
         cost_tracker: CostTracker | None = None,
         checkpoint_store: CheckpointStore | None = None,
+        operation_mode: str = "offline",
+        mcp_client: Any = None,
+        llm_fn: Any = None,
     ) -> None:
         self._idle = idle_detector
         self._curiosity = curiosity_engine
@@ -61,6 +64,9 @@ class EvolutionLoop:
         self._resource_monitor = resource_monitor
         self._cost_tracker = cost_tracker
         self._checkpoint_store = checkpoint_store
+        self._operation_mode = operation_mode
+        self._mcp_client = mcp_client
+        self._llm_fn = llm_fn
         self._current_checkpoint: EvolutionCheckpoint | None = None
         self._running = False
         self._task: asyncio.Task | None = None
@@ -249,20 +255,58 @@ class EvolutionLoop:
             return []
 
     async def _research(self, gap: Any) -> str:
-        """Research a knowledge gap. Returns research text."""
+        """Research a knowledge gap. Strategy depends on operation_mode.
+
+        offline:  Memory search only (no LLM cost).
+        hybrid:   Memory search + web search for broader context.
+        online:   Memory search + web search + LLM-powered deep research.
+        """
         query = getattr(gap, "query", getattr(gap, "question", str(gap)))
-        # Use memory search as lightweight research
+        parts: list[str] = []
+
+        # All modes: memory search
         if self._memory:
             try:
                 results = self._memory.search_memory_sync(query=query, top_k=5)
                 if results:
-                    return "\n".join(getattr(r, "text", str(r))[:200] for r in results[:3])
+                    parts.extend(getattr(r, "text", str(r))[:200] for r in results[:3])
             except Exception:
                 pass
-        return ""
+
+        # hybrid + online: web search for broader context
+        if self._operation_mode in ("hybrid", "online") and self._mcp_client:
+            try:
+                web_result = await self._mcp_client.call_tool(
+                    "web_search", {"query": query, "max_results": 3}
+                )
+                if web_result and hasattr(web_result, "text"):
+                    parts.append(web_result.text[:500])
+                elif isinstance(web_result, str):
+                    parts.append(web_result[:500])
+            except Exception:
+                log.debug("evolution_web_search_failed", exc_info=True)
+
+        # online only: LLM-powered synthesis of research
+        if self._operation_mode == "online" and self._llm_fn and parts:
+            try:
+                prompt = (
+                    f"Synthesize the following research about '{query}' "
+                    f"into a concise summary:\n\n" + "\n---\n".join(parts)
+                )
+                synthesis = await self._llm_fn(prompt)
+                if synthesis:
+                    return synthesis[:1000]
+            except Exception:
+                log.debug("evolution_llm_synthesis_failed", exc_info=True)
+
+        return "\n".join(parts) if parts else ""
 
     async def _build(self, gap: Any, research: str) -> str:
-        """Build a skill from research results. Returns skill name or empty."""
+        """Build a skill from research results. Returns skill name or empty.
+
+        offline:  Generates stub skill (no LLM).
+        hybrid/online: Uses LLM for skill generation when available.
+        """
         if not self._skill_gen:
             return ""
         try:
@@ -273,6 +317,10 @@ class EvolutionLoop:
                 description=getattr(gap, "query", str(gap))[:200],
                 context=research[:500],
             )
+            # hybrid/online: pass LLM function for real skill generation
+            if self._operation_mode in ("hybrid", "online") and self._llm_fn:
+                if hasattr(self._skill_gen, "llm_fn"):
+                    self._skill_gen.llm_fn = self._llm_fn
             result = await self._skill_gen.process_gap(skill_gap)
             if result and hasattr(result, "name"):
                 return result.name
@@ -384,6 +432,7 @@ class EvolutionLoop:
             }
         return {
             "running": self._running,
+            "operation_mode": self._operation_mode,
             "is_idle": self._idle.is_idle,
             "idle_seconds": round(self._idle.idle_seconds),
             "total_cycles": self._total_cycles,

@@ -518,6 +518,9 @@ class Gateway:
 
                 idle_minutes = getattr(self._config.evolution, "idle_minutes", 5)
                 self._idle_detector = IdleDetector(idle_threshold_seconds=idle_minutes * 60)
+                op_mode = str(
+                    getattr(self._config, "resolved_operation_mode", "offline")
+                )
                 self._evolution_loop = EvolutionLoop(
                     idle_detector=self._idle_detector,
                     curiosity_engine=getattr(self, "_curiosity_engine", None),
@@ -527,6 +530,9 @@ class Gateway:
                     resource_monitor=self._resource_monitor,
                     cost_tracker=self._cost_tracker,
                     checkpoint_store=self._checkpoint_store,
+                    operation_mode=op_mode,
+                    mcp_client=getattr(self, "_mcp_client", None),
+                    llm_fn=getattr(self, "_llm_call", None),
                 )
                 log.info("evolution_engine_initialized", idle_minutes=idle_minutes)
             except Exception:

@@ -257,6 +257,33 @@ class _EvolutionPageState extends State<EvolutionPage> {
 
   // -- Status Header Card ---------------------------------------------------
 
+  Color _modeColor(String mode) {
+    return switch (mode) {
+      'offline' => JarvisTheme.green,
+      'hybrid' => JarvisTheme.orange,
+      'online' => JarvisTheme.accent,
+      _ => JarvisTheme.textSecondary,
+    };
+  }
+
+  IconData _modeIcon(String mode) {
+    return switch (mode) {
+      'offline' => Icons.wifi_off,
+      'hybrid' => Icons.swap_horiz,
+      'online' => Icons.cloud,
+      _ => Icons.help_outline,
+    };
+  }
+
+  String _modeDescription(String mode) {
+    return switch (mode) {
+      'offline' => 'Memory search only — no LLM costs',
+      'hybrid' => 'Memory + Web search — moderate costs',
+      'online' => 'Full research + LLM synthesis — budget applies',
+      _ => '',
+    };
+  }
+
   Widget _buildStatusHeader() {
     final running = _data?['running'] as bool? ?? false;
     final isIdle = _data?['is_idle'] as bool? ?? true;
@@ -264,6 +291,7 @@ class _EvolutionPageState extends State<EvolutionPage> {
     final totalCycles = _data?['total_cycles'] as int? ?? 0;
     final cyclesToday = _data?['cycles_today'] as int? ?? 0;
     final skillsCreated = _data?['total_skills_created'] as int? ?? 0;
+    final mode = (_data?['operation_mode'] as String?) ?? 'offline';
 
     final Color statusColor;
     final String statusLabel;
@@ -277,6 +305,8 @@ class _EvolutionPageState extends State<EvolutionPage> {
       statusColor = JarvisTheme.green;
       statusLabel = 'Running';
     }
+
+    final mColor = _modeColor(mode);
 
     return Card(
       child: Padding(
@@ -293,6 +323,34 @@ class _EvolutionPageState extends State<EvolutionPage> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
+                // Mode badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: mColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: mColor.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_modeIcon(mode), size: 14, color: mColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        mode.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: mColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
@@ -313,8 +371,13 @@ class _EvolutionPageState extends State<EvolutionPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            Text(
+              _modeDescription(mode),
+              style: TextStyle(fontSize: 12, color: JarvisTheme.textSecondary),
+            ),
             if (isIdle && running && idleSec > 0) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 'Idle for ${_formatDuration(idleSec)}',
                 style: TextStyle(
