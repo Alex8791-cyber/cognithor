@@ -157,7 +157,6 @@ class TestRiskClassification:
             "api_call",
             "vault_save",
             "vault_write",
-            "vault_delete",
         ],
     )
     def test_yellow_tools_comprehensive(
@@ -178,6 +177,7 @@ class TestRiskClassification:
             "http_request",
             "db_execute",
             "docker_run",
+            "vault_delete",
         ],
     )
     def test_orange_tools_comprehensive(
