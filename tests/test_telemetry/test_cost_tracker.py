@@ -163,3 +163,98 @@ class TestPersistence:
 
         assert cost_before > 0
         assert abs(cost_before - cost_after) < 1e-9
+
+
+class TestPerAgentCosts:
+    def test_record_with_agent_name(self, tracker):
+        """LLM-Call mit agent_name wird korrekt gespeichert."""
+        record = tracker.record_llm_call(
+            model="gpt-4o",
+            input_tokens=1000,
+            output_tokens=500,
+            agent_name="scout",
+        )
+        assert record.agent_name == "scout"
+
+    def test_get_agent_costs(self, tracker):
+        """Kosten pro Agent korrekt aggregiert."""
+        tracker.record_llm_call(
+            model="gpt-4o", input_tokens=1000, output_tokens=500, agent_name="scout"
+        )
+        tracker.record_llm_call(
+            model="gpt-4o", input_tokens=2000, output_tokens=1000, agent_name="scout"
+        )
+        tracker.record_llm_call(
+            model="gpt-4o",
+            input_tokens=500,
+            output_tokens=200,
+            agent_name="skill_builder",
+        )
+
+        costs = tracker.get_agent_costs(days=1)
+        assert "scout" in costs
+        assert "skill_builder" in costs
+        assert costs["scout"] > costs["skill_builder"]
+
+    def test_check_agent_budget_ok(self, tracker):
+        """Agent unter Budget -> ok=True."""
+        tracker.record_llm_call(
+            model="gpt-4o", input_tokens=1000, output_tokens=500, agent_name="scout"
+        )
+        status = tracker.check_agent_budget("scout", daily_limit=1.0)
+        assert status.ok
+        assert status.agent_name == "scout"
+        assert status.daily_cost_usd > 0
+
+    def test_check_agent_budget_exceeded(self, tracker):
+        """Agent ueber Budget -> ok=False."""
+        # gpt-4-turbo: 100k input = $1.00
+        tracker.record_llm_call(
+            model="gpt-4-turbo",
+            input_tokens=100_000,
+            output_tokens=0,
+            agent_name="scout",
+        )
+        status = tracker.check_agent_budget("scout", daily_limit=0.50)
+        assert not status.ok
+        assert "Tageslimit" in status.warning
+
+    def test_check_agent_budget_no_limit(self, tracker):
+        """Agent ohne Limit -> immer ok."""
+        tracker.record_llm_call(
+            model="gpt-4-turbo",
+            input_tokens=1_000_000,
+            output_tokens=0,
+            agent_name="scout",
+        )
+        status = tracker.check_agent_budget("scout", daily_limit=0.0)
+        assert status.ok
+
+    def test_agent_costs_empty(self, tracker):
+        """Keine Eintraege -> leeres dict."""
+        costs = tracker.get_agent_costs(days=1)
+        assert costs == {}
+
+    def test_backward_compatible_no_agent(self, tracker):
+        """record_llm_call ohne agent_name -> default empty string."""
+        record = tracker.record_llm_call(
+            model="gpt-4o", input_tokens=1000, output_tokens=500
+        )
+        assert record.agent_name == ""
+        costs = tracker.get_agent_costs(days=1)
+        assert "(unknown)" in costs or "" in costs
+
+    def test_cost_report_includes_agent_breakdown(self, tracker):
+        """get_cost_report enthaelt cost_by_agent."""
+        tracker.record_llm_call(
+            model="gpt-4o", input_tokens=1000, output_tokens=500, agent_name="scout"
+        )
+        tracker.record_llm_call(
+            model="gpt-4o",
+            input_tokens=500,
+            output_tokens=200,
+            agent_name="skill_builder",
+        )
+        report = tracker.get_cost_report()
+        assert "scout" in report.cost_by_agent
+        assert "skill_builder" in report.cost_by_agent

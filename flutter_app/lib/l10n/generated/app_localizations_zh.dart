@@ -2287,4 +2287,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get systemRescan => 'Rescan Hardware';
+
+  @override
+  String get configPageBudget => 'Budget';
+
+  @override
+  String get configPageEvolution => 'Evolution';
 }

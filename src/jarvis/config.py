@@ -1718,6 +1718,10 @@ class EvolutionConfig(BaseModel):
         le=3600,
         description="Cooldown between cycles in seconds",
     )
+    agent_budgets: dict[str, float] = Field(
+        default_factory=dict,
+        description="Per-agent daily budget in USD, e.g. {'scout': 0.50, 'skill_builder': 0.30}",
+    )
 
 
 # ============================================================================

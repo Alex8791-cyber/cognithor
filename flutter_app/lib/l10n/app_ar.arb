@@ -760,5 +760,9 @@
     "updated": "تاريخ التحديث",
     "@updated": {},
     "verify": "تحقّق",
-    "@verify": {}
+    "@verify": {},
+    "configPageBudget": "Budget",
+    "@configPageBudget": {},
+    "configPageEvolution": "Evolution",
+    "@configPageEvolution": {}
 }

@@ -486,6 +486,28 @@ class Gateway:
             log.debug("system_detector_failed", exc_info=True)
             self._system_profile = None
 
+        # ResourceMonitor (lightweight psutil-based, always available)
+        self._resource_monitor = None
+        try:
+            from jarvis.system.resource_monitor import ResourceMonitor
+
+            self._resource_monitor = ResourceMonitor()
+            log.info("resource_monitor_initialized")
+        except Exception:
+            log.debug("resource_monitor_init_skipped", exc_info=True)
+
+        # CheckpointStore (persistent evolution checkpoints)
+        self._checkpoint_store = None
+        try:
+            from jarvis.core.checkpointing import CheckpointStore
+
+            self._checkpoint_store = CheckpointStore(
+                self._config.jarvis_home / "checkpoints"
+            )
+            log.info("checkpoint_store_initialized")
+        except Exception:
+            log.debug("checkpoint_store_init_skipped", exc_info=True)
+
         # Evolution Engine (idle-time autonomous learning)
         self._idle_detector = None
         self._evolution_loop = None
@@ -502,6 +524,9 @@ class Gateway:
                     skill_generator=getattr(self, "_skill_generator", None),
                     memory_manager=getattr(self, "_memory_manager", None),
                     config=self._config.evolution,
+                    resource_monitor=self._resource_monitor,
+                    cost_tracker=self._cost_tracker,
+                    checkpoint_store=self._checkpoint_store,
                 )
                 log.info("evolution_engine_initialized", idle_minutes=idle_minutes)
             except Exception:

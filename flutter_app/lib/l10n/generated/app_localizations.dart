@@ -4565,6 +4565,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rescan Hardware'**
   String get systemRescan;
+
+  /// No description provided for @configPageBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get configPageBudget;
+
+  /// No description provided for @configPageEvolution.
+  ///
+  /// In en, this message translates to:
+  /// **'Evolution'**
+  String get configPageEvolution;
 }
 
 class _AppLocalizationsDelegate

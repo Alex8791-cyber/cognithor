@@ -3047,6 +3047,109 @@ def _register_ui_routes(
         except Exception as exc:
             return {"error": str(exc)}
 
+    # -- Per-Agent Budget + Resource Monitor (Phase 3) --------------------
+
+    @app.get("/api/v1/budget/agents", dependencies=deps)
+    async def get_agent_budgets() -> dict[str, Any]:
+        """Per-agent cost breakdown and budget status."""
+        tracker = getattr(gateway, "_cost_tracker", None)
+        if not tracker:
+            return {"agents": {}, "message": "Cost tracking not available"}
+        costs_today = tracker.get_agent_costs(days=1)
+        costs_week = tracker.get_agent_costs(days=7)
+        costs_month = tracker.get_agent_costs(days=30)
+        # Check budgets from config
+        evo_config = getattr(config_manager.config, "evolution", None)
+        agent_budgets = getattr(evo_config, "agent_budgets", {}) if evo_config else {}
+        statuses = {}
+        for agent_name in set(list(costs_today.keys()) + list(agent_budgets.keys())):
+            limit = agent_budgets.get(agent_name, 0.0)
+            status = tracker.check_agent_budget(agent_name, limit)
+            statuses[agent_name] = {
+                "daily_cost_usd": status.daily_cost_usd,
+                "daily_limit_usd": status.daily_limit_usd,
+                "ok": status.ok,
+                "warning": status.warning,
+            }
+        return {
+            "agents_today": costs_today,
+            "agents_week": costs_week,
+            "agents_month": costs_month,
+            "budgets": statuses,
+        }
+
+    @app.get("/api/v1/system/resources", dependencies=deps)
+    async def get_system_resources() -> dict[str, Any]:
+        """Current system resource usage (CPU/RAM/GPU)."""
+        monitor = getattr(gateway, "_resource_monitor", None)
+        if not monitor:
+            return {"error": "Resource monitor not available"}
+        try:
+            snap = await monitor.sample()
+            return snap.to_dict()
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    @app.get("/api/v1/evolution/stats", dependencies=deps)
+    async def get_evolution_stats() -> dict[str, Any]:
+        """Evolution loop statistics including resource, budget, and checkpoint info."""
+        loop = getattr(gateway, "_evolution_loop", None)
+        if not loop:
+            return {"enabled": False, "message": "Evolution loop not active"}
+        stats = loop.stats()
+        # Enrich with resume state if checkpoint store available
+        store = getattr(gateway, "_checkpoint_store", None)
+        if store:
+            try:
+                from jarvis.evolution.resume import EvolutionResumer
+
+                resumer = EvolutionResumer(store)
+                latest = resumer.get_latest_cycle_id()
+                if latest is not None:
+                    rs = resumer.get_resume_state(latest)
+                    stats["resume"] = rs.to_dict()
+                else:
+                    stats["resume"] = None
+            except Exception:
+                stats["resume"] = None
+        return stats
+
+    @app.post("/api/v1/evolution/resume", dependencies=deps)
+    async def resume_evolution_cycle() -> dict[str, Any]:
+        """Manually resume the last interrupted evolution cycle."""
+        loop = getattr(gateway, "_evolution_loop", None)
+        store = getattr(gateway, "_checkpoint_store", None)
+        if not loop:
+            return {"error": "Evolution loop not active"}
+        if not store:
+            return {"error": "Checkpoint store not available"}
+        try:
+            from jarvis.evolution.resume import EvolutionResumer
+
+            resumer = EvolutionResumer(store)
+            latest = resumer.get_latest_cycle_id()
+            if latest is None:
+                return {"error": "No checkpoints found", "resumed": False}
+            state = resumer.get_resume_state(latest)
+            if state.is_complete:
+                return {
+                    "resumed": False,
+                    "reason": "Cycle already complete",
+                    "cycle_id": latest,
+                }
+            if not state.has_checkpoint:
+                return {"resumed": False, "reason": "No checkpoint to resume from"}
+            # Trigger a new cycle (the loop will pick up from where it left off)
+            result = await loop.run_cycle()
+            return {
+                "resumed": True,
+                "cycle_id": result.cycle_id,
+                "steps_completed": result.steps_completed,
+                "skill_created": result.skill_created,
+            }
+        except Exception as exc:
+            return {"error": str(exc), "resumed": False}
+
     # -- 3.4: POST /agents/{name} ----------------------------------------
 
     @app.post("/api/v1/agents/{name}", dependencies=deps)

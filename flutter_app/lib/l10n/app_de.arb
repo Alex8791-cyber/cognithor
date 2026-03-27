@@ -767,5 +767,9 @@
   "restartRequired": "Neustart erforderlich fuer volle Wirkung",
   "@restartRequired": {},
   "installClaude": "Claude Code installieren",
-  "@installClaude": {}
+  "@installClaude": {},
+  "configPageBudget": "Budget",
+  "@configPageBudget": {},
+  "configPageEvolution": "Evolution",
+  "@configPageEvolution": {}
 }

@@ -760,5 +760,9 @@
     "updated": "更新时间",
     "@updated": {},
     "verify": "验证",
-    "@verify": {}
+    "@verify": {},
+    "configPageBudget": "Budget",
+    "@configPageBudget": {},
+    "configPageEvolution": "Evolution",
+    "@configPageEvolution": {}
 }

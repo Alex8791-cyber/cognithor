@@ -1337,5 +1337,9 @@
   "systemRecommendedMode": "Recommended Mode",
   "@systemRecommendedMode": {},
   "systemRescan": "Rescan Hardware",
-  "@systemRescan": {}
+  "@systemRescan": {},
+  "configPageBudget": "Budget",
+  "@configPageBudget": {},
+  "configPageEvolution": "Evolution",
+  "@configPageEvolution": {}
 }

@@ -67,6 +67,17 @@ class CostTracker:
         self._conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_costs_session ON llm_costs(session_id)
         """)
+        # Migration: add agent_name column if missing
+        try:
+            self._conn.execute(
+                "ALTER TABLE llm_costs ADD COLUMN agent_name TEXT DEFAULT ''"
+            )
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        self._conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_costs_agent ON llm_costs(agent_name)
+        """)
         self._conn.commit()
 
     def _get_pricing(self, model: str) -> dict[str, float]:
@@ -89,6 +100,7 @@ class CostTracker:
         input_tokens: int,
         output_tokens: int,
         session_id: str = "",
+        agent_name: str = "",
     ) -> CostRecord:
         """Records an LLM call and calculates costs."""
         pricing = self._get_pricing(model)
@@ -103,13 +115,14 @@ class CostTracker:
             output_tokens=output_tokens,
             cost_usd=cost,
             session_id=session_id,
+            agent_name=agent_name,
         )
 
         self._conn.execute(
             "INSERT INTO llm_costs "
             "(id, timestamp, session_id, model, "
-            "input_tokens, output_tokens, cost_usd) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "input_tokens, output_tokens, cost_usd, agent_name) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.id,
                 record.timestamp.isoformat(),
@@ -118,6 +131,7 @@ class CostTracker:
                 record.input_tokens,
                 record.output_tokens,
                 record.cost_usd,
+                record.agent_name,
             ),
         )
         self._conn.commit()
@@ -205,6 +219,53 @@ class CostTracker:
 
         return {"limit": limit, "used": used}
 
+    def get_agent_costs(self, days: int = 1) -> dict[str, float]:
+        """Get cost breakdown by agent for the last N days."""
+        from datetime import timedelta
+
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+        rows = self._conn.execute(
+            "SELECT agent_name, COALESCE(SUM(cost_usd), 0) "
+            "FROM llm_costs WHERE timestamp >= ? "
+            "GROUP BY agent_name ORDER BY SUM(cost_usd) DESC",
+            (cutoff,),
+        ).fetchall()
+        return {name or "(unknown)": cost for name, cost in rows}
+
+    def check_agent_budget(
+        self, agent_name: str, daily_limit: float = 0.0
+    ) -> "AgentBudgetStatus":
+        """Check budget for a specific agent."""
+        from jarvis.models import AgentBudgetStatus
+
+        today = datetime.now(UTC).date().isoformat()
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(cost_usd), 0) FROM llm_costs "
+            "WHERE agent_name = ? AND timestamp LIKE ?",
+            (agent_name, f"{today}%"),
+        ).fetchone()
+        daily_cost = float(row[0]) if row else 0.0
+
+        ok = True
+        warning = ""
+        if daily_limit > 0:
+            if daily_cost >= daily_limit:
+                ok = False
+                warning = f"Agent '{agent_name}' Tageslimit ({daily_limit:.2f} USD) erreicht"
+            elif daily_cost >= daily_limit * 0.8:
+                warning = (
+                    f"Agent '{agent_name}' Tageslimit fast erreicht "
+                    f"({daily_limit - daily_cost:.2f} USD uebrig)"
+                )
+
+        return AgentBudgetStatus(
+            agent_name=agent_name,
+            daily_cost_usd=daily_cost,
+            daily_limit_usd=daily_limit,
+            ok=ok,
+            warning=warning,
+        )
+
     def get_cost_report(self, days: int = 30) -> CostReport:
         """Aggregated cost report over the last N days."""
         from datetime import timedelta
@@ -230,11 +291,20 @@ class CostTracker:
         total_calls = len(rows)
         avg = total_cost / total_calls if total_calls > 0 else 0.0
 
+        agent_rows = self._conn.execute(
+            "SELECT agent_name, COALESCE(SUM(cost_usd), 0) "
+            "FROM llm_costs WHERE timestamp >= ? "
+            "GROUP BY agent_name",
+            (cutoff,),
+        ).fetchall()
+        cost_by_agent = {name or "(unknown)": cost for name, cost in agent_rows}
+
         return CostReport(
             total_cost_usd=total_cost,
             total_calls=total_calls,
             cost_by_model=cost_by_model,
             cost_by_day=cost_by_day,
+            cost_by_agent=cost_by_agent,
             avg_cost_per_call=avg,
         )
 

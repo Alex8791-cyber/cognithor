@@ -1089,6 +1089,7 @@ class CostRecord(BaseModel, frozen=True):
     id: str = Field(default_factory=_new_id)
     timestamp: datetime = Field(default_factory=_utc_now)
     session_id: str = ""
+    agent_name: str = ""
     model: str
     input_tokens: int
     output_tokens: int
@@ -1111,7 +1112,18 @@ class CostReport(BaseModel, frozen=True):
     total_calls: int = 0
     cost_by_model: dict[str, float] = Field(default_factory=dict)
     cost_by_day: dict[str, float] = Field(default_factory=dict)
+    cost_by_agent: dict[str, float] = Field(default_factory=dict)
     avg_cost_per_call: float = 0.0
+
+
+class AgentBudgetStatus(BaseModel, frozen=True):
+    """Per-agent budget status."""
+
+    agent_name: str
+    daily_cost_usd: float = 0.0
+    daily_limit_usd: float = 0.0  # 0 = no limit
+    ok: bool = True
+    warning: str = ""
 
 
 # --- Run Recording + Replay ---
