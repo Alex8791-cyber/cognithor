@@ -14,22 +14,22 @@ from datetime import datetime
 from jarvis.config import MemoryConfig
 from jarvis.models import Chunk, MemoryTier
 
-# ── Token-Schätzung ──────────────────────────────────────────
+# ── Token Estimation ──────────────────────────────────────────
 
 #
-# Sprachabhängige Heuristik: Deutsche Texte haben längere Wörter
-# und Komposita (z.B. "Berufsunfähigkeitsversicherung"), die von
-# BPE-Tokenizern in mehr Tokens zerlegt werden als ein einfacher
-# chars/4-Ansatz vermuten lässt.
+# Language-dependent heuristic: German texts have longer words
+# and compound nouns (e.g. "Berufsunfähigkeitsversicherung") that
+# BPE tokenizers split into more tokens than a simple
+# chars/4 approach would suggest.
 #
 # Benchmark (GPT-4 / Llama Tokenizer):
-# Deutsch:  1 Token ≈ 3.2 Zeichen (Durchschnitt gemischter Text)
-# Englisch: 1 Token ≈ 4.0 Zeichen
+# German:   1 Token ≈ 3.2 chars (average mixed text)
+# English:  1 Token ≈ 4.0 chars
 #
-# Wir verwenden eine wort-basierte Schätzung als Fallback für
-# gemischtsprachige Texte, da sie robuster ist als chars/N.
+# We use a word-based estimation as fallback for
+# mixed-language texts, as it is more robust than chars/N.
 
-# Pattern für deutsche Komposita-Erkennung (≥16 Zeichen, typisch deutsch)
+# Pattern for German compound noun detection (>=16 chars, typically German)
 _COMPOUND_RE = re.compile(r"\b[A-ZÄÖÜa-zäöüß]{16,}\b")
 
 # Markdown header pattern
@@ -63,17 +63,17 @@ def _estimate_tokens(text: str) -> int:
     if word_count == 0:
         return 1
 
-    # Basis-Schätzung: jedes Wort ≈ 1.3 Tokens
+    # Base estimate: each word ≈ 1.3 tokens
     base_tokens = int(word_count * 1.3)
 
-    # Komposita-Korrektur: Lange Wörter erzeugen mehr Tokens
-    # als die Basis-Schätzung annimmt
+    # Compound noun correction: Long words produce more tokens
+    # than the base estimate assumes
     compounds = _COMPOUND_RE.findall(text)
     compound_extra = 0
     for compound in compounds:
-        # Ein 20-Zeichen-Wort ≈ 5 Tokens statt 1.3
+        # A 20-char word ≈ 5 tokens instead of 1.3
         estimated_subtokens = len(compound) // 4
-        compound_extra += max(0, estimated_subtokens - 1)  # -1 weil Basis schon 1.3 zählt
+        compound_extra += max(0, estimated_subtokens - 1)  # -1 because base already counts 1.3
 
     return max(1, base_tokens + compound_extra)
 
@@ -141,10 +141,10 @@ def chunk_text(
     timestamp = _extract_date_from_path(source_path)
     header_positions = _find_header_positions(lines)
 
-    # Chars-per-Token Ratio für Chunk-Grenzberechnung
-    # Deutsch: ~3.2 Zeichen/Token (konservativer als Englisch ~4.0)
-    # Konservativ (3.2) sorgt für leicht kleinere Chunks, was für
-    # Retrieval-Qualität besser ist als zu große Chunks
+    # Chars-per-Token ratio for chunk boundary calculation
+    # German: ~3.2 chars/token (more conservative than English ~4.0)
+    # Conservative (3.2) produces slightly smaller chunks, which is
+    # better for retrieval quality than chunks that are too large
     _CHARS_PER_TOKEN_RATIO = 3.2
     chunk_size_chars = int(chunk_size_tokens * _CHARS_PER_TOKEN_RATIO)
     overlap_chars = int(chunk_overlap_tokens * _CHARS_PER_TOKEN_RATIO)
@@ -182,12 +182,12 @@ def chunk_text(
     for i, line in enumerate(lines):
         line_chars = len(line) + 1  # +1 für \n
 
-        # Würde die aktuelle Zeile den Chunk überschreiten?
+        # Would the current line exceed the chunk size?
         if current_chars + line_chars > chunk_size_chars and current_lines:
-            # Chunk abschließen
+            # Finalize chunk
             _flush(i - 1)
 
-            # Overlap berechnen: Letzte N Zeichen als Überlappung behalten
+            # Calculate overlap: Keep last N chars as overlap
             if overlap_chars > 0 and current_lines:
                 overlap_lines: list[str] = []
                 overlap_count = 0
@@ -205,8 +205,8 @@ def chunk_text(
                 current_chars = 0
                 chunk_start_line = i
 
-        # Wenn aktuelle Zeile ein Header ist UND wir schon Content haben,
-        # starte neuen Chunk am Header (Header-Aware Splitting)
+        # If current line is a header AND we already have content,
+        # start new chunk at header (Header-Aware Splitting)
         if i in header_positions and current_lines and current_chars > overlap_chars * 2:
             _flush(i - 1)
             current_lines = []
@@ -216,7 +216,7 @@ def chunk_text(
         current_lines.append(line)
         current_chars += line_chars
 
-    # Letzten Chunk flushen
+    # Flush the last chunk
     if current_lines:
         _flush(len(lines) - 1)
 

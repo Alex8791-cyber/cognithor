@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("jarvis.skills.package")
 
-# Manifest-Limits
+# Manifest limits
 MAX_MANIFEST_MEMORY_MB = 1024
 MAX_MANIFEST_TIMEOUT_SECONDS = 300
 MAX_DESCRIPTION_LENGTH = 200
@@ -118,31 +118,31 @@ class SkillManifest:
     Wird als manifest.yaml in jedes Paket eingebettet.
     """
 
-    # Identifikation
+    # Identification
     name: str  # Eindeutiger Paketname (snake_case)
     version: str  # SemVer: "1.2.3"
     description: str  # Kurzbeschreibung (max 200 Zeichen)
 
-    # Herausgeber
+    # Publisher
     author: str  # Name oder Pseudonym
     author_id: str = ""  # Öffentlicher Schlüssel (hex) oder UUID
 
-    # Skill-Metadaten
+    # Skill metadata
     trigger_keywords: list[str] = field(default_factory=list)
     tools_required: list[str] = field(default_factory=list)
     category: str = "general"
 
-    # Sandbox-Rechte (minimal-invasiv)
+    # Sandbox permissions (minimal-invasive)
     permissions: list[str] = field(default_factory=list)
     max_memory_mb: int = 128  # Maximaler Speicher
     timeout_seconds: int = 30  # Maximale Ausführungszeit
     network_allowed: bool = False  # Explizit kein Netzwerk (Default)
 
-    # Abhängigkeiten
+    # Dependencies
     dependencies: list[str] = field(default_factory=list)  # ["other_skill>=1.0"]
     jarvis_min_version: str = "0.1.0"  # Mindest-Jarvis-Version
 
-    # Integrität
+    # Integrity
     content_hash: str = ""  # SHA-256 über Code + Tests
     created_at: str = field(
         default_factory=lambda: datetime.now(UTC).isoformat(),
@@ -227,7 +227,7 @@ class SkillManifest:
 
 
 # ============================================================================
-# Signierung (Ed25519-kompatibel, HMAC-Fallback)
+# Signing (Ed25519-compatible, HMAC fallback)
 # ============================================================================
 
 
@@ -409,7 +409,7 @@ class PackageSigner:
 
 
 # ============================================================================
-# Code-Analyse
+# Code Analysis
 # ============================================================================
 
 
@@ -429,7 +429,7 @@ class AnalysisReport:
         return self.verdict != AnalysisVerdict.DANGEROUS
 
 
-# Gefährliche Patterns (blockieren Installation)
+# Dangerous patterns (block installation)
 _DANGEROUS_PATTERNS: list[tuple[str, str]] = [
     (r"\beval\s*\(", "eval() -- dynamische Code-Ausführung"),
     (r"\bexec\s*\(", "exec() -- dynamische Code-Ausführung"),
@@ -446,7 +446,7 @@ _DANGEROUS_PATTERNS: list[tuple[str, str]] = [
     (r"(?:PRIVATE|SECRET|PASSWORD|API_KEY)\s*=\s*['\"]", "Hartcodierte Credentials"),
 ]
 
-# Verdächtige Patterns (Warnung, aber installierbar)
+# Suspicious patterns (warning, but installable)
 _SUSPICIOUS_PATTERNS: list[tuple[str, str]] = [
     (r"\bgetattr\s*\(", "getattr() -- dynamischer Attributzugriff"),
     (r"\bglobals\s*\(\)", "globals() -- globaler Namespace-Zugriff"),
@@ -499,20 +499,20 @@ class CodeAnalyzer:
         suspicious: list[str] = []
         lines = code.count("\n") + 1
 
-        # Code-Länge prüfen
+        # Check code length
         if lines > self._max_lines:
             suspicious.append(f"Code hat {lines} Zeilen (>{self._max_lines} -- ungewöhnlich lang)")
 
-        # Comments und Strings entfernen für zuverlässigere Analyse
+        # Remove comments and strings for more reliable analysis
         clean_code = self._strip_comments_and_strings(code)
 
-        # Gefährliche Patterns
+        # Dangerous patterns
         for pattern, description in self._dangerous:
             matches = re.findall(pattern, clean_code)
             if matches:
                 dangerous.append(f"GEFÄHRLICH: {description} ({len(matches)}×)")
 
-        # Verdächtige Patterns
+        # Suspicious patterns
         for pattern, description in self._suspicious:
             matches = re.findall(pattern, clean_code)
             if matches:
@@ -529,7 +529,7 @@ class CodeAnalyzer:
         except SyntaxError as e:
             dangerous.append(f"Syntax-Fehler: {e}")
 
-        # Verdict bestimmen
+        # Determine verdict
         if dangerous:
             verdict = AnalysisVerdict.DANGEROUS
         elif suspicious or findings:
@@ -554,7 +554,7 @@ class CodeAnalyzer:
         findings: list[str] = []
         perms = set(manifest.permissions)
 
-        # Netzwerk-Code ohne Permission
+        # Network code without permission
         if not manifest.network_allowed and re.search(
             r"\b(?:requests|httpx|urllib|aiohttp)\b",
             code,
@@ -563,7 +563,7 @@ class CodeAnalyzer:
                 "Code referenziert Netzwerk-Bibliotheken, aber network_allowed=False im Manifest"
             )
 
-        # Datei-Schreiben ohne Permission
+        # File writing without permission
         if "file_write" not in perms and re.search(
             r"\bopen\s*\([^)]*['\"]w",
             code,
@@ -577,7 +577,7 @@ class CodeAnalyzer:
     @staticmethod
     def _strip_comments_and_strings(code: str) -> str:
         """Remove comments and string literals for safe pattern analysis."""
-        # Multiline-Strings
+        # Multiline strings
         code = re.sub(r'""".*?"""', '""', code, flags=re.DOTALL)
         code = re.sub(r"'''.*?'''", "''", code, flags=re.DOTALL)
         # Single-line Strings -- bounded repetition to prevent ReDoS
@@ -589,7 +589,7 @@ class CodeAnalyzer:
 
 
 # ============================================================================
-# Skill-Paket
+# Skill Package
 # ============================================================================
 
 
@@ -641,11 +641,11 @@ class SkillPackage:
             if self.test_code:
                 self._add_bytes_to_tar(tar, "test_skill.py", self.test_code.encode())
 
-            # Dokumentation
+            # Documentation
             if self.documentation:
                 self._add_bytes_to_tar(tar, "skill.md", self.documentation.encode())
 
-            # Signatur
+            # Signature
             if self.signature:
                 sig_data = json.dumps(
                     {
@@ -791,12 +791,12 @@ class PackageBuilder:
         Raises:
             ValueError: Bei Validierungsfehlern oder gefährlichem Code.
         """
-        # 1. Manifest validieren
+        # 1. Validate manifest
         errors = manifest.validate()
         if errors:
             raise ValueError(f"Manifest ungültig: {'; '.join(errors)}")
 
-        # 2. Code analysieren
+        # 2. Analyze code
         if not skip_analysis:
             report = self._analyzer.analyze(code, manifest)
             if report.verdict == AnalysisVerdict.DANGEROUS:
@@ -808,7 +808,7 @@ class PackageBuilder:
         content_hash = hashlib.sha256((code + test_code).encode()).hexdigest()
         manifest.content_hash = content_hash
 
-        # 4. Paket erstellen
+        # 4. Create package
         package = SkillPackage(
             manifest=manifest,
             code=code,
@@ -816,7 +816,7 @@ class PackageBuilder:
             documentation=documentation,
         )
 
-        # 5. Signieren
+        # 5. Sign
         if self._signer:
             signable = (manifest.name + manifest.version + content_hash).encode()
             package.signature = self._signer.sign(signable)
@@ -899,7 +899,7 @@ class PackageInstaller:
         """
         pkg_id = package.package_id
 
-        # 1. Signatur prüfen
+        # 1. Verify signature
         if self._require_signature:
             if not package.is_signed:
                 return InstallResult(
@@ -919,7 +919,7 @@ class PackageInstaller:
                     message=(f"Publisher '{package.signature.signer_id}' is not trusted"),
                 )
 
-        # 2. Signatur-Integrität
+        # 2. Signature integrity
         if package.is_signed and self._signer:
             signable = (
                 package.manifest.name + package.manifest.version + package.content_hash
@@ -931,7 +931,7 @@ class PackageInstaller:
                     message="Signature verification failed",
                 )
 
-        # 3. Code analysieren
+        # 3. Analyze code
         report = self._analyzer.analyze(package.code, package.manifest)
         if not report.is_installable:
             return InstallResult(
@@ -941,7 +941,7 @@ class PackageInstaller:
                 analysis_report=report,
             )
 
-        # 4. Content-Hash verifizieren
+        # 4. Verify content hash
         actual_hash = package.content_hash
         if package.manifest.content_hash and actual_hash != package.manifest.content_hash:
             return InstallResult(
@@ -950,7 +950,7 @@ class PackageInstaller:
                 message="Content hash mismatch (tampering?)",
             )
 
-        # 5. Dateien schreiben
+        # 5. Write files
         skill_dir = self._skills_dir / package.manifest.name
         skill_dir.mkdir(parents=True, exist_ok=True)
 

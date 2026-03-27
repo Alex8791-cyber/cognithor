@@ -62,7 +62,7 @@ def recency_decay(
     if age_days <= 0:
         return 1.0
 
-    # Halbwertszeit-Decay: nach half_life_days ist der Wert exakt 0.5
+    # Half-life decay: after half_life_days the value is exactly 0.5
     return 2.0 ** (-age_days / half_life_days)
 
 
@@ -96,7 +96,7 @@ class HybridSearch:
             backend="auto", dimension=embedding_client.dimensions
         )
         self._weight_optimizer = weight_optimizer
-        # Gecachtes Mapping content_hash → [chunk_ids] (wird lazy aufgebaut)
+        # Cached mapping content_hash -> [chunk_ids] (built lazily)
         self._chunk_hash_map: dict[str, list[str]] | None = None
         # LRU cache for graph search results keyed by frozenset of query words
         self._graph_search_cache: OrderedDict[frozenset[str], dict[str, float]] = OrderedDict()
@@ -121,15 +121,15 @@ class HybridSearch:
             vector: Der Embedding-Vektor.
         """
         self._vector_index.add(key, vector)
-        # Inkrementelles Hash-Map-Update (#44 Optimierung):
-        # Nur den neuen Key einfügen statt die gesamte Map zu invalidieren.
+        # Incremental hash-map update (#44 optimization):
+        # Insert only the new key instead of invalidating the entire map.
         if self._chunk_hash_map is not None:
-            # Lade die Chunk-IDs für diesen Content-Hash aus der DB
+            # Load the chunk IDs for this content hash from the DB
             try:
                 chunk_ids = self._index.get_chunk_ids_by_hash(key)
                 self._chunk_hash_map[key] = chunk_ids
             except (AttributeError, Exception):
-                # Fallback: Volle Invalidierung wenn DB-Methode nicht existiert
+                # Fallback: Full invalidation if DB method does not exist
                 self._chunk_hash_map = None
         self._graph_search_cache.clear()
 
@@ -167,9 +167,9 @@ class HybridSearch:
         if top_k is None:
             top_k = self._config.search_top_k
 
-        # Sammle Scores pro Chunk-ID aus allen Kanälen
+        # Collect scores per chunk ID from all channels
         scores: dict[str, dict[str, float]] = {}  # chunk_id → {bm25, vector, graph}
-        fetch_k = top_k * 3  # Mehr holen als nötig für besseres Merging
+        fetch_k = top_k * 3  # Fetch more than needed for better merging
 
         # ── Kanal 1: BM25 ────────────────────────────────────────
         if enable_bm25 and self._config.weight_bm25 > 0:
@@ -178,21 +178,21 @@ class HybridSearch:
                 max_bm25 = max(s for _, s in bm25_results) or 1.0
                 for chunk_id, raw_score in bm25_results:
                     scores.setdefault(chunk_id, {"bm25": 0, "vector": 0, "graph": 0})
-                    scores[chunk_id]["bm25"] = raw_score / max_bm25  # Normalisiert auf 0-1
+                    scores[chunk_id]["bm25"] = raw_score / max_bm25  # Normalized to 0-1
 
         # ── Kanal 2: Vektor (via VectorIndex -- O(log N) mit FAISS) ──
         if enable_vector and self._config.weight_vector > 0:
             try:
                 query_emb = await self._embeddings.embed_text(query)
 
-                # Gecachte Chunk-Hash-Map verwenden (via Executor um Event-Loop nicht zu blockieren)
+                # Use cached chunk-hash-map (via executor to avoid blocking the event loop)
                 if self._chunk_hash_map is None:
                     loop = asyncio.get_running_loop()
                     self._chunk_hash_map = await loop.run_in_executor(
                         None, self._build_chunk_hash_map
                     )
 
-                # VectorIndex fuer ANN-Suche nutzen
+                # Use VectorIndex for ANN search
                 if self._vector_index.size > 0:
                     ann_results = self._vector_index.search(query_emb.vector, top_k=fetch_k)
                     for content_hash, sim in ann_results:
@@ -201,7 +201,7 @@ class HybridSearch:
                             scores.setdefault(cid, {"bm25": 0, "vector": 0, "graph": 0})
                             scores[cid]["vector"] = max(scores[cid]["vector"], max(0.0, sim))
                 else:
-                    # Fallback: Brute-Force ueber alle Embeddings aus DB
+                    # Fallback: Brute-force over all embeddings from DB
                     all_embeddings = self._index.get_all_embeddings()
                     vector_scores: list[tuple[str, float]] = []
                     for content_hash, stored_vec in all_embeddings.items():
@@ -226,15 +226,15 @@ class HybridSearch:
                 scores[chunk_id]["graph"] = g_score
 
         # ── Merge ────────────────────────────────────────────────
-        # Gewichtung der Suchkanäle:
-        # 1. Statische Config-Werte (Baseline)
-        # 2. Dynamische Gewichtung nach Query-Länge (Heuristik-Baseline)
-        # 3. Performance-basierte Optimizer-Gewichte (überschreiben Heuristik)
+        # Search channel weighting:
+        # 1. Static config values (baseline)
+        # 2. Dynamic weighting by query length (heuristic baseline)
+        # 3. Performance-based optimizer weights (override heuristic)
         w_vector = self._config.weight_vector
         w_bm25 = self._config.weight_bm25
         w_graph = self._config.weight_graph
 
-        # Dynamische Gewichtung nach Query-Länge (Heuristik-Baseline)
+        # Dynamic weighting by query length (heuristic baseline)
         if getattr(self._config, "dynamic_weighting", False):
             try:
                 num_tokens = len(query.split())
@@ -249,7 +249,7 @@ class HybridSearch:
             except Exception as e:
                 logger.debug("Dynamische Gewichtung fehlgeschlagen: %s", e)
 
-        # Performance-basierte Optimizer-Gewichte (überschreiben Heuristik)
+        # Performance-based optimizer weights (override heuristic)
         if self._weight_optimizer is not None:
             try:
                 opt_weights = self._weight_optimizer.get_optimized_weights()
@@ -262,7 +262,7 @@ class HybridSearch:
             except Exception as exc:
                 logger.debug("Dynamische Gewichtung fehlgeschlagen (Fallback): %s", exc)
 
-        # Batch-Fetch aller Chunks (1 Query statt N+1)
+        # Batch-fetch all chunks (1 query instead of N+1)
         all_chunk_ids = list(scores.keys())
         chunks_by_id = self._index.get_chunks_by_ids(all_chunk_ids)
 
@@ -276,7 +276,7 @@ class HybridSearch:
             if tier_filter and chunk.memory_tier != tier_filter:
                 continue
 
-            # Core Memory bekommt keinen Decay
+            # Core Memory gets no decay
             if chunk.memory_tier == MemoryTier.CORE:
                 decay = 1.0
             else:
@@ -302,7 +302,7 @@ class HybridSearch:
                 )
             )
 
-        # Sortieren nach Score (absteigend)
+        # Sort by score (descending)
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:top_k]
 
@@ -318,7 +318,7 @@ class HybridSearch:
         max_score = max(s for _, s in bm25_results) or 1.0
         results: list[MemorySearchResult] = []
 
-        # Batch-Fetch aller Chunks (1 Query statt N+1)
+        # Batch-fetch all chunks (1 query instead of N+1)
         bm25_chunk_ids = [cid for cid, _ in bm25_results]
         chunks_by_id = self._index.get_chunks_by_ids(bm25_chunk_ids)
 
@@ -382,7 +382,7 @@ class HybridSearch:
             self._graph_search_cache.move_to_end(cache_key)
             return self._graph_search_cache[cache_key]
 
-        # Schritt 1: Entitäten finden die zum Query passen (SQL LIKE pro Wort)
+        # Step 1: Find entities matching the query (SQL LIKE per word)
         matching_entity_ids: set[str] = set()
 
         for word in words:
@@ -393,24 +393,24 @@ class HybridSearch:
             self._graph_search_cache[cache_key] = {}
             return {}
 
-        # Schritt 2: Verwandte Entitäten finden (1-Hop)
+        # Step 2: Find related entities (1-hop)
         related_ids: set[str] = set(matching_entity_ids)
         for eid in matching_entity_ids:
             neighbors = self._index.graph_traverse(eid, max_depth=1)
             for n in neighbors:
                 related_ids.add(n.id)
 
-        # Schritt 3: Chunks finden die diese Entitäten referenzieren
+        # Step 3: Find chunks that reference these entities
         #   Uses SQL LIKE filtering instead of a full table scan.
         chunk_scores: dict[str, float] = {}
         chunk_rows = self._index.get_chunks_with_entity_overlap(related_ids)
 
         for chunk_id, chunk_entities in chunk_rows:
             chunk_entity_set = set(chunk_entities)
-            # Score basierend auf Overlap
+            # Score based on overlap
             overlap = len(chunk_entity_set & related_ids)
             if overlap > 0:
-                # Direkte Treffer zählen mehr als indirekte
+                # Direct hits count more than indirect ones
                 direct = len(chunk_entity_set & matching_entity_ids)
                 indirect = overlap - direct
                 score = (direct * 1.0 + indirect * 0.5) / max(len(related_ids), 1)

@@ -76,7 +76,7 @@ class TaskStatus(Enum):
 
 
 # ============================================================================
-# Konfiguration
+# Configuration
 # ============================================================================
 
 
@@ -106,7 +106,7 @@ class EventConfig:
         hour = datetime.now(UTC).hour
         if self.quiet_hours_start <= self.quiet_hours_end:
             return self.quiet_hours_start <= hour < self.quiet_hours_end
-        # Über Mitternacht (z.B. 22-06)
+        # Over midnight (e.g. 22-06)
         return hour >= self.quiet_hours_start or hour < self.quiet_hours_end
 
 
@@ -221,7 +221,7 @@ class EventSource:
             )
             triggers.append(trigger)
 
-        # Manuelle Trigger einmischen
+        # Mix in manual triggers
         while self._manual_triggers:
             triggers.append(self._manual_triggers.popleft())
 
@@ -347,7 +347,7 @@ class TaskQueue:
         if len(terminal) <= keep:
             return 0
 
-        # Älteste entfernen
+        # Remove oldest
         terminal.sort(key=lambda t: t.completed_at)
         to_remove = set()
         for t in terminal[: len(terminal) - keep]:
@@ -366,7 +366,7 @@ class TaskQueue:
 # ============================================================================
 
 
-# Type für Task-Handler (async Callable)
+# Type for task handler (async Callable)
 TaskHandler = Callable[[ProactiveTask], Coroutine[Any, Any, str]]
 
 
@@ -379,14 +379,14 @@ class HeartbeatScheduler:
     Usage:
         scheduler = HeartbeatScheduler()
 
-        # Konfigurieren
+        # Configure
         scheduler.configure(EventType.EMAIL_TRIAGE, enabled=True, interval=300)
         scheduler.configure(EventType.DAILY_BRIEFING, enabled=True, interval=86400)
 
-        # Handler registrieren
+        # Register handler
         scheduler.register_handler(EventType.EMAIL_TRIAGE, email_triage_handler)
 
-        # Heartbeat-Tick (wird vom CronEngine aufgerufen)
+        # Heartbeat tick (called by CronEngine)
         await scheduler.tick()
     """
 
@@ -401,7 +401,7 @@ class HeartbeatScheduler:
         self._total_tasks_completed = 0
         self._total_tasks_failed = 0
 
-        # Default-Konfigurationen
+        # Default configurations
         self._init_defaults()
 
     def _init_defaults(self) -> None:
@@ -450,7 +450,7 @@ class HeartbeatScheduler:
             config.enabled = False  # Default: Alle deaktiviert
             self._configs[config.event_type] = config
 
-    # ── Konfiguration ────────────────────────────────────────────
+    # ── Configuration ────────────────────────────────────────────
 
     def configure(
         self,
@@ -537,10 +537,10 @@ class HeartbeatScheduler:
         self._total_ticks += 1
         processed: list[ProactiveTask] = []
 
-        # 1. Ereignisse prüfen
+        # 1. Check for events
         triggers = self._event_source.check(self._configs)
 
-        # 2. Tasks erstellen
+        # 2. Create tasks
         for trigger in triggers:
             config = self._configs.get(trigger.event_type)
             if not config or not config.enabled:
@@ -558,26 +558,26 @@ class HeartbeatScheduler:
             self._queue.enqueue(task)
             self._total_tasks_created += 1
 
-        # 3. Tasks abarbeiten
+        # 3. Process tasks
         while True:
             task = self._queue.dequeue()
             if task is None:
                 break
 
-            # Handler vorhanden?
+            # Handler available?
             handler = self._handlers.get(task.event_type)
             if not handler:
                 self._queue.skip(task.task_id, "Kein Handler registriert")
                 processed.append(task)
                 continue
 
-            # Approval prüfen
+            # Check approval
             if task.approval_mode == ApprovalMode.ASK:
                 task.status = TaskStatus.AWAITING_APPROVAL
                 processed.append(task)
                 continue
 
-            # Ausführen
+            # Execute
             try:
                 result = await handler(task)
                 self._queue.complete(task.task_id, success=True, result=result)
@@ -588,7 +588,7 @@ class HeartbeatScheduler:
                 max_retries = config.max_retries if config else 2
 
                 if task.retries < max_retries:
-                    # Zurück in Queue
+                    # Back to queue
                     task.status = TaskStatus.PENDING
                 else:
                     self._queue.complete(
@@ -602,7 +602,7 @@ class HeartbeatScheduler:
 
         return processed
 
-    # ── Manuelle Trigger ─────────────────────────────────────────
+    # ── Manual Triggers ─────────────────────────────────────────
 
     def trigger_now(self, event_type: EventType, **payload: Any) -> str:
         """Löst ein Ereignis sofort aus (überspringt Timer).
@@ -610,7 +610,7 @@ class HeartbeatScheduler:
         Returns:
             Task-ID.
         """
-        # Sofort in Task umwandeln (ohne inject_trigger um Doppelausführung zu vermeiden)
+        # Convert to task immediately (without inject_trigger to avoid double execution)
         self._task_counter += 1
         config = self._configs.get(event_type, EventConfig(event_type=event_type))
         task = ProactiveTask(
@@ -646,7 +646,7 @@ class HeartbeatScheduler:
         """
         return self._queue.skip(task_id, "Vom User abgelehnt")
 
-    # ── Zugriff ──────────────────────────────────────────────────
+    # ── Access ──────────────────────────────────────────────────
 
     @property
     def queue(self) -> TaskQueue:

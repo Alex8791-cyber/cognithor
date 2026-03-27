@@ -143,7 +143,7 @@ class PeerRegistry:
         peer.touch()
         self._peers[peer.peer_id] = peer
 
-        # Max-Limit: Älteste offline Peers entfernen
+        # Max limit: Remove oldest offline peers
         if len(self._peers) > self._max_peers:
             self._evict_stale()
 
@@ -211,7 +211,7 @@ class PeerRegistry:
 
 
 # ============================================================================
-# Skill Index (DHT-ähnlich)
+# Skill Index (DHT-like)
 # ============================================================================
 
 
@@ -303,7 +303,7 @@ class SkillIndex:
                         score += 0.8
                         break
 
-                # Beschreibung
+                # Description
                 desc_lower = entry.manifest.description.lower()
                 overlap = sum(1 for w in query_words if w in desc_lower)
                 score += overlap * 0.3
@@ -312,7 +312,7 @@ class SkillIndex:
                     candidates[pid] = candidates.get(pid, 0) + score
 
         if not query and not category:
-            # Alles zurückgeben, sortiert nach Datum
+            # Return all, sorted by date
             entries = sorted(
                 self._entries.values(),
                 key=lambda e: e.published_at,
@@ -320,7 +320,7 @@ class SkillIndex:
             )
             return entries[:max_results]
 
-        # Sortieren nach Score
+        # Sort by score
         ranked = sorted(
             candidates.items(),
             key=lambda x: x[1],
@@ -364,7 +364,7 @@ class SkillIndex:
         if not entry:
             return False
 
-        # Index-Listen aufräumen
+        # Clean up index lists
         name = entry.manifest.name
         if name in self._by_name:
             self._by_name[name] = [p for p in self._by_name[name] if p != package_id]
@@ -475,7 +475,7 @@ class ReputationTracker:
         profile.score += delta
         profile.events.append((event.value, delta))
 
-        # Auto-Quarantäne prüfen
+        # Check auto-quarantine
         if ":" in entity_id:
             # Package-ID (name@version:hash)
             if profile.score <= self._package_threshold:
@@ -652,10 +652,10 @@ class SkillExchange:
         exchange = SkillExchange(skills_dir=Path("~/.jarvis/skills/p2p"))
         exchange.set_identity(my_peer)
 
-        # Publizieren
+        # Publish
         exchange.publish(manifest, code, tests)
 
-        # Suchen + Installieren
+        # Search + Install
         results = exchange.search("BU-Tarifvergleich")
         result = exchange.install(results[0].package_id, package_bytes)
 
@@ -673,13 +673,13 @@ class SkillExchange:
         self._skills_dir = skills_dir
         self._skills_dir.mkdir(parents=True, exist_ok=True)
 
-        # Identität
+        # Identity
         self._identity: PeerNode | None = None
         self._signer: PackageSigner | None = None
         if private_key:
             self._signer = PackageSigner(private_key)
 
-        # Komponenten
+        # Components
         self._peers = PeerRegistry()
         self._index = SkillIndex()
         self._reputation = ReputationTracker()
@@ -693,16 +693,16 @@ class SkillExchange:
         )
         self._builder = PackageBuilder(signer=self._signer, analyzer=self._analyzer)
 
-        # Paket-Speicher (simuliert P2P-Transfer)
+        # Package storage (simulates P2P transfer)
         self._packages: dict[str, SkillPackage] = {}
 
-        # Trusted Circles (Web-of-Trust Ökosystem)
+        # Trusted Circles (Web-of-Trust ecosystem)
         self._circles = CircleManager()
 
-        # Kuratierter Marketplace
+        # Curated marketplace
         self._marketplace = SkillMarketplace()
 
-        # Auto-Update-Mechanismus
+        # Auto-update mechanism
         self._updater = SkillUpdater()
 
     # ── Properties ───────────────────────────────────────────────
@@ -779,7 +779,7 @@ class SkillExchange:
             logger.error("Publish failed: %s", exc)
             return None
 
-        # Im Index registrieren
+        # Register in index
         publisher_id = self._identity.peer_id if self._identity else "local"
         entry = IndexEntry(
             package_id=package.package_id,
@@ -789,13 +789,13 @@ class SkillExchange:
         )
         self._index.publish(entry)
 
-        # Paket lokal speichern
+        # Store package locally
         self._packages[package.package_id] = package
 
-        # Reputation aufbauen
+        # Build reputation
         self._reputation.record(publisher_id, ReputationEvent.SKILL_PUBLISHED)
 
-        # Subscriptions prüfen
+        # Check subscriptions
         notified = self._subscriptions.check_new_entry(entry)
         if notified:
             logger.info(
@@ -824,7 +824,7 @@ class SkillExchange:
         """
         results = self._index.search(query, category=category, max_results=max_results * 2)
 
-        # Quarantinierte filtern
+        # Filter quarantined
         filtered = []
         for entry in results:
             if self._reputation.is_quarantined(entry.package_id):
@@ -833,7 +833,7 @@ class SkillExchange:
                 continue
             filtered.append(entry)
 
-        # Optional: Trust-basiertes Ranking über Circles
+        # Optional: Trust-based ranking via Circles
         if trust_filter and self._identity:
             publisher_map = {e.package_id: e.publisher_id for e in filtered}
             trusted = self._circles.filter_trusted_packages(
@@ -843,7 +843,7 @@ class SkillExchange:
                 min_score=min_trust_score,
             )
             trusted_ids = [pkg_id for pkg_id, _score in trusted]
-            # Sortiere filtered nach trusted-Reihenfolge
+            # Sort filtered by trusted order
             id_order = {pid: i for i, pid in enumerate(trusted_ids)}
             filtered = sorted(
                 [e for e in filtered if e.package_id in id_order],
@@ -873,7 +873,7 @@ class SkillExchange:
         Returns:
             InstallResult.
         """
-        # Paket laden
+        # Load package
         package: SkillPackage | None = None
         if package_data:
             try:
@@ -894,7 +894,7 @@ class SkillExchange:
                 message="Package not found",
             )
 
-        # Reputation prüfen
+        # Check reputation
         if self._reputation.is_quarantined(package_id):
             return InstallResult(
                 success=False,
@@ -902,16 +902,16 @@ class SkillExchange:
                 message="Package is quarantined (malware suspected)",
             )
 
-        # Installieren
+        # Install
         result = self._installer.install(package)
 
-        # Reputation aktualisieren
+        # Update reputation
         event = (
             ReputationEvent.INSTALL_SUCCESS if result.success else ReputationEvent.INSTALL_FAILURE
         )
         self._reputation.record(package_id, event)
 
-        # Publisher-Reputation
+        # Publisher reputation
         entry = self._index._entries.get(package_id)
         if entry:
             self._reputation.record(entry.publisher_id, event)
@@ -942,7 +942,7 @@ class SkillExchange:
         self._reputation.record(package_id, ReputationEvent.MALWARE_REPORT)
         self._reputation.quarantine(package_id)
 
-        # Publisher auch bestrafen
+        # Penalize publisher as well
         entry = self._index._entries.get(package_id)
         if entry:
             self._reputation.record(entry.publisher_id, ReputationEvent.MALWARE_REPORT)

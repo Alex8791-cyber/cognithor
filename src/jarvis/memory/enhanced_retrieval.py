@@ -37,25 +37,25 @@ if TYPE_CHECKING:
 logger = logging.getLogger("jarvis.memory.enhanced_retrieval")
 
 # ============================================================================
-# Deutsche Named-Entity-Extraktion (Heuristik)
+# German Named-Entity Extraction (Heuristic)
 # ============================================================================
 
 #
-# Problem: Im Deutschen sind ALLE Nomen großgeschrieben, nicht nur
-# Eigennamen. Ein simples Regex auf Großbuchstaben erkennt "Tisch",
-# "Hund" und "Wetter" als Entitäten -- das verrauscht den Knowledge Graph.
+# Problem: In German ALL nouns are capitalized, not just
+# proper nouns. A simple regex on uppercase letters recognizes "Tisch",
+# "Hund" and "Wetter" as entities -- this adds noise to the Knowledge Graph.
 #
-# Lösung: Zwei-Stufen-Filter
-# 1. Großgeschriebene Wörter finden (Kandidaten)
-# 2. Deutsche Alltagsnomen per Stopliste herausfiltern
-# 3. Heuristiken für wahrscheinliche Named Entities anwenden
+# Solution: Two-stage filter
+# 1. Find capitalized words (candidates)
+# 2. Filter out common German nouns via stoplist
+# 3. Apply heuristics for likely Named Entities
 
-# Häufige deutsche Alltagsnomen die KEINE Named Entities sind.
-# Erweiterte Liste mit den ~300 häufigsten deutschen Nomen aus
-# Wortfrequenzlisten (DeReWo, SUBTLEX-DE). Umlaute normalisiert.
+# Common German everyday nouns that are NOT Named Entities.
+# Extended list with the ~300 most frequent German nouns from
+# word frequency lists (DeReWo, SUBTLEX-DE). Umlauts normalized.
 _GERMAN_COMMON_NOUNS: frozenset[str] = frozenset(
     {
-        # Abstrakte Konzepte
+        # Abstract concepts
         "Anfang",
         "Angebot",
         "Angst",
@@ -191,7 +191,7 @@ _GERMAN_COMMON_NOUNS: frozenset[str] = frozenset(
         "Zukunft",
         "Zusammenhang",
         "Zustand",
-        # Physische Objekte und Orte
+        # Physical objects and places
         "Auge",
         "Auto",
         "Bau",
@@ -268,7 +268,7 @@ _GERMAN_COMMON_NOUNS: frozenset[str] = frozenset(
         "Zeitung",
         "Zimmer",
         "Zug",
-        # Personen (generisch)
+        # People (generic)
         "Arzt",
         "Bauer",
         "Bruder",
@@ -294,7 +294,7 @@ _GERMAN_COMMON_NOUNS: frozenset[str] = frozenset(
         "Tochter",
         "Vater",
         "Volk",
-        # Versicherungs- und Finanzbegriffe (Domain-spezifisch häufig)
+        # Insurance and finance terms (domain-specific, frequent)
         "Antrag",
         "Beitrag",
         "Berater",
@@ -323,7 +323,7 @@ _GERMAN_COMMON_NOUNS: frozenset[str] = frozenset(
         "Vorsorge",
         "Zahlung",
         "Zinsen",
-        # IT / Technik (häufig in gemischten Texten)
+        # IT / Technology (frequent in mixed-language texts)
         "Abfrage",
         "Anwendung",
         "Code",
@@ -350,13 +350,13 @@ _GERMAN_COMMON_NOUNS: frozenset[str] = frozenset(
     }
 )
 
-# Pattern für Named-Entity-Kandidaten: Großbuchstabe + mindestens 2 Kleinbuchstaben
+# Pattern for Named-Entity candidates: uppercase letter + at least 2 lowercase letters
 _ENTITY_CANDIDATE_RE = re.compile(r"\b[A-ZÄÖÜ][a-zäöüß]{2,}\b")
 
-# Pattern für starke NE-Signale (Mehrwort-Entitäten, CamelCase etc.)
+# Pattern for strong NE signals (multi-word entities, CamelCase etc.)
 _MULTI_WORD_ENTITY_RE = re.compile(r"\b[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+\b")
 
-# Deutsche Artikel und Pronomen die bei Mehrwort-Entitäten irrelevant sind
+# German articles and pronouns that are irrelevant in multi-word entities
 _GERMAN_ARTICLES: frozenset[str] = frozenset(
     {
         "Der",
@@ -398,7 +398,7 @@ _GERMAN_ARTICLES: frozenset[str] = frozenset(
     }
 )
 
-# Trailing-Punctuation Pattern für Wort-Bereinigung
+# Trailing-punctuation pattern for word cleanup
 _TRAILING_PUNCT_RE = re.compile(r'[.,;:!?\"\'"()]+$')
 
 
@@ -427,21 +427,21 @@ def _extract_german_entities(text: str) -> set[str]:
     """
     entities: set[str] = set()
 
-    # Mehrwort-Entitäten zuerst (höchste Konfidenz)
+    # Multi-word entities first (highest confidence)
     for match in _MULTI_WORD_ENTITY_RE.finditer(text):
         candidate = match.group()
-        # Artikel/Pronomen am Anfang entfernen
+        # Remove articles/pronouns at the beginning
         words = candidate.split()
         while words and words[0] in _GERMAN_ARTICLES:
             words.pop(0)
         if len(words) < 2:
-            continue  # Nach Artikel-Entfernung kein Mehrwort mehr
+            continue  # No longer multi-word after article removal
         cleaned = " ".join(words)
-        # Nur wenn mindestens ein Wort kein Alltagsnomen ist
+        # Only if at least one word is not a common noun
         if any(w not in _GERMAN_COMMON_NOUNS for w in words):
             entities.add(cleaned)
 
-    # Einzelwort-Entitäten
+    # Single-word entities
     sentences = re.split(r"[.!?]\s+", text)
     for sent in sentences:
         sent = sent.strip()
@@ -450,28 +450,28 @@ def _extract_german_entities(text: str) -> set[str]:
 
         words = sent.split()
         for i, raw_word in enumerate(words):
-            # Satzzeichen am Ende entfernen ("Berlin." -> "Berlin")
+            # Remove trailing punctuation ("Berlin." -> "Berlin")
             word = _clean_word(raw_word)
 
-            # Nur großgeschriebene Wörter prüfen
+            # Only check capitalized words
             if not _ENTITY_CANDIDATE_RE.fullmatch(word):
                 continue
 
-            # Wort am Satzanfang überspringen -- Großschreibung
-            # ist dort grammatikalisch, nicht semantisch
+            # Skip word at sentence start -- capitalization
+            # is grammatical there, not semantic
             if i == 0:
                 continue
 
-            # Artikel und Pronomen überspringen
+            # Skip articles and pronouns
             if word in _GERMAN_ARTICLES:
                 continue
 
-            # Alltagsnomen herausfiltern
+            # Filter out common nouns
             if word in _GERMAN_COMMON_NOUNS:
                 continue
 
-            # Alles was übrig bleibt ist wahrscheinlich ein Eigenname,
-            # Produkt, Firma, Ort, etc.
+            # Everything remaining is likely a proper name,
+            # product, company, place, etc.
             entities.add(word)
 
     return entities
@@ -501,7 +501,7 @@ def _count_german_entities_in_text(text: str) -> int:
 
 
 # ============================================================================
-# 1. Query-Dekomposition
+# 1. Query Decomposition
 # ============================================================================
 
 
@@ -528,12 +528,12 @@ class QueryDecomposer:
       - Zeitliche Aspekte ("X früher vs heute" -> "X historisch", "X aktuell")
     """
 
-    # Konjunktions-Patterns
+    # Conjunction patterns
     _CONJUNCTION_PATTERNS = [
         re.compile(r"(.+?)\s+(?:und|sowie|als auch|und auch)\s+(.+)", re.IGNORECASE),
     ]
 
-    # Vergleichs-Patterns
+    # Comparison patterns
     _COMPARISON_PATTERNS = [
         re.compile(
             r"(?:unterschied|vergleich|differenz)\s+zwischen\s+(.+?)\s+und\s+(.+)",
@@ -542,7 +542,7 @@ class QueryDecomposer:
         re.compile(r"(.+?)\s+(?:vs\.?|versus|gegen|oder)\s+(.+)", re.IGNORECASE),
     ]
 
-    # Aspekt-Patterns
+    # Aspect patterns
     _ASPECT_PATTERNS = [
         re.compile(
             r"(vor-?\s*und\s*nachteile|pros?\s*(?:und|&)\s*cons?)\s+(?:von\s+)?(.+)",
@@ -569,8 +569,8 @@ class QueryDecomposer:
         if not query:
             return DecomposedQuery(original=query, sub_queries=[query])
 
-        # Versuche Patterns in Prioritätsreihenfolge
-        # 1. Vergleiche
+        # Try patterns in priority order
+        # 1. Comparisons
         for pattern in self._COMPARISON_PATTERNS:
             match = pattern.search(query)
             if match:
@@ -581,7 +581,7 @@ class QueryDecomposer:
                     query_type="compound",
                 )
 
-        # 2. Aspekte (Vor- und Nachteile)
+        # 2. Aspects (pros and cons)
         for pattern in self._ASPECT_PATTERNS:
             match = pattern.search(query)
             if match:
@@ -592,12 +592,12 @@ class QueryDecomposer:
                     query_type="multi_aspect",
                 )
 
-        # 3. Konjunktionen
+        # 3. Conjunctions
         for pattern in self._CONJUNCTION_PATTERNS:
             match = pattern.search(query)
             if match:
                 a, b = match.group(1).strip(), match.group(2).strip()
-                # Nur splitten wenn beide Teile substanziell (>3 Wörter)
+                # Only split if both parts are substantial (>3 words)
                 if len(a.split()) >= 2 and len(b.split()) >= 2:
                     return DecomposedQuery(
                         original=query,
@@ -605,7 +605,7 @@ class QueryDecomposer:
                         query_type="compound",
                     )
 
-        # 4. Keine Dekomposition möglich -> Original behalten
+        # 4. No decomposition possible -> keep original
         return DecomposedQuery(
             original=query,
             sub_queries=[query],
@@ -670,9 +670,9 @@ def reciprocal_rank_fusion(
     Returns:
         Merged + sortierte Ergebnisliste.
     """
-    # Chunk-ID → aggregierter RRF-Score
+    # Chunk-ID -> aggregated RRF score
     rrf_scores: dict[str, float] = {}
-    # Chunk-ID → bestes MemorySearchResult (für Metadaten)
+    # Chunk-ID -> best MemorySearchResult (for metadata)
     best_results: dict[str, MemorySearchResult] = {}
 
     for result_list in result_lists:
@@ -681,18 +681,18 @@ def reciprocal_rank_fusion(
             rrf_score = 1.0 / (k + rank + 1)
             rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + rrf_score
 
-            # Behalte das Ergebnis mit dem höchsten Original-Score
+            # Keep the result with the highest original score
             if chunk_id not in best_results or result.score > best_results[chunk_id].score:
                 best_results[chunk_id] = result
 
-    # Sortieren nach RRF-Score
+    # Sort by RRF score
     sorted_ids = sorted(rrf_scores.keys(), key=lambda cid: rrf_scores[cid], reverse=True)
 
-    # Ergebnisse mit RRF-Score
+    # Results with RRF score
     merged: list[MemorySearchResult] = []
     for chunk_id in sorted_ids:
         original = best_results[chunk_id]
-        # Neues Result mit RRF-Score als Haupt-Score
+        # New result with RRF score as main score
         merged.append(
             MemorySearchResult(
                 chunk=original.chunk,
@@ -771,12 +771,12 @@ class CorrectiveRAG:
                 irrelevant.append(result)
                 continue
 
-            # Wort-Overlap-Check
+            # Word overlap check
             chunk_words = set(re.findall(r"\w+", result.chunk.text.lower()))
             overlap = len(query_words & chunk_words)
             overlap_ratio = overlap / max(len(query_words), 1)
 
-            # Kombinations-Heuristik
+            # Combination heuristic
             if (
                 result.score >= 0.3
                 or overlap_ratio >= 0.3
@@ -807,7 +807,7 @@ class CorrectiveRAG:
         words = original_query.split()
         alternatives: list[str] = []
 
-        # Strategy 1: Nur Schlüsselwörter (Stoppwörter entfernen)
+        # Strategy 1: Keywords only (remove stopwords)
         stopwords = {
             "der",
             "die",
@@ -866,11 +866,11 @@ class CorrectiveRAG:
         if keywords and len(keywords) < len(words):
             alternatives.append(" ".join(keywords))
 
-        # Strategy 2: Erste N Wörter (wenn Query lang)
+        # Strategy 2: First N words (when query is long)
         if len(words) > 6:
             alternatives.append(" ".join(words[:4]))
 
-        # Strategy 3: Letzte N Wörter (oft der eigentliche Kern)
+        # Strategy 3: Last N words (often the actual core)
         if len(words) > 4:
             alternatives.append(" ".join(words[-3:]))
 
@@ -878,7 +878,7 @@ class CorrectiveRAG:
 
 
 # ============================================================================
-# 4. Frequenz-Gewichtung
+# 4. Frequency Weighting
 # ============================================================================
 
 
@@ -971,7 +971,7 @@ class FrequencyTracker:
 
 
 # ============================================================================
-# 5. Episodenkompression
+# 5. Episode Compression
 # ============================================================================
 
 
@@ -1061,7 +1061,7 @@ class EpisodicCompressor:
         current_end = sorted_dates[0]
 
         for d in sorted_dates[1:]:
-            # Gleiche Woche wenn weniger als 7 Tage Abstand
+            # Same week if less than 7 days apart
             if (d - current_end).days <= 7:
                 current_end = d
             else:
@@ -1092,37 +1092,37 @@ class EpisodicCompressor:
         entity_set: set[str] = set()
 
         for entry in entries:
-            # Sätze splitten
+            # Split sentences
             sentences = re.split(r"[.!?]\s+", entry)
             for sent in sentences:
                 sent = sent.strip()
-                if len(sent) > 20:  # Zu kurze Sätze ignorieren
+                if len(sent) > 20:  # Ignore sentences that are too short
                     all_sentences.append(sent)
 
-                    # Named Entities extrahieren (deutsche Nomen gefiltert)
+                    # Extract Named Entities (German common nouns filtered)
                     entity_set.update(_extract_german_entities(sent))
 
-        # Sätze nach Informationsgehalt ranken
+        # Rank sentences by information content
         scored: list[tuple[float, str]] = []
         for sent in all_sentences:
             score = 0.0
-            # Länge (normalisiert)
+            # Length (normalized)
             score += min(len(sent) / 200.0, 1.0) * 0.3
-            # Named Entities im Satz (deutsche Alltagsnomen gefiltert)
+            # Named Entities in sentence (German common nouns filtered)
             sent_entities = _count_german_entities_in_text(sent)
             score += min(sent_entities / 3.0, 1.0) * 0.4
-            # Zahlen (oft wichtige Fakten)
+            # Numbers (often important facts)
             numbers = len(re.findall(r"\d+", sent))
             score += min(numbers / 2.0, 1.0) * 0.3
             scored.append((score, sent))
 
         scored.sort(key=lambda x: x[0], reverse=True)
 
-        # Top-Sätze als Zusammenfassung
+        # Top sentences as summary
         key_sentences = []
         seen_texts: set[str] = set()
         for _score, sent in scored:
-            # Duplikate vermeiden
+            # Avoid duplicates
             normalized = sent.lower().strip()
             if normalized not in seen_texts:
                 key_sentences.append(sent)
@@ -1190,7 +1190,7 @@ class EpisodicCompressor:
 
 
 # ============================================================================
-# 6. Enhanced Search Pipeline (orchestriert alles)
+# 6. Enhanced Search Pipeline (orchestrates everything)
 # ============================================================================
 
 
@@ -1250,7 +1250,7 @@ class EnhancedSearchPipeline:
         Returns:
             Optimierte Suchergebnisse.
         """
-        # ── Phase 1: Query-Dekomposition ──
+        # ── Phase 1: Query decomposition ──
         if self._enable_decomposition:
             decomposed = self._decomposer.decompose(query)
             sub_queries = decomposed.sub_queries
@@ -1267,7 +1267,7 @@ class EnhancedSearchPipeline:
             )
             all_results.append(results)
 
-        # ── Phase 3: RRF Merge (oder direkt wenn nur 1 Query) ──
+        # ── Phase 3: RRF Merge (or direct if only 1 query) ──
         if len(all_results) > 1:
             merged = reciprocal_rank_fusion(all_results, top_n=top_k * 2)
         elif all_results:
@@ -1280,7 +1280,7 @@ class EnhancedSearchPipeline:
             verdict = self._corrective.evaluate_relevance_heuristic(query, merged)
 
             if verdict.needs_retry:
-                # Alternative Queries generieren und erneut suchen
+                # Generate alternative queries and search again
                 alternatives = self._corrective.generate_alternative_queries(query)
                 for alt_query in alternatives[:2]:
                     retry_results = await self._search.search(
@@ -1290,16 +1290,16 @@ class EnhancedSearchPipeline:
                     )
                     all_results.append(retry_results)
 
-                # Erneut mergen mit allen Ergebnissen
+                # Re-merge with all results
                 merged = reciprocal_rank_fusion(all_results, top_n=top_k * 2)
             else:
-                # Nur relevante Ergebnisse behalten
+                # Keep only relevant results
                 merged = verdict.relevant_results
 
         # ── Phase 5: Frequency Boost ──
         if self._enable_frequency and merged:
             merged = self._frequency.apply_boost(merged)
-            # Zugriffe tracken
+            # Track accesses
             self._frequency.record_accesses([r.chunk.id for r in merged[:top_k]])
 
         # ── Phase 6: Final Top-K ──
