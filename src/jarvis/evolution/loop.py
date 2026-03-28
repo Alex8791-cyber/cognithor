@@ -186,8 +186,15 @@ class EvolutionLoop:
             delta={"research_topic": result.research_topic, "research_text": research_text[:500]},
         ))
 
-        if not research_text or not self._idle.is_idle:
-            result.reason = "research_empty_or_interrupted"
+        if not research_text:
+            result.skipped = True
+            result.reason = "research_empty"
+            result.research_topic = ""  # Clear so it's NOT added to researched set
+            result.duration_ms = int((time.monotonic() - t0) * 1000)
+            log.info("evolution_research_empty", query=getattr(top_gap, "query", "")[:60])
+            return result
+        if not self._idle.is_idle:
+            result.reason = "interrupted_after_research"
             result.duration_ms = int((time.monotonic() - t0) * 1000)
             return result
 
@@ -325,9 +332,11 @@ class EvolutionLoop:
                         except Exception:
                             log.debug("evolution_promote_failed", exc_info=True)
 
-            # Remaining simple goals
+            # Remaining simple goals — only count SUCCESSFUL research as "done"
             researched = {
-                r.research_topic for r in self._results[-20:] if r.research_topic
+                r.research_topic
+                for r in self._results[-20:]
+                if r.research_topic and not r.skipped
             }
             available = [g for g in goals if g not in researched]
             if available:
@@ -470,16 +479,54 @@ class EvolutionLoop:
             except Exception:
                 pass
 
-        # hybrid + online: web search for broader context
+        # hybrid + online: web search + fetch for broader context
         if self._operation_mode in ("hybrid", "online") and self._mcp_client:
             try:
+                # Step 1: Search the web
                 web_result = await self._mcp_client.call_tool(
-                    "web_search", {"query": query, "max_results": 3}
+                    "search_and_read",
+                    {"query": query, "num_results": 3, "language": "de"},
                 )
-                if web_result and hasattr(web_result, "text"):
-                    parts.append(web_result.text[:500])
-                elif isinstance(web_result, str):
-                    parts.append(web_result[:500])
+                web_text = ""
+                if web_result and hasattr(web_result, "content") and not web_result.is_error:
+                    web_text = web_result.content
+                elif web_result and hasattr(web_result, "text"):
+                    web_text = web_result.text
+
+                if web_text:
+                    parts.append(web_text[:3000])
+                    log.info("evolution_web_research_found", query=query[:40], chars=len(web_text))
+
+                    # Step 2: Persist to memory + vault
+                    try:
+                        await self._mcp_client.call_tool(
+                            "save_to_memory",
+                            {
+                                "content": web_text[:5000],
+                                "tier": "semantic",
+                                "source_path": f"evolution/{query[:50].replace(' ', '-')}.md",
+                            },
+                        )
+                        log.info("evolution_research_saved_to_memory", query=query[:40])
+                    except Exception:
+                        log.debug("evolution_memory_save_failed", exc_info=True)
+
+                    try:
+                        await self._mcp_client.call_tool(
+                            "vault_save",
+                            {
+                                "title": f"Evolution Research: {query[:80]}",
+                                "content": web_text[:10000],
+                                "tags": "evolution, auto-research",
+                                "folder": "wissen",
+                                "sources": "",
+                            },
+                        )
+                        log.info("evolution_research_saved_to_vault", query=query[:40])
+                    except Exception:
+                        log.debug("evolution_vault_save_failed", exc_info=True)
+                else:
+                    log.info("evolution_web_search_empty", query=query[:40])
             except Exception:
                 log.debug("evolution_web_search_failed", exc_info=True)
 
