@@ -1,6 +1,8 @@
 """Evidence Aggregator — cross-verification and claim scoring."""
 from __future__ import annotations
 
+import re
+
 from jarvis.osint.models import (
     ClaimResult,
     ClaimType,
@@ -106,8 +108,11 @@ class EvidenceAggregator:
             confidence = min(raw_confidence, cap)
 
             # Check for contradictions (negative signals)
+            # Use word-boundary patterns to avoid false positives on "notable", "another" etc.
             has_contradiction = any(
-                "not" in ev.content.lower() or "no " in ev.content.lower()[:50]
+                re.search(r'\bnot\b.{0,30}\b(member|found|affiliated|associated|employed|verified)\b', ev.content.lower())
+                or re.search(r'\bno (mention|evidence|record|affiliation|membership|connection)\b', ev.content.lower())
+                or re.search(r'\bnot in\b.{0,20}\borg', ev.content.lower())
                 for ev in relevant
                 if ev.source_type in ("github", "web")
             )

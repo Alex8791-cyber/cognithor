@@ -31,7 +31,7 @@ class BaseCollector(ABC):
 
     async def _fetch_with_retry(
         self, url: str, headers: dict[str, str] | None = None, max_retries: int = 3
-    ) -> dict[str, Any]:
+    ) -> Any:
         """GET url with exponential backoff. Raises CollectorError on exhaustion."""
         for attempt in range(max_retries):
             try:

@@ -14,8 +14,9 @@ log = get_logger(__name__)
 class WebCollector(BaseCollector):
     source_name = "web"
 
-    def __init__(self, mcp_client: Any = None) -> None:
+    def __init__(self, mcp_client: Any = None, language: str = "en") -> None:
         self._mcp = mcp_client
+        self._language = language
 
     def is_available(self) -> bool:
         return self._mcp is not None
@@ -35,7 +36,7 @@ class WebCollector(BaseCollector):
             try:
                 result = await self._mcp.call_tool(
                     "search_and_read",
-                    {"query": query[:150], "num_results": 3, "language": "de"},
+                    {"query": query[:150], "num_results": 3, "language": self._language},
                 )
                 if result and not result.is_error and result.content:
                     text = result.content[:3000]

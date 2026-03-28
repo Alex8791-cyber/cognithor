@@ -74,6 +74,11 @@ class HIMAgent:
 
         scope = self._gdpr.check(request, github_followers=github_followers)
 
+        # Update web collector language from request
+        web_collector = self._collectors.get("web")
+        if web_collector and hasattr(web_collector, "_language"):
+            web_collector._language = request.language
+
         # 2. Collect evidence in parallel
         all_evidence: list[Evidence] = []
         tasks = []
