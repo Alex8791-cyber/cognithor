@@ -461,6 +461,167 @@ class PrivacyConfig(BaseModel):
 
 ---
 
+## 15. Compliance Engine — Runtime Enforcement (Review Gap 1)
+
+Central policy evaluation BEFORE every data processing operation. Not just logging — blocking.
+
+**File:** `src/jarvis/security/compliance_engine.py`
+
+```python
+class ComplianceEngine:
+    """Central GDPR policy enforcer. Called before every processing operation."""
+
+    def __init__(self, consent_manager, config):
+        self._consent = consent_manager
+        self._config = config
+
+    def check(self, user_id: str, channel: str, legal_basis: LegalBasis,
+              purpose: DataPurpose, data_types: list[str]) -> None:
+        """Raise ComplianceViolation if processing is not allowed."""
+        # Rule 1: Consent-based processing requires actual consent
+        if legal_basis == LegalBasis.CONSENT:
+            if not self._consent.has_consent(user_id, channel):
+                raise ComplianceViolation(
+                    f"No consent for {purpose.value} on channel {channel}"
+                )
+        # Rule 2: Privacy mode blocks all persistent storage
+        if self._config.privacy.privacy_mode and purpose != DataPurpose.SECURITY:
+            raise ComplianceViolation("Privacy mode active — no persistent storage")
+        # Rule 3: OSINT requires explicit OSINT consent
+        if purpose == DataPurpose.OSINT:
+            if not self._consent.has_consent(user_id, channel, "osint"):
+                raise ComplianceViolation("OSINT investigation requires explicit consent")
+
+class ComplianceViolation(Exception):
+    pass
+```
+
+### Integration
+- Gateway calls `compliance_engine.check()` before every `handle_message()`
+- Memory tools check before `save_to_memory()`
+- Vault tools check before `vault_save()`
+- Cloud LLM router checks before API calls
+- Gatekeeper can call compliance engine as additional gate
+
+---
+
+## 16. Active Data Minimization (Review Gap 2)
+
+GDPR requires minimization at COLLECTION time, not just deletion after the fact.
+
+### Input Filtering
+Before storing ANY user message content:
+1. Strip PII that is not needed for the response (emails, phone numbers, addresses in casual mentions)
+2. Memory summarization: after 7 days, episodic memories are compressed to summaries (existing MemoryHygieneEngine can be extended)
+3. Embedding-only mode: for semantic search, store only embeddings + source hash, not raw text
+
+### Implementation
+- Extend `MemoryHygieneEngine` with `minimize()` method
+- Run `minimize()` in the retention_enforcer cron job
+- Config: `data_minimization: bool = True` (default on)
+- After 7 days: raw episodic text replaced with LLM-generated summary
+- After 30 days: summaries reduced to key facts only
+
+---
+
+## 17. Complete Data Export (Review Gap 3)
+
+Art. 15 export must include ALL data, including derived/computed data.
+
+### Export Categories
+The `/api/v1/user/data` export must include:
+1. **Raw data**: messages, vault notes, memories
+2. **Derived data**: entities, relations, knowledge graph connections
+3. **Computed data**: trust scores, quality scores, claim verifications
+4. **Embeddings metadata**: which texts were embedded, when, for what purpose (not raw vectors — those are not personally meaningful)
+5. **Processing history**: every logged processing event
+6. **Consent records**: all consent grants/withdrawals
+7. **HIM reports**: any investigation reports involving this user
+
+### Format
+```json
+{
+    "export_version": "1.0",
+    "user_id": "...",
+    "exported_at": "...",
+    "raw_data": { "messages": [...], "vault_notes": [...], "memories": [...] },
+    "derived_data": { "entities": [...], "relations": [...], "claims": [...] },
+    "computed_data": { "trust_scores": [...], "quality_scores": [...] },
+    "embeddings_metadata": [{"text_hash": "...", "purpose": "...", "created_at": "..."}],
+    "processing_history": [...],
+    "consents": [...],
+    "him_reports": [...]
+}
+```
+
+---
+
+## 18. Pseudonymized Audit Log (Review Gap 4)
+
+The immutable compliance audit log must survive user erasure — but with pseudonymized user IDs.
+
+### Implementation
+- When `erase_all(user_id)` runs, the audit log is NOT deleted
+- Instead, all occurrences of `user_id` in the audit log are replaced with `SHA-256(user_id + salt)`
+- The salt is stored ONLY in the credential store
+- This means: audit trail is preserved for accountability, but user cannot be re-identified without the salt
+- If credential store is also wiped (full system reset), audit entries become permanently anonymous
+
+### Pseudonymization Function
+```python
+def pseudonymize_user_id(user_id: str, salt: str) -> str:
+    return hashlib.sha256(f"{user_id}:{salt}".encode()).hexdigest()[:16]
+```
+
+---
+
+## 19. Dynamic Processing Register (Review Gap 5)
+
+The `processing_register.yaml` must be auto-generated from actual system state, not manually maintained.
+
+### Implementation
+- On startup (or via API call), scan all registered MCP tools and processing activities
+- Generate `processing_register.yaml` from:
+  - Tool registry (what tools exist, what data they access)
+  - Config (which cloud providers are enabled)
+  - Consent records (which users have consented to what)
+  - Retention config (what are the actual TTLs)
+- REST endpoint: `GET /api/v1/compliance/register` returns current register as JSON
+- Register is regenerated daily by the retention_enforcer cron job
+
+---
+
+## 20. DPIA Risk Scoring (Review Gap 6)
+
+The DPIA must not just be a template — it needs automated risk classification.
+
+### Risk Levels
+```python
+class DPIARiskLevel(str, Enum):
+    LOW = "low"        # No PII, local only, standard retention
+    MEDIUM = "medium"  # PII involved, but local processing, consent obtained
+    HIGH = "high"      # PII sent to cloud, OSINT on persons, profiling
+    CRITICAL = "critical"  # Sensitive data (health, political), cross-border transfer
+```
+
+### Automatic Classification
+Each processing activity gets a risk score based on:
+- Does it involve PII? (+1)
+- Does it send data to cloud? (+2)
+- Does it involve profiling/scoring persons? (+2)
+- Does it process sensitive categories (Art. 9)? (+3)
+- Is data transferred outside EU? (+2)
+- Is retention > 180 days? (+1)
+
+Score 0-1 = LOW, 2-3 = MEDIUM, 4-6 = HIGH, 7+ = CRITICAL
+
+### Integration
+- Risk level shown in processing register
+- HIGH/CRITICAL activities logged in compliance audit
+- CRITICAL activities require admin approval (similar to gatekeeper RED)
+
+---
+
 ## Non-Breaking Guarantees
 
 1. **Graceful degradation**: If `pysqlcipher3` not installed, falls back to unencrypted SQLite with WARNING
@@ -468,7 +629,8 @@ class PrivacyConfig(BaseModel):
 3. **Existing data preserved**: Migration copies data, does not delete originals until verified
 4. **No API changes**: All existing MCP tools work exactly as before
 5. **Performance**: SQLCipher adds ~10-15% overhead on DB operations; acceptable for background agent
+6. **ComplianceEngine bypass**: If `compliance_engine_enabled: false` in config, all checks pass (for development)
 
 ---
 
-*GDPR Compliance Layer Spec v1.0 | Apache 2.0*
+*GDPR Compliance Layer Spec v1.2 | Apache 2.0*
