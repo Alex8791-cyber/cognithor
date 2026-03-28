@@ -9,6 +9,15 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import List, Optional
 
+__all__ = [
+    "LearningPlan",
+    "QualityQuestion",
+    "ScheduleSpec",
+    "SeedSource",
+    "SourceSpec",
+    "SubGoal",
+]
+
 
 def _new_id() -> str:
     """Return a 16-char hex identifier."""
