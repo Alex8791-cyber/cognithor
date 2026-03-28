@@ -257,6 +257,32 @@ if errorlevel 1 (
     echo   [OK] Tailscale already running.
 )
 
+:: Start SearXNG (local meta search engine for Evolution Engine)
+docker ps -q -f "name=cognithor-searxng" 2>nul | find /v "" >nul
+if errorlevel 1 (
+    docker ps -aq -f "name=cognithor-searxng" 2>nul | find /v "" >nul
+    if not errorlevel 1 (
+        echo   [INFO] Starting SearXNG container...
+        docker start cognithor-searxng >nul 2>&1
+        echo   [OK] SearXNG started.
+    ) else (
+        where docker >nul 2>&1
+        if not errorlevel 1 (
+            echo   [INFO] Creating SearXNG container...
+            docker run -d --name cognithor-searxng -p 8888:8080 --restart unless-stopped searxng/searxng >nul 2>&1
+            if not errorlevel 1 (
+                echo   [OK] SearXNG created and started on port 8888.
+            ) else (
+                echo   [SKIP] SearXNG container creation failed.
+            )
+        ) else (
+            echo   [SKIP] Docker not installed - SearXNG unavailable.
+        )
+    )
+) else (
+    echo   [OK] SearXNG already running.
+)
+
 :: Start AltServer (iOS sideloading)
 tasklist /FI "IMAGENAME eq AltServer.exe" 2>nul | find /i "AltServer.exe" >nul
 if errorlevel 1 (
@@ -281,6 +307,13 @@ tasklist /FI "IMAGENAME eq AltServer.exe" 2>nul | find /i "AltServer.exe" >nul
 if not errorlevel 1 (
     taskkill /IM AltServer.exe /F >nul 2>&1
     echo   [OK] AltServer stopped.
+)
+
+:: Stop SearXNG container (keep for fast restart)
+docker ps -q -f "name=cognithor-searxng" 2>nul | find /v "" >nul
+if not errorlevel 1 (
+    docker stop cognithor-searxng >nul 2>&1
+    echo   [OK] SearXNG stopped.
 )
 
 :: Stop Tailscale GUI (not the system service)

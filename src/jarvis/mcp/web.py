@@ -376,7 +376,10 @@ class WebTools:
     ) -> str:
         """Fuehrt eine Websuche durch.
 
-        Fallback-Kette: SearXNG → Brave → DuckDuckGo (Multi-Backend).
+        Hybrid-Modus: Alle verfuegbaren Engines werden parallel abgefragt.
+        Ergebnisse werden nach Cross-Engine-Score gerankt (URL die in mehreren
+        Engines auftaucht = hoehere Relevanz). Fallback auf Einzelergebnis
+        wenn nur eine Engine verfuegbar.
 
         Args:
             query: Suchanfrage.
@@ -391,54 +394,188 @@ class WebTools:
             return "Keine Suchanfrage angegeben."
 
         num_results = min(max(num_results, 1), self._max_search_results)
-        provider_errors: list[str] = []
 
-        # Try SearXNG
+        # Collect all available search backends
+        import asyncio as _aio
+
+        tasks: dict[str, _aio.Task] = {}
         if self._searxng_url:
-            try:
-                return await self._search_searxng(query, num_results, language)
-            except Exception as exc:
-                provider_errors.append(f"SearXNG: {exc}")
-                log.warning("SearXNG-Suche fehlgeschlagen: %s", exc)
-
-        # Try Brave Search
+            tasks["searxng"] = _aio.create_task(
+                self._search_raw_searxng(query, num_results, language)
+            )
         if self._brave_api_key:
-            try:
-                return await self._search_brave(query, num_results, language)
-            except Exception as exc:
-                provider_errors.append(f"Brave: {exc}")
-                log.warning("Brave-Suche fehlgeschlagen: %s", exc)
-
-        # Try Google Custom Search Engine
+            tasks["brave"] = _aio.create_task(
+                self._search_raw_brave(query, num_results, language)
+            )
         if self._google_cse_api_key and self._google_cse_cx:
-            try:
-                return await self._search_google_cse(query, num_results, language)
-            except Exception as exc:
-                provider_errors.append(f"Google CSE: {exc}")
-                log.warning("Google-CSE-Suche fehlgeschlagen: %s", exc)
-
-        # DuckDuckGo with multi-backend fallback, cache, and rate-limiting
+            tasks["google"] = _aio.create_task(
+                self._search_raw_google_cse(query, num_results, language)
+            )
         if self._duckduckgo_enabled:
-            try:
-                return await self._search_duckduckgo(query, num_results, language, timelimit)
-            except Exception as exc:
-                provider_errors.append(f"DuckDuckGo: {exc}")
-                log.warning("DuckDuckGo-Suche fehlgeschlagen: %s", exc)
-
-        # All providers failed → detailed error message
-        if provider_errors:
-            error_details = "\n".join(f"  • {e}" for e in provider_errors)
-            return (
-                f"Websuche für '{query}' fehlgeschlagen. "
-                f"Alle Such-Provider haben Fehler gemeldet:\n{error_details}\n\n"
-                "Mögliche Ursachen: Netzwerkprobleme, ungültige API-Keys, Rate-Limits."
+            tasks["ddg"] = _aio.create_task(
+                self._search_raw_duckduckgo(query, num_results, language, timelimit)
             )
 
-        return (
-            "Keine Suchengine konfiguriert.\n"
-            "Setze `searxng_url` oder `brave_api_key` in der Konfiguration,\n"
-            "oder aktiviere `duckduckgo_enabled: true` (Standard)."
-        )
+        if not tasks:
+            return (
+                "Keine Suchengine konfiguriert.\n"
+                "Setze `searxng_url` oder `brave_api_key` in der Konfiguration,\n"
+                "oder aktiviere `duckduckgo_enabled: true` (Standard)."
+            )
+
+        # Wait for all (with individual error handling)
+        all_results: dict[str, list[dict[str, str]]] = {}
+        provider_errors: list[str] = []
+
+        for name, task in tasks.items():
+            try:
+                results = await task
+                if results:
+                    all_results[name] = results
+                    log.info("hybrid_search_ok", backend=name, results=len(results), query=query[:40])
+            except Exception as exc:
+                provider_errors.append(f"{name}: {exc}")
+                log.warning("hybrid_search_failed", backend=name, error=str(exc)[:80])
+
+        if not all_results:
+            if provider_errors:
+                error_details = "\n".join(f"  - {e}" for e in provider_errors)
+                return (
+                    f"Websuche fuer '{query}' fehlgeschlagen.\n"
+                    f"Alle Such-Provider haben Fehler gemeldet:\n{error_details}"
+                )
+            return f"Keine Ergebnisse fuer: {query}"
+
+        # Single engine → return directly (no merge needed)
+        if len(all_results) == 1:
+            engine_name = next(iter(all_results))
+            return _format_search_results(all_results[engine_name][:num_results], query)
+
+        # Hybrid merge: rank by cross-engine agreement
+        merged = self._merge_hybrid_results(all_results, num_results)
+        engines_used = ", ".join(sorted(all_results.keys()))
+        log.info("hybrid_search_merged", engines=engines_used, merged=len(merged), query=query[:40])
+        return _format_search_results(merged, query)
+
+    def _merge_hybrid_results(
+        self,
+        engine_results: dict[str, list[dict[str, str]]],
+        num_results: int,
+    ) -> list[dict[str, str]]:
+        """Merge results from multiple search engines, ranked by cross-engine score.
+
+        URLs that appear in multiple engines get a higher score.
+        """
+        from urllib.parse import urlparse
+
+        url_data: dict[str, dict[str, Any]] = {}  # url → {result, engines, score}
+        total_engines = len(engine_results)
+
+        for engine_name, results in engine_results.items():
+            for rank, result in enumerate(results):
+                url = result.get("url", "").rstrip("/")
+                if not url:
+                    continue
+                domain = urlparse(url).netloc
+
+                if url not in url_data:
+                    url_data[url] = {
+                        "result": result,
+                        "engines": set(),
+                        "rank_sum": 0,
+                        "domain": domain,
+                    }
+                url_data[url]["engines"].add(engine_name)
+                url_data[url]["rank_sum"] += rank
+
+        # Score: cross-engine agreement (0.0-1.0) minus average rank penalty
+        scored: list[tuple[float, dict[str, str]]] = []
+        for url, data in url_data.items():
+            cross_score = len(data["engines"]) / total_engines
+            rank_penalty = data["rank_sum"] / (len(data["engines"]) * 10)
+            final_score = cross_score - rank_penalty
+
+            # Annotate result with engine info
+            result = dict(data["result"])
+            engine_list = ", ".join(sorted(data["engines"]))
+            result["content"] = (
+                f"[{len(data['engines'])}/{total_engines} engines: {engine_list}] "
+                + result.get("content", "")
+            )
+            scored.append((final_score, result))
+
+        # Sort by score descending
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [r for _, r in scored[:num_results]]
+
+    # -- Raw search methods (return list[dict] instead of formatted str) --
+
+    async def _search_raw_searxng(
+        self, query: str, num_results: int, language: str
+    ) -> list[dict[str, str]]:
+        """SearXNG search returning raw result dicts."""
+        url = f"{self._searxng_url}/search"
+        params = {"q": query, "format": "json", "language": language, "categories": "general"}
+        async with httpx.AsyncClient(timeout=self._search_timeout) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        return [
+            {"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("content", "")}
+            for r in data.get("results", [])[:num_results]
+        ]
+
+    async def _search_raw_brave(
+        self, query: str, num_results: int, language: str
+    ) -> list[dict[str, str]]:
+        """Brave Search API returning raw result dicts."""
+        url = "https://api.search.brave.com/res/v1/web/search"
+        headers = {"Accept": "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": self._brave_api_key or ""}
+        params = {"q": query, "count": str(num_results), "search_lang": language, "country": "DE"}
+        async with httpx.AsyncClient(timeout=self._search_timeout) as client:
+            resp = await client.get(url, headers=headers, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        return [
+            {"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("description", "")}
+            for r in data.get("web", {}).get("results", [])[:num_results]
+        ]
+
+    async def _search_raw_google_cse(
+        self, query: str, num_results: int, language: str
+    ) -> list[dict[str, str]]:
+        """Google CSE returning raw result dicts."""
+        url = "https://www.googleapis.com/customsearch/v1"
+        params = {"key": self._google_cse_api_key, "cx": self._google_cse_cx, "q": query, "num": str(min(num_results, 10)), "lr": f"lang_{language}"}
+        async with httpx.AsyncClient(timeout=self._search_timeout) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        return [
+            {"title": r.get("title", ""), "url": r.get("link", ""), "content": r.get("snippet", "")}
+            for r in data.get("items", [])[:num_results]
+        ]
+
+    async def _search_raw_duckduckgo(
+        self, query: str, num_results: int, language: str, timelimit: str = ""
+    ) -> list[dict[str, str]]:
+        """DuckDuckGo search returning raw result dicts."""
+        # Use the existing DDG method but parse the formatted output back
+        # This is a wrapper — the real DDG logic has caching + rate limiting
+        formatted = await self._search_duckduckgo(query, num_results, language, timelimit)
+        # Parse back to list of dicts (rough extraction from formatted text)
+        results: list[dict[str, str]] = []
+        import re as _re
+        for match in _re.finditer(r'\[(\d+)\] (.+?)\n\s+(.+?)\n\s+(.+?)(?=\n\[|\n\n|$)', formatted, _re.DOTALL):
+            results.append({
+                "title": match.group(2).strip(),
+                "url": match.group(3).strip(),
+                "content": match.group(4).strip(),
+            })
+        if not results and "Ergebnisse" not in formatted:
+            # DDG returned something but we couldn't parse → return as single result
+            return [{"title": query, "url": "", "content": formatted[:500]}]
+        return results
 
     async def _search_searxng(
         self,
