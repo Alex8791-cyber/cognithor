@@ -23,6 +23,7 @@ from jarvis.models import (
     MessageRole,
     SessionContext,
 )
+from jarvis.security.encrypted_db import encrypted_connect
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ class SessionStore:
             # Double-check after acquiring lock
             if self._conn is not None:
                 return self._conn
-            self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
+            self._conn = encrypted_connect(str(self._db_path), check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")

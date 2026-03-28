@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -44,7 +45,7 @@ class KnowledgeQAStore:
         self._init_db()
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS qa_pairs (
                     id TEXT PRIMARY KEY,
@@ -90,7 +91,7 @@ class KnowledgeQAStore:
             entity_id=entity_id,
             created_at=datetime.now(UTC).isoformat(),
         )
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.execute(
                 "INSERT INTO qa_pairs "
                 "(id, question, answer, topic, confidence, "
@@ -116,7 +117,7 @@ class KnowledgeQAStore:
     ) -> list[QAPair]:
         """Search Q&A pairs by question, answer, or topic."""
         pattern = f"%{query}%"
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM qa_pairs "
@@ -134,7 +135,7 @@ class KnowledgeQAStore:
         limit: int = 50,
     ) -> list[QAPair]:
         """Get all Q&A pairs for a topic."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM qa_pairs WHERE topic = ? ORDER BY confidence DESC LIMIT ?",
@@ -147,7 +148,7 @@ class KnowledgeQAStore:
         entity_id: str,
     ) -> list[QAPair]:
         """Get all Q&A pairs linked to an entity."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM qa_pairs WHERE entity_id = ? ORDER BY confidence DESC",
@@ -161,7 +162,7 @@ class KnowledgeQAStore:
         new_confidence: float,
     ) -> bool:
         """Update the confidence score for a Q&A pair."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             cur = conn.execute(
                 "UPDATE qa_pairs SET confidence = ? WHERE id = ?",
                 (new_confidence, qa_id),
@@ -171,7 +172,7 @@ class KnowledgeQAStore:
     def verify(self, qa_id: str) -> bool:
         """Mark a Q&A pair as verified, boosting confidence."""
         now = datetime.now(UTC).isoformat()
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             cur = conn.execute(
                 "UPDATE qa_pairs "
                 "SET last_verified = ?, "
@@ -184,7 +185,7 @@ class KnowledgeQAStore:
 
     def delete(self, qa_id: str) -> bool:
         """Delete a Q&A pair."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             cur = conn.execute(
                 "DELETE FROM qa_pairs WHERE id = ?",
                 (qa_id,),
@@ -193,7 +194,7 @@ class KnowledgeQAStore:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             total = conn.execute(
                 "SELECT COUNT(*) FROM qa_pairs",
             ).fetchone()[0]
@@ -215,7 +216,7 @@ class KnowledgeQAStore:
         offset: int = 0,
     ) -> list[QAPair]:
         """List Q&A pairs with pagination."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM qa_pairs ORDER BY created_at DESC LIMIT ? OFFSET ?",

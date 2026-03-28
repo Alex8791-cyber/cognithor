@@ -22,6 +22,8 @@ import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from jarvis.security.encrypted_db import encrypted_connect
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,7 +58,7 @@ class WorkingMemory:
 
     def _get_connection(self) -> sqlite3.Connection:
         """Create a SQLite connection with WAL mode."""
-        conn = sqlite3.connect(self.db_path)
+        conn = encrypted_connect(self.db_path)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.row_factory = sqlite3.Row

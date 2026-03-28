@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -176,7 +177,7 @@ class MarketplaceStore:
     def conn(self) -> sqlite3.Connection:
         """Lazily initialize the DB connection and schema."""
         if self._conn is None:
-            self._conn = sqlite3.connect(
+            self._conn = encrypted_connect(
                 str(self._db_path),
                 check_same_thread=False,
             )

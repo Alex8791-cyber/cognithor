@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -171,7 +172,7 @@ class DatabaseTools:
         """Open a SQLite connection with timeout and optional read-only pragma."""
         if not db_path.exists():
             raise DatabaseError(f"Datenbank nicht gefunden: {db_path}")
-        conn = sqlite3.connect(str(db_path), timeout=_CONN_TIMEOUT)
+        conn = encrypted_connect(str(db_path), timeout=_CONN_TIMEOUT)
         if read_only:
             conn.execute("PRAGMA query_only = ON")
         return conn

@@ -21,6 +21,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from jarvis.security.encrypted_db import encrypted_connect
+
 # ============================================================================
 # User Consent (DSGVO Art. 7)
 # ============================================================================
@@ -110,9 +112,9 @@ class ConsentManager:
         if db_path is not None:
             db_path = Path(db_path)
             db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._db = sqlite3.connect(str(db_path))
+            self._db = encrypted_connect(str(db_path))
         else:
-            self._db = sqlite3.connect(":memory:")
+            self._db = encrypted_connect(":memory:")
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.execute(self._CREATE_TABLE)

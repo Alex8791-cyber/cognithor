@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -44,7 +45,7 @@ class KnowledgeLineageTracker:
         self._init_db()
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS lineage (
                     id TEXT PRIMARY KEY,
@@ -95,7 +96,7 @@ class KnowledgeLineageTracker:
             ),
             timestamp=datetime.now(UTC).isoformat(),
         )
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.execute(
                 "INSERT INTO lineage "
                 "(id, entity_id, source_type, source_path, "
@@ -124,7 +125,7 @@ class KnowledgeLineageTracker:
         limit: int = 50,
     ) -> list[LineageEntry]:
         """Get all lineage entries for an entity."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM lineage WHERE entity_id = ? ORDER BY timestamp DESC LIMIT ?",
@@ -137,7 +138,7 @@ class KnowledgeLineageTracker:
         limit: int = 100,
     ) -> list[LineageEntry]:
         """Get most recent lineage entries."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM lineage ORDER BY timestamp DESC LIMIT ?",
@@ -147,7 +148,7 @@ class KnowledgeLineageTracker:
 
     def stats(self) -> dict[str, Any]:
         """Return lineage statistics."""
-        with sqlite3.connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:
             total = conn.execute(
                 "SELECT COUNT(*) FROM lineage",
             ).fetchone()[0]

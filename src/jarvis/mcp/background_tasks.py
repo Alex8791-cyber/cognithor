@@ -24,6 +24,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -94,14 +95,14 @@ class BackgroundProcessManager:
 
     def _init_db(self) -> None:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(str(self._db_path)) as conn:
+        with encrypted_connect(str(self._db_path)) as conn:
             conn.execute(_SCHEMA)
             # Mark orphaned jobs from previous sessions
             conn.execute("UPDATE background_jobs SET status = 'orphaned' WHERE status = 'running'")
             conn.commit()
 
     def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self._db_path))
+        conn = encrypted_connect(str(self._db_path))
         conn.row_factory = sqlite3.Row
         return conn
 

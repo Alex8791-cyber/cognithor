@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -43,7 +44,7 @@ class GoalScopedIndex:
 
         # Per-goal chunk DB
         self._chunk_db_path = self._base_dir / "chunks.db"
-        self._chunk_conn = sqlite3.connect(
+        self._chunk_conn = encrypted_connect(
             str(self._chunk_db_path), check_same_thread=False
         )
         self._chunk_conn.execute("PRAGMA journal_mode=WAL")
@@ -51,7 +52,7 @@ class GoalScopedIndex:
 
         # Per-goal entity DB
         self._entity_db_path = self._base_dir / "entities.db"
-        self._entity_conn = sqlite3.connect(
+        self._entity_conn = encrypted_connect(
             str(self._entity_db_path), check_same_thread=False
         )
         self._entity_conn.execute("PRAGMA journal_mode=WAL")

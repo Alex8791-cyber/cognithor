@@ -21,6 +21,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from jarvis.security.encrypted_db import encrypted_connect
+
 if TYPE_CHECKING:
     from jarvis.config import AuditConfig
 
@@ -125,7 +127,7 @@ class WORMUploader:
 
     def list_uploaded(self) -> list[dict[str, Any]]:
         """List all uploaded files with their retention dates."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = encrypted_connect(str(self._db_path))
         try:
             rows = conn.execute(
                 "SELECT filename, uploaded_at, bucket, key, retention_until "
@@ -206,7 +208,7 @@ class WORMUploader:
 
     def _init_db(self) -> None:
         """Ensure the state DB and table exist."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = encrypted_connect(str(self._db_path))
         try:
             conn.execute(_STATE_DB_SCHEMA)
             conn.commit()
@@ -222,7 +224,7 @@ class WORMUploader:
         retention_until: str,
     ) -> None:
         """Record a successful upload in the state DB."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = encrypted_connect(str(self._db_path))
         try:
             conn.execute(
                 "INSERT OR REPLACE INTO worm_uploads "
@@ -236,7 +238,7 @@ class WORMUploader:
 
     def _uploaded_set(self) -> set[str]:
         """Return the set of already-uploaded filenames."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = encrypted_connect(str(self._db_path))
         try:
             rows = conn.execute("SELECT filename FROM worm_uploads").fetchall()
         finally:

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Coroutine
 
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -137,7 +138,7 @@ class KnowledgeValidator:
         self._db_path = str(db_path)
         self._llm_fn = llm_fn
         self._mcp = mcp_client
-        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+        self._conn = encrypted_connect(self._db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._ensure_schema()
 

@@ -16,6 +16,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
+from jarvis.security.encrypted_db import encrypted_connect
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ class UserPreferenceStore:
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         # Persistente Connection statt pro-Aufruf connect (Performance)
-        self._conn = sqlite3.connect(
+        self._conn = encrypted_connect(
             str(self._db_path),
             check_same_thread=False,
             timeout=5.0,

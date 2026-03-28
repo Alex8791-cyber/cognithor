@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -24,7 +25,7 @@ class PromptVersionStore:
 
     def __init__(self, db_path: str) -> None:
         self._db_path = db_path
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._conn = encrypted_connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")

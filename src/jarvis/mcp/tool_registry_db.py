@@ -13,6 +13,8 @@ from __future__ import annotations
 import contextlib
 import json
 import sqlite3
+
+from jarvis.security.encrypted_db import encrypted_connect
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -861,7 +863,7 @@ class ToolRegistryDB:
         """
         self._db_path = db_path
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(db_path))
+        self._conn = encrypted_connect(str(db_path))
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA_SQL)

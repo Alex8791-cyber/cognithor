@@ -15,6 +15,9 @@
 - [Model Router](#model-router)
 - [Context Pipeline](#context-pipeline)
 - [Role System (v0.36)](#role-system)
+- [Evolution Engine](#evolution-engine)
+- [OSINT / HIM Module](#osint--him-module)
+- [GDPR Compliance Layer](#gdpr-compliance-layer)
 - [Bible Reference Index](#bible-reference-index)
 
 ---
@@ -367,6 +370,114 @@ Direction-based delegation (`a2a/delegation.py`):
 
 ---
 
+## Evolution Engine
+
+The Evolution Engine enables Cognithor to autonomously learn, research, and build
+new skills during idle time — with hardware-aware resource management, per-agent
+budget tracking, and checkpoint/resume support.
+
+### Architecture (4 Phases)
+
+```
+Phase 1: SystemDetector          Phase 2: Idle Learning Loop
+┌──────────────────────┐         ┌─────────────────────────────────┐
+│ detect_cpu/ram/gpu   │         │ IdleDetector (5min threshold)   │
+│ detect_ollama/net    │         │        │                        │
+│ SystemProfile        │         │  ┌─────▼──────┐                │
+│ tier/mode recommend  │         │  │   Scout     │ (find gaps)    │
+└──────────────────────┘         │  │   Research  │ (deep search)  │
+                                 │  │   Build     │ (create skill) │
+Phase 3: Budget + Resources      │  │   Reflect   │ (evaluate)     │
+┌──────────────────────┐         │  └─────────────┘                │
+│ ResourceMonitor      │         └─────────────────────────────────┘
+│ CPU/RAM/GPU sampling │
+│ should_yield()       │         Phase 4: Checkpoint/Resume
+│ Per-agent CostTracker│         ┌─────────────────────────────────┐
+│ Cooperative scheduling│        │ EvolutionCheckpoint (per step)  │
+└──────────────────────┘         │ EvolutionResumer (load + skip)  │
+                                 │ Delta snapshots                 │
+                                 │ POST /evolution/resume          │
+                                 └─────────────────────────────────┘
+```
+
+### Key Files
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| SystemDetector | `system/detector.py` | 8 hardware/software detection targets |
+| ResourceMonitor | `system/resource_monitor.py` | Async CPU/RAM/GPU sampling, busy detection |
+| IdleDetector | `evolution/idle_detector.py` | User activity tracking, idle threshold |
+| EvolutionLoop | `evolution/loop.py` | Scout→Research→Build→Reflect orchestration |
+| EvolutionCheckpoint | `evolution/checkpoint.py` | Step-level state persistence |
+| EvolutionResumer | `evolution/resume.py` | Checkpoint-based resume logic |
+| CostTracker | `telemetry/cost_tracker.py` | Per-agent LLM cost tracking + budgets |
+| CheckpointStore | `core/checkpointing.py` | Generic JSON checkpoint persistence |
+
+### Design Decisions
+
+- **Cooperative scheduling** — The EvolutionLoop yields to user activity AND high
+  system load. `ResourceMonitor.should_yield()` checks CPU > 80%, RAM > 90%,
+  GPU > 80% before each step.
+- **Per-agent budgets** — Each agent (scout, skill_builder) has a configurable
+  daily USD limit. Budget exhaustion gracefully pauses evolution, not crashes.
+- **Step-level checkpointing** — Every completed step is persisted. Interrupted
+  cycles resume from the exact next step, not from scratch.
+- **Delta snapshots** — Only changed data since last checkpoint is stored,
+  reducing disk usage for long-running knowledge bases.
+
+---
+
+## OSINT / HIM Module
+
+The Human Investigation Module provides structured OSINT capabilities:
+
+```
+HIMAgent.run(HIMRequest)
+    |
+    v
+GDPRGatekeeper.check()
+    |
+    v
+Collectors (parallel): GitHub, Web, arXiv, [Scholar, LinkedIn, Crunchbase, Social]
+    |
+    v
+EvidenceAggregator: cross-verify, classify claims, detect contradictions
+    |
+    v
+TrustScorer: 5-dimension weighted score (0-100)
+    |
+    v
+HIMReporter: Markdown/JSON/Quick + SHA-256 signature
+    |
+    v
+vault_save(report)
+```
+
+Located at `src/jarvis/osint/`. Exposed as 3 MCP tools: `investigate_person`, `investigate_project`, `investigate_org`.
+
+---
+
+## GDPR Compliance Layer
+
+```
+Request -> ComplianceEngine -> Gatekeeper -> Executor
+              |
+              v
+         ConsentManager (SQLite)
+              |
+              v
+         ComplianceAuditLog (JSONL, SHA-256 chain)
+```
+
+Key components:
+- `security/consent.py` — Per-channel consent tracking
+- `security/compliance_engine.py` — Runtime policy enforcement
+- `security/compliance_audit.py` — Immutable audit log
+- `security/encrypted_db.py` — SQLCipher wrapper
+- `security/gdpr.py` — DataPurpose, DPIARiskLevel, ErasureManager
+
+---
+
 ## Bible Reference Index
 
 The codebase uses "Bible references" (§) to cross-reference architectural
@@ -401,3 +512,4 @@ decisions. Here is the complete mapping:
 | §16 | Explainability | `core/explainability.py`, `audit/eu_ai_act.py` |
 | §17 | GDPR, Multi-Tenancy | `core/multitenant.py`, `telemetry/` |
 | §18 | Performance | `core/performance.py`, `benchmark/suite.py` |
+| §19 | Evolution Engine | `evolution/loop.py`, `evolution/checkpoint.py`, `evolution/resume.py`, `system/resource_monitor.py` |

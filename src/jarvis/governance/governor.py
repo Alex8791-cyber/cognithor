@@ -8,6 +8,7 @@ from typing import Any
 
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.models import PolicyChange, PolicyProposal
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -35,7 +36,7 @@ class GovernanceAgent:
         self.db_path = db_path
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
-        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self._conn = encrypted_connect(self.db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.models import CapabilityProfile, TaskProfile, ToolProfile
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ class TaskProfiler:
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+            self._conn = encrypted_connect(self._db_path, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")

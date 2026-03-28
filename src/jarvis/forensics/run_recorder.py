@@ -25,6 +25,7 @@ from jarvis.models import (
     RunSummary,
     ToolResult,
 )
+from jarvis.security.encrypted_db import encrypted_connect
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -121,7 +122,7 @@ class RunRecorder:
     def __init__(self, db_path: str | Path) -> None:
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn: sqlite3.Connection = sqlite3.connect(
+        self._conn: sqlite3.Connection = encrypted_connect(
             str(self._db_path),
             check_same_thread=False,
         )

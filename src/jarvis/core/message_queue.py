@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
+from jarvis.security.encrypted_db import encrypted_connect
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ class DurableMessageQueue:
         """Lazy-initialisiert die DB-Verbindung und Schema."""
         if self._conn is None:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._conn = sqlite3.connect(
+            self._conn = encrypted_connect(
                 str(self._db_path),
                 check_same_thread=False,
             )
