@@ -1726,6 +1726,39 @@ class EvolutionConfig(BaseModel):
         default_factory=list,
         description="User-defined learning topics, e.g. ['Python async patterns', 'Kubernetes deployment']",
     )
+    # Deep Learning (Phase 5)
+    deep_learning_enabled: bool = Field(
+        default=True,
+        description="Enable deep learning plans (auto-promotes complex goals)",
+    )
+    max_concurrent_plans: int = Field(
+        default=2,
+        ge=1,
+        le=5,
+        description="Maximum simultaneously active learning plans",
+    )
+    max_pages_per_crawl: int = Field(
+        default=50,
+        ge=5,
+        le=500,
+        description="Maximum pages to fetch per sitemap crawl",
+    )
+    quality_threshold: float = Field(
+        default=0.8,
+        ge=0.5,
+        le=1.0,
+        description="Minimum quality score to pass a SubGoal (0.0-1.0)",
+    )
+    coverage_threshold: float = Field(
+        default=0.7,
+        ge=0.3,
+        le=1.0,
+        description="Minimum coverage score to pass a SubGoal (0.0-1.0)",
+    )
+    auto_expand: bool = Field(
+        default=True,
+        description="HorizonScanner automatically adds new SubGoals",
+    )
 
 
 # ============================================================================

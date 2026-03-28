@@ -89,6 +89,7 @@ class EvolutionLoop:
         self._llm_fn = llm_fn
         self._skill_registry = skill_registry
         self._session_analyzer = session_analyzer
+        self._deep_learner: Any = None  # Set by gateway after construction
         self._current_checkpoint: EvolutionCheckpoint | None = None
         self._running = False
         self._task: asyncio.Task | None = None
@@ -285,12 +286,46 @@ class EvolutionLoop:
             except Exception:
                 log.debug("evolution_scout_curiosity_failed", exc_info=True)
 
+        # --- Tier 1.5: DeepLearner active plans ---
+        if self._deep_learner and self._deep_learner.has_active_plans():
+            for plan in self._deep_learner.list_plans():
+                if plan.status != "active":
+                    continue
+                sg = self._deep_learner.get_next_subgoal(plan.id)
+                if sg:
+                    log.info(
+                        "evolution_scout_deep_plan",
+                        plan=plan.goal[:40],
+                        subgoal=sg.title[:40],
+                    )
+                    return [_LearningGoal(
+                        query=f"[deep:{plan.id}:{sg.id}] {sg.title}: {sg.description}",
+                        source="deep_plan",
+                        target_skill=sg.id,
+                    )]
+
         # --- Tier 2: User learning goals ---
         goals: list[str] = []
         if self._config and hasattr(self._config, "learning_goals"):
             goals = self._config.learning_goals or []
 
         if goals:
+            # Auto-promote complex goals to deep learning plans
+            if (
+                self._deep_learner
+                and self._config
+                and getattr(self._config, "deep_learning_enabled", True)
+            ):
+                for g in list(goals):
+                    if self._deep_learner.is_complex_goal(g):
+                        log.info("evolution_promoting_to_deep_plan", goal=g[:60])
+                        try:
+                            import asyncio
+                            await self._deep_learner.create_plan(g)
+                        except Exception:
+                            log.debug("evolution_promote_failed", exc_info=True)
+
+            # Remaining simple goals
             researched = {
                 r.research_topic for r in self._results[-20:] if r.research_topic
             }
