@@ -477,6 +477,29 @@ class Gateway:
             if cm and hasattr(cm, "delete_user"):
                 erasure.register_handler(lambda uid, c=cm: c.delete_user(uid))
 
+            # Vault notes (delete all for single-user system)
+            vault_tools = None
+            for attr_name in ("_vault_tools", "_vault"):
+                vt = getattr(self, attr_name, None)
+                if vt and hasattr(vt, "_backend"):
+                    vault_tools = vt
+                    break
+            if vault_tools:
+                def _erase_vault(uid, vt=vault_tools):
+                    try:
+                        notes = vt._backend.all_notes()
+                        count = 0
+                        for note in notes:
+                            try:
+                                vt._backend.delete(note.path)
+                                count += 1
+                            except Exception:
+                                pass
+                        return count
+                    except Exception:
+                        return 0
+                erasure.register_handler(_erase_vault)
+
         # Governance-Cron-Job registrieren (taeglich um 02:00)
         if self._cron_engine and hasattr(self, "_governance_agent") and self._governance_agent:
             try:

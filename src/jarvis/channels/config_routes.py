@@ -2376,7 +2376,7 @@ def _register_security_routes(
     # -- GDPR Art. 20: User Data Export (full) ----------------------------
 
     @app.get("/api/v1/user/data", dependencies=deps)
-    async def export_user_data(user_id: str = "") -> dict[str, Any]:
+    async def export_user_data(user_id: str = "", format: str = "json") -> Any:
         """GDPR Art. 15/20: Export all personal data for a user."""
         if not user_id:
             return {"error": "user_id query parameter required"}
@@ -2473,6 +2473,39 @@ def _register_security_routes(
             except Exception:
                 export["vault_notes"] = []
 
+        if format == "csv":
+            import csv
+            import io
+            from starlette.responses import StreamingResponse
+
+            output = io.StringIO()
+
+            # Entities CSV
+            if export.get("entities"):
+                output.write("# Entities\n")
+                writer = csv.DictWriter(output, fieldnames=["name", "type", "attributes"])
+                writer.writeheader()
+                for e in export["entities"]:
+                    writer.writerow(e)
+                output.write("\n")
+
+            # Sessions CSV
+            if export.get("sessions"):
+                output.write("# Sessions\n")
+                keys = export["sessions"][0].keys() if export["sessions"] else []
+                writer = csv.DictWriter(output, fieldnames=keys)
+                writer.writeheader()
+                for s in export["sessions"]:
+                    writer.writerow(s)
+                output.write("\n")
+
+            output.seek(0)
+            return StreamingResponse(
+                iter([output.getvalue()]),
+                media_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename=cognithor_export_{user_id}.csv"}
+            )
+
         return export
 
     @app.patch("/api/v1/user/data", dependencies=deps)
@@ -2550,6 +2583,111 @@ def _register_security_routes(
 
         return {"corrections_applied": len(results), "results": results,
                 "gdpr_article": "Art. 16 DSGVO — Recht auf Berichtigung"}
+
+    # -- GDPR Art. 20: Data Import (Portability) --------------------------
+
+    @app.post("/api/v1/user/data/import", dependencies=deps)
+    async def import_user_data(request: Request) -> dict[str, Any]:
+        """GDPR Art. 20: Import data from another Cognithor instance."""
+        try:
+            body = await request.json()
+        except Exception:
+            return {"error": "Invalid JSON"}
+
+        if body.get("format") != "cognithor_portable":
+            return {"error": "Unsupported format. Expected 'cognithor_portable'"}
+
+        counts = {}
+
+        # Import vault notes
+        vault_notes = body.get("vault_notes", [])
+        if vault_notes:
+            imported = 0
+            vault = None
+            for attr in dir(gateway):
+                obj = getattr(gateway, attr, None)
+                if hasattr(obj, "_backend") and hasattr(obj._backend, "save"):
+                    vault = obj
+                    break
+            if vault:
+                for note in vault_notes:
+                    try:
+                        path = note.get("path", "")
+                        if not vault._backend.exists(path):
+                            vault._backend.save(
+                                path=path,
+                                title=note.get("title", "Imported"),
+                                content=note.get("content", ""),
+                                tags=note.get("tags", ""),
+                                folder=note.get("folder", "wissen"),
+                                sources="",
+                                backlinks=[],
+                            )
+                            imported += 1
+                    except Exception:
+                        pass
+            counts["vault_notes"] = imported
+
+        # Import entities
+        entities = body.get("entities", [])
+        if entities:
+            imported = 0
+            memory_mgr = getattr(gateway, "_memory_manager", None)
+            if memory_mgr:
+                mcp = getattr(gateway, "_mcp_client", None)
+                for ent in entities:
+                    try:
+                        name = ent.get("name", "")
+                        etype = ent.get("type", "concept")
+                        if name and mcp:
+                            await mcp.call_tool("add_entity", {
+                                "name": name, "entity_type": etype,
+                                "attributes": "{}", "source_file": "import"
+                            })
+                            imported += 1
+                        elif name and hasattr(memory_mgr, "semantic"):
+                            indexer = getattr(memory_mgr.semantic, "_indexer", None)
+                            if indexer and hasattr(indexer, "_conn"):
+                                indexer._conn.execute(
+                                    "INSERT OR IGNORE INTO entities (name, entity_type) VALUES (?, ?)",
+                                    (name, etype)
+                                )
+                                indexer._conn.commit()
+                                imported += 1
+                    except Exception:
+                        pass
+            counts["entities"] = imported
+
+        # Import user preferences
+        prefs = body.get("user_preferences", [])
+        if prefs:
+            imported = 0
+            pref_store = getattr(gateway, "_user_pref_store", None)
+            if pref_store and hasattr(pref_store, "_conn"):
+                for pref in prefs if isinstance(prefs, list) else [prefs]:
+                    try:
+                        if isinstance(pref, dict):
+                            for k, v in pref.items():
+                                pref_store._conn.execute(
+                                    "INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)",
+                                    (str(k), str(v))
+                                )
+                            pref_store._conn.commit()
+                            imported += 1
+                    except Exception:
+                        pass
+            counts["user_preferences"] = imported
+
+        # Log import in compliance audit
+        try:
+            from jarvis.security.compliance_audit import ComplianceAuditLog
+            audit = ComplianceAuditLog()
+            audit.record("data_imported", counts=counts)
+        except Exception:
+            pass
+
+        return {"status": "imported", "counts": counts,
+                "gdpr_article": "Art. 20 DSGVO — Datenportabilitaet"}
 
     # -- GDPR Art. 18/21: Purpose Restrictions ----------------------------
 
