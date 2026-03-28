@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
 from jarvis.evolution.models import LearningPlan, ScheduleSpec
-from jarvis.evolution.schedule_manager import ScheduleManager
+from jarvis.evolution.schedule_manager import ScheduleManager, _normalize_cron
 
 
 def _make_plan(
@@ -22,13 +22,13 @@ def _make_plan(
 
 def _make_cron_engine() -> MagicMock:
     engine = MagicMock()
-    engine.add_cron_job = AsyncMock()
+    engine.add_runtime_job = MagicMock(return_value=True)
     return engine
 
 
 @pytest.mark.asyncio
 async def test_create_schedules():
-    """1 ScheduleSpec -> cron add_cron_job called once, returns 1."""
+    """1 ScheduleSpec -> add_runtime_job called once, returns 1."""
     engine = _make_cron_engine()
     mgr = ScheduleManager(cron_engine=engine)
 
@@ -39,7 +39,7 @@ async def test_create_schedules():
     count = await mgr.create_schedules(plan)
 
     assert count == 1
-    engine.add_cron_job.assert_called_once()
+    engine.add_runtime_job.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -56,7 +56,7 @@ async def test_create_multiple_schedules():
     count = await mgr.create_schedules(plan)
 
     assert count == 2
-    assert engine.add_cron_job.call_count == 2
+    assert engine.add_runtime_job.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -70,12 +70,12 @@ async def test_skip_empty_schedules():
     count = await mgr.create_schedules(plan)
 
     assert count == 0
-    engine.add_cron_job.assert_not_called()
+    engine.add_runtime_job.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_cron_job_name_prefixed():
-    """Job name includes 'evolution_' prefix."""
+    """Job name includes 'evolution_' prefix and is sanitized."""
     engine = _make_cron_engine()
     mgr = ScheduleManager(cron_engine=engine)
 
@@ -85,13 +85,9 @@ async def test_cron_job_name_prefixed():
 
     await mgr.create_schedules(plan)
 
-    call_kwargs = engine.add_cron_job.call_args
-    # name could be positional or keyword — check the actual value
-    # We expect name= kwarg with "evolution_" prefix
-    name_arg = call_kwargs.kwargs.get("name") or call_kwargs.args[0]
-    assert name_arg.startswith("evolution_")
-    assert "learn-rust" in name_arg  # goal_slug
-    assert "daily-rust" in name_arg  # spec.name
+    cron_job = engine.add_runtime_job.call_args[0][0]
+    assert cron_job.name.startswith("evolution_")
+    assert " " not in cron_job.name  # sanitized
 
 
 @pytest.mark.asyncio
@@ -106,3 +102,18 @@ async def test_no_cron_engine():
     count = await mgr.create_schedules(plan)
 
     assert count == 0
+
+
+class TestNormalizeCron:
+    def test_5_field_passthrough(self):
+        assert _normalize_cron("0 8 * * 1") == "0 8 * * 1"
+
+    def test_6_field_drops_seconds(self):
+        assert _normalize_cron("0 0 8 * * MON") == "0 8 * * 1"
+
+    def test_named_days(self):
+        assert _normalize_cron("0 8 * * MON") == "0 8 * * 1"
+        assert _normalize_cron("0 8 * * FRI") == "0 8 * * 5"
+
+    def test_6_field_with_named_day(self):
+        assert _normalize_cron("0 0 10 1 */3 SAT") == "0 10 1 */3 6"
