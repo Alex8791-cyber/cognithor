@@ -10,6 +10,11 @@ from typing import Any
 from uuid import uuid4
 
 from jarvis.security.encrypted_db import encrypted_connect
+
+try:
+    from jarvis.security.encrypted_db import compatible_row_factory
+except ImportError:
+    compatible_row_factory = lambda: sqlite3.Row
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -118,7 +123,7 @@ class KnowledgeQAStore:
         """Search Q&A pairs by question, answer, or topic."""
         pattern = f"%{query}%"
         with encrypted_connect(self._db_path) as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM qa_pairs "
                 "WHERE question LIKE ? "
@@ -136,7 +141,7 @@ class KnowledgeQAStore:
     ) -> list[QAPair]:
         """Get all Q&A pairs for a topic."""
         with encrypted_connect(self._db_path) as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM qa_pairs WHERE topic = ? ORDER BY confidence DESC LIMIT ?",
                 (topic, limit),
@@ -149,7 +154,7 @@ class KnowledgeQAStore:
     ) -> list[QAPair]:
         """Get all Q&A pairs linked to an entity."""
         with encrypted_connect(self._db_path) as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM qa_pairs WHERE entity_id = ? ORDER BY confidence DESC",
                 (entity_id,),
@@ -217,7 +222,7 @@ class KnowledgeQAStore:
     ) -> list[QAPair]:
         """List Q&A pairs with pagination."""
         with encrypted_connect(self._db_path) as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM qa_pairs ORDER BY created_at DESC LIMIT ? OFFSET ?",
                 (limit, offset),

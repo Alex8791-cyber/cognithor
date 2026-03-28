@@ -10,6 +10,11 @@ from typing import Any
 from uuid import uuid4
 
 from jarvis.security.encrypted_db import encrypted_connect
+
+try:
+    from jarvis.security.encrypted_db import compatible_row_factory
+except ImportError:
+    compatible_row_factory = lambda: sqlite3.Row
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -126,7 +131,7 @@ class KnowledgeLineageTracker:
     ) -> list[LineageEntry]:
         """Get all lineage entries for an entity."""
         with encrypted_connect(self._db_path) as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM lineage WHERE entity_id = ? ORDER BY timestamp DESC LIMIT ?",
                 (entity_id, limit),
@@ -139,7 +144,7 @@ class KnowledgeLineageTracker:
     ) -> list[LineageEntry]:
         """Get most recent lineage entries."""
         with encrypted_connect(self._db_path) as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM lineage ORDER BY timestamp DESC LIMIT ?",
                 (limit,),

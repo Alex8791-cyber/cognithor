@@ -18,6 +18,11 @@ from pydantic import BaseModel
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.security.encrypted_db import encrypted_connect
 
+try:
+    from jarvis.security.encrypted_db import compatible_row_factory
+except ImportError:
+    compatible_row_factory = lambda: sqlite3.Row
+
 log = logging.getLogger(__name__)
 
 
@@ -78,7 +83,7 @@ class UserPreferenceStore:
         )
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
-        self._conn.row_factory = sqlite3.Row
+        self._conn.row_factory = compatible_row_factory()
         self._lock = threading.Lock()
         self._ensure_table()
 

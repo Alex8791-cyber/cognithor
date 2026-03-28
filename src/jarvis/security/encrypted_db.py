@@ -22,7 +22,28 @@ from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-__all__ = ["encrypted_connect", "is_encryption_available"]
+__all__ = ["encrypted_connect", "is_encryption_available", "compatible_row_factory"]
+
+
+def _dict_row_factory(cursor: Any, row: tuple) -> sqlite3.Row | dict:
+    """Row factory that works with both sqlite3 and sqlcipher3 cursors.
+
+    sqlite3.Row requires a sqlite3.Cursor, which sqlcipher3 doesn't provide.
+    This factory returns a dict-like object that supports both index and key access.
+    """
+    columns = [d[0] for d in cursor.description]
+    return dict(zip(columns, row))
+
+
+def compatible_row_factory() -> Any:
+    """Return a row factory compatible with the active DB backend.
+
+    Use this instead of sqlite3.Row when the DB might be encrypted:
+        conn.row_factory = compatible_row_factory()
+    """
+    if _sqlcipher_available:
+        return _dict_row_factory
+    return sqlite3.Row
 
 _sqlcipher_available = False
 try:

@@ -13,6 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from jarvis.security.encrypted_db import encrypted_connect
+
+try:
+    from jarvis.security.encrypted_db import compatible_row_factory
+except ImportError:
+    compatible_row_factory = lambda: sqlite3.Row
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -47,7 +52,7 @@ class CorrectionMemory:
 
     def _conn(self) -> sqlite3.Connection:
         conn = encrypted_connect(str(self._db_path))
-        conn.row_factory = sqlite3.Row
+        conn.row_factory = compatible_row_factory()
         return conn
 
     def store(

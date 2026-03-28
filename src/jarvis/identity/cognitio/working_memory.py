@@ -24,6 +24,11 @@ from datetime import UTC, datetime, timedelta
 
 from jarvis.security.encrypted_db import encrypted_connect
 
+try:
+    from jarvis.security.encrypted_db import compatible_row_factory
+except ImportError:
+    compatible_row_factory = lambda: sqlite3.Row
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,7 +66,7 @@ class WorkingMemory:
         conn = encrypted_connect(self.db_path)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
-        conn.row_factory = sqlite3.Row
+        conn.row_factory = compatible_row_factory()
         return conn
 
     def _initialize_db(self) -> None:

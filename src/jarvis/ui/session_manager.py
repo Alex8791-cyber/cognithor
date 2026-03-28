@@ -16,6 +16,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 from jarvis.security.encrypted_db import encrypted_connect
+
+try:
+    from jarvis.security.encrypted_db import compatible_row_factory
+except ImportError:
+    compatible_row_factory = lambda: sqlite3.Row
 from jarvis.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -55,7 +60,7 @@ class SessionManager:
     def __init__(self, db_path: str) -> None:
         self._db_path = db_path
         self._conn = encrypted_connect(db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self._conn.row_factory = compatible_row_factory()
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SESSIONS_SCHEMA)
         self._conn.commit()

@@ -9,6 +9,11 @@ from typing import TYPE_CHECKING, Any
 
 from jarvis.db import SQLITE_BUSY_TIMEOUT_MS
 from jarvis.security.encrypted_db import encrypted_connect
+
+try:
+    from jarvis.security.encrypted_db import compatible_row_factory
+except ImportError:
+    compatible_row_factory = lambda: sqlite3.Row
 from jarvis.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -28,7 +33,7 @@ class TaskTelemetryCollector:
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
             self._conn = encrypted_connect(self._db_path, check_same_thread=False)
-            self._conn.row_factory = sqlite3.Row
+            self._conn.row_factory = compatible_row_factory()
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         return self._conn
