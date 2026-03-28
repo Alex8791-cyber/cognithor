@@ -648,7 +648,7 @@ class EvolutionLoop:
 
     async def _loop(self) -> None:
         """Background loop: wait for idle -> run cycle -> cooldown."""
-        cooldown = 300
+        cooldown = 60
         if self._config and hasattr(self._config, "cycle_cooldown_seconds"):
             cooldown = self._config.cycle_cooldown_seconds
         while self._running:

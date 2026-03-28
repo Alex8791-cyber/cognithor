@@ -162,24 +162,42 @@ class DeepLearner:
         Picks SubGoals in this priority:
         1. 'pending' (never started)
         2. 'researching' / 'building' (interrupted, resume)
-        3. 'failed' (retry)
+        3. 'failed' (retry — only if last tested > 30 min ago)
         """
+        import time as _time
+        from datetime import datetime, timedelta, timezone
+
         plan = self.get_plan(plan_id)
         if plan is None:
             return None
-        # Actionable statuses in priority order
-        for status in ("pending", "researching", "building", "failed"):
+
+        # Priority 1-2: pending, researching, building (immediate)
+        for status in ("pending", "researching", "building"):
             candidates = [sg for sg in plan.sub_goals if sg.status == status]
             if candidates:
                 return candidates[0]
+
+        # Priority 3: failed — but only after a cooldown period
+        # This prevents the infinite re-test loop
+        cooldown = timedelta(minutes=30)
+        cutoff = (datetime.now(timezone.utc) - cooldown).isoformat()
+        for sg in plan.sub_goals:
+            if sg.status == "failed":
+                if not sg.last_tested or sg.last_tested < cutoff:
+                    return sg
+                else:
+                    log.debug(
+                        "deep_learner_skip_failed_cooldown",
+                        subgoal=sg.title[:40],
+                        last_tested=sg.last_tested,
+                    )
         return None
 
     def has_active_plans(self) -> bool:
         """Return True if any plan has actionable sub_goals."""
-        actionable = {"pending", "researching", "building", "failed"}
         for plan in self.list_plans():
             if plan.status == "active":
-                if any(sg.status in actionable for sg in plan.sub_goals):
+                if self.get_next_subgoal(plan.id) is not None:
                     return True
         return False
 
@@ -301,6 +319,7 @@ class DeepLearner:
 
             for source in sources:
                 if self._idle_detector and not self._idle_detector.is_idle:
+                    log.info("deep_learner_interrupted_source_loop", subgoal=subgoal.title[:40], round=research_round)
                     plan.save(str(self._plans_dir))
                     return False
 
@@ -320,6 +339,7 @@ class DeepLearner:
                 subgoal.status = "building"
                 for fr in fetch_results:
                     if self._idle_detector and not self._idle_detector.is_idle:
+                        log.info("deep_learner_interrupted_build_loop", subgoal=subgoal.title[:40], round=research_round)
                         plan.save(str(self._plans_dir))
                         return False
                     build_result = await builder.build(fr)
@@ -368,8 +388,18 @@ class DeepLearner:
                 await self._generate_skill_for_subgoal(subgoal, plan)
         else:
             subgoal.status = "failed"
-            log.info("deep_learner_subgoal_quality_failed", subgoal=subgoal.title[:40],
-                     failed=quality.get("failed_questions", []))
+            # Bump coverage thresholds by reducing counts so next run does MORE research
+            # This forces the system to fetch additional sources before retesting
+            subgoal.vault_entries = max(0, subgoal.vault_entries - 4)
+            subgoal.chunks_created = max(0, subgoal.chunks_created - 12)
+            subgoal.entities_created = max(0, subgoal.entities_created - 4)
+            subgoal.sources_fetched = max(0, subgoal.sources_fetched - 4)
+            log.info(
+                "deep_learner_subgoal_quality_failed",
+                subgoal=subgoal.title[:40],
+                test_count=subgoal.test_count,
+                failed_count=len(quality.get("failed_questions", [])),
+            )
 
         # Challenge weak claims — cross-reference low-confidence facts
         if self._knowledge_validator:

@@ -291,10 +291,15 @@ class KnowledgeValidator:
     async def challenge_weak_claims(
         self, goal_slug: str, max_challenges: int = 3
     ) -> list[KnowledgeClaim]:
-        """Find low-confidence claims and search for counter-evidence."""
+        """Find low-confidence claims and search for counter-evidence.
+
+        Skips already-debunked claims — no point re-challenging them.
+        """
         weak = self.get_claims(
-            goal_slug=goal_slug, max_confidence=0.6, limit=max_challenges
+            goal_slug=goal_slug, max_confidence=0.6, limit=max_challenges + 10
         )
+        # Filter out debunked claims — they've already been proven false
+        weak = [c for c in weak if c.status != "debunked"][:max_challenges]
         if not weak or not self._mcp:
             return weak
 
