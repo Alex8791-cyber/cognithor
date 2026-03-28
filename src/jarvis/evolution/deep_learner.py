@@ -5,7 +5,9 @@ import shutil
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from jarvis.evolution.models import LearningPlan, SeedSource, SubGoal
+from jarvis.evolution.knowledge_builder import KnowledgeBuilder
+from jarvis.evolution.models import LearningPlan, SeedSource, SourceSpec, SubGoal
+from jarvis.evolution.research_agent import ResearchAgent
 from jarvis.evolution.strategy_planner import StrategyPlanner
 from jarvis.utils.logging import get_logger
 
@@ -42,6 +44,10 @@ class DeepLearner:
         self._plans_dir.mkdir(parents=True, exist_ok=True)
 
         self._strategy_planner = StrategyPlanner(llm_fn=llm_fn)
+        self._research_agent = ResearchAgent(
+            mcp_client=mcp_client,
+            idle_detector=idle_detector,
+        ) if mcp_client else None
 
         self._llm_fn = llm_fn
         self._mcp_client = mcp_client
@@ -134,9 +140,120 @@ class DeepLearner:
         return self._strategy_planner.is_complex_goal(goal)
 
     # ------------------------------------------------------------------
+    # Research -> Build cycle
+    # ------------------------------------------------------------------
+
+    async def run_subgoal(self, plan_id: str, subgoal_id: str) -> bool:
+        """Execute Research->Build for a single SubGoal.
+
+        Returns True if completed, False if interrupted or failed.
+        """
+        plan = self.get_plan(plan_id)
+        if not plan:
+            log.warning("deep_learner_plan_not_found", plan_id=plan_id[:8])
+            return False
+        subgoal = next((sg for sg in plan.sub_goals if sg.id == subgoal_id), None)
+        if not subgoal:
+            log.warning("deep_learner_subgoal_not_found", subgoal_id=subgoal_id[:8])
+            return False
+        if not self._research_agent:
+            log.warning("deep_learner_no_research_agent")
+            return False
+
+        subgoal.status = "researching"
+        plan.save(str(self._plans_dir))
+        log.info("deep_learner_subgoal_start", plan=plan.goal[:40], subgoal=subgoal.title[:40])
+
+        # Find sources for this subgoal
+        # Use plan sources that are still pending, or discover new ones
+        sources = [s for s in plan.sources if s.status == "pending"]
+        if not sources:
+            sources = await self._discover_sources(subgoal.title)
+
+        builder = KnowledgeBuilder(
+            mcp_client=self._mcp_client,
+            llm_fn=self._llm_fn,
+            goal_slug=plan.goal_slug,
+        )
+
+        for source in sources:
+            # Idle check
+            if self._idle_detector and not self._idle_detector.is_idle:
+                log.info("deep_learner_interrupted", subgoal=subgoal.title[:40])
+                plan.save(str(self._plans_dir))
+                return False
+
+            log.info("deep_learner_fetching", source=source.url[:60])
+            fetch_results = await self._research_agent.fetch_source(source)
+            source.status = "done" if fetch_results else "error"
+            source.pages_fetched = len(fetch_results)
+
+            # Build phase
+            subgoal.status = "building"
+            for fr in fetch_results:
+                if self._idle_detector and not self._idle_detector.is_idle:
+                    plan.save(str(self._plans_dir))
+                    return False
+                build_result = await builder.build(fr)
+                subgoal.chunks_created += build_result.chunks_created
+                subgoal.entities_created += build_result.entities_created
+                if build_result.vault_path:
+                    subgoal.vault_entries += 1
+                subgoal.sources_fetched += 1
+
+        # Mark as ready for quality testing (Phase 5C)
+        subgoal.status = "testing"
+        plan.total_chunks_indexed += subgoal.chunks_created
+        plan.total_entities_created += subgoal.entities_created
+        plan.total_vault_entries += subgoal.vault_entries
+        plan.save(str(self._plans_dir))
+
+        log.info(
+            "deep_learner_subgoal_complete",
+            subgoal=subgoal.title[:40],
+            chunks=subgoal.chunks_created,
+            entities=subgoal.entities_created,
+            vault_entries=subgoal.vault_entries,
+        )
+        return True
+
+    async def _discover_sources(self, topic: str) -> list[SourceSpec]:
+        """Use web_search to find sources for a topic when none are specified."""
+        if not self._mcp_client:
+            return []
+        try:
+            result = await self._mcp_client.call_tool(
+                "web_search",
+                {"query": topic, "num_results": 5, "language": "de"},
+            )
+            if result.is_error:
+                return []
+            import re
+            urls = re.findall(r'https?://[^\s<>"\')\]]+', result.content)
+            # Deduplicate
+            seen: set[str] = set()
+            unique_urls: list[str] = []
+            for url in urls:
+                if url not in seen:
+                    seen.add(url)
+                    unique_urls.append(url)
+            return [
+                SourceSpec(
+                    url=url,
+                    source_type="reference",
+                    title=topic,
+                    fetch_strategy="full_page",
+                    update_frequency="once",
+                )
+                for url in unique_urls[:5]
+            ]
+        except Exception:
+            log.debug("deep_learner_discover_sources_failed", exc_info=True)
+            return []
+
+    # ------------------------------------------------------------------
     # Future methods (not yet implemented)
     # ------------------------------------------------------------------
-    # async def run_subgoal(self, plan_id, subgoal_id) -> SubGoal: ...
     # async def process_scheduled_update(self, plan_id, schedule_name) -> None: ...
     # async def run_quality_test(self, plan_id) -> dict: ...
     # async def run_horizon_scan(self, plan_id) -> dict: ...

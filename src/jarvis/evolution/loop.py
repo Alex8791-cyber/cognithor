@@ -447,6 +447,17 @@ class EvolutionLoop:
         hybrid:   Memory search + web search for broader context.
         online:   Memory search + web search + LLM-powered deep research.
         """
+        # Deep plan goals are executed by DeepLearner directly
+        if hasattr(gap, "source") and getattr(gap, "source", "") == "deep_plan" and self._deep_learner:
+            import re as _re
+            query_str = getattr(gap, "query", "")
+            match = _re.match(r"\[deep:([^:]+):([^\]]+)\]", query_str)
+            if match:
+                plan_id, sg_id = match.group(1), match.group(2)
+                log.info("evolution_deep_plan_executing", plan_id=plan_id[:8], subgoal_id=sg_id[:8])
+                success = await self._deep_learner.run_subgoal(plan_id, sg_id)
+                return f"DeepLearner executed subgoal: {'success' if success else 'interrupted'}"
+
         query = getattr(gap, "query", getattr(gap, "question", str(gap)))
         parts: list[str] = []
 
