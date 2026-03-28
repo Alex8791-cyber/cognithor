@@ -35,6 +35,11 @@ from typing import Any
 
 from jarvis.utils.logging import get_logger
 
+try:
+    from jarvis.security.encrypted_file import efile as _efile
+except ImportError:
+    _efile = None
+
 log = get_logger(__name__)
 
 # Standard packages for generated skills
@@ -627,7 +632,10 @@ class SkillGenerator:
 
         # Skill-Markdown schreiben (registry loads only .md files)
         md_file = self._skills_dir / f"{skill.module_name}.md"
-        md_file.write_text(skill.skill_markdown, encoding="utf-8")
+        if _efile is not None:
+            _efile.write(md_file, skill.skill_markdown)
+        else:
+            md_file.write_text(skill.skill_markdown, encoding="utf-8")
 
         # Test-Code schreiben
         test_file = self._skills_dir / f"test_{skill.module_name}.py"

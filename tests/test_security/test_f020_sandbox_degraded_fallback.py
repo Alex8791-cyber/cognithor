@@ -134,7 +134,7 @@ class TestDegradedFallback:
         assert result.exit_code == -1
         assert result.isolation_degraded is True
         assert "allow_degraded_sandbox=False" in result.stderr
-        assert "verweigert" in result.stderr
+        assert "refused" in result.stderr or "verweigert" in result.stderr
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only")

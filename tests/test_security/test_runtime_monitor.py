@@ -62,7 +62,7 @@ class TestRateLimiter:
 
         allowed, reason = limiter.check("tool_a")
         assert allowed is False
-        assert "überschritten" in reason
+        assert "exceeded" in reason or "überschritten" in reason
 
     def test_per_tool_scope(self) -> None:
         limiter = RateLimiter()

@@ -58,7 +58,7 @@ class TestOverrideRoleCheck:
 
     def test_unauthorized_role_raises(self) -> None:
         gate, gate_id = _make_gate_with_fail()
-        with pytest.raises(PermissionError, match="nicht autorisiert"):
+        with pytest.raises(PermissionError, match="nicht autorisiert|not authorized"):
             gate.override(gate_id, by="random-user", reason="I want to deploy now please")
 
     def test_empty_role_raises(self) -> None:
@@ -100,12 +100,12 @@ class TestOverrideReasonValidation:
 
     def test_empty_reason_raises(self) -> None:
         gate, gate_id = _make_gate_with_fail()
-        with pytest.raises(ValueError, match="mindestens 10 Zeichen"):
+        with pytest.raises(ValueError, match="mindestens 10 Zeichen|at least 10 char"):
             gate.override(gate_id, by="admin", reason="")
 
     def test_short_reason_raises(self) -> None:
         gate, gate_id = _make_gate_with_fail()
-        with pytest.raises(ValueError, match="mindestens 10 Zeichen"):
+        with pytest.raises(ValueError, match="mindestens 10 Zeichen|at least 10 char"):
             gate.override(gate_id, by="admin", reason="too short")
 
     def test_whitespace_only_reason_raises(self) -> None:
