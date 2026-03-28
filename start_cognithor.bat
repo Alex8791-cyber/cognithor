@@ -299,7 +299,7 @@ if errorlevel 1 (
 )
 :searxng_done
 
-:: Check/install pysqlcipher3 (GDPR encryption at rest)
+:: Check GDPR encryption dependencies (pysqlcipher3 + keyring)
 python -c "import pysqlcipher3" >nul 2>&1
 if errorlevel 1 (
     echo   [INFO] Installing pysqlcipher3 for GDPR encryption...
@@ -307,12 +307,23 @@ if errorlevel 1 (
     if errorlevel 1 (
         echo   [WARN] pysqlcipher3 installation failed. Database encryption unavailable.
         echo          Install manually: pip install pysqlcipher3
-        echo          Or set JARVIS_DB_KEY env var for key management.
     ) else (
         echo   [OK] pysqlcipher3 installed.
     )
 ) else (
     echo   [OK] pysqlcipher3 available.
+)
+python -c "import keyring; keyring.get_password('test','test')" >nul 2>&1
+if errorlevel 1 (
+    echo   [INFO] Installing keyring for OS-level key protection...
+    pip install keyring >nul 2>&1
+    if errorlevel 1 (
+        echo   [WARN] keyring installation failed. DB key stored in file instead of OS keyring.
+    ) else (
+        echo   [OK] keyring installed -- DB encryption key protected by Windows Credential Locker.
+    )
+) else (
+    echo   [OK] keyring available -- DB key protected by OS credential store.
 )
 
 :: Start AltServer (iOS sideloading)
