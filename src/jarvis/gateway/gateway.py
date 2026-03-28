@@ -2351,6 +2351,20 @@ class Gateway:
                     user_message=getattr(session, "last_user_message", "") or "",
                     correction_text=msg.text,
                 )
+            # Feed correction into Evolution Engine as learning gap
+            if hasattr(self, "_deep_learner") and self._deep_learner:
+                try:
+                    last_msg = getattr(session, "last_user_message", "") or msg.text
+                    gap = f"User-Korrektur: {last_msg[:100]} → {msg.text[:100]}"
+                    config = getattr(self, "_config", None)
+                    if config and hasattr(config, "evolution"):
+                        goals = list(getattr(config.evolution, "learning_goals", []) or [])
+                        if gap not in goals and len(goals) < 20:
+                            goals.append(gap)
+                            config.evolution.learning_goals = goals
+                            log.info("evolution_gap_from_correction", correction=msg.text[:60])
+                except Exception:
+                    log.debug("evolution_correction_injection_failed", exc_info=True)
             wm.add_message(
                 Message(
                     role=MessageRole.SYSTEM,
@@ -3001,6 +3015,37 @@ class Gateway:
                         self._run_recorder.record_reflection(run_id, reflection)
                     except Exception:
                         log.debug("run_recorder_reflection_failed", exc_info=True)
+                # ── Feed weak results into Evolution Engine ──────────
+                # If reflection shows poor quality or user corrected us,
+                # create a learning goal so the Evolution Engine researches it.
+                if (
+                    reflection.success_score < 0.5
+                    and hasattr(self, "_deep_learner")
+                    and self._deep_learner
+                    and hasattr(self, "_evolution_loop")
+                    and self._evolution_loop
+                ):
+                    try:
+                        user_msg = msg.text[:200] if hasattr(msg, "text") else ""
+                        gap_description = (
+                            f"Schwache Antwort (Score {reflection.success_score:.1f}) "
+                            f"auf: {user_msg}"
+                        )
+                        # Add as learning goal for next evolution cycle
+                        config = getattr(self, "_config", None)
+                        if config and hasattr(config, "evolution"):
+                            goals = list(getattr(config.evolution, "learning_goals", []) or [])
+                            # Avoid duplicates
+                            if gap_description not in goals and len(goals) < 20:
+                                goals.append(gap_description)
+                                config.evolution.learning_goals = goals
+                                log.info(
+                                    "evolution_gap_from_chat",
+                                    score=reflection.success_score,
+                                    query=user_msg[:60],
+                                )
+                    except Exception:
+                        log.debug("evolution_gap_injection_failed", exc_info=True)
             except Exception as exc:
                 log.error("reflection_error", error=str(exc))
 
