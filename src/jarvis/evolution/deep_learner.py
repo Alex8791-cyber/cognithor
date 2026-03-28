@@ -157,23 +157,29 @@ class DeepLearner:
         return True
 
     def get_next_subgoal(self, plan_id: str) -> SubGoal | None:
-        """Return highest-priority pending SubGoal, or None if all done."""
+        """Return highest-priority actionable SubGoal, or None if all done.
+
+        Picks SubGoals in this priority:
+        1. 'pending' (never started)
+        2. 'researching' / 'building' (interrupted, resume)
+        3. 'failed' (retry)
+        """
         plan = self.get_plan(plan_id)
         if plan is None:
             return None
-        pending = [sg for sg in plan.sub_goals if sg.status == "pending"]
-        if not pending:
-            return None
-        # Sub-goals are already sorted by priority from StrategyPlanner;
-        # return the first pending one (lowest priority number = highest priority).
-        pending.sort(key=lambda sg: sg.priority)
-        return pending[0]
+        # Actionable statuses in priority order
+        for status in ("pending", "researching", "building", "failed"):
+            candidates = [sg for sg in plan.sub_goals if sg.status == status]
+            if candidates:
+                return candidates[0]
+        return None
 
     def has_active_plans(self) -> bool:
-        """Return True if any plan is active with pending sub_goals."""
+        """Return True if any plan has actionable sub_goals."""
+        actionable = {"pending", "researching", "building", "failed"}
         for plan in self.list_plans():
             if plan.status == "active":
-                if any(sg.status == "pending" for sg in plan.sub_goals):
+                if any(sg.status in actionable for sg in plan.sub_goals):
                     return True
         return False
 
@@ -278,6 +284,14 @@ class DeepLearner:
 
         # Quality test
         subgoal.status = "testing"
+        log.info(
+            "deep_learner_pre_quality",
+            subgoal=subgoal.title[:40],
+            chunks=subgoal.chunks_created,
+            entities=subgoal.entities_created,
+            vault=subgoal.vault_entries,
+            sources=subgoal.sources_fetched,
+        )
         quality = await self._quality_assessor.run_quality_test(subgoal, plan.goal_slug)
         subgoal.coverage_score = quality["coverage_score"]
         subgoal.quality_score = quality["quality_score"]
