@@ -79,6 +79,20 @@ class DataPurpose(StrEnum):
     EVOLUTION = "evolution"
 
 
+class DPIARiskLevel(StrEnum):
+    """Risk classification for DPIA (Art. 35).
+
+    Score: PII(+1), Cloud(+2), Profiling(+2), Sensitive Art.9(+3),
+    Cross-border(+2), Retention>180d(+1).
+    0-1=LOW, 2-3=MEDIUM, 4-6=HIGH, 7+=CRITICAL.
+    """
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 # ── Data Processing Log ──────────────────────────────────────────────────
 
 

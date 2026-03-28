@@ -17,7 +17,7 @@ Im Hybrid-/Online-Modus koennen Anfragen an Cloud-KI-Dienste (z.B. Anthropic, Op
 
 ## Speicherdauer
 - Gespraeche: 180 Tage
-- Erinnerungen: 365 Tage
+- Erinnerungen: 90 Tage
 - Sicherheitsprotokolle: 365 Tage
 - OSINT-Berichte: 30 Tage
 

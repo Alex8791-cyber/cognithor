@@ -26,7 +26,7 @@ processing_activities:
     legal_basis: consent
     data_categories: [user_messages, extracted_facts, procedures]
     recipients: [none_local_only]
-    retention_days: 365
+    retention_days: 90  # matches RetentionConfig.episodic_days
     erasure_action: full_delete
     risk_level: medium
 
@@ -41,7 +41,7 @@ processing_activities:
 
   - name: osint_investigation
     purpose: Background research on persons/orgs (HIM module)
-    legal_basis: consent
+    legal_basis: consent + legitimate_interest  # consent for request, legitimate interest for public data
     data_categories: [public_profiles, claims, evidence, trust_scores]
     recipients: [github_api, arxiv_api, web_search_engines]
     retention_days: 30
@@ -89,6 +89,33 @@ processing_activities:
     legal_basis: consent
     data_categories: [personality_data, behavioral_patterns]
     recipients: [none_local_only]
-    retention_days: 0  # permanent
+    retention_days: 0  # permanent — system personality, not user PII
     erasure_action: full_delete
     risk_level: medium
+
+  - name: channel_metadata
+    purpose: Map user IDs to chat IDs for message routing (Telegram, Discord, etc.)
+    legal_basis: contract
+    data_categories: [user_ids, chat_ids, session_mappings]
+    recipients: [none_local_only]
+    retention_days: 180
+    erasure_action: full_delete
+    risk_level: low
+
+  - name: user_preferences
+    purpose: Learn and store user preferences (verbosity, language, style)
+    legal_basis: consent
+    data_categories: [preference_keys, preference_values, usage_patterns]
+    recipients: [none_local_only]
+    retention_days: 365
+    erasure_action: full_delete
+    risk_level: low
+
+  - name: a2a_protocol
+    purpose: Agent-to-Agent communication and task delegation
+    legal_basis: consent
+    data_categories: [task_descriptions, message_content, agent_ids]
+    recipients: [remote_agents_via_a2a]
+    retention_days: 90
+    erasure_action: full_delete
+    risk_level: high

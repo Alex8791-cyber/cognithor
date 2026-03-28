@@ -17,7 +17,7 @@ In hybrid/online mode, queries may be forwarded to cloud AI services (e.g. Anthr
 
 ## Retention periods
 - Conversations: 180 days
-- Memories: 365 days
+- Memories: 90 days
 - Security logs: 365 days
 - OSINT reports: 30 days
 
