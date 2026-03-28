@@ -5,6 +5,72 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.65.0] -- 2026-03-28
+
+### Added
+
+#### Evolution Engine v2 — Deep Autonomous Learning (Phase 5)
+- **Iterative Deep Research Loop** — No max rounds; runs until 90% coverage target is reached.
+- **6 Intelligence Improvements** — Coverage fix, chat feedback integration, progressive depth, auto-skills generation, spaced repetition, source quality scoring.
+- **Hybrid Search System** — SearXNG + Brave + DuckDuckGo in parallel for broader, more reliable results.
+- **Knowledge Validation** — Claims extraction from research results with cross-referencing against multiple sources.
+- **Quality Self-Examination** — Semantic grading of generated knowledge to ensure factual accuracy.
+- **Goal-Scoped Indexes** — Per-plan isolated SQLite databases with FTS5 full-text search for research data.
+
+#### HIM — Human Investigation Module (OSINT)
+- **New module** `src/jarvis/osint/` — Structured OSINT for persons, projects, and organizations.
+- **3 MCP tools** — `investigate_person`, `investigate_project`, `investigate_org`.
+- **7 Collectors** — GitHub (full), Web (full), arXiv (full), 4 stubs (Scholar, LinkedIn, Crunchbase, Social).
+- **Evidence Aggregator** — Cross-verification of findings, claim classification, contradiction detection.
+- **Trust Scorer** — 5-dimension weighted scoring (0–100): Claim Accuracy, Source Diversity, Technical Substance, Transparency, Activity Recency.
+- **GDPR Gatekeeper** — Public figure detection, scope limits, depth restrictions for private persons.
+- **HIM Reporter** — Markdown, JSON, quick summary output with SHA-256 signatures.
+- **Planner skill** `human-investigation.md` — Triggers on "wer ist", "Investigation", "Due Diligence".
+- **32 tests** for the OSINT module.
+
+#### GDPR Compliance Layer — Privacy by Design
+- **ConsentManager** — Per-channel, per-type consent with versioning (SQLite-backed).
+- **ComplianceEngine** — Runtime enforcement with fail-closed semantics; blocks processing without consent.
+- **System channel exemptions** — cron, sub_agent, evolution exempt via LEGITIMATE_INTEREST legal basis.
+- **Privacy Mode** — Runtime toggle disabling all persistent storage.
+- **OSINT consent** — Requires explicit "osint" consent type before investigation.
+- **Data erasure** — `erase_all()` across processing logs, model usage, consents, and registered handlers.
+- **New MCP tools** — `vault_delete`, `delete_entity`, `delete_relation` (RED gatekeeper classification).
+- **REST API** — `DELETE /api/v1/user/data` (Art. 17 right to erasure), `GET /api/v1/user/data` (Art. 15/20 data portability).
+- **TTL enforcement** — Daily cron job (03:00) with configurable retention periods.
+- **ComplianceAuditLog** — Append-only JSONL with SHA-256 hash chain, tamper detection, pseudonymization.
+- **EncryptedDB wrapper** — SQLCipher with graceful fallback to standard sqlite3.
+- **Privacy notices** — German + English templates.
+- **Processing Register (Art. 30)** — 13 activities with purpose, legal basis, retention, risk level.
+- **DPIA Template (Art. 35)** — Automated risk scoring with DPIARiskLevel enum (LOW/MEDIUM/HIGH/CRITICAL).
+- **pysqlcipher3 check** — Added to `start_cognithor.bat`, `start_cognithor.sh`, `install.sh`.
+- **Telegram consent flow** — Consent gate for text, voice, photo, document messages.
+- **WebUI consent flow** — Consent gate via `handle_message`.
+- **Policy version re-consent** — Triggers re-consent when privacy notice version changes.
+- **35 GDPR tests**.
+
+#### Config Additions
+- **OsintConfig** — `enabled`, `github_token`, `collector_timeout`, `report_ttl_days`.
+- **ComplianceConfig** — `consent_required`, `compliance_engine_enabled`, `privacy_mode`, `privacy_notice_version`.
+- **RetentionConfig** — `episodic_days=90`, `processing_log_days=90`, `model_usage_log_days=180`, `him_report_days=30`, `vault_osint_days=30`, `session_days=180`.
+
+#### New Files
+- `start_cognithor.sh` — Linux/macOS startup script.
+
+### Changed
+- **11,779+ tests** (was 11,712).
+- **MCP tools** — 108 (was 102): `investigate_person`, `investigate_project`, `investigate_org`, `vault_delete`, `delete_entity`, `delete_relation`.
+- **Skills** — 16 (was 15): added `human-investigation`.
+- **Gatekeeper** — `investigate_*` classified as ORANGE, delete/erasure tools classified as RED.
+
+### Fixed
+- **Evolution Engine** — Infinite re-test loop eliminated.
+- **Evolution Engine** — Garbage entity filter prevents low-quality entities from polluting indexes.
+- **Evolution Engine** — Quality assessor logger bug resolved.
+- **Evolution Engine** — Timeout protection added for quality tests.
+- **Evolution Engine** — Status persistence across restarts.
+- **Evolution Engine** — Cooldown reduced from 300s to 60s for faster iteration cycles.
+
 ## [0.60.0] -- 2026-03-27
 
 ### Added
