@@ -120,6 +120,11 @@ class VaultTools:
                 "daily": "daily",
             }
 
+        # File encryption: opt-in via config (default: off for Obsidian compatibility)
+        self._encrypt_files = bool(
+            getattr(vault_cfg, "encrypt_files", False) if vault_cfg else False
+        )
+
         self._index_path = self._vault_root / "_index.json"
         self._ensure_structure()
 
@@ -137,7 +142,7 @@ class VaultTools:
     def _read_index(self) -> dict[str, Any]:
         """Liest den _index.json."""
         try:
-            if _efile is not None:
+            if _efile is not None and self._encrypt_files:
                 return json.loads(_efile.read(self._index_path))
             return json.loads(self._index_path.read_text(encoding="utf-8"))
         except Exception:
@@ -147,7 +152,7 @@ class VaultTools:
     def _write_index(self, index: dict[str, Any]) -> None:
         """Schreibt den _index.json."""
         content = json.dumps(index, ensure_ascii=False, indent=2)
-        if _efile is not None:
+        if _efile is not None and self._encrypt_files:
             _efile.write(self._index_path, content)
         else:
             self._index_path.write_text(content, encoding="utf-8")
@@ -270,7 +275,7 @@ class VaultTools:
                 body_parts.append(f"- [[{link}]]")
 
         full_content = "\n".join(body_parts) + "\n"
-        if _efile is not None:
+        if _efile is not None and self._encrypt_files:
             _efile.write(file_path, full_content)
         else:
             file_path.write_text(full_content, encoding="utf-8")
@@ -322,7 +327,7 @@ class VaultTools:
                     continue
 
             try:
-                if _efile is not None:
+                if _efile is not None and self._encrypt_files:
                     content = _efile.read(md_file)
                 else:
                     content = md_file.read_text(encoding="utf-8")
@@ -429,7 +434,7 @@ class VaultTools:
             return "Fehler: Kein Identifier angegeben."
 
         def _read_note(p: Path) -> str:
-            if _efile is not None:
+            if _efile is not None and self._encrypt_files:
                 return _efile.read(p)
             return p.read_text(encoding="utf-8")
 
@@ -480,7 +485,7 @@ class VaultTools:
         if note_path is None:
             return f"Notiz nicht gefunden: {identifier}"
 
-        if _efile is not None:
+        if _efile is not None and self._encrypt_files:
             content = _efile.read(note_path)
         else:
             content = note_path.read_text(encoding="utf-8")
@@ -511,7 +516,7 @@ class VaultTools:
         if append_content.strip():
             content = content.rstrip("\n") + "\n\n" + append_content.strip() + "\n"
 
-        if _efile is not None:
+        if _efile is not None and self._encrypt_files:
             _efile.write(note_path, content)
         else:
             note_path.write_text(content, encoding="utf-8")
@@ -541,12 +546,12 @@ class VaultTools:
             return f"Ziel-Notiz nicht gefunden: {target_note}"
 
         def _read_note(p: Path) -> str:
-            if _efile is not None:
+            if _efile is not None and self._encrypt_files:
                 return _efile.read(p)
             return p.read_text(encoding="utf-8")
 
         def _write_note(p: Path, text: str) -> None:
-            if _efile is not None:
+            if _efile is not None and self._encrypt_files:
                 _efile.write(p, text)
             else:
                 p.write_text(text, encoding="utf-8")
@@ -609,7 +614,7 @@ class VaultTools:
             return f"Pfad ist keine Datei: {path}"
 
         # Remove from index
-        if _efile is not None:
+        if _efile is not None and self._encrypt_files:
             _full_content = _efile.read(full)
         else:
             _full_content = full.read_text(encoding="utf-8")

@@ -455,6 +455,15 @@ class VaultConfig(BaseModel):
     )
     """Mapping von logischen Ordnernamen zu Verzeichnisnamen im Vault."""
 
+    encrypt_files: bool = False
+    """Encrypt vault .md files at rest (Fernet/AES-256).
+
+    Default: False (Obsidian-compatible plaintext).
+    Set to True for maximum security — vault files become unreadable
+    by Obsidian but are protected against disk cloning.
+    Databases are ALWAYS encrypted regardless of this setting.
+    """
+
 
 class OsintConfig(BaseModel):
     """OSINT / Human Investigation Module configuration."""
