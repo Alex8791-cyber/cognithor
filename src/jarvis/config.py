@@ -1364,6 +1364,68 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "name": "kimi-k2.5",
         },
     },
+    "vllm": {
+        "planner": {
+            "name": "default",
+            "context_window": 32768,
+            "vram_gb": 0,
+            "strengths": ["reasoning"],
+            "speed": "fast",
+        },
+        "executor": {
+            "name": "default",
+            "context_window": 32768,
+            "vram_gb": 0,
+            "strengths": ["tool-calling"],
+            "speed": "fast",
+        },
+        "coder": {
+            "name": "default",
+            "context_window": 32768,
+            "vram_gb": 0,
+            "strengths": ["code"],
+            "speed": "fast",
+        },
+        "embedding": {
+            "name": "default",
+            "context_window": 8192,
+            "vram_gb": 0,
+            "strengths": ["embedding"],
+            "speed": "fast",
+        },
+        "vision": None,
+    },
+    "llama_cpp": {
+        "planner": {
+            "name": "default",
+            "context_window": 32768,
+            "vram_gb": 0,
+            "strengths": ["reasoning"],
+            "speed": "medium",
+        },
+        "executor": {
+            "name": "default",
+            "context_window": 32768,
+            "vram_gb": 0,
+            "strengths": ["tool-calling"],
+            "speed": "medium",
+        },
+        "coder": {
+            "name": "default",
+            "context_window": 32768,
+            "vram_gb": 0,
+            "strengths": ["code"],
+            "speed": "medium",
+        },
+        "embedding": {
+            "name": "default",
+            "context_window": 8192,
+            "vram_gb": 0,
+            "strengths": ["embedding"],
+            "speed": "medium",
+        },
+        "vision": None,
+    },
     "claude-code": {
         "planner": {
             "name": "opus",
@@ -1420,6 +1482,8 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
     "bedrock": "https://bedrock-runtime.us-east-1.amazonaws.com/v1",
     "huggingface": "https://api-inference.huggingface.co/v1",
     "moonshot": "https://api.moonshot.cn/v1",
+    "vllm": "http://localhost:8000/v1",
+    "llama_cpp": "http://localhost:8080/v1",
 }
 
 
@@ -1977,6 +2041,8 @@ class JarvisConfig(BaseModel):
         "huggingface",
         "moonshot",
         "lmstudio",
+        "vllm",
+        "llama_cpp",
         "claude-code",
     ] = Field(
         default="ollama",
@@ -1985,7 +2051,7 @@ class JarvisConfig(BaseModel):
             "'gemini', 'groq', 'deepseek', 'mistral', "
             "'together', 'openrouter', 'xai', 'cerebras', "
             "'github', 'bedrock', 'huggingface', "
-            "'moonshot', 'lmstudio', 'claude-code'"
+            "'moonshot', 'lmstudio', 'vllm', 'llama_cpp', 'claude-code'"
         ),
     )
     openai_api_key: str = Field(default="", description="API-Key für OpenAI-kompatibles Backend")
@@ -2016,6 +2082,22 @@ class JarvisConfig(BaseModel):
     )
     lmstudio_base_url: str = Field(
         default="http://localhost:1234/v1", description="Base-URL für LM Studio API"
+    )
+    vllm_api_key: str = Field(
+        default="",
+        description="vLLM API key (usually empty for local)",
+    )
+    vllm_base_url: str = Field(
+        default="http://localhost:8000/v1",
+        description="vLLM server URL",
+    )
+    llama_cpp_api_key: str = Field(
+        default="",
+        description="llama-cpp-python API key (usually empty for local)",
+    )
+    llama_cpp_base_url: str = Field(
+        default="http://localhost:8080/v1",
+        description="llama-cpp-python server URL",
     )
     vision_model: str = Field(
         default="openbmb/minicpm-v4.5", description="Standard-Vision-Modell (schnell)"

@@ -1425,6 +1425,18 @@ def create_backend(config: JarvisConfig) -> LLMBackend:
                 base_url=getattr(config, "lmstudio_base_url", "http://localhost:1234/v1"),
                 timeout=config.ollama.timeout_seconds,
             )
+        case "vllm":
+            return OpenAIBackend(
+                api_key=getattr(config, "vllm_api_key", "") or "vllm",
+                base_url=getattr(config, "vllm_base_url", "http://localhost:8000/v1"),
+                timeout=config.ollama.timeout_seconds,
+            )
+        case "llama_cpp":
+            return OpenAIBackend(
+                api_key=getattr(config, "llama_cpp_api_key", "") or "llama-cpp",
+                base_url=getattr(config, "llama_cpp_base_url", "http://localhost:8080/v1"),
+                timeout=config.ollama.timeout_seconds,
+            )
         case "claude-code":
             return ClaudeCodeBackend(
                 model=getattr(config.models.planner, "name", "sonnet"),

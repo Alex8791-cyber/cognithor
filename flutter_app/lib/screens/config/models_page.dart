@@ -89,7 +89,7 @@ class ModelsPage extends StatelessWidget {
                       'ollama', 'openai', 'anthropic', 'gemini', 'groq',
                       'deepseek', 'mistral', 'together', 'openrouter',
                       'xai', 'cerebras', 'github', 'bedrock', 'huggingface',
-                      'moonshot',
+                      'moonshot', 'vllm', 'llama_cpp',
                     ],
                     onChanged: (v) => cfg.set('models.$key.backend', v),
                     description: modelBackend.isEmpty
