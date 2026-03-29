@@ -653,7 +653,16 @@ class DeepLearner:
 
             urls = re.findall(r'https?://[^\s<>"\')\]]+', result.content)
 
-            # Filter: skip bare homepages (e.g. https://www.drv.de) — want deep pages
+            # Filter: skip bare homepages, non-relevant language domains, and noise
+            _BLOCKED_DOMAINS = {
+                "zhihu.com", "baidu.com", "weibo.com", "qq.com",       # Chinese
+                "naver.com", "daum.net",                                 # Korean
+                "yandex.ru", "vk.com", "mail.ru",                       # Russian
+                "rakuten.co.jp", "yahoo.co.jp", "ameblo.jp",           # Japanese
+                "timeoutbahrain.com", "najiz.sa",                        # Off-topic
+                "web.whatsapp.com", "linkedin.com/in/",                  # Not content
+                "claude.ai", "chat.openai.com",                          # AI chat UIs
+            }
             filtered: list[str] = []
             seen: set[str] = set()
             for url in urls:
@@ -662,7 +671,14 @@ class DeepLearner:
                     continue
                 seen.add(url)
                 parsed = urlparse(url)
+                host = parsed.netloc.lower()
                 path = parsed.path.strip("/")
+                # Skip blocked domains (wrong language, off-topic, not content)
+                if any(blocked in host for blocked in _BLOCKED_DOMAINS):
+                    continue
+                # Skip non-Latin TLDs that indicate wrong-language content
+                if any(host.endswith(tld) for tld in (".cn", ".jp", ".kr", ".ru", ".sa")):
+                    continue
                 # Accept URLs with actual content paths, skip bare domains
                 if path and len(path) > 3:
                     filtered.append(url)
