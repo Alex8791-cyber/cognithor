@@ -5,6 +5,55 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.66.0] -- 2026-03-29
+
+### Added
+
+#### Encryption at Rest — Full Disk Clone Protection
+- **SQLCipher**: All 33 SQLite databases encrypted with AES-256 via `sqlcipher3` (pre-compiled Windows wheel)
+- **OS Keyring**: Encryption key stored in Windows Credential Locker / macOS Keychain / Linux SecretService — never on disk
+- **EncryptedFileIO**: Transparent Fernet (AES-256) encryption for memory files (CORE.md, episodes, procedures, learning plans)
+- **Auto-migration**: Unencrypted databases automatically migrated to SQLCipher on first startup
+- **Vault toggle**: `vault.encrypt_files` config (default: off for Obsidian compatibility, on for max security)
+- **compatible_row_factory()**: Cross-compatible row factory for sqlite3 and sqlcipher3
+
+#### Vault Dual-Backend
+- **VaultBackend ABC**: Pluggable storage interface with FileBackend and DBBackend
+- **VaultDBBackend**: SQLCipher-encrypted SQLite with FTS5 full-text search (when `encrypt_files=true`)
+- **VaultFileBackend**: Obsidian-compatible .md files (when `encrypt_files=false`)
+- **Bidirectional migration**: Automatic data transfer when toggling between file and DB mode
+- **Flutter Vault Page**: Config page with encryption toggle, security info boxes, BitLocker/LUKS recommendation
+
+#### GDPR User Rights — 100% Coverage
+- **Art. 15 (Access)**: Complete export across 11 tiers (sessions, vault with content, entities, relations, episodic memories, procedures, core memory, preferences, processing logs, model usage, consents). JSON + CSV formats.
+- **Art. 16 (Correct)**: `PATCH /api/v1/user/data` for entities, preferences, vault notes
+- **Art. 17 (Delete)**: 7 erasure handlers covering all data tiers including vault notes
+- **Art. 18/21 (Restrict)**: Per-purpose restriction (evolution, cloud_llm, memory, osint) via REST API + ComplianceEngine enforcement
+- **Art. 20 (Portability)**: Export format v2.0 `cognithor_portable` + `POST /api/v1/user/data/import`
+- Delete methods added to: SessionStore, UserPreferenceStore, ConversationTree, FeedbackStore, CorrectionMemory
+
+### Fixed
+- Cron jobs blocked by GDPR consent (`channel=cli` with `user_id=cron` not recognized as system)
+- `session_id=None` crash in OutgoingMessage (Pydantic validation)
+- `sqlite3.Row` incompatible with `sqlcipher3.Cursor` (TypeError on startup)
+- `sqlite3.OperationalError` not caught for `sqlcipher3.dbapi2.OperationalError` (migration crashes)
+- `sqlite3.IntegrityError` not caught for `sqlcipher3.dbapi2.IntegrityError` (vault DB)
+- Knowledge synthesis tools timing out at 30s (increased to 120s)
+- Cron `day_of_week=7` invalid (normalized to 0 = Sunday)
+- Non-relevant language domains in research (Zhihu, Baidu, Yandex filtered)
+- 5 i18n test failures (bilingual assertions)
+- 4 Ruff lint errors (F821 undefined names)
+- Generated skills now encrypted (reveals user interests)
+- `pysqlcipher3` installation on Windows (switched to `sqlcipher3` pre-compiled binary)
+
+### Changed
+- Vault refactored from 1017 to 736 lines (delegates to pluggable backend)
+- `start_cognithor.bat`: checks sqlcipher3 + keyring, auto-installs
+- `start_cognithor.sh`: new Linux startup script with SQLCipher + SearXNG
+- `install.sh`: pysqlcipher3/sqlcipher3 in install pipeline
+- Tool timeouts: knowledge_contradictions 120s, deep_research 180s, investigate_* 120s
+- 74 files reformatted with ruff
+
 ## [0.65.0] -- 2026-03-28
 
 ### Added
