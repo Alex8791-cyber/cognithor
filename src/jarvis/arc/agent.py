@@ -405,7 +405,11 @@ class CognithorArcAgent:
                     "model": "qwen3.5:27b",
                     "prompt": prompt + "\n/no_think",
                     "stream": False,
-                    "options": {"temperature": 0.3, "num_predict": 2000},
+                    "options": {
+                        "temperature": 0.3,
+                        "num_predict": 2000,
+                        "num_ctx": 16384,
+                    },
                 },
                 timeout=120.0,
             )
