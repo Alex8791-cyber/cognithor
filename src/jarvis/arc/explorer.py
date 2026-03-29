@@ -88,6 +88,10 @@ class HypothesisDrivenExplorer:
         self._available_actions: list[Any] = []
         self._simple_actions: list[Any] = []
         self._complex_actions: list[Any] = []
+        # Cycle / stuck detection
+        self._recent_state_hashes: list[str] = []
+        self._stuck_counter: int = 0
+        self._max_recent_states: int = 20
 
     # ------------------------------------------------------------------
     # Initialization
@@ -192,15 +196,40 @@ class HypothesisDrivenExplorer:
         self._phase_step_count += 1
         self._total_actions_tested += 1
 
-        if self.phase == ExplorationPhase.DISCOVERY:
-            result = self._discovery_action(current_obs, episode_memory)
-        elif self.phase == ExplorationPhase.HYPOTHESIS:
-            result = self._hypothesis_action(current_obs, episode_memory, goal_module)
+        # ------------------------------------------------------------------
+        # Cycle / stuck detection — must run before phase delegation so that
+        # ALL phases benefit from the anti-stuck mechanism.
+        # ------------------------------------------------------------------
+        if hasattr(current_obs, "raw_grid") and current_obs.raw_grid is not None:
+            current_hash = episode_memory.hash_grid(current_obs.raw_grid)
+            repeat_count = self._recent_state_hashes.count(current_hash)
+            if repeat_count >= 3:
+                # Stuck in a cycle — break out with the least-used action
+                self._stuck_counter += 1
+                result = self._anti_stuck_action(current_obs, episode_memory)
+            else:
+                result = self._phase_action(current_obs, episode_memory, goal_module)
+            self._recent_state_hashes.append(current_hash)
+            if len(self._recent_state_hashes) > self._max_recent_states:
+                self._recent_state_hashes.pop(0)
         else:
-            result = self._exploitation_action(current_obs, episode_memory, goal_module)
+            result = self._phase_action(current_obs, episode_memory, goal_module)
 
         self._check_phase_transition(episode_memory, goal_module)
         return result
+
+    def _phase_action(
+        self,
+        current_obs: Any,
+        episode_memory: EpisodeMemory,
+        goal_module: GoalInferenceModule,
+    ) -> tuple[Any, dict]:
+        """Delegate to the current phase's action-selection method."""
+        if self.phase == ExplorationPhase.DISCOVERY:
+            return self._discovery_action(current_obs, episode_memory)
+        if self.phase == ExplorationPhase.HYPOTHESIS:
+            return self._hypothesis_action(current_obs, episode_memory, goal_module)
+        return self._exploitation_action(current_obs, episode_memory, goal_module)
 
     # ------------------------------------------------------------------
     # Phase-specific action selection
@@ -227,22 +256,42 @@ class HypothesisDrivenExplorer:
     def _hypothesis_action(
         self, obs: Any, memory: EpisodeMemory, goals: GoalInferenceModule
     ) -> tuple[Any, dict]:
-        """Choose action using effectiveness scores: 80% best / 20% runner-up."""
+        """Choose action using a composite novelty+effectiveness score.
+
+        Scoring formula:
+            score = (change_rate * 0.3) + (novelty * 0.5) - (danger * 0.8)
+
+        where:
+        * ``change_rate`` — fraction of uses that caused any pixel change
+        * ``novelty``     — fraction of uses that produced a distinct next state
+        * ``danger``      — fraction of uses that caused game-over
+        """
         if not self._available_actions:
             return self._random_action()
 
-        # Score each available simple action by effectiveness
         scored: list[tuple[float, Any, dict]] = []
+
         for action in self._simple_actions:
             name = getattr(action, "name", str(action))
-            score = memory.get_action_effectiveness(name)
+            effects = memory.action_effect_map.get(name, {})
+            total = effects.get("total", 0) if isinstance(effects, dict) else 0
+            change_rate = effects.get("caused_change", 0) / total if total > 0 else 0.5
+            novelty = memory.get_action_novelty(name)
+            danger = effects.get("caused_game_over", 0) / total if total > 0 else 0.0
+            score = (change_rate * 0.3) + (novelty * 0.5) - (danger * 0.8)
             scored.append((score, action, {}))
 
         # Also score complex actions with the middle strategic position
         for action in self._complex_actions:
             name = getattr(action, "name", str(action))
             mid_x, mid_y = 32, 32
-            score = memory.get_action_effectiveness(f"{name}_{mid_x}_{mid_y}")
+            action_key = f"{name}_{mid_x}_{mid_y}"
+            effects = memory.action_effect_map.get(action_key, {})
+            total = effects.get("total", 0) if isinstance(effects, dict) else 0
+            change_rate = effects.get("caused_change", 0) / total if total > 0 else 0.5
+            novelty = memory.get_action_novelty(action_key)
+            danger = effects.get("caused_game_over", 0) / total if total > 0 else 0.0
+            score = (change_rate * 0.3) + (novelty * 0.5) - (danger * 0.8)
             scored.append((score, action, {"x": mid_x, "y": mid_y}))
 
         if not scored:
@@ -299,6 +348,24 @@ class HypothesisDrivenExplorer:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _anti_stuck_action(self, obs: Any, memory: EpisodeMemory) -> tuple[Any, dict]:
+        """When stuck in a cycle, pick the least-tried action to break out.
+
+        Iterates over ``_simple_actions`` and selects the one with the fewest
+        recorded uses.  Falls back to :meth:`_random_action` when no simple
+        actions are available.
+        """
+        action_counts: dict[Any, int] = {}
+        for action in self._simple_actions:
+            name = getattr(action, "name", str(action))
+            effects = memory.action_effect_map.get(name, {})
+            action_counts[action] = effects.get("total", 0) if isinstance(effects, dict) else 0
+
+        if action_counts:
+            least_used = min(action_counts, key=action_counts.get)
+            return least_used, {}
+        return self._random_action()
 
     def _random_action(self) -> tuple[Any, dict]:
         """Return a uniformly random action from the stored available actions.

@@ -80,6 +80,8 @@ class EpisodeMemory:
         self.visited_states: set[str] = set()
         self._state_hash_cache: dict[tuple, str] = {}
         self._state_action_index: defaultdict[str, set[str]] = defaultdict(set)
+        # Index of next-state hashes per action for fast novelty computation
+        self._action_next_states: defaultdict[str, set[str]] = defaultdict(set)
 
     # ------------------------------------------------------------------
     # Hashing
@@ -182,6 +184,9 @@ class EpisodeMemory:
         # Update secondary index for O(1) unexplored-action lookup
         self._state_action_index[before_hash].add(action_str)
 
+        # Update next-state index for novelty computation
+        self._action_next_states[action_str].add(after_hash)
+
         # Respect cap
         if len(self.transitions) < self.max_transitions:
             self.transitions.append(transition)
@@ -201,6 +206,21 @@ class EpisodeMemory:
         if entry is None or entry["total"] == 0:
             return 0.5
         return entry["caused_change"] / entry["total"]
+
+    def get_action_novelty(self, action_str: str) -> float:
+        """Return how often *action_str* produces a previously unseen next state.
+
+        Uses the ``_action_next_states`` index for O(1) unique-state count and
+        ``action_effect_map`` for the total use count.
+
+        Returns ``0.5`` (neutral prior) for actions that have never been tried.
+        """
+        entry = self.action_effect_map.get(action_str)
+        total = entry["total"] if entry is not None else 0
+        if total == 0:
+            return 0.5
+        unique_next = len(self._action_next_states.get(action_str, set()))
+        return unique_next / total
 
     # ------------------------------------------------------------------
     # Exploration helpers

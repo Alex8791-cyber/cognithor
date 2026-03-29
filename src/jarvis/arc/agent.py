@@ -249,23 +249,86 @@ class CognithorArcAgent:
         default_action: Any,
         default_data: dict[str, Any],
     ) -> tuple[Any, dict[str, Any]]:
-        """Stub for LLM planner integration (real PGE wiring is a later task).
+        """Consult the LLM for strategic guidance.
 
-        Logs that the planner would be called and returns the defaults unchanged.
+        Builds a compact prompt from the current state, episode memory,
+        and goal hypotheses.  Asks the LLM which action to take next.
+        Falls back to *default_action* on any failure.
 
         Args:
             default_action: The action pre-selected by the explorer.
             default_data: The data dict pre-selected by the explorer.
 
         Returns:
-            The unchanged ``(default_action, default_data)`` tuple.
+            ``(action, data)`` — either the LLM's recommendation or the default.
         """
-        log.debug(
-            "arc.agent.llm_planner.stub",
-            step=self.total_steps,
-            action=self._action_to_str(default_action, default_data),
-            note="LLM planner not yet wired — returning explorer default",
-        )
+        try:
+            state_desc = self.encoder.encode_for_llm(
+                self.current_obs.raw_grid,
+                self.current_obs.grid_diff,
+            )
+            memory_summary = self.memory.get_summary_for_llm()
+            goal_summary = self.goals.get_summary_for_llm()
+            mechanics_summary = self.mechanics.get_summary_for_llm()
+
+            # Build available action names
+            action_names = [
+                getattr(a, "name", str(a))
+                for a in self.explorer._available_actions
+                if getattr(a, "name", "") != "RESET"
+            ]
+
+            prompt = (
+                "You are playing an ARC-AGI-3 puzzle game. You must figure out the "
+                "rules by experimenting. Based on the information below, recommend "
+                "the SINGLE BEST next action.\n\n"
+                f"AVAILABLE ACTIONS: {action_names}\n\n"
+                f"CURRENT GRID STATE:\n{state_desc}\n\n"
+                f"EPISODE MEMORY:\n{memory_summary}\n\n"
+                f"LEARNED MECHANICS:\n{mechanics_summary}\n\n"
+                f"GOAL HYPOTHESES:\n{goal_summary}\n\n"
+                f"Explorer phase: {self.explorer.phase.value}\n"
+                f"Level: {self.current_level}, Step: {self.adapter.level_step_count}\n"
+                f"Resets: {self.level_resets}\n\n"
+                "Reply with ONLY the action name (e.g. ACTION1 or ACTION2). "
+                "Nothing else."
+            )
+
+            # Call Ollama directly via httpx (lightweight, no full PGE overhead)
+            import httpx
+
+            ollama_url = "http://localhost:11434/api/generate"
+            resp = httpx.post(
+                ollama_url,
+                json={
+                    "model": "qwen3:32b",
+                    "prompt": prompt + "\n/no_think",
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": 2000},
+                },
+                timeout=30.0,
+            )
+            if resp.status_code == 200:
+                text = resp.json().get("response", "").strip()
+                # Parse action from response
+                for a in self.explorer._available_actions:
+                    name = getattr(a, "name", str(a))
+                    if name in text and name != "RESET":
+                        log.info(
+                            "arc.agent.llm_planner.recommendation",
+                            step=self.total_steps,
+                            recommended=name,
+                            raw=text[:50],
+                        )
+                        return a, {}
+                log.debug(
+                    "arc.agent.llm_planner.unparseable",
+                    step=self.total_steps,
+                    raw=text[:100],
+                )
+        except Exception as exc:
+            log.debug("arc.agent.llm_planner.failed", error=str(exc)[:80])
+
         return default_action, default_data
 
     # ------------------------------------------------------------------
