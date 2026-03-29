@@ -105,6 +105,10 @@ async def init_agents(
             jarvis_home / "data" / "procedures",
             jarvis_home / config.plugins.skills_dir,
         ]
+        # Generated skills (created by the agent itself)
+        generated_dir = jarvis_home / "skills" / "generated"
+        if generated_dir.exists():
+            skill_dirs.append(generated_dir)
         # Also check repo data/procedures directory
         repo_procedures = Path(__file__).parent.parent.parent.parent.parent / "data" / "procedures"
         if repo_procedures.exists():

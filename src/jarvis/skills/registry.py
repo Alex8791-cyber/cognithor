@@ -365,10 +365,23 @@ class SkillRegistry:
                     result[key] = value
         return result
 
-    def _register(self, skill: Skill) -> None:
-        """Register a skill in the registry."""
+    def register_skill(self, skill: Skill, *, rebuild_index: bool = True) -> None:
+        """Register a skill and optionally rebuild the lookup index.
+
+        Call with ``rebuild_index=True`` (the default) for hot-loading a single
+        skill at runtime so it is immediately matchable.  Batch-loading via
+        :meth:`load_from_directories` calls this with ``rebuild_index=False``
+        and triggers a single index rebuild at the end.
+        """
         with self._lock:
             self._skills[skill.slug] = skill
+        if rebuild_index:
+            self._rebuild_index()
+            log.info("skill_hot_registered", name=skill.name, slug=skill.slug)
+
+    def _register(self, skill: Skill) -> None:
+        """Register a skill in the registry (batch mode, no index rebuild)."""
+        self.register_skill(skill, rebuild_index=False)
 
     def _rebuild_index(self) -> None:
         """Rebuild the keyword index and category index."""

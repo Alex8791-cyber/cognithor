@@ -131,20 +131,22 @@ class SkillTools:
         except OSError as exc:
             return f"Fehler beim Schreiben der Skill-Datei: {exc}"
 
-        # Registry neu laden damit der Skill sofort verfuegbar ist
+        # Hot-load: parse + register immediately (no full directory reload)
         try:
-            skill_count = self._registry.load_from_directories(self._skills_dirs)
-            log.info(
-                "skill_created_and_loaded",
-                slug=slug,
-                file=str(file_path),
-                total_skills=skill_count,
-            )
+            skill = self._registry._parse_skill_file(file_path)
+            if skill:
+                self._registry.register_skill(skill, rebuild_index=True)
+                log.info(
+                    "skill_created_and_hot_loaded",
+                    slug=slug,
+                    file=str(file_path),
+                    total_skills=len(self._registry._skills),
+                )
         except Exception as exc:
-            log.warning("skill_registry_reload_failed", error=str(exc))
+            log.warning("skill_hot_load_failed", error=str(exc))
             return (
                 f"Skill-Datei geschrieben: {file_path}\n"
-                f"WARNUNG: Registry-Reload fehlgeschlagen: {exc}\n"
+                f"WARNUNG: Hot-Loading fehlgeschlagen: {exc}\n"
                 f"Der Skill wird beim naechsten Neustart verfuegbar sein."
             )
 
@@ -155,7 +157,7 @@ class SkillTools:
             f"  Datei: {file_path}\n"
             f"  Keywords: {', '.join(keywords)}\n"
             f"  Kategorie: {category}\n"
-            f"  Registrierte Skills gesamt: {skill_count}\n"
+            f"  Registrierte Skills gesamt: {len(self._registry._skills)}\n"
             f"Der Skill ist sofort verfuegbar."
         )
 
