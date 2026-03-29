@@ -37,7 +37,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 17 channels, 111 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 11,978+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 17 channels, 122 MCP tools, 6-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 11,978+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 ---
 
@@ -48,7 +48,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 111 MC
 | Aspect | Status |
 |--------|--------|
 | **Core agent loop (PGE)** | Stable — well-tested and functional |
-| **Memory system** | Stable — 5-tier architecture works reliably |
+| **Memory system** | Stable — 6-tier architecture works reliably |
 | **CLI channel** | Stable — primary development interface |
 | **Flutter Command Center** | Beta — Sci-Fi aesthetic, cross-platform, GEPA pipeline visualization, Robot Office pathfinding, 20 config pages, chat, voice, learning dashboard |
 | **Messaging channels** (Telegram, Discord, etc.) | Beta — basic flows work, edge cases may break |
@@ -110,6 +110,27 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 111 MC
 
 ## What's New
 
+### What's New in v0.68.0
+
+**Document Powerhouse** — Cognithor can now create, read, and manage all major document formats:
+
+- **7 document tools**: `read_pdf`, `read_docx`, `read_ppt`, `read_xlsx` (new), `document_export`, `document_create` (new), `typst_render` (new)
+- **Template system**: `template_list` + `template_render` — fill Typst templates (Brief, Rechnung, Bericht) and compile to PDF
+- **Structured creation**: JSON input with sections, tables, lists → DOCX, PDF, PPTX, XLSX
+- **Typst pipeline**: modern LaTeX alternative for high-quality PDFs (<1s compilation)
+
+**Skill Lifecycle** — Skills created by Cognithor are now immediately usable:
+
+- Hot-loading: skills available instantly after creation (no restart)
+- Startup scan of generated skills directory
+- SkillLifecycleManager: audit, auto-repair, suggest, prune
+
+**Tactical Memory (Tier 6)** — Tool outcome tracking across sessions:
+
+- Learns which tools work best in which context
+- Auto-creates avoidance rules after 3 consecutive failures (24h TTL)
+- Injects tactical insights into Planner context
+
 ### What's New in v0.67.0
 
 **ARC-AGI-3 Benchmark Integration** — Cognithor can now compete in the [ARC Prize 2026](https://arcprize.org/competitions/2026) ($2M+ prize pool). New `src/jarvis/arc/` module with 14 files implements a hybrid agent (algorithmic exploration + optional LLM planning + optional CNN prediction) for interactive reasoning benchmarks.
@@ -133,7 +154,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 111 MC
 **GDPR User Rights — 100% Coverage**
 - Art. 15 (Access), Art. 16 (Rectification), Art. 17 (Erasure), Art. 18/21 (Restriction), Art. 20 (Portability) — all fully implemented across 11 data tiers.
 
-**111 MCP tools**, **11,978+ total tests** (was 11,779+). 12 bug fixes including SQLCipher compatibility, cron consent, and tool timeouts.
+**122 MCP tools**, **11,978+ total tests** (was 11,779+). 12 bug fixes including SQLCipher compatibility, cron consent, and tool timeouts.
 
 ### v0.65.0 — GDPR Compliance, OSINT Module, Evolution Engine Stable
 
@@ -160,7 +181,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 111 MC
 - Promoted from Beta to Stable after extensive testing and quality self-examination integration.
 - All 4 phases production-ready: SystemDetector, IdleLoop, Budget/Resources, Checkpoint/Resume.
 
-**111 MCP tools** (was 106), **11,978+ total tests**.
+**122 MCP tools** (was 106), **11,978+ total tests**.
 
 ### v0.60.0 — Autonomous Evolution Engine (Premium)
 
@@ -411,7 +432,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 111 MC
 - **Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance module, credential vault, red-teaming, runtime token encryption (Fernet AES-256), TLS support, file-size limits (not independently audited — see [Status & Maturity](#status--maturity))
 - **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
-- **Model Context Protocol (MCP)** — 111 tools across 11 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, automation, coordination, arc) + A2A delegation
+- **Model Context Protocol (MCP)** — 122 tools across 12 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, documents, automation, coordination, arc) + A2A delegation
 - **Distributed Locking** — Redis-backed (with file-based fallback) locks for multi-instance deployments
 - **Durable Message Queue** — SQLite-backed persistent queue with priorities, DLQ, and automatic retry
 - **Prometheus Metrics** — /metrics endpoint with Grafana dashboard for production observability
@@ -475,7 +496,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 111 MC
 ├─────────────┴──────────────┴──────────────────────────────────────┤
 │  DAG Workflow Engine · Workflow Adapter · Benchmark Suite             │
 ├───────────────────────────────────────────────────────────────────┤
-│                   MCP Tool Layer (111 tools)                         │
+│                   MCP Tool Layer (122 tools)                         │
 │   Filesystem · Shell · Memory · Web · Browser · Media · Vault      │
 │   Synthesis · Skills Marketplace · Remote Registry                  │
 ├───────────────────────────────────────────────────────────────────┤

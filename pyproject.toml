@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cognithor"
-version = "0.67.0"
+version = "0.68.0"
 description = "Cognithor · Agent OS — Local-first autonomous agent operating system"
 readme = "README.md"
 license = "Apache-2.0"
@@ -114,6 +114,7 @@ documents = [
     "pymupdf>=1.23",
     "python-pptx>=0.6",
     "openpyxl>=3.1",
+    "typst>=0.1",
 ]
 search = [
     "trafilatura>=2.0",

@@ -5,6 +5,36 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.68.0] -- 2026-03-30
+
+### Added
+- **Document System Overhaul** — 7 document tools across all major formats
+  - `read_xlsx`: Excel files as Markdown tables (openpyxl)
+  - `document_create`: structured JSON input → DOCX, PDF, PPTX, XLSX
+  - `typst_render`: Typst markup → high-quality PDFs
+  - `template_list` + `template_render`: fill Typst templates → PDF
+  - 3 bundled templates: Brief, Rechnung, Bericht
+  - New `src/jarvis/documents/` package with TemplateManager
+- **Skill Lifecycle Manager** (`src/jarvis/skills/lifecycle.py`)
+  - Hot-loading: skills immediately available after creation
+  - Startup scan of `~/.jarvis/skills/generated/` directory
+  - `audit_all()`, `repair_skill()`, `suggest_skills()`, `prune_unused()`
+  - Auto-repair of broken skills at gateway startup
+  - ARC-AGI-3 skill with 8 trigger keywords
+- **Tactical Memory (Tier 6)** — tool outcome tracking
+  - Hybrid RAM+SQLite persistence
+  - Avoidance rules after 3 consecutive failures (24h TTL decay)
+  - Context Pipeline Wave 3 injection for Planner
+  - Executor post-execution outcome recording
+- **Dependencies**: openpyxl>=3.1, typst (Python Typst compiler)
+- **MCP tools: 111 → 122** (+11 new tools)
+
+### Changed
+- Skill registry: `register_skill()` now public with immediate index rebuild
+- Gateway: scans `~/.jarvis/skills/generated/` at startup
+- MemoryTier enum: added TACTICAL (6 tiers total)
+- Working Memory: 400-token tactical budget added
+
 ## [0.67.0] -- 2026-03-29
 
 ### Added
