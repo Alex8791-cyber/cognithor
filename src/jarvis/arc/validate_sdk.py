@@ -154,7 +154,9 @@ def validate() -> dict:
                 results["grid_min"] = int(arr.min()) if arr.size > 0 else None
                 results["grid_max"] = int(arr.max()) if arr.size > 0 else None
                 results["grid_size"] = int(arr.size)
-                results["grid_first_values"] = arr.flat[:10].tolist() if arr.size >= 10 else arr.flat[:].tolist()
+                results["grid_first_values"] = (
+                    arr.flat[:10].tolist() if arr.size >= 10 else arr.flat[:].tolist()
+                )
                 print(f"  [OK] Found in obs.{attr_name}")
                 print(f"    shape={arr.shape}, dtype={arr.dtype}")
                 print(f"    min={arr.min()}, max={arr.max()}")

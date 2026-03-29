@@ -1777,6 +1777,27 @@ class RecoveryConfig(BaseModel):
 # ============================================================================
 
 
+class ArcConfig(BaseModel):
+    """ARC-AGI-3 Benchmark Agent configuration."""
+
+    enabled: bool = Field(default=False, description="Enable ARC-AGI-3 agent")
+    api_key_env: str = Field(default="ARC_API_KEY", description="Env var for API key")
+    operation_mode: str = Field(default="normal", description="normal or competition")
+    save_recordings: bool = Field(default=True)
+    recording_dir: str = Field(default="~/.jarvis/recordings/arc")
+    discovery_max_steps: int = Field(default=50, ge=10, le=500)
+    hypothesis_confidence_threshold: float = Field(default=0.6, ge=0.1, le=1.0)
+    llm_enabled: bool = Field(default=True)
+    llm_call_interval: int = Field(default=10, ge=1, le=100)
+    cnn_enabled: bool = Field(default=False)
+    cnn_device: str = Field(default="cuda")
+    max_steps_per_level: int = Field(default=500, ge=50, le=5000)
+    max_resets_per_level: int = Field(default=5, ge=1, le=20)
+    max_total_steps: int = Field(default=5000, ge=100, le=50000)
+    max_transitions: int = Field(default=200_000, ge=1000)
+    swarm_max_parallel: int = Field(default=4, ge=1, le=16)
+
+
 class EvolutionConfig(BaseModel):
     """Autonomous Evolution Engine configuration."""
 
@@ -2151,6 +2172,7 @@ class JarvisConfig(BaseModel):
     hashline: HashlineGuardConfig = Field(default_factory=HashlineGuardConfig)
     session: SessionConfig = Field(default_factory=SessionConfig)
     evolution: EvolutionConfig = Field(default_factory=EvolutionConfig)
+    arc: ArcConfig = Field(default_factory=ArcConfig)
 
     # Heartbeat- und Plugin-Konfigurationen
     # Die HeartbeatConfig steuert einen periodischen Check (Heartbeat), der
