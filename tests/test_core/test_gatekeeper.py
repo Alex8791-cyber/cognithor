@@ -177,7 +177,6 @@ class TestRiskClassification:
             "http_request",
             "db_execute",
             "docker_run",
-            "vault_delete",
         ],
     )
     def test_orange_tools_comprehensive(
@@ -188,6 +187,24 @@ class TestRiskClassification:
         decision = gatekeeper.evaluate(action, session)
         assert decision.risk_level == RiskLevel.ORANGE, f"{tool} should be ORANGE"
         assert decision.needs_approval, f"{tool} should need approval"
+
+    @pytest.mark.parametrize(
+        "tool",
+        [
+            "vault_delete",
+            "delete_entity",
+            "delete_relation",
+            "erase_user_data",
+        ],
+    )
+    def test_red_tools_blocked(
+        self, gatekeeper: Gatekeeper, session: SessionContext, tool: str
+    ) -> None:
+        """RED tools (GDPR erasure, destructive) must be blocked outright."""
+        action = PlannedAction(tool=tool, params={})
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.risk_level == RiskLevel.RED, f"{tool} should be RED"
+        assert decision.status.value == "BLOCK", f"{tool} should be BLOCK"
 
 
 # ============================================================================
