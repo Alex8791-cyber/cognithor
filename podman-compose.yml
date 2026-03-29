@@ -1,0 +1,32 @@
+services:
+  cognithor:
+    build:
+      context: .
+      dockerfile: Containerfile.podman
+    image: cognithor-podman:latest
+    container_name: cognithor
+    restart: unless-stopped
+    ports:
+      - "${COGNITHOR_BIND_IP:-127.0.0.1}:${COGNITHOR_API_PORT:-8741}:8741"
+    environment:
+      JARVIS_HOME: /home/jarvis/.jarvis
+      JARVIS_LANGUAGE: ${JARVIS_LANGUAGE:-en}
+      JARVIS_LOGGING_LEVEL: ${JARVIS_LOGGING_LEVEL:-INFO}
+      JARVIS_OLLAMA_BASE_URL: ${JARVIS_OLLAMA_BASE_URL:-http://host.containers.internal:11434}
+    volumes:
+      - cognithor-data:/home/jarvis/.jarvis:Z
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8741/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  cognithor-data:
+    name: cognithor-data
