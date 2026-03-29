@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -201,7 +201,7 @@
   </div>
   <nav class="sidebar-nav">
     <div class="nav-group">
-      <div class="nav-group-label">Übersicht</div>
+      <div class="nav-group-label">Overview</div>
       <a class="nav-item active" data-page="dashboard">
         <span class="emoji">📊</span> Dashboard
       </a>
@@ -211,12 +211,12 @@
       </a>
     </div>
     <div class="nav-group">
-      <div class="nav-group-label">Agenten</div>
+      <div class="nav-group-label">Agents</div>
       <a class="nav-item" data-page="agents">
-        <span class="emoji">🧠</span> Agenten
+        <span class="emoji">🧠</span> Agents
       </a>
       <a class="nav-item" data-page="heartbeat">
-        <span class="emoji">💓</span> Heartbeat-Tasks
+        <span class="emoji">💓</span> Heartbeat Tasks
       </a>
       <a class="nav-item" data-page="auth">
         <span class="emoji">🔐</span> Auth & Sessions
@@ -225,19 +225,19 @@
     <div class="nav-group">
       <div class="nav-group-label">Skills</div>
       <a class="nav-item" data-page="marketplace">
-        <span class="emoji">🏪</span> Marktplatz
+        <span class="emoji">🏪</span> Marketplace
       </a>
       <a class="nav-item" data-page="updater">
         <span class="emoji">🔄</span> Updates
       </a>
     </div>
     <div class="nav-group">
-      <div class="nav-group-label">Konfiguration</div>
+      <div class="nav-group-label">Configuration</div>
       <a class="nav-item" data-page="config">
-        <span class="emoji">⚙️</span> Einstellungen
+        <span class="emoji">⚙️</span> Settings
       </a>
       <a class="nav-item" data-page="wizards">
-        <span class="emoji">🧙</span> Assistenten
+        <span class="emoji">🧙</span> Wizards
       </a>
       <a class="nav-item" data-page="bindings">
         <span class="emoji">🔗</span> Bindings
@@ -248,7 +248,7 @@
     </div>
   </nav>
   <div class="sidebar-footer">
-    <div class="status"><span class="dot"></span> System läuft</div>
+    <div class="status"><span class="dot"></span> System Running</div>
   </div>
 </aside>
 
@@ -257,8 +257,8 @@
   <div class="topbar">
     <h2 id="page-title">Dashboard</h2>
     <div class="actions">
-      <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Aktualisieren</button>
-      <button class="btn btn-primary btn-sm" onclick="navigate('wizards')">+ Neuer Wizard</button>
+      <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Refresh</button>
+      <button class="btn btn-primary btn-sm" onclick="navigate('wizards')">+ New Wizard</button>
     </div>
   </div>
 
@@ -268,47 +268,47 @@
     <div id="page-dashboard" class="page active">
       <div class="section">
         <div class="grid grid-4" id="kpi-cards">
-          <div class="card"><div class="card-title">Agenten</div><div class="card-value accent" id="kpi-agents">—</div><div class="card-sub">Konfiguriert</div></div>
-          <div class="card"><div class="card-title">Aktive Sessions</div><div class="card-value green" id="kpi-sessions">—</div><div class="card-sub">Auth-Gateway</div></div>
-          <div class="card"><div class="card-title">Skills installiert</div><div class="card-value" id="kpi-skills">—</div><div class="card-sub">Marketplace</div></div>
-          <div class="card"><div class="card-title">Heartbeat-Tasks</div><div class="card-value orange" id="kpi-tasks">—</div><div class="card-sub">Alle Agenten</div></div>
+          <div class="card"><div class="card-title">Agents</div><div class="card-value accent" id="kpi-agents">—</div><div class="card-sub">Configured</div></div>
+          <div class="card"><div class="card-title">Active Sessions</div><div class="card-value green" id="kpi-sessions">—</div><div class="card-sub">Auth Gateway</div></div>
+          <div class="card"><div class="card-title">Installed Skills</div><div class="card-value" id="kpi-skills">—</div><div class="card-sub">Marketplace</div></div>
+          <div class="card"><div class="card-title">Heartbeat Tasks</div><div class="card-value orange" id="kpi-tasks">—</div><div class="card-sub">All Agents</div></div>
         </div>
       </div>
       <div class="section">
         <div class="grid grid-2">
           <div class="card">
             <div class="card-header">
-              <div class="card-title">System-Metriken (24h)</div>
+              <div class="card-title">System Metrics (24h)</div>
               <span class="pulse"></span>
             </div>
             <div class="sparkline" id="metrics-spark"></div>
-            <div class="card-sub" style="margin-top:8px">CPU · RAM · Tokens pro Stunde</div>
+            <div class="card-sub" style="margin-top:8px">CPU · RAM · Tokens per hour</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title">Letzte Ereignisse</div></div>
+            <div class="card-header"><div class="card-title">Recent Events</div></div>
             <div class="event-log" id="recent-events">
-              <div class="empty"><div class="icon">📭</div>Noch keine Ereignisse</div>
+              <div class="empty"><div class="icon">📭</div>No events yet</div>
             </div>
           </div>
         </div>
       </div>
       <div class="section">
-        <div class="section-title">Schnellzugriff</div>
+        <div class="section-title">Quick Access</div>
         <div class="grid grid-3">
           <div class="card" style="cursor:pointer" onclick="navigate('wizards')">
             <div style="font-size:24px;margin-bottom:8px">🧙</div>
-            <div style="font-weight:500;font-size:14px">Konfig-Assistent</div>
-            <div class="card-sub">Heartbeat, Agents oder Bindings per Wizard einrichten</div>
+            <div style="font-weight:500;font-size:14px">Setup Wizard</div>
+            <div class="card-sub">Configure heartbeat, agents, or bindings with a wizard</div>
           </div>
           <div class="card" style="cursor:pointer" onclick="navigate('marketplace')">
             <div style="font-size:24px;margin-bottom:8px">🏪</div>
-            <div style="font-weight:500;font-size:14px">Skill-Marktplatz</div>
-            <div class="card-sub">Skills durchsuchen, installieren und bewerten</div>
+            <div style="font-weight:500;font-size:14px">Skill Marketplace</div>
+            <div class="card-sub">Browse, install, and rate skills</div>
           </div>
           <div class="card" style="cursor:pointer" onclick="navigate('monitoring')">
             <div style="font-size:24px;margin-bottom:8px">📡</div>
             <div style="font-weight:500;font-size:14px">Live-Monitoring</div>
-            <div class="card-sub">CPU, RAM, Tokens und Events in Echtzeit</div>
+            <div class="card-sub">CPU, RAM, tokens, and events in real time</div>
           </div>
         </div>
       </div>
@@ -325,13 +325,13 @@
         </div>
       </div>
       <div class="section">
-        <div class="section-title">Metriken-Verlauf</div>
+        <div class="section-title">Metric History</div>
         <div class="card">
           <div class="chart-container" id="mon-chart"></div>
         </div>
       </div>
       <div class="section">
-        <div class="section-title">System-Events <span class="count" id="mon-event-count"></span></div>
+        <div class="section-title">System Events <span class="count" id="mon-event-count"></span></div>
         <div class="card">
           <div class="event-log" id="mon-events"></div>
         </div>
@@ -341,11 +341,11 @@
     <!-- ====== AGENTS ====== -->
     <div id="page-agents" class="page">
       <div class="section">
-        <div class="section-title">Konfigurierte Agenten</div>
+        <div class="section-title">Configured Agents</div>
         <div class="card table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Modell</th><th>Sandbox</th><th>Tools</th><th>Status</th></tr></thead>
-            <tbody id="agents-table"><tr><td colspan="5" class="empty">Lade Agenten...</td></tr></tbody>
+            <thead><tr><th>Name</th><th>Model</th><th>Sandbox</th><th>Tools</th><th>Status</th></tr></thead>
+            <tbody id="agents-table"><tr><td colspan="5" class="empty">Loading agents...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -354,7 +354,7 @@
     <!-- ====== HEARTBEAT ====== -->
     <div id="page-heartbeat" class="page">
       <div class="section">
-        <div class="section-title">Per-Agent Heartbeat-Tasks</div>
+        <div class="section-title">Per-Agent Heartbeat Tasks</div>
         <div class="grid grid-3" id="hb-agent-cards"></div>
       </div>
     </div>
@@ -364,13 +364,13 @@
       <div class="section">
         <div class="grid grid-4" id="auth-kpis">
           <div class="card"><div class="card-title">Tokens</div><div class="card-value" id="auth-tokens">—</div></div>
-          <div class="card"><div class="card-title">Aktive</div><div class="card-value green" id="auth-active">—</div></div>
+          <div class="card"><div class="card-title">Active</div><div class="card-value green" id="auth-active">—</div></div>
           <div class="card"><div class="card-title">Sessions</div><div class="card-value accent" id="auth-sess">—</div></div>
-          <div class="card"><div class="card-title">Benutzer</div><div class="card-value" id="auth-users">—</div></div>
+          <div class="card"><div class="card-title">Users</div><div class="card-value" id="auth-users">—</div></div>
         </div>
       </div>
       <div class="section">
-        <div class="section-title">Audit-Log</div>
+        <div class="section-title">Audit Log</div>
         <div class="card"><div class="event-log" id="auth-audit"></div></div>
       </div>
     </div>
@@ -380,9 +380,9 @@
       <div class="section">
         <div class="grid grid-4" id="mp-kpis">
           <div class="card"><div class="card-title">Skills</div><div class="card-value" id="mp-total">—</div></div>
-          <div class="card"><div class="card-title">Verifiziert</div><div class="card-value green" id="mp-verified">—</div></div>
-          <div class="card"><div class="card-title">Kategorien</div><div class="card-value accent" id="mp-cats">—</div></div>
-          <div class="card"><div class="card-title">∅ Bewertung</div><div class="card-value orange" id="mp-rating">—</div></div>
+          <div class="card"><div class="card-title">Verified</div><div class="card-value green" id="mp-verified">—</div></div>
+          <div class="card"><div class="card-title">Categories</div><div class="card-value accent" id="mp-cats">—</div></div>
+          <div class="card"><div class="card-title">Avg Rating</div><div class="card-value orange" id="mp-rating">—</div></div>
         </div>
       </div>
       <div class="section">
@@ -390,7 +390,7 @@
         <div class="grid grid-3" id="mp-featured"></div>
       </div>
       <div class="section">
-        <div class="section-title">Trending (7 Tage)</div>
+        <div class="section-title">Trending (7 days)</div>
         <div class="grid grid-3" id="mp-trending"></div>
       </div>
     </div>
@@ -399,18 +399,18 @@
     <div id="page-updater" class="page">
       <div class="section">
         <div class="grid grid-4" id="upd-kpis">
-          <div class="card"><div class="card-title">Installiert</div><div class="card-value" id="upd-installed">—</div></div>
+          <div class="card"><div class="card-title">Installed</div><div class="card-value" id="upd-installed">—</div></div>
           <div class="card"><div class="card-title">Updates</div><div class="card-value orange" id="upd-pending">—</div></div>
           <div class="card"><div class="card-title">Recalls</div><div class="card-value red" id="upd-recalls">—</div></div>
-          <div class="card"><div class="card-title">Strategie</div><div class="card-value accent" id="upd-strategy">—</div></div>
+          <div class="card"><div class="card-title">Strategy</div><div class="card-value accent" id="upd-strategy">—</div></div>
         </div>
       </div>
       <div class="section">
-        <div class="section-title">Ausstehende Updates</div>
+        <div class="section-title">Pending Updates</div>
         <div class="card table-wrap">
           <table>
-            <thead><tr><th>Paket</th><th>Aktuell</th><th>Verfügbar</th><th>Dringlichkeit</th><th>Aktion</th></tr></thead>
-            <tbody id="upd-table"><tr><td colspan="5" class="empty">Keine ausstehenden Updates</td></tr></tbody>
+            <thead><tr><th>Package</th><th>Current</th><th>Available</th><th>Severity</th><th>Action</th></tr></thead>
+            <tbody id="upd-table"><tr><td colspan="5" class="empty">No pending updates</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -419,7 +419,7 @@
     <!-- ====== CONFIG ====== -->
     <div id="page-config" class="page">
       <div class="section">
-        <div class="section-title">Konfiguration</div>
+        <div class="section-title">Configuration</div>
         <div class="grid grid-2" id="config-sections"></div>
       </div>
       <div class="section">
@@ -431,7 +431,7 @@
     <!-- ====== WIZARDS ====== -->
     <div id="page-wizards" class="page">
       <div class="section">
-        <div class="section-title">Konfigurations-Assistenten</div>
+        <div class="section-title">Configuration Wizards</div>
         <div class="grid grid-3" id="wizard-list"></div>
       </div>
       <div class="section" id="wizard-active" style="display:none">
@@ -439,8 +439,8 @@
           <div class="wizard-steps" id="wizard-progress"></div>
           <div id="wizard-content"></div>
           <div class="wizard-actions">
-            <button class="btn btn-ghost" id="wiz-back" onclick="wizardBack()">← Zurück</button>
-            <button class="btn btn-primary" id="wiz-next" onclick="wizardNext()">Weiter →</button>
+            <button class="btn btn-ghost" id="wiz-back" onclick="wizardBack()">← Back</button>
+            <button class="btn btn-primary" id="wiz-next" onclick="wizardNext()">Next →</button>
           </div>
         </div>
       </div>
@@ -449,11 +449,11 @@
     <!-- ====== BINDINGS ====== -->
     <div id="page-bindings" class="page">
       <div class="section">
-        <div class="section-title">Routing-Regeln</div>
+        <div class="section-title">Routing Rules</div>
         <div class="card table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Kanal</th><th>Agent</th><th>Muster</th><th>Priorität</th></tr></thead>
-            <tbody id="bindings-table"><tr><td colspan="5" class="empty">Lade Bindings...</td></tr></tbody>
+            <thead><tr><th>Name</th><th>Channel</th><th>Agent</th><th>Pattern</th><th>Priority</th></tr></thead>
+            <tbody id="bindings-table"><tr><td colspan="5" class="empty">Loading bindings...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -462,10 +462,10 @@
     <!-- ====== COMMANDS ====== -->
     <div id="page-commands" class="page">
       <div class="section">
-        <div class="section-title">Slash-Commands <span class="count" id="cmd-count"></span></div>
+        <div class="section-title">Slash Commands <span class="count" id="cmd-count"></span></div>
         <div class="card table-wrap">
           <table>
-            <thead><tr><th>Command</th><th>Beschreibung</th><th>Scope</th><th>Auth</th><th>Cooldown</th></tr></thead>
+            <thead><tr><th>Command</th><th>Description</th><th>Scope</th><th>Auth</th><th>Cooldown</th></tr></thead>
             <tbody id="commands-table"></tbody>
           </table>
         </div>
@@ -480,19 +480,40 @@
 // API Layer
 // ============================================================
 const BASE = window.location.origin;
+let _authToken = null;
+
+async function ensureToken() {
+  if (_authToken) return _authToken;
+  try {
+    const r = await fetch(`${BASE}/api/v1/bootstrap`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    _authToken = data.token || null;
+    return _authToken;
+  } catch {
+    return null;
+  }
+}
+
 const api = {
   get: async (path) => {
     try {
-      const r = await fetch(`${BASE}${path}`);
-      return r.ok ? await r.json() : {};
+      await ensureToken();
+      const headers = {};
+      if (_authToken) headers.Authorization = `Bearer ${_authToken}`;
+      const r = await fetch(`${BASE}${path}`, { headers });
+      return r.ok ? await r.json() : { error: `HTTP ${r.status}` };
     } catch { return {}; }
   },
   post: async (path, data) => {
     try {
+      await ensureToken();
+      const headers = { 'Content-Type': 'application/json' };
+      if (_authToken) headers.Authorization = `Bearer ${_authToken}`;
       const r = await fetch(`${BASE}${path}`, {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+        method: 'POST', headers, body: JSON.stringify(data)
       });
-      return r.ok ? await r.json() : {};
+      return r.ok ? await r.json() : { error: `HTTP ${r.status}` };
     } catch { return {}; }
   }
 };
@@ -501,10 +522,10 @@ const api = {
 // Navigation
 // ============================================================
 const pageTitles = {
-  dashboard: 'Dashboard', monitoring: 'Live-Monitoring', agents: 'Agenten',
-  heartbeat: 'Heartbeat-Tasks', auth: 'Auth & Sessions', marketplace: 'Skill-Marktplatz',
-  updater: 'Updates & Recalls', config: 'Einstellungen', wizards: 'Konfigurations-Assistenten',
-  bindings: 'Routing-Regeln', commands: 'Slash-Commands'
+  dashboard: 'Dashboard', monitoring: 'Live Monitoring', agents: 'Agents',
+  heartbeat: 'Heartbeat Tasks', auth: 'Auth & Sessions', marketplace: 'Skill Marketplace',
+  updater: 'Updates & Recalls', config: 'Settings', wizards: 'Configuration Wizards',
+  bindings: 'Routing Rules', commands: 'Slash Commands'
 };
 
 function navigate(page) {
@@ -594,14 +615,14 @@ async function loadAgents() {
   const data = await api.get('/api/v1/agents');
   const agents = data.agents || [];
   const tbody = document.getElementById('agents-table');
-  if (!agents.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Keine Agenten konfiguriert</td></tr>'; return; }
+  if (!agents.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No agents configured</td></tr>'; return; }
   tbody.innerHTML = agents.map(a => `
     <tr>
       <td style="color:var(--text-primary);font-weight:500">${esc(a.name || a.agent_id) || '—'}</td>
-      <td><span class="tag tag-blue">${esc(a.preferred_model || a.model) || 'Standard'}</span></td>
+      <td><span class="tag tag-blue">${esc(a.preferred_model || a.model) || 'Default'}</span></td>
       <td>${esc(a.sandbox_profile || a.sandbox_network) || '—'}</td>
       <td>${(a.allowed_tools || []).length || '∞'}</td>
-      <td><span class="tag tag-green">Aktiv</span></td>
+      <td><span class="tag tag-green">Active</span></td>
     </tr>
   `).join('');
 }
@@ -613,7 +634,7 @@ async function loadHeartbeat() {
   const data = await api.get('/api/v1/agent-heartbeat/dashboard');
   const container = document.getElementById('hb-agent-cards');
   const agents = data.agents || [];
-  if (!agents.length) { container.innerHTML = '<div class="empty"><div class="icon">💓</div>Keine Agent-Heartbeats konfiguriert</div>'; return; }
+  if (!agents.length) { container.innerHTML = '<div class="empty"><div class="icon">💓</div>No agent heartbeats configured</div>'; return; }
   container.innerHTML = agents.map(a => `
     <div class="card">
       <div style="font-weight:600;font-size:14px;margin-bottom:10px">${esc(a.agent_id)}</div>
@@ -621,10 +642,10 @@ async function loadHeartbeat() {
         <span class="card-sub">Tasks</span><span style="font-family:var(--mono)">${a.task_count}</span>
       </div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span class="card-sub">Ausführungen</span><span style="font-family:var(--mono)">${a.total_runs}</span>
+        <span class="card-sub">Runs</span><span style="font-family:var(--mono)">${a.total_runs}</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span class="card-sub">Fehler</span><span style="font-family:var(--mono);color:${a.total_fails ? 'var(--red)' : 'var(--green)'}">${a.total_fails}</span>
+        <span class="card-sub">Failures</span><span style="font-family:var(--mono);color:${a.total_fails ? 'var(--red)' : 'var(--green)'}">${a.total_fails}</span>
       </div>
     </div>
   `).join('');
@@ -642,7 +663,7 @@ async function loadAuth() {
 
   const el = document.getElementById('auth-audit');
   el.innerHTML = `<div class="event-item"><div class="event-text" style="color:var(--text-muted)">
-    ${data.audit_entries ?? 0} Audit-Einträge gesamt
+    ${data.audit_entries ?? 0} total audit entries
   </div></div>`;
 }
 
@@ -666,13 +687,13 @@ async function loadMarketplace() {
 
 function renderSkillCards(id, skills) {
   const el = document.getElementById(id);
-  if (!skills.length) { el.innerHTML = '<div class="empty">Keine Skills</div>'; return; }
+  if (!skills.length) { el.innerHTML = '<div class="empty">No skills</div>'; return; }
   el.innerHTML = skills.map(s => `
     <div class="card">
       <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(s.name || s.package_id) || '—'}</div>
       <div class="card-sub" style="margin-bottom:8px">${esc(s.description) || ''}</div>
       <div style="display:flex;gap:6px">
-        ${s.verified ? '<span class="tag tag-green">✓ Verifiziert</span>' : ''}
+        ${s.verified ? '<span class="tag tag-green">✓ Verified</span>' : ''}
         ${s.rating ? `<span class="tag tag-orange">${s.rating.toFixed(1)}★</span>` : ''}
         ${s.installs ? `<span class="tag tag-blue">${s.installs} Downloads</span>` : ''}
       </div>
@@ -696,14 +717,14 @@ async function loadUpdater() {
 
   const updates = pending.updates || [];
   const tbody = document.getElementById('upd-table');
-  if (!updates.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Alle Skills aktuell ✓</td></tr>'; return; }
+  if (!updates.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">All skills up to date ✓</td></tr>'; return; }
   tbody.innerHTML = updates.map(u => `
     <tr>
       <td style="font-weight:500">${esc(u.package_id)}</td>
       <td><span class="tag tag-blue">${esc(u.current_version)}</span></td>
       <td><span class="tag tag-green">${esc(u.available_version)}</span></td>
       <td><span class="tag tag-${u.severity === 'critical' ? 'red' : u.severity === 'high' ? 'orange' : 'blue'}">${esc(u.severity)}</span></td>
-      <td>${u.auto_installable ? '<button class="btn btn-primary btn-sm">Installieren</button>' : '<span class="tag tag-purple">Manuell</span>'}</td>
+      <td>${u.auto_installable ? '<button class="btn btn-primary btn-sm">Install</button>' : '<span class="tag tag-purple">Manual</span>'}</td>
     </tr>
   `).join('');
 }
@@ -723,14 +744,14 @@ async function loadConfig() {
       <div class="card-title" style="margin-bottom:8px">${esc(k)}</div>
       <pre style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);overflow:auto;max-height:140px">${esc(JSON.stringify(config[k], null, 2))}</pre>
     </div>
-  `).join('') || '<div class="empty">Keine Konfiguration geladen</div>';
+  `).join('') || '<div class="empty">No configuration loaded</div>';
 
   const presetsEl = document.getElementById('config-presets');
   const presetList = presets.presets || [];
   presetsEl.innerHTML = presetList.map(p => `
     <div class="card" style="cursor:pointer">
       <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(p.name || p)}</div>
-      <div class="card-sub">${esc(p.description) || 'Preset anwenden'}</div>
+      <div class="card-sub">${esc(p.description) || 'Apply preset'}</div>
     </div>
   `).join('') || '';
 }
@@ -745,17 +766,17 @@ async function loadWizards() {
   const wizards = data.wizards || [];
   const icons = { heartbeat: '💓', binding: '🔗', agent: '🧠' };
   const descs = {
-    heartbeat: 'Automatische Aufgaben konfigurieren',
-    binding: 'Routing-Regeln für Kanäle erstellen',
-    agent: 'Neuen Agenten mit Profil und Sandbox einrichten',
+    heartbeat: 'Configure automatic tasks',
+    binding: 'Create routing rules for channels',
+    agent: 'Create a new agent with profile and sandbox',
   };
   const el = document.getElementById('wizard-list');
   el.innerHTML = wizards.map(w => `
     <div class="card" style="cursor:pointer" onclick="startWizard('${esc(w.wizard_type)}')">
       <div style="font-size:28px;margin-bottom:8px">${icons[w.wizard_type] || '🧙'}</div>
-      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1))}-Wizard</div>
-      <div class="card-sub">${esc(descs[w.wizard_type]) || `${w.step_count} Schritte`}</div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">${w.templates?.length || 0} Vorlagen verfügbar</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(w.wizard_type.charAt(0).toUpperCase() + w.wizard_type.slice(1))} Wizard</div>
+      <div class="card-sub">${esc(descs[w.wizard_type]) || `${w.step_count} steps`}</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">${w.templates?.length || 0} templates available</div>
     </div>
   `).join('');
 }
