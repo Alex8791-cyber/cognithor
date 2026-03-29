@@ -3,6 +3,7 @@ and knowledge-graph gap analysis.
 
 Part of Phase 5C: autonomous plan expansion.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,16 +43,12 @@ class HorizonScanner:
 
         # Deduplicate against existing sub-goal titles (case-insensitive)
         existing_titles = {sg.title.lower() for sg in plan.sub_goals}
-        deduplicated = [
-            r for r in combined if r["title"].lower() not in existing_titles
-        ]
+        deduplicated = [r for r in combined if r["title"].lower() not in existing_titles]
         return deduplicated
 
     async def explore_via_llm(self, plan: LearningPlan) -> list[dict]:
         """Ask the LLM for expansion suggestions based on the current plan."""
-        completed = [
-            sg.title for sg in plan.sub_goals if sg.status in ("passed", "done")
-        ]
+        completed = [sg.title for sg in plan.sub_goals if sg.status in ("passed", "done")]
         all_titles = [sg.title for sg in plan.sub_goals]
 
         # Gather known entities from memory
@@ -68,7 +65,7 @@ class HorizonScanner:
             f"All sub-goals: {all_titles}\n"
             f"Known entities: {entities}\n\n"
             "Suggest 2-5 new sub-goals that would deepen or broaden this plan. "
-            "Return JSON: {\"expansions\": [{\"title\": \"...\", \"reason\": \"...\"}]}"
+            'Return JSON: {"expansions": [{"title": "...", "reason": "..."}]}'
         )
 
         try:
@@ -103,10 +100,12 @@ class HorizonScanner:
                 hits = []
 
             if len(hits) < 2:
-                results.append({
-                    "title": f"Vertiefe: {name}",
-                    "reason": f"Entity '{name}' has only {len(hits)} memory chunk(s) — coverage is shallow.",
-                    "source": "graph",
-                })
+                results.append(
+                    {
+                        "title": f"Vertiefe: {name}",
+                        "reason": f"Entity '{name}' has only {len(hits)} memory chunk(s) — coverage is shallow.",
+                        "source": "graph",
+                    }
+                )
 
         return results

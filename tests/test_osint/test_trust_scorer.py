@@ -1,15 +1,22 @@
 """Tests for Trust Scorer."""
+
 from __future__ import annotations
 
 import pytest
 from datetime import datetime, timezone
 from jarvis.osint.trust_scorer import TrustScorer
 from jarvis.osint.models import (
-    ClaimResult, ClaimType, Evidence, TrustScore, VerificationStatus,
+    ClaimResult,
+    ClaimType,
+    Evidence,
+    TrustScore,
+    VerificationStatus,
 )
 
 
-def _cr(status: VerificationStatus, source_types: list[str], confidence: float = 0.8) -> ClaimResult:
+def _cr(
+    status: VerificationStatus, source_types: list[str], confidence: float = 0.8
+) -> ClaimResult:
     return ClaimResult(
         claim="test claim",
         claim_type=ClaimType.EMPLOYMENT,
@@ -17,8 +24,11 @@ def _cr(status: VerificationStatus, source_types: list[str], confidence: float =
         confidence=confidence,
         evidence=[
             Evidence(
-                source=f"{st}_test", source_type=st, content="test",
-                confidence=confidence, collected_at=datetime.now(timezone.utc),
+                source=f"{st}_test",
+                source_type=st,
+                content="test",
+                confidence=confidence,
+                collected_at=datetime.now(timezone.utc),
             )
             for st in source_types
         ],

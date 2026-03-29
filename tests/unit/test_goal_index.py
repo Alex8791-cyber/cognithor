@@ -1,4 +1,5 @@
 """Tests for GoalScopedIndex — per-goal isolated vector + entity storage."""
+
 from __future__ import annotations
 
 import pytest
@@ -43,7 +44,9 @@ class TestGoalScopedIndex:
     def test_add_entity(self, tmp_path):
         """Add entity, get_entity returns it with correct fields."""
         idx = GoalScopedIndex(goal_slug="law", base_dir=tmp_path)
-        idx.add_entity("BGB", "law", attributes={"section": "276"}, source_url="https://example.com")
+        idx.add_entity(
+            "BGB", "law", attributes={"section": "276"}, source_url="https://example.com"
+        )
         entity = idx.get_entity("BGB")
         assert entity is not None
         assert entity["name"] == "BGB"

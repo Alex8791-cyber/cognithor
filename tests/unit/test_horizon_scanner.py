@@ -1,4 +1,5 @@
 """Tests for HorizonScanner — LLM exploration + graph gap discovery."""
+
 from __future__ import annotations
 
 import json
@@ -15,6 +16,7 @@ from jarvis.evolution.models import LearningPlan, SubGoal
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_plan(**overrides) -> LearningPlan:
     defaults = dict(
         goal="Learn Rust",
@@ -30,8 +32,7 @@ def _entity(name: str) -> SimpleNamespace:
     return SimpleNamespace(name=name)
 
 
-def _mock_memory(entities: list[SimpleNamespace] | None = None,
-                 search_hits: int = 0):
+def _mock_memory(entities: list[SimpleNamespace] | None = None, search_hits: int = 0):
     """Return a MagicMock that behaves like MemoryManager."""
     mm = MagicMock()
     mm.semantic.list_entities = MagicMock(return_value=entities or [])
@@ -49,13 +50,16 @@ def _mock_memory(entities: list[SimpleNamespace] | None = None,
 @pytest.mark.asyncio
 async def test_llm_exploration():
     """LLM returns expansion suggestions -> list with titles/reasons."""
+
     async def fake_llm(prompt: str) -> str:
-        return json.dumps({
-            "expansions": [
-                {"title": "Concurrency in Rust", "reason": "Extends ownership"},
-                {"title": "Unsafe Rust", "reason": "Advanced topic"},
-            ],
-        })
+        return json.dumps(
+            {
+                "expansions": [
+                    {"title": "Concurrency in Rust", "reason": "Extends ownership"},
+                    {"title": "Unsafe Rust", "reason": "Advanced topic"},
+                ],
+            }
+        )
 
     scanner = HorizonScanner(llm_fn=fake_llm, memory_manager=_mock_memory())
     plan = _make_plan()
@@ -86,12 +90,15 @@ async def test_graph_discovery():
 @pytest.mark.asyncio
 async def test_full_scan():
     """scan() combines LLM exploration + graph gap discovery."""
+
     async def fake_llm(prompt: str) -> str:
-        return json.dumps({
-            "expansions": [
-                {"title": "Async Rust", "reason": "Modern pattern"},
-            ],
-        })
+        return json.dumps(
+            {
+                "expansions": [
+                    {"title": "Async Rust", "reason": "Modern pattern"},
+                ],
+            }
+        )
 
     entities = [_entity("Tokio")]
     memory = _mock_memory(entities=entities, search_hits=0)
@@ -109,13 +116,16 @@ async def test_full_scan():
 @pytest.mark.asyncio
 async def test_deduplicates_existing_subgoals():
     """SubGoal already exists with same title -> not in results."""
+
     async def fake_llm(prompt: str) -> str:
-        return json.dumps({
-            "expansions": [
-                {"title": "Ownership basics", "reason": "duplicate"},
-                {"title": "Pattern matching", "reason": "new topic"},
-            ],
-        })
+        return json.dumps(
+            {
+                "expansions": [
+                    {"title": "Ownership basics", "reason": "duplicate"},
+                    {"title": "Pattern matching", "reason": "new topic"},
+                ],
+            }
+        )
 
     scanner = HorizonScanner(llm_fn=fake_llm, memory_manager=_mock_memory())
     plan = _make_plan()  # already has SubGoal titled "Ownership basics"
@@ -129,6 +139,7 @@ async def test_deduplicates_existing_subgoals():
 @pytest.mark.asyncio
 async def test_llm_failure_graceful():
     """LLM returns non-JSON -> empty list, no crash."""
+
     async def bad_llm(prompt: str) -> str:
         return "I'm not sure what you mean."
 

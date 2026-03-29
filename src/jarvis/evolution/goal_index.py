@@ -1,4 +1,5 @@
 """GoalScopedIndex -- per-goal isolated vector + entity storage with global fallback."""
+
 from __future__ import annotations
 
 import json
@@ -44,17 +45,13 @@ class GoalScopedIndex:
 
         # Per-goal chunk DB
         self._chunk_db_path = self._base_dir / "chunks.db"
-        self._chunk_conn = encrypted_connect(
-            str(self._chunk_db_path), check_same_thread=False
-        )
+        self._chunk_conn = encrypted_connect(str(self._chunk_db_path), check_same_thread=False)
         self._chunk_conn.execute("PRAGMA journal_mode=WAL")
         self._ensure_chunk_schema()
 
         # Per-goal entity DB
         self._entity_db_path = self._base_dir / "entities.db"
-        self._entity_conn = encrypted_connect(
-            str(self._entity_db_path), check_same_thread=False
-        )
+        self._entity_conn = encrypted_connect(str(self._entity_db_path), check_same_thread=False)
         self._entity_conn.execute("PRAGMA journal_mode=WAL")
         self._ensure_entity_schema()
 
@@ -135,8 +132,7 @@ class GoalScopedIndex:
         )
         # Update FTS index
         self._chunk_conn.execute(
-            "INSERT INTO chunks_fts (rowid, text) "
-            "VALUES (last_insert_rowid(), ?)",
+            "INSERT INTO chunks_fts (rowid, text) VALUES (last_insert_rowid(), ?)",
             (text,),
         )
         self._chunk_conn.commit()
@@ -222,8 +218,7 @@ class GoalScopedIndex:
     def get_entity(self, name: str) -> dict[str, Any] | None:
         """Get an entity by name from the goal-scoped index."""
         row = self._entity_conn.execute(
-            "SELECT name, entity_type, attributes, source_url "
-            "FROM entities WHERE name = ?",
+            "SELECT name, entity_type, attributes, source_url FROM entities WHERE name = ?",
             (name,),
         ).fetchone()
         if not row:
@@ -236,15 +231,11 @@ class GoalScopedIndex:
         }
 
     def entity_count(self) -> int:
-        row = self._entity_conn.execute(
-            "SELECT COUNT(*) FROM entities"
-        ).fetchone()
+        row = self._entity_conn.execute("SELECT COUNT(*) FROM entities").fetchone()
         return row[0] if row else 0
 
     def relation_count(self) -> int:
-        row = self._entity_conn.execute(
-            "SELECT COUNT(*) FROM relations"
-        ).fetchone()
+        row = self._entity_conn.execute("SELECT COUNT(*) FROM relations").fetchone()
         return row[0] if row else 0
 
     def get_entity_relations(self, name: str) -> list[dict[str, str]]:
@@ -254,9 +245,7 @@ class GoalScopedIndex:
             "FROM relations WHERE source_name=? OR target_name=?",
             (name, name),
         ).fetchall()
-        return [
-            {"source": r[0], "relation": r[1], "target": r[2]} for r in rows
-        ]
+        return [{"source": r[0], "relation": r[1], "target": r[2]} for r in rows]
 
     # -- Stats -----------------------------------------------------------
 

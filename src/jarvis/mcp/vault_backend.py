@@ -1,4 +1,5 @@
 """Vault storage backend interface + shared utilities."""
+
 from __future__ import annotations
 
 import re
@@ -13,8 +14,16 @@ __all__ = ["VaultBackend", "NoteData", "slugify", "now_iso", "parse_tags"]
 def slugify(text: str) -> str:
     """Convert title to filename-safe slug."""
     text = text.lower()
-    for src, dst in [("ae", "ae"), ("oe", "oe"), ("ue", "ue"), ("ss", "ss"),
-                     ("\u00e4", "ae"), ("\u00f6", "oe"), ("\u00fc", "ue"), ("\u00df", "ss")]:
+    for src, dst in [
+        ("ae", "ae"),
+        ("oe", "oe"),
+        ("ue", "ue"),
+        ("ss", "ss"),
+        ("\u00e4", "ae"),
+        ("\u00f6", "oe"),
+        ("\u00fc", "ue"),
+        ("\u00df", "ss"),
+    ]:
         text = text.replace(src, dst)
     text = re.sub(r"[^\w\s-]", "", text)
     text = re.sub(r"[\s]+", "-", text).strip("-")
@@ -41,13 +50,34 @@ def new_id() -> str:
 
 class NoteData:
     """Standardized note representation across backends."""
-    __slots__ = ("id", "path", "title", "content", "tags", "folder",
-                 "sources", "backlinks", "created_at", "updated_at")
 
-    def __init__(self, *, id: str = "", path: str = "", title: str = "",
-                 content: str = "", tags: str = "", folder: str = "",
-                 sources: str = "", backlinks: str = "[]",
-                 created_at: str = "", updated_at: str = ""):
+    __slots__ = (
+        "id",
+        "path",
+        "title",
+        "content",
+        "tags",
+        "folder",
+        "sources",
+        "backlinks",
+        "created_at",
+        "updated_at",
+    )
+
+    def __init__(
+        self,
+        *,
+        id: str = "",
+        path: str = "",
+        title: str = "",
+        content: str = "",
+        tags: str = "",
+        folder: str = "",
+        sources: str = "",
+        backlinks: str = "[]",
+        created_at: str = "",
+        updated_at: str = "",
+    ):
         self.id = id or new_id()
         self.path = path
         self.title = title
@@ -67,8 +97,16 @@ class VaultBackend(ABC):
     """Abstract storage backend for the knowledge vault."""
 
     @abstractmethod
-    def save(self, path: str, title: str, content: str, tags: str,
-             folder: str, sources: str, backlinks: list[str]) -> str:
+    def save(
+        self,
+        path: str,
+        title: str,
+        content: str,
+        tags: str,
+        folder: str,
+        sources: str,
+        backlinks: list[str],
+    ) -> str:
         """Save a note. Returns confirmation message."""
         ...
 
@@ -78,20 +116,21 @@ class VaultBackend(ABC):
         ...
 
     @abstractmethod
-    def search(self, query: str, folder: str = "", tags: str = "",
-               limit: int = 10) -> list[NoteData]:
+    def search(
+        self, query: str, folder: str = "", tags: str = "", limit: int = 10
+    ) -> list[NoteData]:
         """Full-text search. Returns matching notes."""
         ...
 
     @abstractmethod
-    def list_notes(self, folder: str = "", tags: str = "",
-                   sort_by: str = "updated", limit: int = 50) -> list[NoteData]:
+    def list_notes(
+        self, folder: str = "", tags: str = "", sort_by: str = "updated", limit: int = 50
+    ) -> list[NoteData]:
         """List notes, optionally filtered and sorted."""
         ...
 
     @abstractmethod
-    def update(self, path: str, append_content: str = "",
-               add_tags: str = "") -> str:
+    def update(self, path: str, append_content: str = "", add_tags: str = "") -> str:
         """Update a note. Returns confirmation."""
         ...
 

@@ -70,9 +70,7 @@ class CostTracker:
         """)
         # Migration: add agent_name column if missing
         try:
-            self._conn.execute(
-                "ALTER TABLE llm_costs ADD COLUMN agent_name TEXT DEFAULT ''"
-            )
+            self._conn.execute("ALTER TABLE llm_costs ADD COLUMN agent_name TEXT DEFAULT ''")
             self._conn.commit()
         except Exception:
             pass  # Column already exists (catches both sqlite3 and sqlcipher3)
@@ -233,9 +231,7 @@ class CostTracker:
         ).fetchall()
         return {name or "(unknown)": cost for name, cost in rows}
 
-    def check_agent_budget(
-        self, agent_name: str, daily_limit: float = 0.0
-    ) -> "AgentBudgetStatus":
+    def check_agent_budget(self, agent_name: str, daily_limit: float = 0.0) -> "AgentBudgetStatus":
         """Check budget for a specific agent."""
         from jarvis.models import AgentBudgetStatus
 

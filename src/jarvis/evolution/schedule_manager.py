@@ -23,8 +23,13 @@ def _normalize_cron(expr: str) -> str:
     CronEngine expects 5-field with numeric day-of-week (0=Sun..6=Sat).
     """
     day_map = {
-        "SUN": "0", "MON": "1", "TUE": "2", "WED": "3",
-        "THU": "4", "FRI": "5", "SAT": "6",
+        "SUN": "0",
+        "MON": "1",
+        "TUE": "2",
+        "WED": "3",
+        "THU": "4",
+        "FRI": "5",
+        "SAT": "6",
     }
     parts = expr.strip().split()
 
@@ -70,8 +75,7 @@ class ScheduleManager:
 
             cron_expr = _normalize_cron(spec.cron_expression)
             prompt = (
-                f"[evolution-update:{plan.id}:{spec.source_url}] "
-                f"{spec.description or spec.name}"
+                f"[evolution-update:{plan.id}:{spec.source_url}] {spec.description or spec.name}"
             )
 
             try:

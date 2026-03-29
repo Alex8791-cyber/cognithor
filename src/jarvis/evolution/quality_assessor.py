@@ -1,4 +1,5 @@
 """QualityAssessor — coverage check + LLM self-examination for Phase 5C."""
+
 from __future__ import annotations
 
 import json
@@ -55,11 +56,10 @@ class QualityAssessor:
     # Question generation
     # ------------------------------------------------------------------
 
-    async def generate_questions(
-        self, topic: str, count: int = 5
-    ) -> list[QualityQuestion]:
+    async def generate_questions(self, topic: str, count: int = 5) -> list[QualityQuestion]:
         """Ask the LLM to produce *count* exam questions about *topic*."""
         import re
+
         prompt = (
             f"Erstelle genau {count} Pruefungsfragen zum Thema: {topic}\n"
             "Antworte NUR mit validem JSON:\n"
@@ -101,10 +101,21 @@ class QualityAssessor:
         # Extract key terms from the question for better search precision
         # Strip common question words to get the actual topic
         search_query = q.question
-        for noise in ("Welche", "Welcher", "Welches", "Was ist", "Was sind",
-                       "Wie wird", "Wie werden", "Wodurch", "Worin",
-                       "im deutschen", "im Versicherungsrecht",
-                       "grundlegend", "wesentlich"):
+        for noise in (
+            "Welche",
+            "Welcher",
+            "Welches",
+            "Was ist",
+            "Was sind",
+            "Wie wird",
+            "Wie werden",
+            "Wodurch",
+            "Worin",
+            "im deutschen",
+            "im Versicherungsrecht",
+            "grundlegend",
+            "wesentlich",
+        ):
             search_query = search_query.replace(noise, "")
         search_query = search_query.strip().strip("?").strip()
         # Use both: specific terms AND expected answer keywords
@@ -138,6 +149,7 @@ class QualityAssessor:
     def _clean_search_output(raw: str) -> str:
         """Strip metadata lines (Score:, Tier:, Quelle:) from search output."""
         import re
+
         lines = raw.split("\n")
         cleaned: list[str] = []
         for line in lines:
@@ -163,6 +175,7 @@ class QualityAssessor:
     async def grade_question(self, q: QualityQuestion) -> QualityQuestion:
         """Let the LLM grade *actual_answer* against *expected_answer*."""
         import re
+
         if not q.actual_answer or q.actual_answer.strip() == "":
             q.score = 0.0
             q.passed = False
@@ -202,9 +215,7 @@ class QualityAssessor:
     # Full pipeline
     # ------------------------------------------------------------------
 
-    async def run_quality_test(
-        self, subgoal: SubGoal, goal_slug: str
-    ) -> dict[str, Any]:
+    async def run_quality_test(self, subgoal: SubGoal, goal_slug: str) -> dict[str, Any]:
         """Run the complete quality-test pipeline and return a result dict."""
         coverage_score = self.check_coverage(subgoal)
 
@@ -242,7 +253,10 @@ class QualityAssessor:
 
         logger.info(
             "quality_test_result total=%d answered=%d score=%.2f passed=%s",
-            len(questions), len(answered), quality_score, passed,
+            len(questions),
+            len(answered),
+            quality_score,
+            passed,
         )
 
         return {

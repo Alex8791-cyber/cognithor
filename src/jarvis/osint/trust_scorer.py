@@ -1,4 +1,5 @@
 """Trust Scorer — 5-dimension weighted scoring (0-100)."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
@@ -31,9 +32,7 @@ _DIVERSITY_MAP = {0: 0, 1: 30, 2: 55, 3: 75}
 class TrustScorer:
     """Compute a 0-100 Trust Score from claims and evidence."""
 
-    def score(
-        self, claims: list[ClaimResult], all_evidence: list[Evidence]
-    ) -> TrustScore:
+    def score(self, claims: list[ClaimResult], all_evidence: list[Evidence]) -> TrustScore:
         ca = self._claim_accuracy(claims)
         sd = self._source_diversity(all_evidence)
         ts = self._technical_substance(all_evidence)
@@ -125,7 +124,9 @@ class TrustScorer:
                 if most_recent is None or ca > most_recent:
                     most_recent = ca
             # Check content for date signals (may be more precise)
-            if e.collected_at and e.collected_at > (most_recent or datetime.min.replace(tzinfo=timezone.utc)):
+            if e.collected_at and e.collected_at > (
+                most_recent or datetime.min.replace(tzinfo=timezone.utc)
+            ):
                 content = e.content
                 for date_str in _extract_date_hints(content):
                     try:
@@ -149,4 +150,5 @@ class TrustScorer:
 def _extract_date_hints(content: str) -> list[str]:
     """Extract ISO-ish date strings from content."""
     import re
+
     return re.findall(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2})?", content)

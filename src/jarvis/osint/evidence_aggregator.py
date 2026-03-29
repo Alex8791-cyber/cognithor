@@ -1,4 +1,5 @@
 """Evidence Aggregator — cross-verification and claim scoring."""
+
 from __future__ import annotations
 
 import re
@@ -14,11 +15,43 @@ from jarvis.utils.logging import get_logger
 log = get_logger(__name__)
 
 _CLAIM_KEYWORDS: dict[ClaimType, list[str]] = {
-    ClaimType.EMPLOYMENT: ["works at", "employed", "position", "role at", "engineer at", "researcher at", "staff"],
-    ClaimType.EDUCATION: ["phd", "doctorate", "studied", "graduate", "degree", "university", "stanford", "mit"],
-    ClaimType.TECHNICAL: ["built", "created", "developed", "authored", "implemented", "designed", "architect"],
+    ClaimType.EMPLOYMENT: [
+        "works at",
+        "employed",
+        "position",
+        "role at",
+        "engineer at",
+        "researcher at",
+        "staff",
+    ],
+    ClaimType.EDUCATION: [
+        "phd",
+        "doctorate",
+        "studied",
+        "graduate",
+        "degree",
+        "university",
+        "stanford",
+        "mit",
+    ],
+    ClaimType.TECHNICAL: [
+        "built",
+        "created",
+        "developed",
+        "authored",
+        "implemented",
+        "designed",
+        "architect",
+    ],
     ClaimType.FUNDING: ["backed", "funded", "raised", "seed", "series", "investor", "grant"],
-    ClaimType.AFFILIATION: ["member", "affiliated", "associated", "collaborator", "partner", "advisor"],
+    ClaimType.AFFILIATION: [
+        "member",
+        "affiliated",
+        "associated",
+        "collaborator",
+        "partner",
+        "advisor",
+    ],
     ClaimType.ACHIEVEMENT: ["award", "publication", "published", "prize", "won", "recognized"],
 }
 
@@ -53,9 +86,7 @@ class EvidenceAggregator:
                 best_type = ct
         return best_type
 
-    def aggregate(
-        self, all_evidence: list[Evidence], claims: list[str]
-    ) -> list[ClaimResult]:
+    def aggregate(self, all_evidence: list[Evidence], claims: list[str]) -> list[ClaimResult]:
         results: list[ClaimResult] = []
         for claim in claims:
             claim_type = self.classify_claim(claim)
@@ -70,15 +101,17 @@ class EvidenceAggregator:
                     relevant.append(ev)
 
             if not relevant:
-                results.append(ClaimResult(
-                    claim=claim,
-                    claim_type=claim_type,
-                    status=VerificationStatus.UNVERIFIED,
-                    confidence=0.0,
-                    evidence=[],
-                    sources_used=[],
-                    explanation="No relevant evidence found",
-                ))
+                results.append(
+                    ClaimResult(
+                        claim=claim,
+                        claim_type=claim_type,
+                        status=VerificationStatus.UNVERIFIED,
+                        confidence=0.0,
+                        evidence=[],
+                        sources_used=[],
+                        explanation="No relevant evidence found",
+                    )
+                )
                 continue
 
             # Count independent source types
@@ -110,9 +143,15 @@ class EvidenceAggregator:
             # Check for contradictions (negative signals)
             # Use word-boundary patterns to avoid false positives on "notable", "another" etc.
             has_contradiction = any(
-                re.search(r'\bnot\b.{0,30}\b(member|found|affiliated|associated|employed|verified)\b', ev.content.lower())
-                or re.search(r'\bno (mention|evidence|record|affiliation|membership|connection)\b', ev.content.lower())
-                or re.search(r'\bnot in\b.{0,20}\borg', ev.content.lower())
+                re.search(
+                    r"\bnot\b.{0,30}\b(member|found|affiliated|associated|employed|verified)\b",
+                    ev.content.lower(),
+                )
+                or re.search(
+                    r"\bno (mention|evidence|record|affiliation|membership|connection)\b",
+                    ev.content.lower(),
+                )
+                or re.search(r"\bnot in\b.{0,20}\borg", ev.content.lower())
                 for ev in relevant
                 if ev.source_type in ("github", "web")
             )
@@ -129,21 +168,24 @@ class EvidenceAggregator:
             else:
                 status = VerificationStatus.UNVERIFIED
 
-            results.append(ClaimResult(
-                claim=claim,
-                claim_type=claim_type,
-                status=status,
-                confidence=round(confidence, 2),
-                evidence=relevant,
-                sources_used=list(source_types),
-                explanation=self._explain(status, n_sources, has_contradiction, self_report_only),
-            ))
+            results.append(
+                ClaimResult(
+                    claim=claim,
+                    claim_type=claim_type,
+                    status=status,
+                    confidence=round(confidence, 2),
+                    evidence=relevant,
+                    sources_used=list(source_types),
+                    explanation=self._explain(
+                        status, n_sources, has_contradiction, self_report_only
+                    ),
+                )
+            )
 
         return results
 
     def _explain(
-        self, status: VerificationStatus, n_sources: int,
-        has_contradiction: bool, self_report: bool
+        self, status: VerificationStatus, n_sources: int, has_contradiction: bool, self_report: bool
     ) -> str:
         if status == VerificationStatus.CONFIRMED:
             return f"Confirmed by {n_sources} independent source(s)"

@@ -1,4 +1,5 @@
 """ResearchAgent — web fetching with multiple strategies (Phase 5B)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -112,10 +113,7 @@ class ResearchAgent:
         base_domain = urlparse(source.url).netloc
         sub_links = self.extract_links(text, source.url)
         # Filter: same domain, not the same page, not anchors
-        sub_links = [
-            l for l in sub_links
-            if urlparse(l).netloc == base_domain and l != source.url
-        ]
+        sub_links = [l for l in sub_links if urlparse(l).netloc == base_domain and l != source.url]
 
         # Heuristic: if page has many links (>10), it's likely a TOC → follow them
         max_depth_pages = min(len(sub_links), 15)
@@ -137,18 +135,26 @@ class ResearchAgent:
             if link.lower().endswith(".pdf"):
                 pdf_text = await self._fetch_pdf(link)
                 if pdf_text:
-                    results.append(FetchResult(
-                        url=link, text=pdf_text,
-                        title=f"{source.title} (PDF)", source_type=source.source_type,
-                    ))
+                    results.append(
+                        FetchResult(
+                            url=link,
+                            text=pdf_text,
+                            title=f"{source.title} (PDF)",
+                            source_type=source.source_type,
+                        )
+                    )
                 continue
 
             sub_text = await self._web_fetch(link)
             if sub_text:
-                results.append(FetchResult(
-                    url=link, text=sub_text,
-                    title=source.title, source_type=source.source_type,
-                ))
+                results.append(
+                    FetchResult(
+                        url=link,
+                        text=sub_text,
+                        title=source.title,
+                        source_type=source.source_type,
+                    )
+                )
             await asyncio.sleep(self._rate_limit)
 
         return results

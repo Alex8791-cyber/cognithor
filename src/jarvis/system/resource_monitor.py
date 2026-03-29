@@ -72,10 +72,7 @@ class ResourceMonitor:
         Returns cached snapshot if sampled within cache_seconds.
         """
         now = time.monotonic()
-        if (
-            self._last_snapshot is not None
-            and (now - self._last_sample_time) < self._cache_seconds
-        ):
+        if self._last_snapshot is not None and (now - self._last_sample_time) < self._cache_seconds:
             return self._last_snapshot
 
         snap = ResourceSnapshot(timestamp=now)

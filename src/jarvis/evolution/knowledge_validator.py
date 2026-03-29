@@ -21,14 +21,24 @@ __all__ = ["KnowledgeClaim", "KnowledgeValidator"]
 # Domain trust tiers — authoritative sources get higher initial confidence
 _TRUST_TIERS: dict[str, float] = {
     # Tier 1: Official government / law sources (0.8 base confidence)
-    ".gov.de": 0.8, ".bund.de": 0.8, "gesetze-im-internet.de": 0.8,
-    "bundesfinanzministerium.de": 0.8, "dejure.org": 0.8,
-    "bundesgerichtshof.de": 0.8, "bafin.de": 0.8,
-    "deutsche-rentenversicherung.de": 0.8, "bundesbank.de": 0.8,
+    ".gov.de": 0.8,
+    ".bund.de": 0.8,
+    "gesetze-im-internet.de": 0.8,
+    "bundesfinanzministerium.de": 0.8,
+    "dejure.org": 0.8,
+    "bundesgerichtshof.de": 0.8,
+    "bafin.de": 0.8,
+    "deutsche-rentenversicherung.de": 0.8,
+    "bundesbank.de": 0.8,
     # Tier 2: Established institutions / publishers (0.65)
-    ".edu": 0.65, "wikipedia.org": 0.65, "haufe.de": 0.65,
-    "beck-online.de": 0.65, "juris.de": 0.65, "stiftung-warentest.de": 0.65,
-    "verbraucherzentrale.de": 0.65, "finanztip.de": 0.65,
+    ".edu": 0.65,
+    "wikipedia.org": 0.65,
+    "haufe.de": 0.65,
+    "beck-online.de": 0.65,
+    "juris.de": 0.65,
+    "stiftung-warentest.de": 0.65,
+    "verbraucherzentrale.de": 0.65,
+    "finanztip.de": 0.65,
     # Tier 3: General reference (0.5 default)
 }
 
@@ -42,6 +52,7 @@ def _get_source_trust(url: str) -> float:
         if domain_pattern in url_lower:
             return trust
     return 0.5  # Unknown source = neutral
+
 
 _EXTRACT_CLAIMS_PROMPT = """\
 Extrahiere die 5 wichtigsten faktischen Aussagen (Claims) aus folgendem Text.
@@ -85,17 +96,17 @@ class KnowledgeClaim:
 
     id: str = ""
     claim: str = ""
-    category: str = ""          # law | fact | statistic | definition | opinion
-    importance: str = "medium"   # high | medium | low
+    category: str = ""  # law | fact | statistic | definition | opinion
+    importance: str = "medium"  # high | medium | low
     goal_slug: str = ""
-    first_source: str = ""       # URL where first found
+    first_source: str = ""  # URL where first found
     sources_confirmed: int = 0
     sources_contradicted: int = 0
     sources_checked: int = 0
-    confidence: float = 0.5      # 0.0-1.0, starts neutral
-    status: str = "unverified"   # unverified | verified | disputed | debunked
-    evidence_for: str = ""       # Concatenated supporting evidence
-    evidence_against: str = ""   # Concatenated contradicting evidence
+    confidence: float = 0.5  # 0.0-1.0, starts neutral
+    status: str = "unverified"  # unverified | verified | disputed | debunked
+    evidence_for: str = ""  # Concatenated supporting evidence
+    evidence_against: str = ""  # Concatenated contradicting evidence
     created_at: str = ""
     last_checked: str = ""
 
@@ -238,16 +249,12 @@ class KnowledgeValidator:
 
     # -- Verify a claim against new text ---------------------------------
 
-    async def verify_claim(
-        self, claim: KnowledgeClaim, source_text: str
-    ) -> KnowledgeClaim:
+    async def verify_claim(self, claim: KnowledgeClaim, source_text: str) -> KnowledgeClaim:
         """Check a claim against a new source text via LLM."""
         if not self._llm_fn:
             return claim
         try:
-            prompt = _VERIFY_CLAIM_PROMPT.format(
-                claim=claim.claim, source_text=source_text[:2000]
-            )
+            prompt = _VERIFY_CLAIM_PROMPT.format(claim=claim.claim, source_text=source_text[:2000])
             raw = await self._llm_fn(prompt)
             match = re.search(r"\{.*\}", raw, re.DOTALL)
             if not match:
@@ -262,17 +269,13 @@ class KnowledgeValidator:
             if verdict == "confirmed":
                 claim.sources_confirmed += 1
                 claim.confidence = min(1.0, claim.confidence + 0.15)
-                claim.evidence_for += (
-                    f"\n{evidence}" if claim.evidence_for else evidence
-                )
+                claim.evidence_for += f"\n{evidence}" if claim.evidence_for else evidence
                 if claim.sources_confirmed >= 2:
                     claim.status = "verified"
             elif verdict == "contradicted":
                 claim.sources_contradicted += 1
                 claim.confidence = max(0.0, claim.confidence - 0.25)
-                claim.evidence_against += (
-                    f"\n{evidence}" if claim.evidence_against else evidence
-                )
+                claim.evidence_against += f"\n{evidence}" if claim.evidence_against else evidence
                 if claim.sources_contradicted >= 2:
                     claim.status = "disputed"
                 if claim.confidence < 0.2:
@@ -296,9 +299,7 @@ class KnowledgeValidator:
 
         Skips already-debunked claims — no point re-challenging them.
         """
-        weak = self.get_claims(
-            goal_slug=goal_slug, max_confidence=0.6, limit=max_challenges + 10
-        )
+        weak = self.get_claims(goal_slug=goal_slug, max_confidence=0.6, limit=max_challenges + 10)
         # Filter out debunked claims — they've already been proven false
         weak = [c for c in weak if c.status != "debunked"][:max_challenges]
         if not weak or not self._mcp:
@@ -361,11 +362,7 @@ class KnowledgeValidator:
             d = dict(zip(columns, row))
             claims.append(
                 KnowledgeClaim(
-                    **{
-                        k: v
-                        for k, v in d.items()
-                        if k in KnowledgeClaim.__dataclass_fields__
-                    }
+                    **{k: v for k, v in d.items() if k in KnowledgeClaim.__dataclass_fields__}
                 )
             )
         return claims
@@ -396,9 +393,7 @@ class KnowledgeValidator:
 
     # -- Internal helpers ------------------------------------------------
 
-    def _find_similar_claim(
-        self, claim_text: str, goal_slug: str
-    ) -> KnowledgeClaim | None:
+    def _find_similar_claim(self, claim_text: str, goal_slug: str) -> KnowledgeClaim | None:
         """Find an existing claim that's similar (first 50 chars match)."""
         prefix = claim_text[:50]
         row = self._conn.execute(
@@ -411,11 +406,7 @@ class KnowledgeValidator:
         columns = [d[0] for d in cursor.description]
         d = dict(zip(columns, row))
         return KnowledgeClaim(
-            **{
-                k: v
-                for k, v in d.items()
-                if k in KnowledgeClaim.__dataclass_fields__
-            }
+            **{k: v for k, v in d.items() if k in KnowledgeClaim.__dataclass_fields__}
         )
 
     def _save_claim(self, claim: KnowledgeClaim) -> None:

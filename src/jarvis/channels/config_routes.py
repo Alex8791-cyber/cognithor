@@ -2334,6 +2334,7 @@ def _register_security_routes(
         JARVIS_ADMIN_TOKEN header for erasing other users' data.
         """
         import os as _os
+
         gdpr_mgr = getattr(gateway, "_gdpr_manager", None)
         consent_mgr = getattr(gateway, "_consent_manager", None)
         if not gdpr_mgr:
@@ -2411,7 +2412,7 @@ def _register_security_routes(
                 # Get sessions for this user
                 sessions = session_store.conn.execute(
                     "SELECT session_id, user_id, channel, agent_id, created_at FROM sessions WHERE user_id = ? LIMIT 100",
-                    (user_id,)
+                    (user_id,),
                 ).fetchall()
                 export["sessions"] = [dict(s) for s in sessions] if sessions else []
             except Exception:
@@ -2436,6 +2437,7 @@ def _register_security_routes(
                 episodes = []
                 if hasattr(ep, "_base_path"):
                     from pathlib import Path
+
                     ep_dir = Path(ep._base_path) if hasattr(ep, "_base_path") else None
                     if not ep_dir:
                         ep_dir = Path(getattr(ep, "_dir", ""))
@@ -2445,13 +2447,16 @@ def _register_security_routes(
                                 # Try encrypted read first
                                 try:
                                     from jarvis.security.encrypted_file import efile
+
                                     content = efile.read(md_file)
                                 except Exception:
                                     content = md_file.read_text(encoding="utf-8")
-                                episodes.append({
-                                    "date": md_file.stem,
-                                    "content": content[:2000],
-                                })
+                                episodes.append(
+                                    {
+                                        "date": md_file.stem,
+                                        "content": content[:2000],
+                                    }
+                                )
                             except Exception:
                                 pass
                 export["episodic_memories"] = episodes
@@ -2465,10 +2470,12 @@ def _register_security_routes(
                 procedures = []
                 if hasattr(procs, "list_all"):
                     for proc in procs.list_all()[:50]:
-                        procedures.append({
-                            "name": getattr(proc, "name", str(proc)),
-                            "content": getattr(proc, "content", "")[:1000],
-                        })
+                        procedures.append(
+                            {
+                                "name": getattr(proc, "name", str(proc)),
+                                "content": getattr(proc, "content", "")[:1000],
+                            }
+                        )
                 export["procedures"] = procedures
             except Exception:
                 export["procedures"] = []
@@ -2488,11 +2495,16 @@ def _register_security_routes(
 
             # Entities
             try:
-                if hasattr(memory_mgr, "semantic") and hasattr(memory_mgr.semantic, "list_entities"):
+                if hasattr(memory_mgr, "semantic") and hasattr(
+                    memory_mgr.semantic, "list_entities"
+                ):
                     entities = memory_mgr.semantic.list_entities(limit=500)
                     export["entities"] = [
-                        {"name": getattr(e, "name", ""), "type": getattr(e, "entity_type", ""),
-                         "attributes": str(getattr(e, "attributes", ""))[:200]}
+                        {
+                            "name": getattr(e, "name", ""),
+                            "type": getattr(e, "entity_type", ""),
+                            "attributes": str(getattr(e, "attributes", ""))[:200],
+                        }
                         for e in (entities or [])
                     ]
             except Exception:
@@ -2507,9 +2519,11 @@ def _register_security_routes(
                         "SELECT source_entity, relation_type, target_entity FROM relations LIMIT 1000"
                     ).fetchall()
                     export["relations"] = [
-                        {"source": r[0] if isinstance(r, tuple) else r["source_entity"],
-                         "relation": r[1] if isinstance(r, tuple) else r["relation_type"],
-                         "target": r[2] if isinstance(r, tuple) else r["target_entity"]}
+                        {
+                            "source": r[0] if isinstance(r, tuple) else r["source_entity"],
+                            "relation": r[1] if isinstance(r, tuple) else r["relation_type"],
+                            "target": r[2] if isinstance(r, tuple) else r["target_entity"],
+                        }
                         for r in rows
                     ]
         except Exception:
@@ -2522,7 +2536,9 @@ def _register_security_routes(
                 if hasattr(pref_store, "get_preferences"):
                     export["user_preferences"] = pref_store.get_preferences(user_id)
                 elif hasattr(pref_store, "_conn"):
-                    rows = pref_store._conn.execute("SELECT * FROM user_preferences LIMIT 50").fetchall()
+                    rows = pref_store._conn.execute(
+                        "SELECT * FROM user_preferences LIMIT 50"
+                    ).fetchall()
                     export["user_preferences"] = [dict(r) for r in rows] if rows else []
             except Exception:
                 export["user_preferences"] = []
@@ -2540,9 +2556,15 @@ def _register_security_routes(
             try:
                 notes = vault._backend.list_notes(limit=200)
                 export["vault_notes"] = [
-                    {"path": n.path, "title": n.title, "tags": n.tags, "folder": n.folder,
-                     "content": (n.content or "")[:5000],
-                     "created_at": n.created_at, "updated_at": n.updated_at}
+                    {
+                        "path": n.path,
+                        "title": n.title,
+                        "tags": n.tags,
+                        "folder": n.folder,
+                        "content": (n.content or "")[:5000],
+                        "created_at": n.created_at,
+                        "updated_at": n.updated_at,
+                    }
                     for n in notes
                 ]
             except Exception:
@@ -2578,7 +2600,9 @@ def _register_security_routes(
             return StreamingResponse(
                 iter([output.getvalue()]),
                 media_type="text/csv",
-                headers={"Content-Disposition": f"attachment; filename=cognithor_export_{user_id}.csv"}
+                headers={
+                    "Content-Disposition": f"attachment; filename=cognithor_export_{user_id}.csv"
+                },
             )
 
         return export
@@ -2605,8 +2629,7 @@ def _register_security_routes(
                         key = corr.get("key", "")
                         value = corr.get("new_value", "")
                         pref_store._conn.execute(
-                            "UPDATE user_preferences SET value = ? WHERE key = ?",
-                            (str(value), key)
+                            "UPDATE user_preferences SET value = ? WHERE key = ?", (str(value), key)
                         )
                         pref_store._conn.commit()
                         results.append({"type": "preference", "key": key, "status": "corrected"})
@@ -2618,11 +2641,14 @@ def _register_security_routes(
                         field = corr.get("field", "name")
                         new_value = corr.get("new_value", "")
                         # Update entity in indexer
-                        indexer = memory_mgr.semantic._indexer if hasattr(memory_mgr.semantic, "_indexer") else None
+                        indexer = (
+                            memory_mgr.semantic._indexer
+                            if hasattr(memory_mgr.semantic, "_indexer")
+                            else None
+                        )
                         if indexer and hasattr(indexer, "_conn"):
                             indexer._conn.execute(
-                                f"UPDATE entities SET {field} = ? WHERE name = ?",
-                                (new_value, name)
+                                f"UPDATE entities SET {field} = ? WHERE name = ?", (new_value, name)
                             )
                             indexer._conn.commit()
                             results.append({"type": "entity", "name": name, "status": "corrected"})
@@ -2650,14 +2676,21 @@ def _register_security_routes(
         # Log corrections in compliance audit
         try:
             from jarvis.security.compliance_audit import ComplianceAuditLog
+
             audit = ComplianceAuditLog()
-            audit.record("data_corrected", corrections_count=len(results),
-                         results=[r["status"] for r in results])
+            audit.record(
+                "data_corrected",
+                corrections_count=len(results),
+                results=[r["status"] for r in results],
+            )
         except Exception:
             pass
 
-        return {"corrections_applied": len(results), "results": results,
-                "gdpr_article": "Art. 16 DSGVO — Recht auf Berichtigung"}
+        return {
+            "corrections_applied": len(results),
+            "results": results,
+            "gdpr_article": "Art. 16 DSGVO — Recht auf Berichtigung",
+        }
 
     # -- GDPR Art. 20: Data Import (Portability) --------------------------
 
@@ -2715,17 +2748,22 @@ def _register_security_routes(
                         name = ent.get("name", "")
                         etype = ent.get("type", "concept")
                         if name and mcp:
-                            await mcp.call_tool("add_entity", {
-                                "name": name, "entity_type": etype,
-                                "attributes": "{}", "source_file": "import"
-                            })
+                            await mcp.call_tool(
+                                "add_entity",
+                                {
+                                    "name": name,
+                                    "entity_type": etype,
+                                    "attributes": "{}",
+                                    "source_file": "import",
+                                },
+                            )
                             imported += 1
                         elif name and hasattr(memory_mgr, "semantic"):
                             indexer = getattr(memory_mgr.semantic, "_indexer", None)
                             if indexer and hasattr(indexer, "_conn"):
                                 indexer._conn.execute(
                                     "INSERT OR IGNORE INTO entities (name, entity_type) VALUES (?, ?)",
-                                    (name, etype)
+                                    (name, etype),
                                 )
                                 indexer._conn.commit()
                                 imported += 1
@@ -2745,7 +2783,11 @@ def _register_security_routes(
                         try:
                             indexer._conn.execute(
                                 "INSERT OR IGNORE INTO relations (source_entity, relation_type, target_entity) VALUES (?, ?, ?)",
-                                (rel.get("source", ""), rel.get("relation", ""), rel.get("target", ""))
+                                (
+                                    rel.get("source", ""),
+                                    rel.get("relation", ""),
+                                    rel.get("target", ""),
+                                ),
                             )
                             imported += 1
                         except Exception:
@@ -2765,7 +2807,7 @@ def _register_security_routes(
                             for k, v in pref.items():
                                 pref_store._conn.execute(
                                     "INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)",
-                                    (str(k), str(v))
+                                    (str(k), str(v)),
                                 )
                             pref_store._conn.commit()
                             imported += 1
@@ -2776,13 +2818,17 @@ def _register_security_routes(
         # Log import in compliance audit
         try:
             from jarvis.security.compliance_audit import ComplianceAuditLog
+
             audit = ComplianceAuditLog()
             audit.record("data_imported", counts=counts)
         except Exception:
             pass
 
-        return {"status": "imported", "counts": counts,
-                "gdpr_article": "Art. 20 DSGVO — Datenportabilitaet"}
+        return {
+            "status": "imported",
+            "counts": counts,
+            "gdpr_article": "Art. 20 DSGVO — Datenportabilitaet",
+        }
 
     # -- GDPR Art. 18/21: Purpose Restrictions ----------------------------
 
@@ -3721,11 +3767,13 @@ def _register_ui_routes(
             for s in seeds_raw:
                 from jarvis.evolution.models import SeedSource
 
-                seeds.append(SeedSource(
-                    content_type=s.get("content_type", "hint"),
-                    value=s.get("value", ""),
-                    title=s.get("title", ""),
-                ))
+                seeds.append(
+                    SeedSource(
+                        content_type=s.get("content_type", "hint"),
+                        value=s.get("value", ""),
+                        title=s.get("title", ""),
+                    )
+                )
             plan = await dl.create_plan(goal, seed_sources=seeds if seeds else None)
             return plan.to_summary_dict()
         except Exception as exc:

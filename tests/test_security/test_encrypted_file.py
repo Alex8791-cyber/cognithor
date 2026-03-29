@@ -1,4 +1,5 @@
 """Tests for encrypted file I/O."""
+
 from __future__ import annotations
 
 import os

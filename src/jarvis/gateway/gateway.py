@@ -415,12 +415,11 @@ class Gateway:
                 ),
                 policy_version=policy_ver,
             )
-            if getattr(
-                getattr(self._config, "compliance", None), "privacy_mode", False
-            ):
+            if getattr(getattr(self._config, "compliance", None), "privacy_mode", False):
                 self._compliance_engine.set_privacy_mode(True)
             # Wire GDPRComplianceManager for retention enforcement + erasure API
             from jarvis.security.gdpr import GDPRComplianceManager
+
             self._gdpr_manager = GDPRComplianceManager()
             self._gdpr_compliance_manager = self._gdpr_manager  # alias for cron
             log.info("gdpr_compliance_engine_initialized")
@@ -429,7 +428,9 @@ class Gateway:
             # Fail-closed: engine without consent store blocks all consent-based processing
             self._consent_manager = None
             self._compliance_engine = ComplianceEngine(
-                consent_manager=None, enabled=True, consent_required=True,
+                consent_manager=None,
+                enabled=True,
+                consent_required=True,
             )
             self._gdpr_manager = None
             self._gdpr_compliance_manager = None
@@ -441,6 +442,7 @@ class Gateway:
             # Memory tier: delete user's episodic/semantic/procedural memories
             if hasattr(self, "_memory_manager") and self._memory_manager:
                 mm = self._memory_manager
+
                 def _erase_memory(uid):
                     count = 0
                     try:
@@ -450,6 +452,7 @@ class Gateway:
                     except Exception:
                         pass
                     return count
+
                 erasure.register_handler(_erase_memory)
 
             # Session tier
@@ -485,6 +488,7 @@ class Gateway:
                     vault_tools = vt
                     break
             if vault_tools:
+
                 def _erase_vault(uid, vt=vault_tools):
                     try:
                         notes = vt._backend.all_notes()
@@ -498,6 +502,7 @@ class Gateway:
                         return count
                     except Exception:
                         return 0
+
                 erasure.register_handler(_erase_vault)
 
         # Governance-Cron-Job registrieren (taeglich um 02:00)
@@ -627,9 +632,7 @@ class Gateway:
         try:
             from jarvis.core.checkpointing import CheckpointStore
 
-            self._checkpoint_store = CheckpointStore(
-                self._config.jarvis_home / "checkpoints"
-            )
+            self._checkpoint_store = CheckpointStore(self._config.jarvis_home / "checkpoints")
             log.info("checkpoint_store_initialized")
         except Exception:
             log.debug("checkpoint_store_init_skipped", exc_info=True)
@@ -637,6 +640,7 @@ class Gateway:
         # LLM call function for Evolution Engine + DeepLearner
         self._llm_call = None
         if self._llm and self._model_router:
+
             async def _evolution_llm_call(prompt: str) -> str:
                 model = self._model_router.select_model("planning", "medium")
                 resp = await self._llm.chat(
@@ -658,9 +662,7 @@ class Gateway:
 
                 idle_minutes = getattr(self._config.evolution, "idle_minutes", 5)
                 self._idle_detector = IdleDetector(idle_threshold_seconds=idle_minutes * 60)
-                op_mode = str(
-                    getattr(self._config, "resolved_operation_mode", "offline")
-                )
+                op_mode = str(getattr(self._config, "resolved_operation_mode", "offline"))
                 self._evolution_loop = EvolutionLoop(
                     idle_detector=self._idle_detector,
                     curiosity_engine=getattr(self, "_curiosity_engine", None),
@@ -1694,13 +1696,18 @@ class Gateway:
 
         # Handle consent responses (works for all channels including WebUI)
         # Skip for system messages — they don't need consent
-        if not _is_system and msg.text and msg.text.strip().lower() in ("akzeptieren", "accept", "ja", "yes"):
+        if (
+            not _is_system
+            and msg.text
+            and msg.text.strip().lower() in ("akzeptieren", "accept", "ja", "yes")
+        ):
             if hasattr(self, "_consent_manager") and self._consent_manager:
                 _uid = msg.user_id or msg.session_id or "unknown"
                 _ch = msg.channel or "unknown"
                 if self._consent_manager.requires_consent(_uid, _ch):
-                    self._consent_manager.grant_consent(_uid, _ch, "data_processing",
-                                                         context=msg.session_id or "")
+                    self._consent_manager.grant_consent(
+                        _uid, _ch, "data_processing", context=msg.session_id or ""
+                    )
                     return OutgoingMessage(
                         channel=msg.channel,
                         text="Datenschutz-Einwilligung erteilt. Ich bin jetzt bereit!",
@@ -1718,9 +1725,7 @@ class Gateway:
                 # System-internal messages use legitimate interest, not consent
                 # Detect via channel name, user_id prefix, or metadata
                 _basis = (
-                    ProcessingBasis.LEGITIMATE_INTEREST
-                    if _is_system
-                    else ProcessingBasis.CONSENT
+                    ProcessingBasis.LEGITIMATE_INTEREST if _is_system else ProcessingBasis.CONSENT
                 )
                 self._compliance_engine.check(
                     user_id=_user,
@@ -3212,8 +3217,9 @@ class Gateway:
                     and self._evolution_loop
                 ):
                     try:
-                        user_msg = (session.messages[-1].content[:200]
-                                    if session.messages else "")[:200]
+                        user_msg = (session.messages[-1].content[:200] if session.messages else "")[
+                            :200
+                        ]
                         gap_description = (
                             f"Schwache Antwort (Score {reflection.success_score:.1f}) "
                             f"auf: {user_msg}"

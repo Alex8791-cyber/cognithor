@@ -1,4 +1,5 @@
 """Vault DB Backend — SQLCipher-encrypted SQLite storage with FTS5."""
+
 from __future__ import annotations
 
 import json
@@ -59,6 +60,7 @@ class VaultDBBackend(VaultBackend):
         db_path = str(vault_root / "vault.db")
         try:
             from jarvis.security.encrypted_db import encrypted_connect
+
             self._conn = encrypted_connect(db_path, check_same_thread=False)
         except ImportError:
             self._conn = sqlite3.connect(db_path, check_same_thread=False)
@@ -79,8 +81,16 @@ class VaultDBBackend(VaultBackend):
         cols = [d[0] for d in cursor.description]
         return [self._row_to_note(row, cols) for row in cursor.fetchall()]
 
-    def save(self, path: str, title: str, content: str, tags: str,
-             folder: str, sources: str, backlinks: list[str]) -> str:
+    def save(
+        self,
+        path: str,
+        title: str,
+        content: str,
+        tags: str,
+        folder: str,
+        sources: str,
+        backlinks: list[str],
+    ) -> str:
         now = now_iso()
         tag_str = ", ".join(parse_tags(tags))
         bl_json = json.dumps(backlinks, ensure_ascii=False)
@@ -105,8 +115,9 @@ class VaultDBBackend(VaultBackend):
         notes = self._query_notes("SELECT * FROM notes WHERE path = ?", (path,))
         return notes[0] if notes else None
 
-    def search(self, query: str, folder: str = "", tags: str = "",
-               limit: int = 10) -> list[NoteData]:
+    def search(
+        self, query: str, folder: str = "", tags: str = "", limit: int = 10
+    ) -> list[NoteData]:
         # Try FTS5 first
         try:
             fts_query = query.replace('"', '""')
@@ -144,8 +155,9 @@ class VaultDBBackend(VaultBackend):
         sql += f" LIMIT {int(limit)}"
         return self._query_notes(sql, tuple(params))
 
-    def list_notes(self, folder: str = "", tags: str = "",
-                   sort_by: str = "updated", limit: int = 50) -> list[NoteData]:
+    def list_notes(
+        self, folder: str = "", tags: str = "", sort_by: str = "updated", limit: int = 50
+    ) -> list[NoteData]:
         sql = "SELECT * FROM notes WHERE 1=1"
         params: list = []
         if folder:
@@ -155,13 +167,15 @@ class VaultDBBackend(VaultBackend):
             for tag in parse_tags(tags):
                 sql += " AND tags LIKE ?"
                 params.append(f"%{tag}%")
-        order = {"title": "title ASC", "created": "created_at DESC",
-                 "updated": "updated_at DESC"}.get(sort_by, "updated_at DESC")
+        order = {
+            "title": "title ASC",
+            "created": "created_at DESC",
+            "updated": "updated_at DESC",
+        }.get(sort_by, "updated_at DESC")
         sql += f" ORDER BY {order} LIMIT {int(limit)}"
         return self._query_notes(sql, tuple(params))
 
-    def update(self, path: str, append_content: str = "",
-               add_tags: str = "") -> str:
+    def update(self, path: str, append_content: str = "", add_tags: str = "") -> str:
         note = self.read(path)
         if not note:
             return f"Notiz nicht gefunden: {path}"
@@ -201,10 +215,14 @@ class VaultDBBackend(VaultBackend):
         if source_path not in t_bl:
             t_bl.append(source_path)
         now = now_iso()
-        self._conn.execute("UPDATE notes SET backlinks=?, updated_at=? WHERE path=?",
-                           (json.dumps(s_bl), now, source_path))
-        self._conn.execute("UPDATE notes SET backlinks=?, updated_at=? WHERE path=?",
-                           (json.dumps(t_bl), now, target_path))
+        self._conn.execute(
+            "UPDATE notes SET backlinks=?, updated_at=? WHERE path=?",
+            (json.dumps(s_bl), now, source_path),
+        )
+        self._conn.execute(
+            "UPDATE notes SET backlinks=?, updated_at=? WHERE path=?",
+            (json.dumps(t_bl), now, target_path),
+        )
         self._conn.commit()
         return f"Verknuepft: {source_path} <-> {target_path}"
 
@@ -225,9 +243,7 @@ class VaultDBBackend(VaultBackend):
             return notes[0]
         # 3. Try by slug in path
         slug = identifier.lower().replace(" ", "-")
-        notes = self._query_notes(
-            "SELECT * FROM notes WHERE path LIKE ?", (f"%{slug}%",)
-        )
+        notes = self._query_notes("SELECT * FROM notes WHERE path LIKE ?", (f"%{slug}%",))
         return notes[0] if notes else None
 
     def all_notes(self) -> list[NoteData]:

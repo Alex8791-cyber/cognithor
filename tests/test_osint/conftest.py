@@ -1,4 +1,5 @@
 """Test fixtures for HIM OSINT tests."""
+
 from __future__ import annotations
 
 import json

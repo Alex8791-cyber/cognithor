@@ -1,4 +1,5 @@
 """Tests for HIM collectors."""
+
 from __future__ import annotations
 
 import pytest

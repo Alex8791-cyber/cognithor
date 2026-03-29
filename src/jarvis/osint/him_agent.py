@@ -1,4 +1,5 @@
 """HIM Agent — main orchestrator for OSINT investigations."""
+
 from __future__ import annotations
 
 import asyncio
@@ -110,19 +111,23 @@ class HIMAgent:
         for cr in claim_results:
             if cr.status == VerificationStatus.CONTRADICTED:
                 red_flags.append(f"{cr.claim}: {cr.explanation}")
-                findings.append(Finding(
-                    title=f"Contradicted: {cr.claim[:50]}",
-                    description=cr.explanation,
-                    severity="red_flag",
-                    source=", ".join(cr.sources_used),
-                ))
+                findings.append(
+                    Finding(
+                        title=f"Contradicted: {cr.claim[:50]}",
+                        description=cr.explanation,
+                        severity="red_flag",
+                        source=", ".join(cr.sources_used),
+                    )
+                )
             elif cr.status == VerificationStatus.PARTIAL:
-                findings.append(Finding(
-                    title=f"Partially verified: {cr.claim[:50]}",
-                    description=cr.explanation,
-                    severity="warning",
-                    source=", ".join(cr.sources_used),
-                ))
+                findings.append(
+                    Finding(
+                        title=f"Partially verified: {cr.claim[:50]}",
+                        description=cr.explanation,
+                        severity="warning",
+                        source=", ".join(cr.sources_used),
+                    )
+                )
             elif cr.status == VerificationStatus.UNVERIFIED:
                 red_flags.append(f"{cr.claim}: not verified by any source")
 
@@ -176,13 +181,16 @@ class HIMAgent:
         if not self._mcp:
             return
         try:
-            await self._mcp.call_tool("vault_save", {
-                "title": f"HIM Report: {report.target}",
-                "content": md_content,
-                "tags": "osint, him, investigation",
-                "folder": "recherchen/osint",
-                "sources": "",
-            })
+            await self._mcp.call_tool(
+                "vault_save",
+                {
+                    "title": f"HIM Report: {report.target}",
+                    "content": md_content,
+                    "tags": "osint, him, investigation",
+                    "folder": "recherchen/osint",
+                    "sources": "",
+                },
+            )
         except Exception:
             log.debug("him_vault_save_failed", exc_info=True)
 
@@ -205,4 +213,6 @@ class HIMAgent:
             return "Credentials appear credible. Proceed with normal engagement."
         if trust_score.label == "mixed":
             return "Some claims could not be fully verified. Request additional evidence before deep engagement."
-        return "Significant credibility concerns. Verify claims independently before any commitment."
+        return (
+            "Significant credibility concerns. Verify claims independently before any commitment."
+        )

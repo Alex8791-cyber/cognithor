@@ -1,4 +1,5 @@
 """Tests for StrategyPlanner — LLM-based goal decomposition."""
+
 from __future__ import annotations
 
 import json
@@ -79,9 +80,7 @@ async def test_create_plan_with_seeds(planner: StrategyPlanner):
     seeds = [
         SeedSource(content_type="url", value="https://example.com/seed", title="Seed"),
     ]
-    plan = await planner.create_plan(
-        "Werde Experte fuer Versicherungsrecht", seed_sources=seeds
-    )
+    plan = await planner.create_plan("Werde Experte fuer Versicherungsrecht", seed_sources=seeds)
     assert len(plan.seed_sources) == 1
     assert plan.seed_sources[0].value == "https://example.com/seed"
 

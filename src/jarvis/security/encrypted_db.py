@@ -12,6 +12,7 @@ The OS Keyring is the recommended approach: if someone clones your disk,
 they cannot access the encrypted databases without your Windows login /
 macOS Keychain password. The key never touches the filesystem in plaintext.
 """
+
 from __future__ import annotations
 
 import os
@@ -45,13 +46,16 @@ def compatible_row_factory() -> Any:
         return _dict_row_factory
     return sqlite3.Row
 
+
 _sqlcipher_available = False
 try:
     from pysqlcipher3 import dbapi2 as sqlcipher
+
     _sqlcipher_available = True
 except ImportError:
     try:
         import sqlcipher3 as sqlcipher
+
         _sqlcipher_available = True
     except ImportError:
         sqlcipher = None
@@ -91,6 +95,7 @@ def _get_db_key() -> str:
 
         # Auto-generate and store in keyring
         import secrets
+
         new_key = secrets.token_hex(32)
         keyring.set_password(_KEYRING_SERVICE, _KEYRING_KEY_NAME, new_key)
         log.info("db_encryption_key_stored_in_os_keyring")
@@ -103,6 +108,7 @@ def _get_db_key() -> str:
     # 3. Cognithor CredentialStore (Fernet file — legacy fallback)
     try:
         from jarvis.security.credentials import CredentialStore
+
         store = CredentialStore()
         existing = store.retrieve("system", "db_encryption_key")
         if existing:
@@ -110,10 +116,13 @@ def _get_db_key() -> str:
             return existing
         # Generate new key
         import secrets
+
         new_key = secrets.token_hex(32)
         store.store("system", "db_encryption_key", new_key)
-        log.info("db_encryption_key_generated_credential_store",
-                 hint="Install 'keyring' package for OS-level key protection")
+        log.info(
+            "db_encryption_key_generated_credential_store",
+            hint="Install 'keyring' package for OS-level key protection",
+        )
         return new_key
     except Exception:
         log.debug("credential_store_unavailable_for_db_key", exc_info=True)
@@ -213,7 +222,9 @@ def encrypted_connect(
                         log.info("encrypted_db_migrated", path=db_path[-30:])
                         return conn
                 except Exception as e2:
-                    log.warning("encrypted_db_migration_failed", path=db_path[-30:], error=str(e2)[:50])
+                    log.warning(
+                        "encrypted_db_migration_failed", path=db_path[-30:], error=str(e2)[:50]
+                    )
             # New empty DB — create encrypted from scratch
             elif not os.path.exists(db_path) or os.path.getsize(db_path) == 0:
                 try:

@@ -97,11 +97,15 @@ class VaultTools:
         # Select backend
         if encrypt:
             from jarvis.mcp.vault_db_backend import VaultDBBackend
+
             self._backend = VaultDBBackend(self._vault_root)
         else:
             from jarvis.mcp.vault_file_backend import VaultFileBackend
+
             self._backend = VaultFileBackend(
-                self._vault_root, encrypt_files=False, default_folders=default_folders,
+                self._vault_root,
+                encrypt_files=False,
+                default_folders=default_folders,
             )
 
         # Auto-migrate on mode change
@@ -111,14 +115,17 @@ class VaultTools:
             migrate_db_to_files,
             migrate_files_to_db,
         )
+
         if detect_mode_change(self._vault_root, current_mode):
             try:
                 if current_mode == "db":
                     from jarvis.mcp.vault_file_backend import VaultFileBackend as FB
+
                     old = FB(self._vault_root, default_folders=default_folders)
                     migrate_files_to_db(old, self._backend)
                 else:
                     from jarvis.mcp.vault_db_backend import VaultDBBackend as DB
+
                     old = DB(self._vault_root)
                     migrate_db_to_files(old, self._backend)
                 log.info("vault_mode_migrated", mode=current_mode)
@@ -130,10 +137,17 @@ class VaultTools:
 
     @property
     def _default_folders(self) -> dict[str, str]:
-        return getattr(self._backend, "_default_folders", {
-            "research": "recherchen", "meetings": "meetings",
-            "knowledge": "wissen", "projects": "projekte", "daily": "daily",
-        })
+        return getattr(
+            self._backend,
+            "_default_folders",
+            {
+                "research": "recherchen",
+                "meetings": "meetings",
+                "knowledge": "wissen",
+                "projects": "projekte",
+                "daily": "daily",
+            },
+        )
 
     @property
     def _index_path(self) -> Path:
@@ -411,7 +425,10 @@ class VaultTools:
     ) -> str:
         """Listet Notizen im Vault auf."""
         notes = self._backend.list_notes(
-            folder=folder, tags=tags, sort_by=sort_by, limit=int(limit),
+            folder=folder,
+            tags=tags,
+            sort_by=sort_by,
+            limit=int(limit),
         )
 
         if not notes:

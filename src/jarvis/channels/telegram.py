@@ -650,7 +650,7 @@ class TelegramChannel(Channel):
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="Datenschutzhinweis: Bitte sende zuerst eine Textnachricht "
-                     "und akzeptiere den Datenschutzhinweis bevor du Bilder sendest.",
+                "und akzeptiere den Datenschutzhinweis bevor du Bilder sendest.",
             )
             return
 
@@ -871,7 +871,9 @@ class TelegramChannel(Channel):
             text_lower = (text or "").strip().lower()
             if text_lower in ("akzeptieren", "accept", "ja", "yes"):
                 consent_mgr.grant_consent(
-                    str(user_id), "telegram", "data_processing",
+                    str(user_id),
+                    "telegram",
+                    "data_processing",
                     context=str(chat_id),
                 )
                 await update.effective_message.reply_text(

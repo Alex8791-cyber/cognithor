@@ -1,4 +1,5 @@
 """Tests for KnowledgeBuilder — triple-write pipeline (Vault + Memory + Graph)."""
+
 from __future__ import annotations
 
 import json
@@ -117,9 +118,7 @@ class TestKnowledgeBuilder:
     async def test_entity_extraction(self):
         from jarvis.evolution.knowledge_builder import KnowledgeBuilder
 
-        kb = KnowledgeBuilder(
-            mcp_client=_make_mcp(), llm_fn=_mock_llm, goal_slug="test"
-        )
+        kb = KnowledgeBuilder(mcp_client=_make_mcp(), llm_fn=_mock_llm, goal_slug="test")
 
         entities, relations = await kb.extract_entities("Some legal text about VVG.")
 
@@ -138,9 +137,7 @@ class TestKnowledgeBuilder:
         async def bad_llm(prompt: str) -> str:
             return "This is not JSON at all, sorry."
 
-        kb = KnowledgeBuilder(
-            mcp_client=_make_mcp(), llm_fn=bad_llm, goal_slug="test"
-        )
+        kb = KnowledgeBuilder(mcp_client=_make_mcp(), llm_fn=bad_llm, goal_slug="test")
 
         entities, relations = await kb.extract_entities("Some text.")
 
@@ -152,17 +149,13 @@ class TestKnowledgeBuilder:
         from jarvis.evolution.knowledge_builder import KnowledgeBuilder
 
         mcp = _make_mcp()
-        kb = KnowledgeBuilder(
-            mcp_client=mcp, llm_fn=_mock_llm, goal_slug="versicherung"
-        )
+        kb = KnowledgeBuilder(mcp_client=mcp, llm_fn=_mock_llm, goal_slug="versicherung")
         fr = _make_fetch_result()
 
         await kb.build(fr)
 
         # Find the vault_save call
-        vault_calls = [
-            c for c in mcp.call_tool.call_args_list if c.args[0] == "vault_save"
-        ]
+        vault_calls = [c for c in mcp.call_tool.call_args_list if c.args[0] == "vault_save"]
         assert len(vault_calls) == 1
         kwargs = vault_calls[0].args[1]
         assert "versicherung" in kwargs["folder"]
@@ -172,16 +165,12 @@ class TestKnowledgeBuilder:
         from jarvis.evolution.knowledge_builder import KnowledgeBuilder
 
         mcp = _make_mcp()
-        kb = KnowledgeBuilder(
-            mcp_client=mcp, llm_fn=_mock_llm, goal_slug="test-slug"
-        )
+        kb = KnowledgeBuilder(mcp_client=mcp, llm_fn=_mock_llm, goal_slug="test-slug")
         fr = _make_fetch_result()
 
         await kb.build(fr)
 
-        memory_calls = [
-            c for c in mcp.call_tool.call_args_list if c.args[0] == "save_to_memory"
-        ]
+        memory_calls = [c for c in mcp.call_tool.call_args_list if c.args[0] == "save_to_memory"]
         assert len(memory_calls) >= 1
         for call in memory_calls:
             kwargs = call.args[1]

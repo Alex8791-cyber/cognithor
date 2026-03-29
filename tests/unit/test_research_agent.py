@@ -1,4 +1,5 @@
 """Tests for ResearchAgent — Phase 5B web fetching with multiple strategies."""
+
 from __future__ import annotations
 
 import asyncio
@@ -14,6 +15,7 @@ from jarvis.evolution.research_agent import FetchResult, ResearchAgent
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class _MockToolResult:
@@ -90,11 +92,11 @@ async def test_fetch_full_page_error():
 async def test_fetch_sitemap_crawl():
     """Sitemap crawl fetches index, extracts links, fetches individual pages."""
     index_html = (
-        '<html><body>'
+        "<html><body>"
         '<a href="https://example.com/page1">P1</a>'
         '<a href="https://example.com/page2">P2</a>'
         '<a href="https://other.com/nope">External</a>'
-        '</body></html>'
+        "</body></html>"
     )
     agent, mcp, _ = _make_agent(
         call_tool_side_effect=[
@@ -152,12 +154,20 @@ async def test_rate_limiting():
         rate_limit=0.0,  # no delay for test speed
     )
 
-    r1 = await agent.fetch_source(SourceSpec(
-        url="https://example.com/a", source_type="web", fetch_strategy="full_page",
-    ))
-    r2 = await agent.fetch_source(SourceSpec(
-        url="https://example.com/b", source_type="web", fetch_strategy="full_page",
-    ))
+    r1 = await agent.fetch_source(
+        SourceSpec(
+            url="https://example.com/a",
+            source_type="web",
+            fetch_strategy="full_page",
+        )
+    )
+    r2 = await agent.fetch_source(
+        SourceSpec(
+            url="https://example.com/b",
+            source_type="web",
+            fetch_strategy="full_page",
+        )
+    )
 
     assert len(r1) == 1
     assert len(r2) == 1

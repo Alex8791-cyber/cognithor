@@ -1,4 +1,5 @@
 """Web collector — uses existing search_and_read MCP tool."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -40,13 +41,15 @@ class WebCollector(BaseCollector):
                 )
                 if result and not result.is_error and result.content:
                     text = result.content[:3000]
-                    evidence.append(Evidence(
-                        source=f"web_search:{query[:50]}",
-                        source_type="web",
-                        content=text,
-                        confidence=0.6,
-                        collected_at=now,
-                    ))
+                    evidence.append(
+                        Evidence(
+                            source=f"web_search:{query[:50]}",
+                            source_type="web",
+                            content=text,
+                            confidence=0.6,
+                            collected_at=now,
+                        )
+                    )
             except Exception:
                 log.debug("web_collector_query_failed", query=query[:40], exc_info=True)
         return evidence

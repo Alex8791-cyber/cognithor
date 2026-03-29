@@ -1,4 +1,5 @@
 """Tests for QualityAssessor — coverage check + LLM self-examination."""
+
 from __future__ import annotations
 
 import json
@@ -117,9 +118,9 @@ class TestAnswerQuestion:
         assert _VAULT_ANSWER in result.actual_answer
         # Must have called vault_search or search_memory, not web tools
         tool_names = [call.args[0] for call in mcp.call_tool.call_args_list]
-        assert any(
-            t in ("vault_search", "search_memory") for t in tool_names
-        ), f"Expected vault_search or search_memory calls, got {tool_names}"
+        assert any(t in ("vault_search", "search_memory") for t in tool_names), (
+            f"Expected vault_search or search_memory calls, got {tool_names}"
+        )
 
 
 class TestGradeQuestion:

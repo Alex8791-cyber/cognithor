@@ -645,7 +645,9 @@ class Gatekeeper:
             "browse_fill",
             "browse_execute_js",
             # OSINT (privacy-sensitive investigations)
-            "investigate_person", "investigate_project", "investigate_org",
+            "investigate_person",
+            "investigate_project",
+            "investigate_org",
         }
         if tool in orange_tools:
             return RiskLevel.ORANGE

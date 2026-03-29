@@ -467,6 +467,7 @@ class VaultConfig(BaseModel):
 
 class OsintConfig(BaseModel):
     """OSINT / Human Investigation Module configuration."""
+
     enabled: bool = True
     github_token: str = ""
     default_depth: str = "standard"

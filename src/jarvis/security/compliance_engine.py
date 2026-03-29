@@ -4,6 +4,7 @@ Every data processing operation must pass through this engine.
 It enforces: consent requirements, legal basis validation,
 purpose limitations, and privacy mode.
 """
+
 from __future__ import annotations
 
 from jarvis.security.consent import ConsentManager
@@ -71,9 +72,7 @@ class ComplianceEngine:
 
         # Rule 1: Privacy mode blocks everything except security
         if self._privacy_mode and purpose != DataPurpose.SECURITY:
-            raise ComplianceViolation(
-                f"Privacy mode active — {purpose.value} processing blocked"
-            )
+            raise ComplianceViolation(f"Privacy mode active — {purpose.value} processing blocked")
 
         # Rule 2: System-internal channels use LEGITIMATE_INTEREST, not consent
         if channel in self._SYSTEM_CHANNELS:

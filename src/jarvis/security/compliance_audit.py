@@ -7,6 +7,7 @@ entry, forming a tamper-evident chain.
 Events: consent_granted, consent_withdrawn, erasure_requested,
 erasure_executed, data_exported, cloud_data_sent, osint_started.
 """
+
 from __future__ import annotations
 
 import hashlib

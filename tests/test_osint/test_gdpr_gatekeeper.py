@@ -1,4 +1,5 @@
 """Tests for GDPR Gatekeeper."""
+
 from __future__ import annotations
 
 import pytest

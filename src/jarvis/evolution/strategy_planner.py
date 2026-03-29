@@ -1,5 +1,6 @@
 """StrategyPlanner — decomposes a high-level learning goal into a structured
 LearningPlan via LLM-based reasoning."""
+
 from __future__ import annotations
 
 import json
@@ -72,7 +73,9 @@ Wiederhole KEINE bestehenden Teilziele. Antworte ausschliesslich mit validem JSO
 ```
 """
 
-_STRICT_JSON_SUFFIX = "\n\nWICHTIG: Antworte NUR mit einem einzigen JSON-Objekt. Kein Text davor oder danach."
+_STRICT_JSON_SUFFIX = (
+    "\n\nWICHTIG: Antworte NUR mit einem einzigen JSON-Objekt. Kein Text davor oder danach."
+)
 
 # ---------------------------------------------------------------------------
 # Complexity keywords
@@ -145,8 +148,7 @@ class StrategyPlanner:
     async def replan(self, plan: LearningPlan, new_context: str) -> LearningPlan:
         """Extend *plan* with additional sub_goals/sources/schedules."""
         existing = "\n".join(
-            f"- [{sg.status}] {sg.title}: {sg.description}"
-            for sg in plan.sub_goals
+            f"- [{sg.status}] {sg.title}: {sg.description}" for sg in plan.sub_goals
         )
         prompt = _REPLAN_PROMPT.format(
             goal=plan.goal,
@@ -177,26 +179,30 @@ class StrategyPlanner:
         for src in data.get("sources", []):
             url = src.get("url", "")
             if url and url not in existing_urls:
-                plan.sources.append(SourceSpec(
-                    url=url,
-                    source_type=src.get("source_type", "web"),
-                    title=src.get("title"),
-                    fetch_strategy=src.get("fetch_strategy"),
-                    update_frequency=src.get("update_frequency"),
-                ))
+                plan.sources.append(
+                    SourceSpec(
+                        url=url,
+                        source_type=src.get("source_type", "web"),
+                        title=src.get("title"),
+                        fetch_strategy=src.get("fetch_strategy"),
+                        update_frequency=src.get("update_frequency"),
+                    )
+                )
                 existing_urls.add(url)
 
         existing_names = {s.name for s in plan.schedules}
         for sched in data.get("schedules", []):
             name = sched.get("name", "")
             if name and name not in existing_names:
-                plan.schedules.append(ScheduleSpec(
-                    name=name,
-                    cron_expression=sched.get("cron_expression", ""),
-                    source_url=sched.get("source_url"),
-                    action=sched.get("action", "fetch"),
-                    description=sched.get("description"),
-                ))
+                plan.schedules.append(
+                    ScheduleSpec(
+                        name=name,
+                        cron_expression=sched.get("cron_expression", ""),
+                        source_url=sched.get("source_url"),
+                        action=sched.get("action", "fetch"),
+                        description=sched.get("description"),
+                    )
+                )
                 existing_names.add(name)
 
         # Re-sort sub_goals by priority desc
@@ -237,6 +243,7 @@ class StrategyPlanner:
 # ---------------------------------------------------------------------------
 # Module-level helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_json(text: str) -> str | None:
     """Pull a JSON object from LLM output — handles ```json fences and raw braces."""

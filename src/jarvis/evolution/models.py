@@ -1,4 +1,5 @@
 """Phase 5 data models — LearningPlan, SubGoal, SourceSpec and related types."""
+
 from __future__ import annotations
 
 import json
@@ -228,8 +229,7 @@ class SubGoal:
             coverage_score=d.get("coverage_score"),
             quality_score=d.get("quality_score"),
             quality_questions=[
-                QualityQuestion.from_dict(q)
-                for q in d.get("quality_questions", [])
+                QualityQuestion.from_dict(q) for q in d.get("quality_questions", [])
             ],
             last_tested=d.get("last_tested"),
             test_count=d.get("test_count", 0),

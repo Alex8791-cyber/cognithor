@@ -19,6 +19,7 @@ Files are stored with a magic header (COGNITHOR_ENC_V1) followed by
 Fernet-encrypted content. The read() method auto-detects whether a
 file is encrypted or plaintext, so migration is seamless.
 """
+
 from __future__ import annotations
 
 import base64
@@ -37,6 +38,7 @@ _FERNET_AVAILABLE = False
 
 try:
     from cryptography.fernet import Fernet
+
     _FERNET_AVAILABLE = True
 except ImportError:
     Fernet = None  # type: ignore
@@ -61,8 +63,7 @@ class EncryptedFileIO:
         self._initialized = True
 
         if not _FERNET_AVAILABLE:
-            log.debug("encrypted_file_no_cryptography",
-                       hint="pip install cryptography")
+            log.debug("encrypted_file_no_cryptography", hint="pip install cryptography")
             return
 
         key = self._get_key()
@@ -82,6 +83,7 @@ class EncryptedFileIO:
         # 2. OS Keyring
         try:
             import keyring
+
             existing = keyring.get_password("cognithor", "db_encryption_key")
             if existing:
                 return existing
@@ -91,6 +93,7 @@ class EncryptedFileIO:
         # 3. CredentialStore
         try:
             from jarvis.security.credentials import CredentialStore
+
             store = CredentialStore()
             existing = store.retrieve("system", "db_encryption_key")
             if existing:
@@ -139,7 +142,9 @@ class EncryptedFileIO:
                     try:
                         return self._fernet.decrypt(encrypted_data).decode(encoding)
                     except Exception as e:
-                        log.error("encrypted_file_decrypt_failed", path=str(path)[-40:], error=str(e)[:50])
+                        log.error(
+                            "encrypted_file_decrypt_failed", path=str(path)[-40:], error=str(e)[:50]
+                        )
                         raise
                 else:
                     raise RuntimeError(

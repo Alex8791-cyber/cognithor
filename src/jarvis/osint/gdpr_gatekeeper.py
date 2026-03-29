@@ -1,4 +1,5 @@
 """GDPR Gatekeeper — compliance check before investigations."""
+
 from __future__ import annotations
 
 from jarvis.osint.models import GDPRScope, GDPRViolationError, HIMRequest
@@ -23,9 +24,7 @@ class GDPRGatekeeper:
         has_public_talks: bool = False,
     ) -> GDPRScope:
         if len(request.requester_justification.strip()) < 10:
-            raise GDPRViolationError(
-                "requester_justification must be at least 10 characters"
-            )
+            raise GDPRViolationError("requester_justification must be at least 10 characters")
 
         if request.target_type == "project":
             return GDPRScope(
@@ -42,16 +41,10 @@ class GDPRGatekeeper:
             )
 
         # Person checks
-        is_public = (
-            github_followers >= 50
-            or has_papers
-            or has_public_talks
-        )
+        is_public = github_followers >= 50 or has_papers or has_public_talks
 
         if not is_public and request.depth == "deep":
-            raise GDPRViolationError(
-                "depth='deep' not allowed for private persons"
-            )
+            raise GDPRViolationError("depth='deep' not allowed for private persons")
 
         allowed = list(_ALL_COLLECTORS) if is_public else list(_PRIVATE_PERSON)
         restrictions = ["data_minimisation"]

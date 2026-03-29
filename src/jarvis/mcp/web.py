@@ -404,9 +404,7 @@ class WebTools:
                 self._search_raw_searxng(query, num_results, language)
             )
         if self._brave_api_key:
-            tasks["brave"] = _aio.create_task(
-                self._search_raw_brave(query, num_results, language)
-            )
+            tasks["brave"] = _aio.create_task(self._search_raw_brave(query, num_results, language))
         if self._google_cse_api_key and self._google_cse_cx:
             tasks["google"] = _aio.create_task(
                 self._search_raw_google_cse(query, num_results, language)
@@ -432,7 +430,9 @@ class WebTools:
                 results = await task
                 if results:
                     all_results[name] = results
-                    log.info("hybrid_search_ok", backend=name, results=len(results), query=query[:40])
+                    log.info(
+                        "hybrid_search_ok", backend=name, results=len(results), query=query[:40]
+                    )
             except Exception as exc:
                 provider_errors.append(f"{name}: {exc}")
                 log.warning("hybrid_search_failed", backend=name, error=str(exc)[:80])
@@ -530,14 +530,22 @@ class WebTools:
     ) -> list[dict[str, str]]:
         """Brave Search API returning raw result dicts."""
         url = "https://api.search.brave.com/res/v1/web/search"
-        headers = {"Accept": "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": self._brave_api_key or ""}
+        headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "X-Subscription-Token": self._brave_api_key or "",
+        }
         params = {"q": query, "count": str(num_results), "search_lang": language, "country": "DE"}
         async with httpx.AsyncClient(timeout=self._search_timeout) as client:
             resp = await client.get(url, headers=headers, params=params)
             resp.raise_for_status()
             data = resp.json()
         return [
-            {"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("description", "")}
+            {
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "content": r.get("description", ""),
+            }
             for r in data.get("web", {}).get("results", [])[:num_results]
         ]
 
@@ -546,7 +554,13 @@ class WebTools:
     ) -> list[dict[str, str]]:
         """Google CSE returning raw result dicts."""
         url = "https://www.googleapis.com/customsearch/v1"
-        params = {"key": self._google_cse_api_key, "cx": self._google_cse_cx, "q": query, "num": str(min(num_results, 10)), "lr": f"lang_{language}"}
+        params = {
+            "key": self._google_cse_api_key,
+            "cx": self._google_cse_cx,
+            "q": query,
+            "num": str(min(num_results, 10)),
+            "lr": f"lang_{language}",
+        }
         async with httpx.AsyncClient(timeout=self._search_timeout) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
@@ -566,12 +580,17 @@ class WebTools:
         # Parse back to list of dicts (rough extraction from formatted text)
         results: list[dict[str, str]] = []
         import re as _re
-        for match in _re.finditer(r'\[(\d+)\] (.+?)\n\s+(.+?)\n\s+(.+?)(?=\n\[|\n\n|$)', formatted, _re.DOTALL):
-            results.append({
-                "title": match.group(2).strip(),
-                "url": match.group(3).strip(),
-                "content": match.group(4).strip(),
-            })
+
+        for match in _re.finditer(
+            r"\[(\d+)\] (.+?)\n\s+(.+?)\n\s+(.+?)(?=\n\[|\n\n|$)", formatted, _re.DOTALL
+        ):
+            results.append(
+                {
+                    "title": match.group(2).strip(),
+                    "url": match.group(3).strip(),
+                    "content": match.group(4).strip(),
+                }
+            )
         if not results and "Ergebnisse" not in formatted:
             # DDG returned something but we couldn't parse → return as single result
             return [{"title": query, "url": "", "content": formatted[:500]}]

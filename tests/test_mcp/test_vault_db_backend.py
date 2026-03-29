@@ -1,4 +1,5 @@
 """Tests for Vault DB Backend."""
+
 from __future__ import annotations
 import pytest
 from pathlib import Path
@@ -30,7 +31,9 @@ def test_save_duplicate_path(db_backend):
 
 def test_search_fts(db_backend):
     db_backend.save("a.md", "Python Guide", "Learn Python programming", "python", "wissen", "", [])
-    db_backend.save("b.md", "Rust Guide", "Learn Rust systems programming", "rust", "wissen", "", [])
+    db_backend.save(
+        "b.md", "Rust Guide", "Learn Rust systems programming", "rust", "wissen", "", []
+    )
     results = db_backend.search("Python")
     assert len(results) >= 1
     assert any("Python" in r.title for r in results)

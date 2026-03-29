@@ -32,9 +32,15 @@ async def test_create_schedules():
     engine = _make_cron_engine()
     mgr = ScheduleManager(cron_engine=engine)
 
-    plan = _make_plan(schedules=[
-        ScheduleSpec(name="daily-rust", cron_expression="0 8 * * *", source_url="https://doc.rust-lang.org"),
-    ])
+    plan = _make_plan(
+        schedules=[
+            ScheduleSpec(
+                name="daily-rust",
+                cron_expression="0 8 * * *",
+                source_url="https://doc.rust-lang.org",
+            ),
+        ]
+    )
 
     count = await mgr.create_schedules(plan)
 
@@ -48,10 +54,18 @@ async def test_create_multiple_schedules():
     engine = _make_cron_engine()
     mgr = ScheduleManager(cron_engine=engine)
 
-    plan = _make_plan(schedules=[
-        ScheduleSpec(name="daily-rust", cron_expression="0 8 * * *", source_url="https://doc.rust-lang.org"),
-        ScheduleSpec(name="weekly-crates", cron_expression="0 9 * * 1", source_url="https://crates.io"),
-    ])
+    plan = _make_plan(
+        schedules=[
+            ScheduleSpec(
+                name="daily-rust",
+                cron_expression="0 8 * * *",
+                source_url="https://doc.rust-lang.org",
+            ),
+            ScheduleSpec(
+                name="weekly-crates", cron_expression="0 9 * * 1", source_url="https://crates.io"
+            ),
+        ]
+    )
 
     count = await mgr.create_schedules(plan)
 
@@ -79,9 +93,15 @@ async def test_cron_job_name_prefixed():
     engine = _make_cron_engine()
     mgr = ScheduleManager(cron_engine=engine)
 
-    plan = _make_plan(schedules=[
-        ScheduleSpec(name="daily-rust", cron_expression="0 8 * * *", source_url="https://doc.rust-lang.org"),
-    ])
+    plan = _make_plan(
+        schedules=[
+            ScheduleSpec(
+                name="daily-rust",
+                cron_expression="0 8 * * *",
+                source_url="https://doc.rust-lang.org",
+            ),
+        ]
+    )
 
     await mgr.create_schedules(plan)
 
@@ -95,9 +115,15 @@ async def test_no_cron_engine():
     """cron_engine=None -> returns 0, no crash."""
     mgr = ScheduleManager(cron_engine=None)
 
-    plan = _make_plan(schedules=[
-        ScheduleSpec(name="daily-rust", cron_expression="0 8 * * *", source_url="https://doc.rust-lang.org"),
-    ])
+    plan = _make_plan(
+        schedules=[
+            ScheduleSpec(
+                name="daily-rust",
+                cron_expression="0 8 * * *",
+                source_url="https://doc.rust-lang.org",
+            ),
+        ]
+    )
 
     count = await mgr.create_schedules(plan)
 

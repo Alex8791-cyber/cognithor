@@ -179,7 +179,9 @@ class UserPreferenceStore:
                 self._conn.commit()
                 count = cursor.rowcount
             if count > 0:
-                log.info("GDPR-Erasure: %d Praeferenz-Zeilen geloescht fuer user_id=%s", count, user_id)
+                log.info(
+                    "GDPR-Erasure: %d Praeferenz-Zeilen geloescht fuer user_id=%s", count, user_id
+                )
             return count
         except Exception as exc:
             log.warning("user_preferences_delete_failed", exc_info=exc)

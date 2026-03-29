@@ -1,4 +1,5 @@
 """Base collector with retry logic."""
+
 from __future__ import annotations
 
 import asyncio
@@ -22,12 +23,10 @@ class BaseCollector(ABC):
     max_requests_per_minute: int = 30
 
     @abstractmethod
-    async def collect(self, target: str, claims: list[str]) -> list[Evidence]:
-        ...
+    async def collect(self, target: str, claims: list[str]) -> list[Evidence]: ...
 
     @abstractmethod
-    def is_available(self) -> bool:
-        ...
+    def is_available(self) -> bool: ...
 
     async def _fetch_with_retry(
         self, url: str, headers: dict[str, str] | None = None, max_retries: int = 3
@@ -42,7 +41,7 @@ class BaseCollector(ABC):
             except (httpx.HTTPError, Exception) as e:
                 if attempt == max_retries - 1:
                     raise CollectorError(f"Failed after {max_retries} retries: {e}") from e
-                wait = 2 ** attempt
+                wait = 2**attempt
                 log.debug("collector_retry", source=self.source_name, attempt=attempt, wait=wait)
                 await asyncio.sleep(wait)
         raise CollectorError("Unreachable")

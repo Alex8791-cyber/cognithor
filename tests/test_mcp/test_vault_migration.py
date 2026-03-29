@@ -1,4 +1,5 @@
 """Tests for Vault migration (files <-> DB)."""
+
 from __future__ import annotations
 import pytest
 from pathlib import Path
@@ -41,7 +42,9 @@ def test_detect_mode_change(vault_root):
 
 def test_roundtrip(vault_root):
     fb = VaultFileBackend(vault_root)
-    fb.save("wissen/test.md", "Roundtrip", "Original content", "round, trip", "wissen", "http://src", [])
+    fb.save(
+        "wissen/test.md", "Roundtrip", "Original content", "round, trip", "wissen", "http://src", []
+    )
     # Files -> DB
     db = VaultDBBackend(vault_root)
     migrate_files_to_db(fb, db)

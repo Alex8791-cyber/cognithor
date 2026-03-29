@@ -1,4 +1,5 @@
 """Tests for KnowledgeValidator — claims extraction, cross-referencing, confidence tracking."""
+
 from __future__ import annotations
 
 import json
@@ -184,11 +185,41 @@ def test_get_claims_summary(tmp_path):
     v = KnowledgeValidator(db_path=tmp_path / "kv.db")
 
     claims_data = [
-        KnowledgeClaim(id="s1", claim="Claim A ist korrekt und verifiziert.", goal_slug="g1", status="verified", confidence=0.9),
-        KnowledgeClaim(id="s2", claim="Claim B ist umstritten und disputed.", goal_slug="g1", status="disputed", confidence=0.4),
-        KnowledgeClaim(id="s3", claim="Claim C ist widerlegt und debunked.", goal_slug="g1", status="debunked", confidence=0.1),
-        KnowledgeClaim(id="s4", claim="Claim D ist noch unverified und neu.", goal_slug="g1", status="unverified", confidence=0.5),
-        KnowledgeClaim(id="s5", claim="Claim E gehoert zu einem anderen Goal.", goal_slug="g2", status="verified", confidence=0.95),
+        KnowledgeClaim(
+            id="s1",
+            claim="Claim A ist korrekt und verifiziert.",
+            goal_slug="g1",
+            status="verified",
+            confidence=0.9,
+        ),
+        KnowledgeClaim(
+            id="s2",
+            claim="Claim B ist umstritten und disputed.",
+            goal_slug="g1",
+            status="disputed",
+            confidence=0.4,
+        ),
+        KnowledgeClaim(
+            id="s3",
+            claim="Claim C ist widerlegt und debunked.",
+            goal_slug="g1",
+            status="debunked",
+            confidence=0.1,
+        ),
+        KnowledgeClaim(
+            id="s4",
+            claim="Claim D ist noch unverified und neu.",
+            goal_slug="g1",
+            status="unverified",
+            confidence=0.5,
+        ),
+        KnowledgeClaim(
+            id="s5",
+            claim="Claim E gehoert zu einem anderen Goal.",
+            goal_slug="g2",
+            status="verified",
+            confidence=0.95,
+        ),
     ]
     for c in claims_data:
         v._save_claim(c)

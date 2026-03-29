@@ -1,4 +1,5 @@
 """arXiv collector — official API, no key required."""
+
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
@@ -40,22 +41,23 @@ class ArxivCollector(BaseCollector):
                 published = entry.findtext(f"{_ATOM_NS}published") or ""
                 entry_id = entry.findtext(f"{_ATOM_NS}id") or ""
                 authors = [
-                    a.findtext(f"{_ATOM_NS}name") or ""
-                    for a in entry.findall(f"{_ATOM_NS}author")
+                    a.findtext(f"{_ATOM_NS}name") or "" for a in entry.findall(f"{_ATOM_NS}author")
                 ]
-                evidence.append(Evidence(
-                    source=f"arxiv:{entry_id.split('/')[-1]}",
-                    source_type="arxiv",
-                    content=(
-                        f"Paper: {title} | "
-                        f"Authors: {', '.join(authors[:5])} | "
-                        f"Published: {published[:10]} | "
-                        f"Abstract: {summary}"
-                    ),
-                    confidence=0.85,
-                    collected_at=now,
-                    url=entry_id,
-                ))
+                evidence.append(
+                    Evidence(
+                        source=f"arxiv:{entry_id.split('/')[-1]}",
+                        source_type="arxiv",
+                        content=(
+                            f"Paper: {title} | "
+                            f"Authors: {', '.join(authors[:5])} | "
+                            f"Published: {published[:10]} | "
+                            f"Abstract: {summary}"
+                        ),
+                        confidence=0.85,
+                        collected_at=now,
+                        url=entry_id,
+                    )
+                )
         except Exception:
             log.debug("arxiv_collector_failed", exc_info=True)
         return evidence

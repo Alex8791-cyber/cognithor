@@ -1,4 +1,5 @@
 """Tests for Compliance Audit Log."""
+
 from __future__ import annotations
 
 import json

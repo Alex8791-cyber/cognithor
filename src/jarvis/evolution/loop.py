@@ -147,14 +147,16 @@ class EvolutionLoop:
             return result
         result.gaps_found = len(gaps)
 
-        self._save_checkpoint(EvolutionCheckpoint(
-            cycle_id=result.cycle_id,
-            step_name="scout",
-            step_index=0,
-            gaps_found=result.gaps_found,
-            steps_completed=list(result.steps_completed),
-            delta={"gaps_found": result.gaps_found},
-        ))
+        self._save_checkpoint(
+            EvolutionCheckpoint(
+                cycle_id=result.cycle_id,
+                step_name="scout",
+                step_index=0,
+                gaps_found=result.gaps_found,
+                steps_completed=list(result.steps_completed),
+                delta={"gaps_found": result.gaps_found},
+            )
+        )
 
         if not self._idle.is_idle:
             result.skipped = True
@@ -175,16 +177,21 @@ class EvolutionLoop:
         research_text = await self._research(top_gap)
         result.steps_completed.append("research")
 
-        self._save_checkpoint(EvolutionCheckpoint(
-            cycle_id=result.cycle_id,
-            step_name="research",
-            step_index=1,
-            gaps_found=result.gaps_found,
-            research_topic=result.research_topic,
-            research_text=research_text,
-            steps_completed=list(result.steps_completed),
-            delta={"research_topic": result.research_topic, "research_text": research_text[:500]},
-        ))
+        self._save_checkpoint(
+            EvolutionCheckpoint(
+                cycle_id=result.cycle_id,
+                step_name="research",
+                step_index=1,
+                gaps_found=result.gaps_found,
+                research_topic=result.research_topic,
+                research_text=research_text,
+                steps_completed=list(result.steps_completed),
+                delta={
+                    "research_topic": result.research_topic,
+                    "research_text": research_text[:500],
+                },
+            )
+        )
 
         if not research_text:
             result.skipped = True
@@ -211,31 +218,35 @@ class EvolutionLoop:
             result.skill_created = skill_name
             self._total_skills_created += 1
 
-        self._save_checkpoint(EvolutionCheckpoint(
-            cycle_id=result.cycle_id,
-            step_name="build",
-            step_index=2,
-            gaps_found=result.gaps_found,
-            research_topic=result.research_topic,
-            research_text=research_text,
-            skill_created=result.skill_created,
-            steps_completed=list(result.steps_completed),
-            delta={"skill_created": result.skill_created},
-        ))
+        self._save_checkpoint(
+            EvolutionCheckpoint(
+                cycle_id=result.cycle_id,
+                step_name="build",
+                step_index=2,
+                gaps_found=result.gaps_found,
+                research_topic=result.research_topic,
+                research_text=research_text,
+                skill_created=result.skill_created,
+                steps_completed=list(result.steps_completed),
+                delta={"skill_created": result.skill_created},
+            )
+        )
 
         # Step 4: Reflect — log what was learned
         result.steps_completed.append("reflect")
         result.duration_ms = int((time.monotonic() - t0) * 1000)
 
-        self._save_checkpoint(EvolutionCheckpoint(
-            cycle_id=result.cycle_id,
-            step_name="reflect",
-            step_index=3,
-            gaps_found=result.gaps_found,
-            research_topic=result.research_topic,
-            skill_created=result.skill_created,
-            steps_completed=list(result.steps_completed),
-        ))
+        self._save_checkpoint(
+            EvolutionCheckpoint(
+                cycle_id=result.cycle_id,
+                step_name="reflect",
+                step_index=3,
+                gaps_found=result.gaps_found,
+                research_topic=result.research_topic,
+                skill_created=result.skill_created,
+                steps_completed=list(result.steps_completed),
+            )
+        )
 
         log.info(
             "evolution_cycle_complete",
@@ -305,25 +316,31 @@ class EvolutionLoop:
                         plan=plan.goal[:40],
                         subgoal=sg.title[:40],
                     )
-                    return [_LearningGoal(
-                        query=f"[deep:{plan.id}:{sg.id}] {sg.title}: {sg.description}",
-                        source="deep_plan",
-                        target_skill=sg.id,
-                    )]
+                    return [
+                        _LearningGoal(
+                            query=f"[deep:{plan.id}:{sg.id}] {sg.title}: {sg.description}",
+                            source="deep_plan",
+                            target_skill=sg.id,
+                        )
+                    ]
                 # No pending SubGoals — check for stale passed SubGoals to re-test
                 else:
                     try:
                         retested = await self._deep_learner.retest_stale_subgoals(plan.id)
                         if retested:
-                            log.info("evolution_retested_stale", plan=plan.goal[:40], count=retested)
+                            log.info(
+                                "evolution_retested_stale", plan=plan.goal[:40], count=retested
+                            )
                             # After retest, some may have gone back to researching
                             sg2 = self._deep_learner.get_next_subgoal(plan.id)
                             if sg2:
-                                return [_LearningGoal(
-                                    query=f"[deep:{plan.id}:{sg2.id}] {sg2.title}: {sg2.description}",
-                                    source="deep_plan",
-                                    target_skill=sg2.id,
-                                )]
+                                return [
+                                    _LearningGoal(
+                                        query=f"[deep:{plan.id}:{sg2.id}] {sg2.title}: {sg2.description}",
+                                        source="deep_plan",
+                                        target_skill=sg2.id,
+                                    )
+                                ]
                     except Exception:
                         log.debug("evolution_retest_failed", exc_info=True)
 
@@ -344,15 +361,14 @@ class EvolutionLoop:
                         log.info("evolution_promoting_to_deep_plan", goal=g[:60])
                         try:
                             import asyncio
+
                             await self._deep_learner.create_plan(g)
                         except Exception:
                             log.debug("evolution_promote_failed", exc_info=True)
 
             # Remaining simple goals — only count SUCCESSFUL research as "done"
             researched = {
-                r.research_topic
-                for r in self._results[-20:]
-                if r.research_topic and not r.skipped
+                r.research_topic for r in self._results[-20:] if r.research_topic and not r.skipped
             }
             available = [g for g in goals if g not in researched]
             if available:
@@ -402,18 +418,22 @@ class EvolutionLoop:
                     name = getattr(skill, "name", getattr(skill, "slug", ""))
 
                     if uses >= 5 and sr < 0.5:
-                        tasks.append(_LearningGoal(
-                            query=f"Optimize skill '{name}': {sr:.0%} success rate, "
-                                  f"{failures} failures — analyze failure patterns and improve",
-                            source="self_analysis",
-                            target_skill=getattr(skill, "slug", name),
-                        ))
+                        tasks.append(
+                            _LearningGoal(
+                                query=f"Optimize skill '{name}': {sr:.0%} success rate, "
+                                f"{failures} failures — analyze failure patterns and improve",
+                                source="self_analysis",
+                                target_skill=getattr(skill, "slug", name),
+                            )
+                        )
                     elif uses == 0 and getattr(skill, "source", "") != "builtin":
-                        tasks.append(_LearningGoal(
-                            query=f"Test skill '{name}': never used — validate with sample queries",
-                            source="self_analysis",
-                            target_skill=getattr(skill, "slug", name),
-                        ))
+                        tasks.append(
+                            _LearningGoal(
+                                query=f"Test skill '{name}': never used — validate with sample queries",
+                                source="self_analysis",
+                                target_skill=getattr(skill, "slug", name),
+                            )
+                        )
             except Exception:
                 log.debug("evolution_self_analyze_skills_failed", exc_info=True)
 
@@ -434,10 +454,12 @@ class EvolutionLoop:
                     occurrences = getattr(cluster, "occurrences", 0)
                     pattern = getattr(cluster, "pattern_id", str(cluster))[:80]
                     if occurrences >= 2:
-                        tasks.append(_LearningGoal(
-                            query=f"Fix recurring {category} error ({occurrences}x): {pattern}",
-                            source="self_analysis",
-                        ))
+                        tasks.append(
+                            _LearningGoal(
+                                query=f"Fix recurring {category} error ({occurrences}x): {pattern}",
+                                source="self_analysis",
+                            )
+                        )
             except Exception:
                 log.debug("evolution_self_analyze_failures_failed", exc_info=True)
 
@@ -449,11 +471,13 @@ class EvolutionLoop:
                     for proc in procs.list_all():
                         if hasattr(proc, "needs_review") and proc.needs_review:
                             name = getattr(proc, "name", str(proc))
-                            tasks.append(_LearningGoal(
-                                query=f"Review procedure '{name}': low success rate, "
-                                      f"find and fix failure patterns",
-                                source="self_analysis",
-                            ))
+                            tasks.append(
+                                _LearningGoal(
+                                    query=f"Review procedure '{name}': low success rate, "
+                                    f"find and fix failure patterns",
+                                    source="self_analysis",
+                                )
+                            )
             except Exception:
                 log.debug("evolution_self_analyze_procedures_failed", exc_info=True)
 
@@ -473,8 +497,13 @@ class EvolutionLoop:
         online:   Memory search + web search + LLM-powered deep research.
         """
         # Deep plan goals are executed by DeepLearner directly
-        if hasattr(gap, "source") and getattr(gap, "source", "") == "deep_plan" and self._deep_learner:
+        if (
+            hasattr(gap, "source")
+            and getattr(gap, "source", "") == "deep_plan"
+            and self._deep_learner
+        ):
             import re as _re
+
             query_str = getattr(gap, "query", "")
             match = _re.match(r"\[deep:([^:]+):([^\]]+)\]", query_str)
             if match:

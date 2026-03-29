@@ -891,8 +891,7 @@ def register_memory_tools(
         "delete_relation",
         mt.delete_relation,
         description=(
-            "Löscht eine Relation zwischen zwei Entitäten aus dem "
-            "Wissens-Graphen (GDPR erasure)."
+            "Löscht eine Relation zwischen zwei Entitäten aus dem Wissens-Graphen (GDPR erasure)."
         ),
         input_schema={
             "type": "object",

@@ -7,6 +7,7 @@ three complementary MCP tool calls:
 2. **Memory**: Chunked semantic memories for RAG.
 3. **Graph**: Entities and relations extracted via LLM.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,36 +39,52 @@ class BuildResult:
 # dictionary/navigation pages, or generic web boilerplate.
 _GARBAGE_PATTERNS = re.compile(
     r"^("
-    r"PDF-[\d.]+"           # PDF version strings
-    r"|Linearized.*"        # PDF linearization marker
-    r"|\d+ 0 obj"          # PDF object references
-    r"|trailer"            # PDF trailer
-    r"|MediaBox"           # PDF page dimensions
+    r"PDF-[\d.]+"  # PDF version strings
+    r"|Linearized.*"  # PDF linearization marker
+    r"|\d+ 0 obj"  # PDF object references
+    r"|trailer"  # PDF trailer
+    r"|MediaBox"  # PDF page dimensions
     r"|XObject|Font|Page|Root"  # PDF internal types
-    r"|Rechtschreibung"    # Duden dictionary metadata
-    r"|Grammatik"          # Duden dictionary metadata
-    r"|Synonyme"           # Duden dictionary metadata
-    r"|Worttrennung"       # Duden dictionary metadata
-    r"|Aussprache"         # Duden dictionary metadata
-    r"|Betonung"           # Duden dictionary metadata
-    r"|Cookie"             # Cookie consent noise
-    r"|Datenschutz"        # Privacy policy noise
-    r"|Impressum"          # Imprint noise
-    r"|Newsletter"         # Newsletter signup noise
-    r"|Inhaltsverzeichnis" # Table of contents
-    r"|Breadcrumb"         # Navigation noise
-    r"|Login|Logout"       # Auth elements
-    r"|Warenkorb|Cart"     # Shopping cart noise
+    r"|Rechtschreibung"  # Duden dictionary metadata
+    r"|Grammatik"  # Duden dictionary metadata
+    r"|Synonyme"  # Duden dictionary metadata
+    r"|Worttrennung"  # Duden dictionary metadata
+    r"|Aussprache"  # Duden dictionary metadata
+    r"|Betonung"  # Duden dictionary metadata
+    r"|Cookie"  # Cookie consent noise
+    r"|Datenschutz"  # Privacy policy noise
+    r"|Impressum"  # Imprint noise
+    r"|Newsletter"  # Newsletter signup noise
+    r"|Inhaltsverzeichnis"  # Table of contents
+    r"|Breadcrumb"  # Navigation noise
+    r"|Login|Logout"  # Auth elements
+    r"|Warenkorb|Cart"  # Shopping cart noise
     r")$",
     re.IGNORECASE,
 )
 
 # Entity names that are too generic to be useful
 _TOO_GENERIC = {
-    "grundlage", "methode", "anwendung", "beispiel", "definition",
-    "ergebnis", "information", "inhalt", "thema", "uebersicht",
-    "seite", "kapitel", "abschnitt", "tabelle", "abbildung",
-    "quelle", "link", "download", "suche", "startseite",
+    "grundlage",
+    "methode",
+    "anwendung",
+    "beispiel",
+    "definition",
+    "ergebnis",
+    "information",
+    "inhalt",
+    "thema",
+    "uebersicht",
+    "seite",
+    "kapitel",
+    "abschnitt",
+    "tabelle",
+    "abbildung",
+    "quelle",
+    "link",
+    "download",
+    "suche",
+    "startseite",
 }
 
 
@@ -146,9 +163,7 @@ class KnowledgeBuilder:
         result = BuildResult()
 
         if fetch_result.error or not fetch_result.text:
-            result.errors.append(
-                fetch_result.error or "Empty text in FetchResult"
-            )
+            result.errors.append(fetch_result.error or "Empty text in FetchResult")
             return result
 
         # 1. Vault save
@@ -264,9 +279,7 @@ class KnowledgeBuilder:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def chunk_text(
-        text: str, max_tokens: int = 512, overlap_tokens: int = 64
-    ) -> List[str]:
+    def chunk_text(text: str, max_tokens: int = 512, overlap_tokens: int = 64) -> List[str]:
         """Split text into overlapping word-based chunks.
 
         Parameters use 'tokens' in name but operate on words as a proxy.
@@ -291,9 +304,7 @@ class KnowledgeBuilder:
     # Entity extraction
     # ------------------------------------------------------------------
 
-    async def extract_entities(
-        self, text: str
-    ) -> Tuple[List[dict], List[dict]]:
+    async def extract_entities(self, text: str) -> Tuple[List[dict], List[dict]]:
         """Ask the LLM to extract entities and relations from *text*.
 
         Returns (entities, relations). Falls back to empty lists if the
@@ -329,15 +340,12 @@ class KnowledgeBuilder:
 
         # Validate structure
         valid_entities = [
-            e for e in entities
-            if isinstance(e, dict) and "name" in e and "type" in e
+            e for e in entities if isinstance(e, dict) and "name" in e and "type" in e
         ]
         valid_relations = [
-            r for r in relations
-            if isinstance(r, dict)
-            and "source" in r
-            and "relation" in r
-            and "target" in r
+            r
+            for r in relations
+            if isinstance(r, dict) and "source" in r and "relation" in r and "target" in r
         ]
 
         # Content filter: reject garbage entities from PDF metadata,
@@ -346,7 +354,8 @@ class KnowledgeBuilder:
         # Filter relations whose source or target was rejected
         entity_names = {e["name"] for e in valid_entities}
         valid_relations = [
-            r for r in valid_relations
+            r
+            for r in valid_relations
             if r["source"] in entity_names and r["target"] in entity_names
         ]
 

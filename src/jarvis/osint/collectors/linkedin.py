@@ -1,4 +1,5 @@
 """LinkedIn collector — STUB (Phase 2)."""
+
 from __future__ import annotations
 
 from jarvis.osint.collectors.base import BaseCollector

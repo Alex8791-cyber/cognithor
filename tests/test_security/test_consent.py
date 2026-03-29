@@ -1,4 +1,5 @@
 """Tests for GDPR Consent Manager."""
+
 from __future__ import annotations
 
 import pytest

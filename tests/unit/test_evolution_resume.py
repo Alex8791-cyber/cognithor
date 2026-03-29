@@ -49,8 +49,12 @@ class TestResumeState:
     def test_resume_after_scout(self, store, resumer):
         """Checkpoint nach Scout -> next_step=research."""
         _save_evolution_checkpoint(
-            store, cycle_id=1, step_name="scout", step_index=0,
-            gaps_found=3, steps_completed=["scout"],
+            store,
+            cycle_id=1,
+            step_name="scout",
+            step_index=0,
+            gaps_found=3,
+            steps_completed=["scout"],
         )
         state = resumer.get_resume_state(1)
         assert state.has_checkpoint is True
@@ -63,7 +67,10 @@ class TestResumeState:
     def test_resume_after_research(self, store, resumer):
         """Checkpoint nach Research -> next_step=build."""
         _save_evolution_checkpoint(
-            store, cycle_id=2, step_name="research", step_index=1,
+            store,
+            cycle_id=2,
+            step_name="research",
+            step_index=1,
             research_topic="Python async patterns",
             research_text="Some research...",
             steps_completed=["scout", "research"],
@@ -75,7 +82,10 @@ class TestResumeState:
     def test_resume_after_build(self, store, resumer):
         """Checkpoint nach Build -> next_step=reflect."""
         _save_evolution_checkpoint(
-            store, cycle_id=3, step_name="build", step_index=2,
+            store,
+            cycle_id=3,
+            step_name="build",
+            step_index=2,
             skill_created="async_patterns",
             steps_completed=["scout", "research", "build"],
         )
@@ -86,7 +96,10 @@ class TestResumeState:
     def test_complete_after_reflect(self, store, resumer):
         """Checkpoint nach Reflect -> is_complete=True."""
         _save_evolution_checkpoint(
-            store, cycle_id=4, step_name="reflect", step_index=3,
+            store,
+            cycle_id=4,
+            step_name="reflect",
+            step_index=3,
             steps_completed=["scout", "research", "build", "reflect"],
         )
         state = resumer.get_resume_state(4)
@@ -96,7 +109,10 @@ class TestResumeState:
     def test_to_dict(self, store, resumer):
         """to_dict enthaelt alle wichtigen Felder."""
         _save_evolution_checkpoint(
-            store, cycle_id=5, step_name="scout", step_index=0,
+            store,
+            cycle_id=5,
+            step_name="scout",
+            step_index=0,
         )
         state = resumer.get_resume_state(5)
         d = state.to_dict()

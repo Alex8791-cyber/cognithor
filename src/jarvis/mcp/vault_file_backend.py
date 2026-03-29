@@ -1,4 +1,5 @@
 """Vault File Backend — Obsidian-compatible .md files on disk."""
+
 from __future__ import annotations
 
 import json
@@ -20,14 +21,21 @@ except ImportError:
 class VaultFileBackend(VaultBackend):
     """Obsidian-compatible .md file storage with _index.json cache."""
 
-    def __init__(self, vault_root: Path, encrypt_files: bool = False,
-                 default_folders: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        vault_root: Path,
+        encrypt_files: bool = False,
+        default_folders: dict[str, str] | None = None,
+    ) -> None:
         self._vault_root = vault_root
         self._encrypt = encrypt_files
         self._index_path = vault_root / "_index.json"
         self._default_folders = default_folders or {
-            "research": "recherchen", "meetings": "meetings",
-            "knowledge": "wissen", "projects": "projekte", "daily": "daily",
+            "research": "recherchen",
+            "meetings": "meetings",
+            "knowledge": "wissen",
+            "projects": "projekte",
+            "daily": "daily",
         }
         self._ensure_structure()
 
@@ -89,9 +97,10 @@ class VaultFileBackend(VaultBackend):
         if close == -1:
             return {}, content
         yaml_text = content[4:close]
-        body = content[close + 4:].lstrip("\n")
+        body = content[close + 4 :].lstrip("\n")
         try:
             import yaml
+
             data = yaml.safe_load(yaml_text)
             if not isinstance(data, dict):
                 return {}, content
@@ -100,9 +109,12 @@ class VaultFileBackend(VaultBackend):
             return {}, content
 
     @staticmethod
-    def _build_frontmatter(title: str, tags: list[str],
-                            sources: list[str] | None = None,
-                            backlinks: list[str] | None = None) -> str:
+    def _build_frontmatter(
+        title: str,
+        tags: list[str],
+        sources: list[str] | None = None,
+        backlinks: list[str] | None = None,
+    ) -> str:
         now = now_iso()
         lines = [
             "---",
@@ -130,8 +142,16 @@ class VaultFileBackend(VaultBackend):
 
     # --- VaultBackend implementation ---
 
-    def save(self, path: str, title: str, content: str, tags: str,
-             folder: str, sources: str, backlinks: list[str]) -> str:
+    def save(
+        self,
+        path: str,
+        title: str,
+        content: str,
+        tags: str,
+        folder: str,
+        sources: str,
+        backlinks: list[str],
+    ) -> str:
         tag_list = parse_tags(tags)
         source_list = [s.strip() for s in sources.split(",") if s.strip()] if sources else []
         folder_name = self._resolve_folder(folder)
@@ -146,9 +166,13 @@ class VaultFileBackend(VaultBackend):
         fm = self._build_frontmatter(title, tag_list, source_list, backlinks)
         full_content = fm + f"\n# {title}\n\n{content}\n"
         if source_list:
-            full_content += "\n## Quellen\n" + "\n".join(f"- [{s}]({s})" for s in source_list) + "\n"
+            full_content += (
+                "\n## Quellen\n" + "\n".join(f"- [{s}]({s})" for s in source_list) + "\n"
+            )
         if backlinks:
-            full_content += "\n## Verknüpfte Notizen\n" + "\n".join(f"- [[{b}]]" for b in backlinks) + "\n"
+            full_content += (
+                "\n## Verknüpfte Notizen\n" + "\n".join(f"- [[{b}]]" for b in backlinks) + "\n"
+            )
         # Write
         self._write_file(file_path, full_content)
         rel_path = str(file_path.relative_to(self._vault_root))
@@ -171,7 +195,9 @@ class VaultFileBackend(VaultBackend):
             path=path,
             title=fm.get("title", ""),
             content=body,
-            tags=", ".join(fm.get("tags", [])) if isinstance(fm.get("tags"), list) else str(fm.get("tags", "")),
+            tags=", ".join(fm.get("tags", []))
+            if isinstance(fm.get("tags"), list)
+            else str(fm.get("tags", "")),
             folder=path.split("/")[0] if "/" in path else "",
             sources=", ".join(fm.get("sources", [])) if isinstance(fm.get("sources"), list) else "",
             backlinks=json.dumps(fm.get("linked_notes", [])),
@@ -179,8 +205,9 @@ class VaultFileBackend(VaultBackend):
             updated_at=str(fm.get("updated", "")),
         )
 
-    def search(self, query: str, folder: str = "", tags: str = "",
-               limit: int = 10) -> list[NoteData]:
+    def search(
+        self, query: str, folder: str = "", tags: str = "", limit: int = 10
+    ) -> list[NoteData]:
         results: list[NoteData] = []
         query_lower = query.lower()
         tag_filter = parse_tags(tags) if tags else []
@@ -197,7 +224,10 @@ class VaultFileBackend(VaultBackend):
                 continue
             if tag_filter:
                 fm, _ = self._parse_frontmatter(content)
-                fm_tags = [t.lower() for t in (fm.get("tags", []) if isinstance(fm.get("tags"), list) else [])]
+                fm_tags = [
+                    t.lower()
+                    for t in (fm.get("tags", []) if isinstance(fm.get("tags"), list) else [])
+                ]
                 if not any(t in fm_tags for t in tag_filter):
                     continue
             if query_lower in content.lower():
@@ -208,8 +238,9 @@ class VaultFileBackend(VaultBackend):
                     break
         return results
 
-    def list_notes(self, folder: str = "", tags: str = "",
-                   sort_by: str = "updated", limit: int = 50) -> list[NoteData]:
+    def list_notes(
+        self, folder: str = "", tags: str = "", sort_by: str = "updated", limit: int = 50
+    ) -> list[NoteData]:
         index = self._read_index()
         tag_filter = parse_tags(tags) if tags else []
         folder_filter = self._resolve_folder(folder) if folder else ""
@@ -221,22 +252,25 @@ class VaultFileBackend(VaultBackend):
                 entry_tags = [t.lower() for t in meta.get("tags", [])]
                 if not any(t in entry_tags for t in tag_filter):
                     continue
-            entries.append(NoteData(
-                path=meta.get("path", ""),
-                title=title,
-                tags=", ".join(meta.get("tags", [])),
-                folder=meta.get("folder", ""),
-                created_at=meta.get("created", ""),
-                updated_at=meta.get("updated", ""),
-            ))
-        key_fn = {"title": lambda n: n.title.lower(),
-                   "created": lambda n: n.created_at,
-                   "updated": lambda n: n.updated_at}.get(sort_by, lambda n: n.updated_at)
+            entries.append(
+                NoteData(
+                    path=meta.get("path", ""),
+                    title=title,
+                    tags=", ".join(meta.get("tags", [])),
+                    folder=meta.get("folder", ""),
+                    created_at=meta.get("created", ""),
+                    updated_at=meta.get("updated", ""),
+                )
+            )
+        key_fn = {
+            "title": lambda n: n.title.lower(),
+            "created": lambda n: n.created_at,
+            "updated": lambda n: n.updated_at,
+        }.get(sort_by, lambda n: n.updated_at)
         entries.sort(key=key_fn, reverse=(sort_by != "title"))
         return entries[:limit]
 
-    def update(self, path: str, append_content: str = "",
-               add_tags: str = "") -> str:
+    def update(self, path: str, append_content: str = "", add_tags: str = "") -> str:
         full = self._vault_root / path
         if not full.exists():
             return f"Notiz nicht gefunden: {path}"

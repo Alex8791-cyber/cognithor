@@ -1,4 +1,5 @@
 """GDPR Consent Manager — per-channel consent tracking with versioning."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -21,10 +22,12 @@ def _get_audit_log() -> Any:
     if _audit_log is None:
         try:
             from jarvis.security.compliance_audit import ComplianceAuditLog
+
             _audit_log = ComplianceAuditLog()
         except Exception:
             pass
     return _audit_log
+
 
 __all__ = ["ConsentManager"]
 
@@ -57,6 +60,7 @@ class ConsentManager:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         try:
             from jarvis.security.encrypted_db import encrypted_connect
+
             self._conn = encrypted_connect(db_path, check_same_thread=False)
         except ImportError:
             self._conn = sqlite3.connect(db_path, check_same_thread=False)
@@ -104,16 +108,29 @@ class ConsentManager:
             "INSERT INTO consent (id, user_id, channel, consent_type, status, "
             "policy_version, granted_at, context, created_at) "
             "VALUES (?, ?, ?, ?, 'accepted', ?, ?, ?, ?)",
-            (uuid.uuid4().hex[:16], user_id, channel, consent_type,
-             policy_version, now, context, now),
+            (
+                uuid.uuid4().hex[:16],
+                user_id,
+                channel,
+                consent_type,
+                policy_version,
+                now,
+                context,
+                now,
+            ),
         )
         self._conn.commit()
         log.info("consent_granted", user_id=user_id[:8], channel=channel, type=consent_type)
         # Compliance audit log
         audit = _get_audit_log()
         if audit:
-            audit.record("consent_granted", user_id=user_id, channel=channel,
-                         consent_type=consent_type, policy_version=policy_version)
+            audit.record(
+                "consent_granted",
+                user_id=user_id,
+                channel=channel,
+                consent_type=consent_type,
+                policy_version=policy_version,
+            )
 
     def withdraw_consent(
         self,
@@ -133,8 +150,9 @@ class ConsentManager:
         # Compliance audit log
         audit = _get_audit_log()
         if audit:
-            audit.record("consent_withdrawn", user_id=user_id, channel=channel,
-                         consent_type=consent_type)
+            audit.record(
+                "consent_withdrawn", user_id=user_id, channel=channel, consent_type=consent_type
+            )
 
     def requires_consent(self, user_id: str, channel: str) -> bool:
         """Check if user still needs to give consent for this channel."""
@@ -152,9 +170,7 @@ class ConsentManager:
 
     def delete_user(self, user_id: str) -> int:
         """Delete all consent records for a user (for erasure)."""
-        cursor = self._conn.execute(
-            "DELETE FROM consent WHERE user_id = ?", (user_id,)
-        )
+        cursor = self._conn.execute("DELETE FROM consent WHERE user_id = ?", (user_id,))
         self._conn.commit()
         return cursor.rowcount
 
@@ -173,8 +189,11 @@ class ConsentManager:
     def get_restrictions(self, user_id: str) -> list[str]:
         """Get all active restrictions for a user."""
         consents = self.get_user_consents(user_id)
-        return [c["consent_type"].replace("restrict_", "")
-                for c in consents if c["consent_type"].startswith("restrict_")]
+        return [
+            c["consent_type"].replace("restrict_", "")
+            for c in consents
+            if c["consent_type"].startswith("restrict_")
+        ]
 
     def close(self) -> None:
         self._conn.close()

@@ -1,4 +1,5 @@
 """HIM Reporter — renders Markdown and JSON reports."""
+
 from __future__ import annotations
 
 import hashlib
@@ -49,27 +50,29 @@ class HIMReporter:
             for rf in report.red_flags:
                 lines.append(f"- [!!] {rf}")
 
-        lines.extend([
-            "",
-            "## Trust Score Breakdown",
-            "",
-            "| Dimension | Score | Weight |",
-            "|-----------|-------|--------|",
-            f"| Claim Accuracy | {report.trust_score.claim_accuracy:.0f} | 35% |",
-            f"| Source Diversity | {report.trust_score.source_diversity:.0f} | 20% |",
-            f"| Technical Substance | {report.trust_score.technical_substance:.0f} | 25% |",
-            f"| Transparency | {report.trust_score.transparency:.0f} | 10% |",
-            f"| Activity Recency | {report.trust_score.activity_recency:.0f} | 10% |",
-            f"| **Total** | **{report.trust_score.total}** | |",
-            "",
-            "## Recommendation",
-            report.recommendation or "No recommendation.",
-            "",
-            "---",
-            f"*Generated: {report.generated_at.isoformat()} | "
-            f"Report-ID: {report.report_id} | "
-            f"Signature: {report.report_signature[:16]}...*",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Trust Score Breakdown",
+                "",
+                "| Dimension | Score | Weight |",
+                "|-----------|-------|--------|",
+                f"| Claim Accuracy | {report.trust_score.claim_accuracy:.0f} | 35% |",
+                f"| Source Diversity | {report.trust_score.source_diversity:.0f} | 20% |",
+                f"| Technical Substance | {report.trust_score.technical_substance:.0f} | 25% |",
+                f"| Transparency | {report.trust_score.transparency:.0f} | 10% |",
+                f"| Activity Recency | {report.trust_score.activity_recency:.0f} | 10% |",
+                f"| **Total** | **{report.trust_score.total}** | |",
+                "",
+                "## Recommendation",
+                report.recommendation or "No recommendation.",
+                "",
+                "---",
+                f"*Generated: {report.generated_at.isoformat()} | "
+                f"Report-ID: {report.report_id} | "
+                f"Signature: {report.report_signature[:16]}...*",
+            ]
+        )
         return "\n".join(lines)
 
     def render_json(self, report: HIMReport) -> str:
@@ -78,9 +81,7 @@ class HIMReporter:
     def render_quick(self, report: HIMReport) -> str:
         ts = report.trust_score
         status_line = f"Trust Score: {ts.total}/100 ({ts.label.upper()})"
-        claims_line = ", ".join(
-            f"{c.claim[:30]}={c.status.value}" for c in report.claims[:3]
-        )
+        claims_line = ", ".join(f"{c.claim[:30]}={c.status.value}" for c in report.claims[:3])
         flags = f"Red Flags: {len(report.red_flags)}" if report.red_flags else "No red flags"
         return f"{report.target} | {status_line} | Claims: [{claims_line}] | {flags}"
 

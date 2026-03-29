@@ -237,9 +237,7 @@ class TestPerAgentCosts:
 
     def test_backward_compatible_no_agent(self, tracker):
         """record_llm_call ohne agent_name -> default empty string."""
-        record = tracker.record_llm_call(
-            model="gpt-4o", input_tokens=1000, output_tokens=500
-        )
+        record = tracker.record_llm_call(model="gpt-4o", input_tokens=1000, output_tokens=500)
         assert record.agent_name == ""
         costs = tracker.get_agent_costs(days=1)
         assert "(unknown)" in costs or "" in costs
