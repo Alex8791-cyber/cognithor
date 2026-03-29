@@ -205,6 +205,11 @@ class CognithorArcAgent:
             action_str, action_data = graph_action
             action = self._resolve_action(action_str)
             data = action_data or {}
+            # Complex actions need x,y coordinates — supply random if missing
+            if hasattr(action, "is_complex") and action.is_complex() and "x" not in data:
+                import random
+
+                data = {"x": random.randint(0, 63), "y": random.randint(0, 63)}
         else:
             # Fallback: Explorer decides
             action, data = self.explorer.choose_action(self.current_obs, self.memory, self.goals)
@@ -402,7 +407,7 @@ class CognithorArcAgent:
                     "stream": False,
                     "options": {"temperature": 0.3, "num_predict": 2000},
                 },
-                timeout=30.0,
+                timeout=120.0,
             )
             if resp.status_code == 200:
                 text = resp.json().get("response", "").strip()
