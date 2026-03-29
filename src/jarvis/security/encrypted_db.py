@@ -208,9 +208,7 @@ def encrypted_connect(
     if _sqlcipher_available and key:
         hex_key = key.encode().hex()
         try:
-            conn = sqlcipher.connect(
-                db_path, check_same_thread=check_same_thread, timeout=timeout
-            )
+            conn = sqlcipher.connect(db_path, check_same_thread=check_same_thread, timeout=timeout)
             conn.execute(f"PRAGMA key = \"x'{hex_key}'\"")  # noqa: S608
             conn.execute("PRAGMA journal_mode=WAL")
             # Test that the key works
