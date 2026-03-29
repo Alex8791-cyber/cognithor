@@ -1,0 +1,49 @@
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.md ./
+COPY src/ src/
+COPY scripts/ scripts/
+COPY config.yaml.example ./
+
+# Leaner than the upstream Dockerfile: enough for the API/Web stack
+# without pulling the full identity/vector/desktop dependency set.
+RUN pip install --no-cache-dir --prefix=/install \
+    ".[memory,mcp,web,search,cron,documents]"
+
+FROM python:3.12-slim AS runtime
+
+RUN groupadd -r jarvis \
+    && useradd -r -g jarvis -m -s /usr/sbin/nologin jarvis \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /install /usr/local
+COPY --chown=jarvis:jarvis src/ /app/src/
+COPY --chown=jarvis:jarvis scripts/ /app/scripts/
+COPY --chown=jarvis:jarvis config.yaml.example /app/
+COPY --chown=jarvis:jarvis README.md /app/
+
+WORKDIR /app
+USER jarvis
+
+VOLUME ["/home/jarvis/.jarvis"]
+
+ENV PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1 \
+    JARVIS_HOME=/home/jarvis/.jarvis \
+    JARVIS_LOGGING_LEVEL=INFO \
+    JARVIS_OLLAMA_BASE_URL=http://host.containers.internal:11434
+
+EXPOSE 8741
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8741/api/v1/health', timeout=5)" || exit 1
+
+CMD ["python", "-m", "jarvis", "--no-cli", "--api-host", "0.0.0.0"]
