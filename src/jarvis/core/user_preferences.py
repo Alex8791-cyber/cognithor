@@ -103,6 +103,23 @@ class UserPreferenceStore:
             log.debug("preferences_db_close_error: %s", exc)  # Cleanup — failure is non-critical
         self._conn = None  # type: ignore[assignment]
 
+    def _reconnect(self) -> None:
+        """Reconnect after corruption (MemoryError / malformed DB)."""
+        try:
+            self._conn.close()
+        except Exception:
+            pass
+        self._conn = encrypted_connect(
+            str(self._db_path),
+            check_same_thread=False,
+            timeout=5.0,
+        )
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
+        self._conn.row_factory = compatible_row_factory()
+        self._ensure_table()
+        log.info("user_preferences_reconnected", path=str(self._db_path)[-30:])
+
     def get_or_create(self, user_id: str) -> UserPreference:
         """Gets or creates a user preference record."""
         try:
@@ -130,6 +147,11 @@ class UserPreferenceStore:
                 )
                 self._conn.commit()
             return pref
+        except (MemoryError, sqlite3.DatabaseError) as exc:
+            log.warning("user_preferences_corrupted_reconnecting", exc_info=exc)
+            with self._lock:
+                self._reconnect()
+            return UserPreference(user_id=user_id)
         except Exception as exc:
             log.warning("user_preferences_get_failed", exc_info=exc)
             return UserPreference(user_id=user_id)
@@ -161,6 +183,10 @@ class UserPreferenceStore:
                     ),
                 )
                 self._conn.commit()
+        except (MemoryError, sqlite3.DatabaseError) as exc:
+            log.warning("user_preferences_corrupted_reconnecting", exc_info=exc)
+            with self._lock:
+                self._reconnect()
         except Exception as exc:
             log.warning("user_preferences_update_failed", exc_info=exc)
 

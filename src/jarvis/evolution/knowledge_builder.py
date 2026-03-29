@@ -59,6 +59,16 @@ _GARBAGE_PATTERNS = re.compile(
     r"|Breadcrumb"  # Navigation noise
     r"|Login|Logout"  # Auth elements
     r"|Warenkorb|Cart"  # Shopping cart noise
+    r"|Hauptmenü"  # Wikipedia/site navigation
+    r"|Themenportale"  # Wikipedia navigation
+    r"|Zufälliger Artikel"  # Wikipedia navigation
+    r"|Autorenportal"  # Wikipedia navigation
+    r"|Letzte Änderungen"  # Wikipedia navigation
+    r"|Kontakt"  # Generic site element
+    r"|Hilfe"  # Generic site element
+    r"|Wiktionary|Wikibooks|Wikiquote|Wikisource|Wikiversity|Wikivoyage|Commons"  # Wikimedia siblings
+    r"|Wikimedia Foundation"  # Wikimedia meta
+    r"|Wikipedia"  # Wikipedia itself (not useful as entity)
     r")$",
     re.IGNORECASE,
 )

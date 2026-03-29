@@ -1237,7 +1237,24 @@ class WebTools:
         search_results = await self.web_search(query, num_results, language)
 
         # URLs aus den Suchergebnissen extrahieren (begrenzt auf num_results)
-        urls = re.findall(r"URL: (https?://[^\s]+)", search_results)[:num_results]
+        _blocked = {
+            "zhihu.com",
+            "baidu.com",
+            "weibo.com",
+            "qq.com",
+            "naver.com",
+            "daum.net",
+            "yandex.ru",
+            "vk.com",
+            "mail.ru",
+            "rakuten.co.jp",
+            "yahoo.co.jp",
+            "ameblo.jp",
+        }
+        raw_urls = re.findall(r"URL: (https?://[^\s]+)", search_results)
+        urls = [u for u in raw_urls if not any(b in urlparse(u).netloc.lower() for b in _blocked)][
+            :num_results
+        ]
         if not urls:
             return search_results
 

@@ -1688,8 +1688,11 @@ class Gateway:
             )
 
         # Detect system-internal messages (cron jobs, sub-agents, etc.)
+        _uid = (msg.user_id or "").lower()
         _is_system = (
-            (msg.user_id or "").startswith("cron")
+            _uid.startswith("cron")
+            or _uid.startswith("heartbeat")
+            or _uid.startswith("agent:")
             or (msg.channel or "") in ("cron", "sub_agent", "system", "evolution", "heartbeat")
             or (msg.metadata or {}).get("cron_job")
         )
