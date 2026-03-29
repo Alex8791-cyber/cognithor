@@ -1432,6 +1432,446 @@ class MediaPipeline:
 
         wb.save(output_path)
 
+    # ========================================================================
+    # Strukturiertes Dokument-Erstellen (JSON → DOCX / PDF / PPTX / XLSX)
+    # ========================================================================
+
+    async def create_document(
+        self,
+        structure: str,
+        *,
+        fmt: str = "docx",
+        filename: str = "dokument",
+    ) -> MediaResult:
+        """Erstellt ein strukturiertes Dokument aus einer JSON-Eingabe.
+
+        Args:
+            structure: JSON-String mit der Dokumentstruktur.
+                Format::
+
+                    {
+                        "title": "Dokumenttitel",
+                        "author": "Autor",
+                        "sections": [
+                            {"heading": "Abschnitt 1", "content": "Absatztext..."},
+                            {"heading": "Abschnitt 2", "content": "Weiterer Text..."},
+                            {"table": {"headers": ["Sp1", "Sp2"], "rows": [["a", "b"]]}},
+                            {"list": ["Punkt 1", "Punkt 2"]},
+                            {"content": "Absatz ohne Ueberschrift"}
+                        ]
+                    }
+
+            fmt: Ausgabeformat -- 'docx', 'pdf', 'pptx', 'xlsx'.
+            filename: Dateiname ohne Endung.
+        """
+        import json
+
+        fmt = fmt.lower().strip()
+        if fmt not in ("docx", "pdf", "pptx", "xlsx"):
+            return MediaResult(
+                success=False,
+                error=f"Nicht unterstuetztes Format: {fmt}. Erlaubt: docx, pdf, pptx, xlsx",
+            )
+
+        # JSON parsen
+        try:
+            doc_struct: dict[str, Any] = json.loads(structure)
+        except json.JSONDecodeError as exc:
+            return MediaResult(
+                success=False,
+                error=f"Ungueltige JSON-Struktur: {exc}",
+            )
+
+        if not isinstance(doc_struct, dict):
+            return MediaResult(success=False, error="JSON muss ein Objekt sein")
+
+        # Ausgabeverzeichnis
+        doc_dir = Path.home() / ".jarvis" / "workspace" / "documents"
+        doc_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_name = "".join(c for c in filename if c.isalnum() or c in "-_ ").strip() or "dokument"
+        output_path = doc_dir / f"{safe_name}.{fmt}"
+
+        loop = asyncio.get_running_loop()
+
+        try:
+            if fmt == "docx":
+                await loop.run_in_executor(None, self._build_docx, output_path, doc_struct)
+            elif fmt == "pdf":
+                await loop.run_in_executor(None, self._build_pdf, output_path, doc_struct)
+            elif fmt == "pptx":
+                await loop.run_in_executor(None, self._build_pptx, output_path, doc_struct)
+            else:  # xlsx
+                await loop.run_in_executor(None, self._build_xlsx, output_path, doc_struct)
+
+            log.info("document_created", path=str(output_path), format=fmt)
+            return MediaResult(
+                success=True,
+                text=f"Dokument erstellt: {output_path}",
+                output_path=str(output_path),
+                metadata={
+                    "format": fmt,
+                    "title": doc_struct.get("title", ""),
+                    "filename": safe_name,
+                },
+            )
+        except ImportError as exc:
+            return MediaResult(success=False, error=str(exc))
+        except Exception as exc:
+            log.error("document_create_failed", error=str(exc))
+            return MediaResult(success=False, error=f"Dokument-Erstellung fehlgeschlagen: {exc}")
+
+    def _build_docx(self, path: Path, doc_struct: dict[str, Any]) -> None:
+        """Baut ein DOCX-Dokument aus der JSON-Struktur."""
+        try:
+            from docx import Document
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            from docx.shared import Pt
+        except ImportError:
+            raise ImportError("python-docx nicht installiert. pip install python-docx") from None
+
+        doc = Document()
+
+        title = doc_struct.get("title", "")
+        author = doc_struct.get("author", "")
+
+        # Kern-Eigenschaften
+        props = doc.core_properties
+        if author:
+            props.author = author
+        if title:
+            props.title = title
+            doc.add_heading(title, level=0)
+
+        if author:
+            p = doc.add_paragraph(author)
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            run = p.runs[0] if p.runs else p.add_run(author)
+            run.font.size = Pt(10)
+            run.font.italic = True
+
+        for section in doc_struct.get("sections", []):
+            heading = section.get("heading", "")
+            content = section.get("content", "")
+            table_data = section.get("table")
+            list_items = section.get("list")
+
+            if heading:
+                doc.add_heading(heading, level=1)
+
+            if content:
+                doc.add_paragraph(content)
+
+            if table_data and isinstance(table_data, dict):
+                headers: list[str] = table_data.get("headers", [])
+                rows: list[list[str]] = table_data.get("rows", [])
+                if headers:
+                    tbl = doc.add_table(rows=1 + len(rows), cols=len(headers))
+                    tbl.style = "Table Grid"
+                    hdr_cells = tbl.rows[0].cells
+                    for i, h in enumerate(headers):
+                        hdr_cells[i].text = str(h)
+                        for run in hdr_cells[i].paragraphs[0].runs:
+                            run.font.bold = True
+                    for r_idx, row in enumerate(rows, start=1):
+                        row_cells = tbl.rows[r_idx].cells
+                        for c_idx, cell_val in enumerate(row[: len(headers)]):
+                            row_cells[c_idx].text = str(cell_val)
+
+            if list_items and isinstance(list_items, list):
+                for item in list_items:
+                    doc.add_paragraph(str(item), style="List Bullet")
+
+        doc.save(str(path))
+
+    def _build_pdf(self, path: Path, doc_struct: dict[str, Any]) -> None:
+        """Baut ein PDF-Dokument aus der JSON-Struktur."""
+        try:
+            from fpdf import FPDF
+        except ImportError:
+            raise ImportError("fpdf2 nicht installiert. pip install fpdf2") from None
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=25)
+        pdf.add_page()
+
+        # Font-Ermittlung (Unicode-faehig wenn moeglich)
+        font_name = "Helvetica"
+        has_bold = True
+        try:
+            font_candidates = [
+                (
+                    "DejaVu",
+                    [
+                        Path("C:/Windows/Fonts/DejaVuSans.ttf"),
+                        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+                        Path.home() / ".fonts" / "DejaVuSans.ttf",
+                    ],
+                    [
+                        Path("C:/Windows/Fonts/DejaVuSans-Bold.ttf"),
+                        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+                        Path.home() / ".fonts" / "DejaVuSans-Bold.ttf",
+                    ],
+                ),
+                (
+                    "ArialUni",
+                    [Path("C:/Windows/Fonts/arial.ttf")],
+                    [Path("C:/Windows/Fonts/arialbd.ttf")],
+                ),
+            ]
+            for fname, regular_paths, bold_paths in font_candidates:
+                regular = next((p for p in regular_paths if p.exists()), None)
+                if regular:
+                    pdf.add_font(fname, "", str(regular), uni=True)
+                    font_name = fname
+                    bold = next((p for p in bold_paths if p.exists()), None)
+                    if bold:
+                        pdf.add_font(fname, "B", str(bold), uni=True)
+                        has_bold = True
+                    else:
+                        has_bold = False
+                    break
+        except Exception:
+            pass  # Fallback auf Helvetica
+
+        title = doc_struct.get("title", "")
+        author = doc_struct.get("author", "")
+
+        if title:
+            pdf.set_font(font_name, "B" if has_bold else "", size=16)
+            pdf.multi_cell(0, 10, title)
+            pdf.ln(6)
+
+        if author:
+            pdf.set_font(font_name, size=10)
+            pdf.multi_cell(0, 6, author)
+            pdf.ln(8)
+
+        for section in doc_struct.get("sections", []):
+            heading = section.get("heading", "")
+            content = section.get("content", "")
+            table_data = section.get("table")
+            list_items = section.get("list")
+
+            if heading:
+                pdf.set_font(font_name, "B" if has_bold else "", size=13)
+                pdf.multi_cell(0, 8, heading)
+                pdf.ln(2)
+
+            if content:
+                pdf.set_font(font_name, size=11)
+                pdf.multi_cell(0, 6, content)
+                pdf.ln(4)
+
+            if table_data and isinstance(table_data, dict):
+                headers: list[str] = table_data.get("headers", [])
+                rows: list[list[str]] = table_data.get("rows", [])
+                if headers:
+                    # Effective page width = page width minus left+right margins
+                    page_w = pdf.w - pdf.l_margin - pdf.r_margin
+                    col_w = min(60.0, page_w / max(len(headers), 1))
+                    pdf.set_font(font_name, "B" if has_bold else "", size=9)
+                    for h in headers:
+                        pdf.cell(col_w, 7, str(h)[:25], border=1)
+                    pdf.ln()
+                    pdf.set_font(font_name, size=9)
+                    for row in rows:
+                        for c_idx, cell_val in enumerate(row[: len(headers)]):
+                            pdf.cell(col_w, 6, str(cell_val)[:25], border=1)
+                        pdf.ln()
+                    # Ensure X is reset to left margin after table cells
+                    pdf.set_x(pdf.l_margin)
+                    pdf.ln(3)
+
+            if list_items and isinstance(list_items, list):
+                pdf.set_font(font_name, size=11)
+                pdf.set_x(pdf.l_margin)
+                for item in list_items:
+                    pdf.multi_cell(0, 6, f"- {item}")
+                    # multi_cell leaves X at right edge; reset for next item
+                    pdf.set_x(pdf.l_margin)
+                pdf.ln(3)
+
+        pdf.output(str(path))
+
+    def _build_pptx(self, path: Path, doc_struct: dict[str, Any]) -> None:
+        """Baut eine PPTX-Praesentation aus der JSON-Struktur."""
+        try:
+            from pptx import Presentation
+            from pptx.util import Inches, Pt
+        except ImportError:
+            raise ImportError("python-pptx nicht installiert. pip install python-pptx") from None
+
+        prs = Presentation()
+        slide_layouts = prs.slide_layouts
+
+        title = doc_struct.get("title", "")
+        author = doc_struct.get("author", "")
+
+        # Titelfolie
+        title_slide_layout = slide_layouts[0]
+        slide = prs.slides.add_slide(title_slide_layout)
+        if slide.shapes.title:
+            slide.shapes.title.text = title
+        if slide.placeholders and len(slide.placeholders) > 1:
+            slide.placeholders[1].text = author
+
+        for section in doc_struct.get("sections", []):
+            heading = section.get("heading", "")
+            content = section.get("content", "")
+            table_data = section.get("table")
+            list_items = section.get("list")
+
+            # Tabellen bekommen eigene Folie
+            if table_data and isinstance(table_data, dict):
+                headers: list[str] = table_data.get("headers", [])
+                rows: list[list[str]] = table_data.get("rows", [])
+                if headers:
+                    blank_layout = slide_layouts[5]  # Leer
+                    tbl_slide = prs.slides.add_slide(blank_layout)
+                    if heading:
+                        txBox = tbl_slide.shapes.add_textbox(
+                            Inches(0.5), Inches(0.2), Inches(9), Inches(0.6)
+                        )
+                        txBox.text_frame.text = heading
+                        txBox.text_frame.paragraphs[0].runs[0].font.bold = True
+                        txBox.text_frame.paragraphs[0].runs[0].font.size = Pt(18)
+                    row_count = 1 + len(rows)
+                    col_count = len(headers)
+                    tbl = tbl_slide.shapes.add_table(
+                        row_count,
+                        col_count,
+                        Inches(0.5),
+                        Inches(1.0),
+                        Inches(9.0),
+                        Inches(0.4 * row_count),
+                    ).table
+                    for c_idx, h in enumerate(headers):
+                        cell = tbl.cell(0, c_idx)
+                        cell.text = str(h)
+                        cell.text_frame.paragraphs[0].runs[0].font.bold = True
+                    for r_idx, row in enumerate(rows, start=1):
+                        for c_idx, cell_val in enumerate(row[:col_count]):
+                            tbl.cell(r_idx, c_idx).text = str(cell_val)
+                continue  # Naechsten Abschnitt verarbeiten
+
+            # Inhalt-/Listen-Folie
+            content_layout = slide_layouts[1]  # Titel + Inhalt
+            content_slide = prs.slides.add_slide(content_layout)
+            if content_slide.shapes.title:
+                content_slide.shapes.title.text = heading or title
+
+            body_placeholder = (
+                content_slide.placeholders[1] if len(content_slide.placeholders) > 1 else None
+            )
+            if body_placeholder:
+                tf = body_placeholder.text_frame
+                tf.clear()
+                if content:
+                    tf.text = content
+                if list_items and isinstance(list_items, list):
+                    for item in list_items:
+                        p = tf.add_paragraph()
+                        p.text = str(item)
+                        p.level = 1
+
+        prs.save(str(path))
+
+    def _build_xlsx(self, path: Path, doc_struct: dict[str, Any]) -> None:
+        """Baut eine Excel-Datei aus der JSON-Struktur."""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Alignment, Font, PatternFill
+            from openpyxl.utils import get_column_letter
+        except ImportError:
+            raise ImportError("openpyxl nicht installiert. pip install openpyxl") from None
+
+        wb = Workbook()
+        ws_main = wb.active
+        ws_main.title = "Inhalt"
+
+        title = doc_struct.get("title", "")
+        author = doc_struct.get("author", "")
+
+        # Titelzeile
+        current_row = 1
+        if title:
+            ws_main.cell(row=current_row, column=1, value=title).font = Font(bold=True, size=14)
+            ws_main.merge_cells(
+                start_row=current_row, start_column=1, end_row=current_row, end_column=6
+            )
+            ws_main.cell(row=current_row, column=1).alignment = Alignment(horizontal="center")
+            current_row += 1
+        if author:
+            ws_main.cell(row=current_row, column=1, value=author).font = Font(italic=True, size=10)
+            current_row += 1
+        if title or author:
+            current_row += 1  # Leerzeile
+
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+
+        table_sheet_idx = 0
+        for section in doc_struct.get("sections", []):
+            heading = section.get("heading", "")
+            content = section.get("content", "")
+            table_data = section.get("table")
+            list_items = section.get("list")
+
+            if heading:
+                ws_main.cell(row=current_row, column=1, value=heading).font = Font(
+                    bold=True, size=12
+                )
+                current_row += 1
+
+            if content:
+                ws_main.cell(row=current_row, column=1, value=content)
+                current_row += 1
+
+            if list_items and isinstance(list_items, list):
+                for item in list_items:
+                    ws_main.cell(row=current_row, column=1, value=f"- {item}")
+                    current_row += 1
+
+            if table_data and isinstance(table_data, dict):
+                headers: list[str] = table_data.get("headers", [])
+                rows: list[list[str]] = table_data.get("rows", [])
+                if headers:
+                    table_sheet_idx += 1
+                    sheet_title = (heading or f"Tabelle {table_sheet_idx}")[:31]
+                    ws_tbl = wb.create_sheet(title=sheet_title)
+                    # Header
+                    for c_idx, h in enumerate(headers, start=1):
+                        cell = ws_tbl.cell(row=1, column=c_idx, value=str(h))
+                        cell.font = header_font
+                        cell.fill = header_fill
+                    # Daten
+                    for r_idx, row in enumerate(rows, start=2):
+                        for c_idx, val in enumerate(row[: len(headers)], start=1):
+                            ws_tbl.cell(row=r_idx, column=c_idx, value=str(val))
+                    # Spaltenbreite
+                    for col_idx, h in enumerate(headers, start=1):
+                        col_letter = get_column_letter(col_idx)
+                        max_len = len(str(h))
+                        for row in rows:
+                            if col_idx - 1 < len(row):
+                                max_len = max(max_len, len(str(row[col_idx - 1])))
+                        ws_tbl.column_dimensions[col_letter].width = min(max_len + 2, 50)
+                    # Referenz auf Hauptsheet
+                    ws_main.cell(
+                        row=current_row,
+                        column=1,
+                        value=f"[Tabelle: {sheet_title}]",
+                    ).font = Font(italic=True, color="4472C4")
+                    current_row += 1
+
+            current_row += 1  # Abstand zwischen Abschnitten
+
+        # Spaltenbreite Hauptsheet
+        ws_main.column_dimensions["A"].width = 60
+
+        wb.save(str(path))
+
     async def text_to_speech(
         self,
         text: str,
@@ -1774,6 +2214,40 @@ MEDIA_TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
             "required": ["content"],
         },
     },
+    "document_create": {
+        "description": (
+            "Erstellt ein strukturiertes Dokument (DOCX, PDF, PPTX, XLSX) aus JSON-Struktur. "
+            "Unterstuetzt Titel, Abschnitte mit Ueberschriften, Tabellen und Listen. "
+            "Ideal fuer Berichte, Praesentationen und strukturierte Dokumente."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "structure": {
+                    "type": "string",
+                    "description": (
+                        'JSON-String: {"title": "...", "author": "...", "sections": ['
+                        '{"heading": "...", "content": "..."}, '
+                        '{"table": {"headers": [...], "rows": [[...]]}}, '
+                        '{"list": ["...", "..."]}'
+                        "]}"
+                    ),
+                },
+                "fmt": {
+                    "type": "string",
+                    "enum": ["docx", "pdf", "pptx", "xlsx"],
+                    "description": "Ausgabeformat",
+                    "default": "docx",
+                },
+                "filename": {
+                    "type": "string",
+                    "description": "Dateiname ohne Endung",
+                    "default": "dokument",
+                },
+            },
+            "required": ["structure"],
+        },
+    },
     "read_pdf": {
         "description": (
             "Liest ein PDF-Dokument strukturiert: Text pro Seite, Metadaten, "
@@ -1981,6 +2455,21 @@ def register_media_tools(mcp_client: Any, config: Any = None) -> MediaPipeline:
             return result.output_path or result.text
         return f"Fehler: {result.error}"
 
+    async def _create_document(
+        structure: str,
+        fmt: str = "docx",
+        filename: str = "dokument",
+        **_: Any,
+    ) -> str:
+        result = await pipeline.create_document(
+            structure,
+            fmt=fmt,
+            filename=filename,
+        )
+        if result.success:
+            return result.output_path or result.text
+        return f"Fehler: {result.error}"
+
     async def _read_pdf(
         file_path: str,
         extract_images: bool = False,
@@ -2039,6 +2528,7 @@ def register_media_tools(mcp_client: Any, config: Any = None) -> MediaPipeline:
         "media_tts": _tts,
         "analyze_document": _analyze_document,
         "document_export": _export_document,
+        "document_create": _create_document,
         "read_pdf": _read_pdf,
         "read_ppt": _read_ppt,
         "read_docx": _read_docx,

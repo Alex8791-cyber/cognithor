@@ -597,6 +597,7 @@ class Gatekeeper:
             "add_relation",
             "schedule_job",
             "document_export",
+            "document_create",
             "media_tts",
             "media_convert_audio",
             "create_skill",
