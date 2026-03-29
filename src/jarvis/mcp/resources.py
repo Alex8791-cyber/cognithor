@@ -90,7 +90,7 @@ class JarvisResourceProvider:
             MCPResource(
                 uri="jarvis://memory/stats",
                 name="Memory Statistics",
-                description="Gesamtstatistiken des 5-Tier Memory-Systems",
+                description="Gesamtstatistiken des 6-Tier Memory-Systems",
                 mime_type="application/json",
                 handler=self._read_memory_stats,
             )

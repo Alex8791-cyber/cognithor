@@ -196,7 +196,7 @@ Independent phases run in parallel via `asyncio.gather` where possible.
 
 ## Memory System
 
-Five-tier cognitive memory architecture (Bible §4.1):
+Six-tier cognitive memory architecture (Bible §4.1):
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -214,6 +214,9 @@ Five-tier cognitive memory architecture (Bible §4.1):
 ├─────────────────────────────────────────────┤
 │           Tier 1: Core Memory              │  ← Identity
 │  CORE.md, persistent, never fades           │
+├─────────────────────────────────────────────┤
+│         Tier 6: Tactical Memory            │  ← Short-term plans
+│  Active goals, pending actions, rollback    │
 └─────────────────────────────────────────────┘
 ```
 
@@ -509,6 +512,110 @@ Key components:
 - `security/keyring_manager.py` — OS Keyring integration (Windows Credential Locker / macOS Keychain / Linux SecretService)
 - `mcp/vault.py` — VaultBackend ABC with FileBackend and DBBackend implementations
 - `utils/compatible_row_factory.py` — Cross-compatible row factory for sqlite3 and sqlcipher3
+
+---
+
+## ARC-AGI-3 Benchmark Module
+
+The `src/jarvis/arc/` module enables Cognithor to compete in the ARC Prize 2026 interactive reasoning benchmark.
+
+### Architecture
+
+```
+User/CLI → CognithorArcAgent
+               ├── ArcEnvironmentAdapter (ARC SDK bridge)
+               ├── EpisodeMemory (in-session short-term learning)
+               ├── GoalInferenceModule (autonomous goal detection)
+               ├── HypothesisDrivenExplorer (3-phase exploration)
+               ├── VisualStateEncoder (grid → text for LLM)
+               ├── MechanicsModel (cross-level rule abstraction)
+               ├── ArcAuditTrail (SHA-256 hash chain)
+               └── OnlineTrainer/CNN (optional, GPU-accelerated)
+```
+
+### Hybrid Agent Strategy
+
+- **Fast Path** (>2000 FPS): Algorithmic Explorer + Episode Memory — no LLM overhead
+- **Strategic Path** (every N steps): LLM Planner via PGE Trinity for hypothesis formation
+- **Competition Path**: CNN Action Predictor for Kaggle submission (no internet allowed)
+
+### 3 MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `arc_play` | Start game run (single/benchmark/swarm mode) |
+| `arc_status` | Query running game session |
+| `arc_replay` | Retrieve audit trail and replay data |
+
+### CLI
+
+```bash
+python -m jarvis.arc --game ls20              # Single game
+python -m jarvis.arc --mode benchmark         # All games sequential
+python -m jarvis.arc --mode swarm --parallel 4 # Parallel execution
+```
+
+---
+
+## Document System
+
+The document pipeline (`mcp/media.py` + `documents/templates.py`) supports structured
+document creation and template-based generation:
+
+### Document Tools
+
+| Tool | Input | Output |
+|------|-------|--------|
+| `document_create` | JSON structure (title, sections, tables, lists) | DOCX, PDF, PPTX, or XLSX |
+| `typst_render` | Typst markup source | High-quality PDF |
+| `template_list` | — | Available templates with variables |
+| `template_render` | Template slug + variables JSON | Rendered PDF |
+| `read_xlsx` | Excel file path | Markdown tables per sheet |
+| `read_pdf` | PDF file path | Extracted text |
+| `read_ppt` | PowerPoint file path | Extracted text |
+| `read_docx` | DOCX file path | Extracted text |
+
+### Template System
+
+Templates are Typst `.typ` files stored in `~/.jarvis/templates/documents/`.
+Each template declares metadata in a frontmatter comment block and uses
+`{{variable}}` placeholders that the LLM fills before compilation.
+
+---
+
+## Skill Lifecycle
+
+Skills progress through a well-defined lifecycle managed by the Skill Registry
+(`skills/registry.py`) and Community Marketplace (`skills/community/`):
+
+```
+1. DISCOVERY
+   ├── Built-in skills (loaded at startup from skills/ directory)
+   ├── Community skills (installed via install_community_skill tool)
+   └── Auto-generated skills (Reflector synthesizes from successful sessions)
+
+2. VALIDATION (community skills only)
+   ├── Syntax check (AST parse)
+   ├── Injection scan (sanitizer patterns)
+   ├── Tool allowlist (declared tools_required)
+   ├── Safety analysis (no eval/exec/os.system)
+   └── Hash verification (SHA-256)
+
+3. REGISTRATION
+   ├── Skill added to SkillRegistry with metadata
+   ├── Source field: builtin | community | generated
+   └── MCP tool handlers registered
+
+4. EXECUTION
+   ├── ToolEnforcer restricts to declared tools_required
+   ├── Gatekeeper applies normal risk classification
+   └── Executor runs in sandbox
+
+5. GOVERNANCE
+   ├── Publisher verification (4 trust levels)
+   ├── Remote recall checks (RegistrySync)
+   └── Usage tracking and ratings
+```
 
 ---
 

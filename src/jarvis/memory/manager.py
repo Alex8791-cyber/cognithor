@@ -1,4 +1,4 @@
-"""Memory Manager · Central API for the 5-tier memory system. [B§4]
+"""Memory Manager · Central API for the 6-tier memory system. [B§4]
 
 Orchestrates all memory tiers:
 - Tier 1: Core Memory (CORE.md)

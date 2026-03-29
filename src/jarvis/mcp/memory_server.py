@@ -1,4 +1,4 @@
-"""Memory-Tools fuer Jarvis · MCP-Server fuer das 5-Tier Memory-System.
+"""Memory-Tools fuer Jarvis · MCP-Server fuer das 6-Tier Memory-System.
 
 Exponiert das Cognitive Memory-System als Tool-Calls, damit der Planner
 ueber den normalen MCP-Kanal auf alle Memory-Tiers zugreifen kann.

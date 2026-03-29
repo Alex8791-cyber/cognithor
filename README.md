@@ -7,7 +7,7 @@
     <em>Cognition + Thor — Intelligence with Power</em>
   </p>
   <p align="center">
-    <a href="#llm-providers">18 LLM Providers</a> &middot; <a href="#channels">17 Channels</a> &middot; <a href="#5-tier-cognitive-memory">5-Tier Memory</a> &middot; <a href="#knowledge-vault">Knowledge Vault</a> &middot; <a href="#flutter-command-center">Flutter Command Center</a> &middot; <a href="#security">Security</a> &middot; <a href="LICENSE">Apache 2.0</a>
+    <a href="#llm-providers">18 LLM Providers</a> &middot; <a href="#channels">17 Channels</a> &middot; <a href="#6-tier-cognitive-memory">6-Tier Memory</a> &middot; <a href="#knowledge-vault">Knowledge Vault</a> &middot; <a href="#flutter-command-center">Flutter Command Center</a> &middot; <a href="#security">Security</a> &middot; <a href="LICENSE">Apache 2.0</a>
   </p>
   <p align="center">
     <a href="https://github.com/Alex8791-cyber/cognithor/stargazers"><img src="https://img.shields.io/github/stars/Alex8791-cyber/cognithor?style=flat-square&color=yellow" alt="GitHub Stars"></a>
@@ -426,7 +426,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 122 MC
 
 - **18 LLM Providers** — Ollama (local), LM Studio (local), vLLM (local), llama-cpp-python (local), OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, Together AI, OpenRouter, xAI (Grok), Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot/Kimi — plus any custom OpenAI-compatible endpoint
 - **17 Communication Channels** — CLI, Web UI, REST API, Telegram, Discord, Slack, WhatsApp, Signal, iMessage, Microsoft Teams, Matrix, Google Chat, Mattermost, Feishu/Lark, IRC, Twitch, Voice (STT/TTS)
-- **5-Tier Cognitive Memory** — Core identity, episodic logs, semantic knowledge graph, procedural skills, working memory
+- **6-Tier Cognitive Memory** — Core identity, episodic logs, semantic knowledge graph, procedural skills, working memory, tactical memory
 - **3-Channel Hybrid Search** — BM25 full-text + vector embeddings + knowledge graph traversal with score fusion
 - **PGE Architecture** — Planner (LLM) -> Gatekeeper (deterministic policy engine) -> Executor (sandboxed)
 - **Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance module, credential vault, red-teaming, runtime token encryption (Fernet AES-256), TLS support, file-size limits (not independently audited — see [Status & Maturity](#status--maturity))
@@ -504,8 +504,8 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 122 MC
 │   Ollama · OpenAI · Anthropic · Gemini · Groq · DeepSeek           │
 │   Mistral · Together · OpenRouter · xAI · Cerebras · ...           │
 ├───────────────────────────────────────────────────────────────────┤
-│               5-Tier Cognitive Memory                               │
-│   Core · Episodic · Semantic · Procedural · Working                 │
+│               6-Tier Cognitive Memory                               │
+│   Core · Episodic · Semantic · Procedural · Working · Tactical      │
 ├───────────────────────────────────────────────────────────────────┤
 │         Infrastructure: Redis/File Distributed Lock                 │
 │         SQLite Durable Queue · Prometheus Telemetry                 │
@@ -521,7 +521,7 @@ Every user request passes through three stages:
 2. **Gatekeeper** — Deterministic policy engine. Validates every planned tool call against security rules (risk levels GREEN/YELLOW/ORANGE/RED, sandbox policy, parameter validation). No LLM, no hallucinations, no exceptions.
 3. **Executor** — Executes approved actions via DAG-based parallel scheduling (independent actions run concurrently in waves). Shell commands run isolated (Process -> Namespace -> Container), file access restricted to allowed paths.
 
-### 5-Tier Cognitive Memory
+### 6-Tier Cognitive Memory
 
 | Tier | Name | Persistence | Purpose |
 |------|------|------------|---------|
@@ -530,12 +530,13 @@ Every user request passes through three stages:
 | 3 | **Semantic** | Knowledge graph + SQLite | Customers, products, facts, relations |
 | 4 | **Procedural** | Markdown + frontmatter | Learned skills and workflows |
 | 5 | **Working** | RAM (volatile) | Active session context |
+| 6 | **Tactical** | SQLite | Active goals, pending actions, rollback |
 
 Memory search uses a 3-channel hybrid approach: **BM25** (full-text search with FTS5, optimized for German compound words) + **Vector Search** (Ollama embeddings, cosine similarity) + **Graph Traversal** (entity relations). Score fusion with configurable weights and recency decay.
 
 ### Knowledge Vault
 
-In addition to the 5-tier memory, Cognithor includes an **Obsidian-compatible Knowledge Vault** (`~/.jarvis/vault/`) for persistent, human-readable notes:
+In addition to the 6-tier memory, Cognithor includes an **Obsidian-compatible Knowledge Vault** (`~/.jarvis/vault/`) for persistent, human-readable notes:
 
 - **Folder structure**: `recherchen/`, `meetings/`, `wissen/`, `projekte/`, `daily/`
 - **Obsidian format**: YAML frontmatter (title, tags, sources, dates), `[[backlinks]]`
@@ -859,7 +860,7 @@ Cognithor implements GDPR compliance at the architecture level with full coverag
 |-------------|-------|-------------|
 | **Filesystem** | read, write, edit, list, delete | Path-sandboxed file operations |
 | **Shell** | exec_command | Sandboxed command execution with timeout |
-| **Memory** | search, save, get_entity, add_entity, ... | 10 memory tools across all 5 tiers |
+| **Memory** | search, save, get_entity, add_entity, ... | 10 memory tools across all 6 tiers |
 | **Web** | web_search, web_fetch, search_and_read, web_news_search, http_request | 4-provider search (SearXNG -> Brave -> Google CSE -> DDG), Jina Reader fallback, domain filtering, cross-check, full HTTP method support (POST/PUT/PATCH/DELETE) |
 | **Browser** | navigate, screenshot, click, fill_form, execute_js, get_page_content | Playwright-based browser automation |
 | **Media** | transcribe_audio, analyze_image, extract_text, analyze_document, convert_audio, resize_image, tts, document_export | Multimodal pipeline + LLM-powered document analysis (all local) |
@@ -889,7 +890,7 @@ Current status: **11,769+ tests** · **100% pass rate** · **89% coverage** · *
 | Integration | 1,314 | End-to-end tests, phase wiring, entrypoint, A2A protocol |
 | Channels | 1,360 | CLI, Telegram (incl. Webhook), Discord, Slack, WhatsApp, API, WebUI, Voice, iMessage, Signal, Teams |
 | MCP | 825 | Client, filesystem, shell, memory server, web, media, synthesis, vault, browser, bridge, resources |
-| Memory | 658 | All 5 tiers, indexer, hybrid search, chunker, watcher, token estimation, integrity, hygiene |
+| Memory | 658 | All 6 tiers, indexer, hybrid search, chunker, watcher, token estimation, integrity, hygiene |
 | Skills | 534 | Skill registry, generator, marketplace, persistence, API, CLI tools, scaffolder, linter, BaseSkill, remote registry |
 | Security | 469 | Audit, credentials, token store, TLS, policies, sandbox, sanitizer, agent vault, resource limits, GDPR |
 | Gateway | 252 | Session management, agent loop, context pipeline, phase init, approval flow |
@@ -940,7 +941,7 @@ cognithor/
 │   │   ├── sentiment.py           # Keyword/regex sentiment detection (German)
 │   │   └── user_preferences.py    # SQLite user preference store (auto-learn)
 │   ├── memory/
-│   │   ├── manager.py             # Central memory API (all 5 tiers)
+│   │   ├── manager.py             # Central memory API (all 6 tiers)
 │   │   ├── core_memory.py         # Tier 1: CORE.md management
 │   │   ├── episodic.py            # Tier 2: Daily logs (Markdown)
 │   │   ├── semantic.py            # Tier 3: Knowledge graph (entities + relations)
@@ -1146,7 +1147,7 @@ print(t("error.timeout"))  # "The operation timed out..."
 | Phase | Description | Status |
 |-------|-------------|--------|
 | **Phase 1** | Foundation (PGE trinity, MCP, CLI) | Done |
-| **Phase 2** | Memory (5-tier, hybrid search, MCP tools) | Done |
+| **Phase 2** | Memory (6-tier, hybrid search, MCP tools) | Done |
 | **Phase 3** | Reflection & procedural learning | Done |
 | **Phase 4** | Channels, cron, web tools, model router | Done |
 | **Phase 5** | Multi-agent & security hardening | Done |

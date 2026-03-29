@@ -585,6 +585,9 @@ class Gatekeeper:
             "check_background_job",
             "read_background_log",
             "wait_background_job",
+            # ARC-AGI-3 (read-only)
+            "arc_status",
+            "arc_replay",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
@@ -628,6 +631,8 @@ class Gatekeeper:
             # Background tasks (state-changing)
             "start_background",
             "stop_background_job",
+            # ARC-AGI-3 (state-changing)
+            "arc_play",
         }
         if tool in yellow_tools:
             return RiskLevel.YELLOW

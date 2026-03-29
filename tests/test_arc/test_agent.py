@@ -54,6 +54,7 @@ class TestAgentInit:
         assert agent.encoder is not None
         assert agent.mechanics is not None
         assert agent.audit_trail is not None
+        assert agent.state_graph is not None
         assert agent.game_id == "ls20"
         assert agent.current_level == 0
         assert agent.total_steps == 0

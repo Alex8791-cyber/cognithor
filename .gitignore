@@ -76,3 +76,5 @@ flutter_app/build/web/canvaskit/wimp*
 *.tmp
 *.orig
 .hypothesis/
+environment_files/
+arc_agi3_validation.json

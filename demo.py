@@ -103,6 +103,7 @@ def streaming(text: str, speed: float = 0.012, style: str = "bright_cyan") -> No
 #  SCENE 1 -- Boot Sequence
 # ====================================================================
 
+
 def scene_boot() -> None:
     """Boot sequence with title and system init steps."""
     console.clear()
@@ -124,7 +125,9 @@ def scene_boot() -> None:
     ansi_print(" " * ((120 - 8) // 2) + "Agent OS", "bold")
     ansi_print(" " * ((120 - len("v" + VERSION)) // 2) + "v" + VERSION, "dim")
     sys.stdout.write("\n")
-    ansi_print(" " * ((120 - 48) // 2) + "Cognition + Thor -- Intelligence with Power", "bright_cyan")
+    ansi_print(
+        " " * ((120 - 48) // 2) + "Cognition + Thor -- Intelligence with Power", "bright_cyan"
+    )
     sys.stdout.write("\n")
     pause(0.6)
 
@@ -132,7 +135,7 @@ def scene_boot() -> None:
     steps = [
         "Loading configuration",
         "Initializing PGE Trinity",
-        "Connecting 5-tier memory",
+        "Connecting 6-tier memory",
         "Starting MCP tool servers (13)",
         "Registering security policies",
         "Warming up embedding cache",
@@ -152,21 +155,21 @@ def scene_boot() -> None:
 # ====================================================================
 
 PROVIDERS = [
-    ("Ollama",        "Local", "qwen3:32b",                "localhost:11434"),
-    ("OpenAI",        "Cloud", "gpt-5.2",                  "api.openai.com"),
-    ("Anthropic",     "Cloud", "claude-opus-4-6",          "api.anthropic.com"),
-    ("Google Gemini", "Cloud", "gemini-2.5-pro",           "generativelanguage.googleapis.com"),
-    ("Groq",          "Cloud", "llama-4-maverick",         "api.groq.com"),
-    ("DeepSeek",      "Cloud", "deepseek-chat",            "api.deepseek.com"),
-    ("Mistral",       "Cloud", "mistral-large-latest",     "api.mistral.ai"),
-    ("Together AI",   "Cloud", "Llama-4-Maverick",         "api.together.xyz"),
-    ("OpenRouter",    "Cloud", "claude-opus-4.6",          "openrouter.ai"),
-    ("xAI (Grok)",    "Cloud", "grok-4-1-fast-reasoning",  "api.x.ai"),
-    ("Cerebras",      "Cloud", "gpt-oss-120b",             "api.cerebras.ai"),
-    ("GitHub Models", "Cloud", "gpt-4.1",                  "models.inference.ai.azure.com"),
-    ("AWS Bedrock",   "Cloud", "claude-opus-4-6",          "bedrock-runtime.amazonaws.com"),
-    ("Hugging Face",  "Cloud", "Llama-3.3-70B",            "api-inference.huggingface.co"),
-    ("Moonshot/Kimi", "Cloud", "kimi-k2.5",                "api.moonshot.cn"),
+    ("Ollama", "Local", "qwen3:32b", "localhost:11434"),
+    ("OpenAI", "Cloud", "gpt-5.2", "api.openai.com"),
+    ("Anthropic", "Cloud", "claude-opus-4-6", "api.anthropic.com"),
+    ("Google Gemini", "Cloud", "gemini-2.5-pro", "generativelanguage.googleapis.com"),
+    ("Groq", "Cloud", "llama-4-maverick", "api.groq.com"),
+    ("DeepSeek", "Cloud", "deepseek-chat", "api.deepseek.com"),
+    ("Mistral", "Cloud", "mistral-large-latest", "api.mistral.ai"),
+    ("Together AI", "Cloud", "Llama-4-Maverick", "api.together.xyz"),
+    ("OpenRouter", "Cloud", "claude-opus-4.6", "openrouter.ai"),
+    ("xAI (Grok)", "Cloud", "grok-4-1-fast-reasoning", "api.x.ai"),
+    ("Cerebras", "Cloud", "gpt-oss-120b", "api.cerebras.ai"),
+    ("GitHub Models", "Cloud", "gpt-4.1", "models.inference.ai.azure.com"),
+    ("AWS Bedrock", "Cloud", "claude-opus-4-6", "bedrock-runtime.amazonaws.com"),
+    ("Hugging Face", "Cloud", "Llama-3.3-70B", "api-inference.huggingface.co"),
+    ("Moonshot/Kimi", "Cloud", "kimi-k2.5", "api.moonshot.cn"),
 ]
 
 
@@ -220,10 +223,23 @@ def scene_providers() -> None:
 # ====================================================================
 
 CHANNELS = [
-    "CLI", "Web UI", "REST API", "Telegram", "Discord",
-    "Slack", "WhatsApp", "Signal", "iMessage", "Teams",
-    "Matrix", "Google Chat", "Mattermost", "Feishu/Lark",
-    "IRC", "Twitch", "Voice",
+    "CLI",
+    "Web UI",
+    "REST API",
+    "Telegram",
+    "Discord",
+    "Slack",
+    "WhatsApp",
+    "Signal",
+    "iMessage",
+    "Teams",
+    "Matrix",
+    "Google Chat",
+    "Mattermost",
+    "Feishu/Lark",
+    "IRC",
+    "Twitch",
+    "Voice",
 ]
 
 
@@ -253,9 +269,7 @@ def scene_channels() -> None:
     sys.stdout.flush()
 
     # Channel chip grid
-    chips = [
-        Text(f" {ch} ", style="bold white on dark_green") for ch in CHANNELS
-    ]
+    chips = [Text(f" {ch} ", style="bold white on dark_green") for ch in CHANNELS]
     sys.stdout.write("\n")
     console.print(Columns(chips, padding=(0, 1), expand=False))
     sys.stdout.write("\n")
@@ -297,11 +311,11 @@ MEMORY_TIERS = [
 
 
 def scene_memory() -> None:
-    """Animated tree view of the 5-tier memory system + hybrid search."""
+    """Animated tree view of the 6-tier memory system + hybrid search."""
     sys.stdout.write("\n")
     console.print(
         Panel(
-            Text("5-Tier Cognitive Memory", style="bold"),
+            Text("6-Tier Cognitive Memory", style="bold"),
             style="magenta",
             expand=False,
             box=PANEL_BOX,
@@ -355,10 +369,7 @@ def scene_conversation() -> None:
     sys.stdout.write("\n")
     sys.stdout.write("  cognithor> ")
     sys.stdout.flush()
-    typing(
-        "What are the key differences between React and Vue.js "
-        "for our new dashboard project?"
-    )
+    typing("What are the key differences between React and Vue.js for our new dashboard project?")
     pause(0.3)
 
     # Thinking
@@ -417,9 +428,7 @@ def scene_pge() -> None:
     sys.stdout.write("\n")
     sys.stdout.write("  cognithor> ")
     sys.stdout.flush()
-    typing(
-        "Search my knowledge base for all customer feedback from last quarter"
-    )
+    typing("Search my knowledge base for all customer feedback from last quarter")
     pause(0.5)
 
     # -- PLANNER --------------------------------------------------------
@@ -567,13 +576,13 @@ def scene_security() -> None:
 # ====================================================================
 
 BROADCAST_CHANNELS = [
-    ("Telegram",  "Bot >> @team_channel",     "bright_blue"),
-    ("Discord",   "#deployments >> Embed",    "bright_magenta"),
-    ("Slack",     "#ops >> Block Kit",        "bright_yellow"),
-    ("WhatsApp",  "Ops Group >> Text",        "bright_green"),
-    ("Teams",     "DevOps >> Adaptive Card",  "bright_blue"),
-    ("Web UI",    "Dashboard >> WebSocket",   "bright_cyan"),
-    ("Matrix",    "!ops:matrix.org >> E2EE",  ""),
+    ("Telegram", "Bot >> @team_channel", "bright_blue"),
+    ("Discord", "#deployments >> Embed", "bright_magenta"),
+    ("Slack", "#ops >> Block Kit", "bright_yellow"),
+    ("WhatsApp", "Ops Group >> Text", "bright_green"),
+    ("Teams", "DevOps >> Adaptive Card", "bright_blue"),
+    ("Web UI", "Dashboard >> WebSocket", "bright_cyan"),
+    ("Matrix", "!ops:matrix.org >> E2EE", ""),
 ]
 
 
@@ -682,20 +691,20 @@ def scene_reflection() -> None:
 # ====================================================================
 
 STATS = [
-    ("Source Code",        "~85,000 LOC"),
-    ("Test Code",          "~53,000 LOC"),
-    ("Tests",              "4,673 passing"),
-    ("Coverage",           "89%"),
-    ("Lint Errors",        "0"),
-    ("Python Files",       "394"),
-    ("Modules",            "22"),
-    ("LLM Providers",      "15"),
-    ("Channels",           "17"),
-    ("MCP Tool Servers",   "13+"),
-    ("Memory Tiers",       "5"),
-    ("Security Levels",    "4 risk levels (GREEN >> RED)"),
-    ("Sandbox Levels",     "4 (Process >> Docker)"),
-    ("Python",             ">= 3.12"),
+    ("Source Code", "~85,000 LOC"),
+    ("Test Code", "~53,000 LOC"),
+    ("Tests", "4,673 passing"),
+    ("Coverage", "89%"),
+    ("Lint Errors", "0"),
+    ("Python Files", "394"),
+    ("Modules", "22"),
+    ("LLM Providers", "15"),
+    ("Channels", "17"),
+    ("MCP Tool Servers", "13+"),
+    ("Memory Tiers", "6"),
+    ("Security Levels", "4 risk levels (GREEN >> RED)"),
+    ("Sandbox Levels", "4 (Process >> Docker)"),
+    ("Python", ">= 3.12"),
 ]
 
 

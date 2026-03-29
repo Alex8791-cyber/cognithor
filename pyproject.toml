@@ -165,7 +165,7 @@ arc-gpu = [
     "torch>=2.2.0",
 ]
 all = [
-    "cognithor[memory,vector,mcp,telegram,web,search,cron,documents,identity,desktop]",
+    "cognithor[memory,vector,mcp,telegram,web,search,cron,documents,identity,desktop,arc]",
 ]
 full = [
     "cognithor[all,voice,elevenlabs,postgresql,google-chat,discord,slack,matrix,whatsapp,signal,teams,irc,twitch,distributed,browser,encryption,dev]",
