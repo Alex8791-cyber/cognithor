@@ -1208,6 +1208,25 @@ class Gateway:
             except Exception:
                 log.debug("evolution_loop_start_failed", exc_info=True)
 
+        # Skill Lifecycle: initial audit + periodic background task
+        try:
+            skill_registry = getattr(self, "_skill_registry", None)
+            sl_cfg = getattr(self._config, "skill_lifecycle", None)
+            if skill_registry and (sl_cfg is None or sl_cfg.enabled):
+                from jarvis.skills.lifecycle import SkillLifecycleManager
+
+                generated_dir = self._config.jarvis_home / "skills" / "generated"
+                self._skill_lifecycle = SkillLifecycleManager(skill_registry, generated_dir)
+                report = self._skill_lifecycle.get_report()
+                log.info("skill_lifecycle_audit", report=report[:200])
+
+                # Auto-repair broken skills
+                if sl_cfg is None or sl_cfg.auto_repair:
+                    for broken in self._skill_lifecycle.get_broken_skills():
+                        self._skill_lifecycle.repair_skill(broken.slug)
+        except Exception:
+            log.debug("skill_lifecycle_init_failed", exc_info=True)
+
         # Channels starten
         tasks = []
         for channel in self._channels.values():
