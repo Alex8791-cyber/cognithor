@@ -5,6 +5,36 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.67.0] -- 2026-03-29
+
+### Added
+- **ARC-AGI-3 Benchmark Integration** — new `src/jarvis/arc/` module (14 files)
+  - `CognithorArcAgent` — hybrid agent (algorithmic + optional LLM + optional CNN)
+  - `EpisodeMemory` — in-session short-term learning with MD5 state hashing
+  - `GoalInferenceModule` — autonomous win-condition detection (4 strategies)
+  - `HypothesisDrivenExplorer` — 3-phase exploration (Discovery → Hypothesis → Exploitation)
+  - `VisualStateEncoder` — 64x64 grid-to-text conversion for LLM context
+  - `MechanicsModel` — cross-level rule abstraction with EMA consistency
+  - `ArcSwarmOrchestrator` — parallel game runs via asyncio
+  - `ArcAuditTrail` — SHA-256 hash-chain audit for reproducible runs
+  - `ActionPredictor` (CNN) — optional online-learning action predictor (torch)
+  - `ArcEnvironmentAdapter` — ARC SDK bridge with safe frame extraction
+- **3 new MCP tools**: `arc_play`, `arc_status`, `arc_replay` (111 total)
+- **CLI**: `python -m jarvis.arc --game ls20 [--mode benchmark|swarm]`
+- **ArcConfig** Pydantic model integrated into JarvisConfig
+- **105 new tests** in `tests/test_arc/` (11,978+ total)
+- **Dependency groups**: `arc` (arc-agi + numpy), `arc-gpu` (+ torch)
+
+### Fixed
+- SQLCipher `VirtualLock` quota exhaustion — `PRAGMA cipher_memory_security = OFF`
+- `UserPreferenceStore` auto-reconnect on DB corruption (MemoryError/DatabaseError)
+- Heartbeat/agent consent bypass — added user_id prefix detection
+- Wikipedia navigation garbage entities filtered in knowledge_builder
+- `search_and_read` blocked domains filter (zhihu, baidu, yandex etc.)
+- `vault_delete` correctly classified as RED (was ORANGE in test)
+- `encrypted_connect()` timeout parameter support
+- Ollama timeout_seconds test aligned to 180s default
+
 ## [0.66.1] -- 2026-03-29
 
 ### Added

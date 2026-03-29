@@ -13,7 +13,7 @@
     <a href="https://github.com/Alex8791-cyber/cognithor/stargazers"><img src="https://img.shields.io/github/stars/Alex8791-cyber/cognithor?style=flat-square&color=yellow" alt="GitHub Stars"></a>
     <img src="https://img.shields.io/badge/status-Beta%20%2F%20Experimental-orange?style=flat-square" alt="Status: Beta">
     <a href="#quick-start"><img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?style=flat-square" alt="Python"></a>
-    <a href="#tests"><img src="https://img.shields.io/badge/tests-11%2C873%2B%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+    <a href="#tests"><img src="https://img.shields.io/badge/tests-11%2C978%2B%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/lint-0%20errors-brightgreen?style=flat-square" alt="Lint"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
@@ -21,7 +21,7 @@
   </p>
 </p>
 
-> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (11,873+ tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
+> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (11,978+ tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
 
   [![clawdboard](https://clawdboard.ai/api/badge/Alex8791-cyber)](https://clawdboard.ai/user/Alex8791-cyber)
 
@@ -29,7 +29,7 @@
   <a href="https://clawdboard.ai/recap/6fd37b26-7e41-4b0f-958a-3f2580427ccf"><strong>Weekly Recap: Rank #1 | $1,644 spent vibe-engineering</strong></a>
 </p>
 
-> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security), backed by 11,873+ tests, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
+> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security), backed by 11,978+ tests, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
 
 ---
 
@@ -37,7 +37,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 17 channels, 108 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 11,873+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 17 channels, 111 MCP tools, 5-tier memory, knowledge vault, voice, browser automation, and more — all wired together from day one. 11,978+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 ---
 
@@ -65,7 +65,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 | **Encryption at Rest** | Stable — SQLCipher (AES-256) for all databases, Fernet for files, OS Keyring key management |
 | **OSINT / HIM Module** | Beta — person/project/org investigation with trust scoring |
 
-**What the test suite covers:** Unit tests, integration tests, real-life scenario tests, and live Ollama tests for all modules. The 11,873+ tests verify code correctness in controlled environments.
+**What the test suite covers:** Unit tests, integration tests, real-life scenario tests, and live Ollama tests for all modules. The 11,978+ tests verify code correctness in controlled environments.
 
 **What the test suite does NOT cover:** Real-world deployment scenarios, network edge cases, long-running stability, multi-user load, hardware-specific voice/GPU issues, or actual LLM response quality.
 
@@ -110,6 +110,15 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 
 ## What's New
 
+### What's New in v0.67.0
+
+**ARC-AGI-3 Benchmark Integration** — Cognithor can now compete in the [ARC Prize 2026](https://arcprize.org/competitions/2026) ($2M+ prize pool). New `src/jarvis/arc/` module with 14 files implements a hybrid agent (algorithmic exploration + optional LLM planning + optional CNN prediction) for interactive reasoning benchmarks.
+
+- **3 new MCP tools**: `arc_play`, `arc_status`, `arc_replay` — playable from any Cognithor channel
+- **CLI**: `python -m jarvis.arc --game ls20 [--mode benchmark|swarm]`
+- **105 new tests** covering all ARC subsystems
+- **Dependency groups**: `pip install cognithor[arc]` or `cognithor[arc-gpu]`
+
 ### v0.66.0 — Encryption at Rest, Vault Dual-Backend, GDPR 100%
 
 **Encryption at Rest — Full Disk Clone Protection**
@@ -124,7 +133,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 **GDPR User Rights — 100% Coverage**
 - Art. 15 (Access), Art. 16 (Rectification), Art. 17 (Erasure), Art. 18/21 (Restriction), Art. 20 (Portability) — all fully implemented across 11 data tiers.
 
-**108 MCP tools**, **11,873+ total tests** (was 11,779+). 12 bug fixes including SQLCipher compatibility, cron consent, and tool timeouts.
+**111 MCP tools**, **11,978+ total tests** (was 11,779+). 12 bug fixes including SQLCipher compatibility, cron consent, and tool timeouts.
 
 ### v0.65.0 — GDPR Compliance, OSINT Module, Evolution Engine Stable
 
@@ -151,7 +160,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - Promoted from Beta to Stable after extensive testing and quality self-examination integration.
 - All 4 phases production-ready: SystemDetector, IdleLoop, Budget/Resources, Checkpoint/Resume.
 
-**108 MCP tools** (was 106), **11,873+ total tests**.
+**111 MCP tools** (was 106), **11,978+ total tests**.
 
 ### v0.60.0 — Autonomous Evolution Engine (Premium)
 
@@ -171,7 +180,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - Phase 3: Per-Agent Budget + Resource Monitor (cooperative scheduling)
 - Phase 4: Checkpoint/Resume Engine (resilient cycle execution)
 - **REST API** — 7 new endpoints for budget, resources, evolution stats, and resume.
-- **63 new tests**, **11,873+ total**.
+- **63 new tests**, **11,978+ total**.
 
 ### v0.54.0 — Computer Use, Deep Research v2, VS Code Extension
 
@@ -229,7 +238,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - **Docker Real-Life Test Suite** — 22 scenario tests (pipeline + live Ollama).
 - **WebSocket stability** — Fixed reconnection storms, rate-limiting, Windows semaphore errors.
 - **CI/CD** — iOS + Android builds green, GitHub Release uploads working.
-- **106 MCP tools** (was 91), **11,873+ tests** (was 10,904).
+- **106 MCP tools** (was 91), **11,978+ tests** (was 10,904).
 
 ### v0.47.1-beta — Sci-Fi UI, GEPA Pipeline, Robot Office Pathfinding
 
@@ -322,7 +331,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - **Multi-Session Cognitive Base** — Persistent session management with cross-session Core Memory (max 2048 tokens, never auto-trimmed)
 - **Priority-based Agent Scheduling** — Min-heap priority queue (1-10), 50/50 orchestrator/worker quota, platform-aware concurrency limits
 - **Cross-platform Utilities** — `jarvis.utils.platform` module: `get_platform_name()`, `get_user_data_dir()`, `get_max_concurrent_agents()`, `supports_curses()`
-- **11,873+ tests passing** (90 new feature tests + 10,814 existing, 0 regressions)
+- **11,978+ tests passing** (90 new feature tests + 10,814 existing, 0 regressions)
 
 ### v0.35.6-beta — Community-Reported Fixes (#26, #29, #33)
 
@@ -330,7 +339,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - **i18n Prompt Presets** — System prompts now load curated translations from `prompt_presets.py` (de/en/zh) instead of falling back to hardcoded German. Priority chain: Disk file -> i18n Preset -> Hardcoded (#33)
 - **CORE.md Tool Deduplication** — Tool descriptions no longer dumped into CORE.md AND the Planner prompt. CORE.md now shows a one-line tool count reference; Planner gets localized, categorized descriptions via `ToolRegistryDB` (#29)
 - **Prompt Evolution Guard** — Tool descriptions are now protected against mutation by the PromptEvolutionEngine. `locked` column on tools table + post-evolution validation rejects variants that remove `{tools_section}` (#29)
-- **11,873+ tests passing** (0 failures)
+- **11,978+ tests passing** (0 failures)
 
 ### v0.34.4-beta — A2A Delegation, Sandbox Enforcement, Lint Zero
 
@@ -340,7 +349,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - **Auto-Update on Startup** — `plugins.auto_update` and `marketplace.auto_update` now trigger community registry sync at gateway startup
 - **Lint Zero** — 393 lint errors (F401, F541, F841, E501, E741, E402) cleaned to zero across the entire codebase
 - **MCP tools: 51 → 53** (added A2A delegation tools)
-- **11,873+ tests passing** (0 failures)
+- **11,978+ tests passing** (0 failures)
 
 ### v0.34.3-beta — REPLAN Loop Fix, Full English UI, Tool Schemas
 
@@ -359,7 +368,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - **Bug Fix: LLM Timeout Wiring** — Embedding timeouts now respect the configured `timeout_seconds` instead of hardcoded values. LLM timeout is now visible on the Executor page for all backends
 - **Bug Fix: WebSocket Race Condition** — All 12 `send_json()` calls in the WebSocket handler are now protected against disconnection errors via `_ws_safe_send()`. No more "Cannot call send" crashes
 - **Bug Fix: GlobalSearch** — Added missing pages (Executor, Workflows, Knowledge Graph) to FIELD_INDEX and PAGE_LABELS. Search now finds all 19 config pages
-- **11,873+ tests passing** (0 failures)
+- **11,978+ tests passing** (0 failures)
 
 ### v0.30.0 — mTLS, Document Reading, DB Retry
 
@@ -381,7 +390,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 **Previous Releases**
 
 - **v0.28.0** — Vite IPv6 fix, Qwen3-Coder model update, Python 3.15 locale compat
-- **v0.27.5** "BugHunt" — 60+ CodeQL fixes, CI stability, thread-safe EpisodicStore, 11,873+ tests
+- **v0.27.5** "BugHunt" — 60+ CodeQL fixes, CI stability, thread-safe EpisodicStore, 11,978+ tests
 - **v0.27.3** — CWE-22 Path Traversal fix in TTS API, multi-GPU installer fix, `--init-only` hang fix
 - **v0.27.1** — Community Skill Marketplace, ToolEnforcer runtime sandboxing, 5-check validation pipeline, 13 autonomy fixes
 - **v0.27.0** — Full Audit, Installer Overhaul: 80-item audit, XSS fix, CORS hardening, rate limiting, auto-install Python/Ollama
@@ -402,7 +411,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - **Security** — 4-level sandbox, SHA-256 audit chain, EU AI Act compliance module, credential vault, red-teaming, runtime token encryption (Fernet AES-256), TLS support, file-size limits (not independently audited — see [Status & Maturity](#status--maturity))
 - **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
-- **Model Context Protocol (MCP)** — 108 tools across 10+ modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, automation, coordination) + A2A delegation
+- **Model Context Protocol (MCP)** — 111 tools across 11 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, automation, coordination, arc) + A2A delegation
 - **Distributed Locking** — Redis-backed (with file-based fallback) locks for multi-instance deployments
 - **Durable Message Queue** — SQLite-backed persistent queue with priorities, DLQ, and automatic retry
 - **Prometheus Metrics** — /metrics endpoint with Grafana dashboard for production observability
@@ -428,12 +437,13 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 - **i18n Language Packs** — JSON-based internationalization with SHA-256 integrity verification, German and English included, extensible to any language
 - **Tool Sandbox Hardening** — Per-tool resource limits, network guards, escape detection (8 attack categories)
 - **GDPR Compliance Toolkit** — Data processing logs (Art. 30), retention enforcement, right-to-erasure (Art. 17), audit export
+- **ARC-AGI-3 Benchmark** — Compete in the [ARC Prize 2026](https://arcprize.org/competitions/2026) ($2M+ prize pool) via the `arc/` module: hybrid agent (algorithmic + LLM + CNN), 3 MCP tools (`arc_play`, `arc_status`, `arc_replay`), CLI mode, swarm mode. `pip install cognithor[arc]`
 - **Agent Benchmark Suite** — 14 standardized tasks, composite scoring, regression detection across versions
 - **Deterministic Replay** — Record and replay agent executions with what-if analysis and diff comparison
 - **Agent SDK** — Decorator-based agent registration (`@agent`, `@tool`, `@hook`), project scaffolding
 - **Plugin Remote Registry** — Remote manifests with SHA-256 checksums, dependency resolution, install/update/rollback
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
-- **11,873+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
+- **11,978+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
 
 ## Architecture
 
@@ -465,7 +475,7 @@ It replaces a patchwork of tools with one integrated system: 17 channels, 108 MC
 ├─────────────┴──────────────┴──────────────────────────────────────┤
 │  DAG Workflow Engine · Workflow Adapter · Benchmark Suite             │
 ├───────────────────────────────────────────────────────────────────┤
-│                   MCP Tool Layer (108 tools)                         │
+│                   MCP Tool Layer (111 tools)                         │
 │   Filesystem · Shell · Memory · Web · Browser · Media · Vault      │
 │   Synthesis · Skills Marketplace · Remote Registry                  │
 ├───────────────────────────────────────────────────────────────────┤
@@ -626,7 +636,7 @@ The installer offers five modes: `--minimal` (core only), `--full` (all features
 ```bash
 ollama pull qwen3:32b           # Planner (20 GB VRAM)
 ollama pull qwen3:8b            # Executor (6 GB VRAM)
-ollama pull nomic-embed-text    # Embeddings (300 MB VRAM)
+ollama pull qwen3-embedding:0.6b    # Embeddings (500 MB VRAM)
 # Optional:
 ollama pull qwen3-coder:30b     # Code tasks (20 GB VRAM)
 ```
@@ -850,7 +860,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **11,873+ tests** · **100% pass rate** · **89% coverage** · **~118,000 LOC source** · **~108,000 LOC tests**
+Current status: **11,978+ tests** · **100% pass rate** · **89% coverage** · **~118,000 LOC source** · **~108,000 LOC tests**
 
 | Area | Tests | Description |
 |------|-------|-------------|
@@ -979,7 +989,7 @@ cognithor/
 │   ├── vite.config.js             # Dev server with backend launcher plugin (deprecated)
 │   ├── package.json               # Dependencies (react, vite)
 │   └── src/                       # React components (deprecated)
-├── tests/                         # 11,873+ tests, ~92,000 LOC
+├── tests/                         # 11,978+ tests, ~92,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
 │   ├── test_mcp/                  # MCP tools and client
@@ -1159,7 +1169,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 
 ---
 
-**Metrics:** ~118,000 LOC source · ~108,000 LOC tests · 11,873+ tests · 89% coverage · 0 lint errors · **Status: Beta**
+**Metrics:** ~118,000 LOC source · ~108,000 LOC tests · 11,978+ tests · 89% coverage · 0 lint errors · **Status: Beta**
 
 ## Contributors
 

@@ -125,6 +125,14 @@ if errorlevel 1 (
     echo   [OK] Desktop automation available.
 )
 
+:: ── ARC-AGI-3 Benchmark Agent (optional) ──
+%PYTHON_CMD% -c "import arc_agi" >nul 2>&1
+if errorlevel 1 (
+    echo   [INFO] ARC-AGI-3 SDK not installed. Install with: pip install -e ".[arc]"
+) else (
+    echo   [OK] ARC-AGI-3 SDK available.
+)
+
 :: ============================================================
 ::  5. UI-Modus waehlen (Flutter-first)
 :: ============================================================

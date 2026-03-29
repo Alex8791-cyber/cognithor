@@ -94,6 +94,11 @@ def parse_args() -> argparse.Namespace:
             "Only workspace-safe tools are exposed. No CLI, no Web UI."
         ),
     )
+    parser.add_argument(
+        "--arc",
+        action="store_true",
+        help="Enable ARC-AGI-3 benchmark agent and MCP tools",
+    )
     return parser.parse_args()
 
 
@@ -201,6 +206,9 @@ def main() -> None:
     if args.lite:
         config.models.planner.name = "qwen3:8b"
         config.models.coder.name = "qwen2.5-coder:7b"
+
+    if getattr(args, "arc", False):
+        config.arc.enabled = True
 
     # 2. Verzeichnisstruktur sicherstellen
     created = ensure_directory_structure(config)

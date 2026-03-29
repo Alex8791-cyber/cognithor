@@ -157,6 +157,18 @@ async def init_tools(
     register_database_tools(mcp_client, config)
     register_chart_tools(mcp_client, config)
 
+    # ARC-AGI-3 Benchmark tools (optional — guarded by config.arc.enabled)
+    if getattr(config, "arc", None) and getattr(config.arc, "enabled", False):
+        try:
+            from jarvis.mcp.arc_tools import register_arc_tools
+
+            register_arc_tools(mcp_client)
+            log.info("arc_tools_registered", tools=["arc_play", "arc_status", "arc_replay"])
+        except Exception:
+            log.debug("arc_tools_not_available", exc_info=True)
+    else:
+        log.debug("arc_tools_disabled_by_config")
+
     # Browser-Use v17: Autonomous browser automation (optional)
     browser_agent = None
     try:

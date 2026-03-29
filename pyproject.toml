@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cognithor"
-version = "0.66.1"
+version = "0.67.0"
 description = "Cognithor · Agent OS — Local-first autonomous agent operating system"
 readme = "README.md"
 license = "Apache-2.0"
@@ -153,6 +153,14 @@ worm = [
 ]
 blockchain = [
     "web3>=7.0.0",
+]
+arc = [
+    "arc-agi>=0.3.0",
+    "numpy>=2.0,<3",
+]
+arc-gpu = [
+    "cognithor[arc]",
+    "torch>=2.2.0",
 ]
 all = [
     "cognithor[memory,vector,mcp,telegram,web,search,cron,documents,identity,desktop]",
