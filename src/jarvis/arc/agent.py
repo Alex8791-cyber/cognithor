@@ -10,6 +10,7 @@ from jarvis.arc.episode_memory import EpisodeMemory
 from jarvis.arc.explorer import ExplorationPhase, HypothesisDrivenExplorer
 from jarvis.arc.goal_inference import GoalInferenceModule
 from jarvis.arc.mechanics_model import MechanicsModel
+from jarvis.arc.state_graph import StateGraphNavigator
 from jarvis.arc.visual_encoder import VisualStateEncoder
 from jarvis.utils.logging import get_logger
 
@@ -57,6 +58,10 @@ class CognithorArcAgent:
         self.encoder = VisualStateEncoder()
         self.mechanics = MechanicsModel()
         self.audit_trail = ArcAuditTrail(game_id)
+        self.state_graph = StateGraphNavigator(max_states=200_000)
+        self._navigation_mode = False
+        self._current_path: list = []
+        self._path_index: int = 0
 
         # Runtime state
         self.current_obs: ArcObservation | None = None
@@ -143,62 +148,145 @@ class CognithorArcAgent:
     # ------------------------------------------------------------------
 
     def _step(self) -> str:
-        """Execute one agent step.
-
-        Returns:
-            ``"WIN"`` if the level was completed, ``"GAME_OVER"`` if a reset is
-            required, ``"DONE"`` if the max-steps budget is exhausted, or
-            ``"CONTINUE"`` otherwise.
-        """
-        # Guard: max steps per level
+        """One agent step with State Graph Navigation."""
         if self.adapter.level_step_count >= self.max_steps_per_level:
-            log.warning(
-                "arc.agent.max_steps_per_level",
-                level=self.current_level,
-                steps=self.adapter.level_step_count,
-            )
             return "DONE"
 
-        # Choose action via explorer
-        action, data = self.explorer.choose_action(
-            self.current_obs,
-            self.memory,
-            self.goals,
-        )
+        current_hash = self.state_graph.hash_grid(self.current_obs.raw_grid)
 
-        # Optional LLM planner consultation
-        if self.use_llm_planner and (self.total_steps % self.llm_call_interval == 0):
+        # === NAVIGATION MODE: Win path known → follow it ===
+        if (
+            self._navigation_mode
+            and self._current_path
+            and self._path_index < len(self._current_path)
+        ):
+            action_str, action_data, expected_next = self._current_path[self._path_index]
+            action = self._resolve_action(action_str)
+            data = action_data or {}
+
+            previous_obs = self.current_obs
+            self.current_obs = self.adapter.act(action, data)
+            self._path_index += 1
+            self.total_steps += 1
+
+            self._record_step(previous_obs, action_str, data)
+
+            # Validate: are we still on the expected path?
+            actual_hash = self.state_graph.hash_grid(self.current_obs.raw_grid)
+            if actual_hash != expected_next:
+                log.info("arc.agent.path_diverged", step=self.total_steps)
+                self._navigation_mode = False
+                self._current_path = []
+
+            return self._check_game_state()
+
+        # Navigation finished or invalid
+        self._navigation_mode = False
+        self._current_path = []
+
+        # === Check if a win path is now available ===
+        win_path = self.state_graph.find_win_path(current_hash)
+        if win_path:
+            log.info("arc.agent.win_path_found", length=len(win_path), step=self.total_steps)
+            self._navigation_mode = True
+            self._current_path = win_path
+            self._path_index = 0
+            return self._step()  # Immediately start navigating
+
+        # === EXPLORATION MODE: Build the graph ===
+        available = [
+            getattr(a, "name", str(a))
+            for a in self.explorer._available_actions
+            if getattr(a, "name", "") != "RESET"
+        ]
+        graph_action = self.state_graph.get_best_exploration_action(current_hash, available)
+
+        if graph_action:
+            action_str, action_data = graph_action
+            action = self._resolve_action(action_str)
+            data = action_data or {}
+        else:
+            # Fallback: Explorer decides
+            action, data = self.explorer.choose_action(self.current_obs, self.memory, self.goals)
+            action_str = self._action_to_str(action, data)
+
+        # LLM only rarely and only when no win path known
+        if (
+            self.use_llm_planner
+            and self.total_steps > 0
+            and self.total_steps % self.llm_call_interval == 0
+            and not self.state_graph.should_navigate()
+        ):
             action, data = self._consult_llm_planner(action, data)
+            action_str = self._action_to_str(action, data)
 
         # Execute action
-        action_str = self._action_to_str(action, data)
         previous_obs = self.current_obs
         self.current_obs = self.adapter.act(action, data)
         self.total_steps += 1
 
-        # Record transition in episode memory
-        self.memory.record_transition(previous_obs, action_str, self.current_obs)
+        # Record in memory + audit + graph
+        self._record_step(previous_obs, action_str, data)
 
-        # Audit step
-        self.audit_trail.log_step(
-            level=self.current_level,
-            step=self.total_steps,
-            action=action_str,
-            game_state=str(self.current_obs.game_state),
-            pixels_changed=self.current_obs.changed_pixels,
-        )
-
-        # Periodic goal re-analysis
+        # Periodic goal analysis
         if self.total_steps % _GOAL_REANALYSIS_INTERVAL == 0:
             self.goals.analyze_win_condition(self.memory)
 
-        # Evaluate terminal game state
+        return self._check_game_state()
+
+    # ------------------------------------------------------------------
+    # Step helpers
+    # ------------------------------------------------------------------
+
+    def _record_step(self, previous_obs: Any, action_str: str, data: dict[str, Any]) -> None:
+        """Record transition in memory, audit trail, AND state graph."""
+        full_action = (
+            self._action_to_str(self._resolve_action(action_str), data) if data else action_str
+        )
+
+        self.memory.record_transition(previous_obs, full_action, self.current_obs)
+        self.audit_trail.log_step(
+            level=self.current_level,
+            step=self.total_steps,
+            action=full_action,
+            game_state=str(self.current_obs.game_state),
+            pixels_changed=self.current_obs.changed_pixels,
+        )
+        self.state_graph.add_transition(
+            from_grid=previous_obs.raw_grid,
+            action_str=action_str,
+            action_data=data if data else None,
+            to_grid=self.current_obs.raw_grid,
+            pixels_changed=self.current_obs.changed_pixels,
+            game_state=str(self.current_obs.game_state),
+            level=self.current_level,
+        )
+
+    def _check_game_state(self) -> str:
+        """Evaluate terminal game state from current observation."""
         state_str = str(self.current_obs.game_state)
         if "WIN" in state_str:
             return "WIN"
-        elif "GAME_OVER" in state_str:
+        if "GAME_OVER" in state_str:
             return "GAME_OVER"
         return "CONTINUE"
+
+    def _resolve_action(self, action_str: str) -> Any:
+        """Convert action name string to a GameAction enum value."""
+        for a in self.explorer._available_actions:
+            if getattr(a, "name", str(a)) == action_str:
+                return a
+        # Fallback: try arcengine
+        try:
+            from arcengine import GameAction
+
+            return GameAction[action_str]
+        except (ImportError, KeyError):
+            pass
+        # Last resort: return first available action
+        if self.explorer._available_actions:
+            return self.explorer._available_actions[0]
+        return action_str
 
     # ------------------------------------------------------------------
     # Level completion
@@ -206,6 +294,12 @@ class CognithorArcAgent:
 
     def _on_level_complete(self) -> None:
         """Handle post-WIN level bookkeeping and prepare for the next level."""
+        # State Graph: preserve action patterns, clear state space
+        self.state_graph.prepare_for_new_level()
+        self._navigation_mode = False
+        self._current_path = []
+        self._path_index = 0
+
         log.info(
             "arc.agent.level_complete",
             level=self.current_level,
@@ -270,6 +364,7 @@ class CognithorArcAgent:
             memory_summary = self.memory.get_summary_for_llm()
             goal_summary = self.goals.get_summary_for_llm()
             mechanics_summary = self.mechanics.get_summary_for_llm()
+            graph_summary = self.state_graph.get_summary_for_llm()
 
             # Build available action names
             action_names = [
@@ -286,6 +381,7 @@ class CognithorArcAgent:
                 f"CURRENT GRID STATE:\n{state_desc}\n\n"
                 f"EPISODE MEMORY:\n{memory_summary}\n\n"
                 f"LEARNED MECHANICS:\n{mechanics_summary}\n\n"
+                f"STATE GRAPH:\n{graph_summary}\n\n"
                 f"GOAL HYPOTHESES:\n{goal_summary}\n\n"
                 f"Explorer phase: {self.explorer.phase.value}\n"
                 f"Level: {self.current_level}, Step: {self.adapter.level_step_count}\n"
@@ -301,7 +397,7 @@ class CognithorArcAgent:
             resp = httpx.post(
                 ollama_url,
                 json={
-                    "model": "qwen3:32b",
+                    "model": "qwen3.5:27b",
                     "prompt": prompt + "\n/no_think",
                     "stream": False,
                     "options": {"temperature": 0.3, "num_predict": 2000},
