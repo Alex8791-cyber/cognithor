@@ -727,6 +727,21 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
     except Exception:
         pass
 
+    # Check ARC-AGI-3 availability (informational only — not auto-installed)
+    if jarvis_ok:
+        try:
+            _arc_check = subprocess.run(
+                [sys.executable, "-c", "import arc_agi"],
+                capture_output=True,
+                timeout=10,
+            )
+            if _arc_check.returncode == 0:
+                ok("ARC-AGI-3 SDK available.")
+            else:
+                info('ARC-AGI-3 SDK not installed (optional). Install: pip install -e ".[arc]"')
+        except Exception:
+            pass
+
     if not jarvis_ok:
         # uv bevorzugen wenn vorhanden (10x schneller)
         installer_backend, installer_cmd = _detect_python_installer(repo_root)
