@@ -218,7 +218,7 @@ class Gateway:
             self._config,
             mcp_client=mcp_client,
             memory_manager=self._memory_manager,
-            interop=self._interop,
+            interop=getattr(self, "_interop", None),
             handle_message=self.handle_message,
             gateway=self,
         )
