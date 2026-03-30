@@ -343,6 +343,16 @@ class Gateway:
         )
         apply_phase(self, advanced_result)
 
+        # Fix A1+A2: Re-wire memory for systems created with config (not gateway)
+        # ExplorationExecutor and KnowledgeIngestService were instantiated with
+        # getattr(config, "_memory_manager", None) which is always None because
+        # config is JarvisConfig, not the gateway. Fix by assigning the real
+        # MemoryManager now that it exists on self.
+        if getattr(self, "_exploration_executor", None) and self._memory_manager:
+            self._exploration_executor._memory = self._memory_manager
+        if getattr(self, "_knowledge_ingest", None) and self._memory_manager:
+            self._knowledge_ingest._memory = self._memory_manager
+
         # Wire DAG WorkflowEngine with MCP client + Gatekeeper
         if getattr(self, "_dag_workflow_engine", None):
             try:

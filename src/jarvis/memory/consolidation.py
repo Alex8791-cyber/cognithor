@@ -280,6 +280,10 @@ class ConsolidationResult:
 class ConsolidationPipeline:
     """Orchestrates memory deduplication, scoring, and garbage collection.
 
+    .. deprecated:: 0.69.0
+        Not wired into runtime. EpisodicCompressor handles compression
+        via a daily background task in gateway.py instead.
+
     Usage::
 
         pipeline = ConsolidationPipeline()

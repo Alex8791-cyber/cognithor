@@ -14,7 +14,12 @@ log = get_logger(__name__)
 
 
 class EpisodicSummarizer:
-    """Create summaries over time periods."""
+    """Create summaries over time periods.
+
+    .. deprecated:: 0.69.0
+        Not wired into runtime. EpisodicCompressor handles episode
+        compression via a daily background task in gateway.py instead.
+    """
 
     def __init__(self, store: EpisodicStore, llm: Any = None) -> None:
         self._store = store
