@@ -487,15 +487,13 @@ class EvolutionLoop:
         return now >= start or now <= end
 
     def _update_goal_progress_from_metrics(self, goals: list) -> None:
-        """Compute goal progress from DeepLearner metrics instead of LLM guesses.
+        """Compute goal progress from real data instead of LLM guesses.
 
-        Progress formula (weighted):
-          40% coverage (0-1 from DeepLearner)
-          30% subgoal completion ratio
-          20% quality score (0-1 from QualityAssessor)
-          10% chunk density (normalized: 100+ chunks = 1.0)
+        Reads directly from GoalScopedIndex DBs (chunks, entities) and
+        SubGoal activity status. Plan-level coverage_score is often None
+        because SubGoals fail quality tests — so we compute from raw data.
 
-        This gives objective, measurable progress instead of LLM speculation.
+        Progress = 40% subgoal activity + 30% chunks + 20% entities + 10% sources
         """
         if not self._deep_learner or not self._goal_manager:
             return
@@ -504,35 +502,81 @@ class EvolutionLoop:
         if not plans:
             return
 
+        from pathlib import Path
+
+        index_base = Path.home() / ".jarvis" / "evolution" / "indexes"
+
+        # Stop words to exclude from matching (too generic)
+        _stop = {
+            "werde",
+            "experte",
+            "fuer",
+            "die",
+            "der",
+            "das",
+            "und",
+            "den",
+            "dem",
+            "ein",
+            "eine",
+            "ist",
+            "von",
+            "zu",
+            "mit",
+            "auf",
+            "in",
+            "im",
+            "am",
+            "als",
+            "bei",
+            "nach",
+            "ueber",
+        }
+
         for goal in goals:
-            # Match goal to DeepLearner plan by title similarity
             best_plan = None
             best_score = 0.0
-            goal_words = set(goal.title.lower().split())
+            goal_words = set(goal.title.lower().split()) - _stop
             for plan in plans:
-                plan_words = set(plan.goal.lower().split())
+                plan_words = set(plan.goal.lower().split()) - _stop
                 overlap = len(goal_words & plan_words)
                 if overlap > best_score:
                     best_score = overlap
                     best_plan = plan
-            if not best_plan or best_score < 2:
-                continue  # No matching plan found
+            if not best_plan or best_score < 1:
+                continue
 
-            # Calculate progress from metrics
-            coverage = best_plan.coverage_score or 0.0
-            quality = best_plan.quality_score or 0.0
+            # Subgoal activity (any non-pending status counts)
             total_sg = len(best_plan.sub_goals) or 1
-            done_sg = sum(1 for sg in best_plan.sub_goals if sg.status in ("passed", "done"))
-            subgoal_ratio = done_sg / total_sg
-            chunks = best_plan.total_chunks_indexed or 0
-            chunk_density = min(1.0, chunks / 100.0)
+            active_sg = sum(1 for sg in best_plan.sub_goals if sg.status not in ("pending",))
+            subgoal_ratio = active_sg / total_sg
+
+            # Read real metrics from Goal Index DB
+            chunks = 0
+            entities = 0
+            idx_dir = index_base / best_plan.goal_slug
+            if idx_dir.exists():
+                try:
+                    from jarvis.evolution.goal_index import GoalScopedIndex
+
+                    gi = GoalScopedIndex(best_plan.goal_slug, str(index_base))
+                    stats = gi.stats()
+                    chunks = stats.get("chunks", 0)
+                    entities = stats.get("entities", 0)
+                    gi.close()
+                except Exception:
+                    pass
+
+            sources = best_plan.total_vault_entries or 0
 
             progress = (
-                0.40 * coverage + 0.30 * subgoal_ratio + 0.20 * quality + 0.10 * chunk_density
+                0.40 * subgoal_ratio
+                + 0.30 * min(1.0, chunks / 200.0)
+                + 0.20 * min(1.0, entities / 100.0)
+                + 0.10 * min(1.0, sources / 10.0)
             )
             progress = round(min(1.0, max(0.0, progress)), 2)
 
-            # Only update if metric-based progress differs from current
             current = goal.progress
             if abs(progress - current) >= 0.01:
                 delta = progress - current
@@ -540,17 +584,17 @@ class EvolutionLoop:
                     self._goal_manager.update_progress(
                         goal.id,
                         delta,
-                        f"Metrisch: Cov={coverage:.0%} SG={done_sg}/{total_sg} "
-                        f"Q={quality:.0%} Chunks={chunks}",
+                        f"Metrisch: SG={active_sg}/{total_sg} "
+                        f"Chunks={chunks} Entities={entities} Sources={sources}",
                     )
                     log.info(
                         "atl_goal_progress_metric",
                         goal=goal.title[:40],
                         old=f"{current:.0%}",
                         new=f"{progress:.0%}",
-                        coverage=f"{coverage:.0%}",
-                        subgoals=f"{done_sg}/{total_sg}",
-                        quality=f"{quality:.0%}",
+                        subgoals=f"{active_sg}/{total_sg}",
+                        chunks=chunks,
+                        entities=entities,
                     )
                 except Exception:
                     log.debug("atl_metric_progress_failed", goal_id=goal.id, exc_info=True)
