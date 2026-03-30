@@ -193,8 +193,20 @@ class KnowledgeBuilder:
     # Public API
     # ------------------------------------------------------------------
 
-    async def build(self, fetch_result: FetchResult) -> BuildResult:
-        """Run the triple-write pipeline for a single FetchResult."""
+    async def build(
+        self,
+        fetch_result: FetchResult,
+        *,
+        skip_entity_extraction: bool = False,
+    ) -> BuildResult:
+        """Run the triple-write pipeline for a single FetchResult.
+
+        Args:
+            skip_entity_extraction: If True, skip the LLM-based entity
+                extraction (step 3). Useful for cron-triggered builds where
+                the GPU should not be blocked for 2-10 minutes per document.
+                Vault save + memory chunking still run normally.
+        """
         result = BuildResult()
 
         if fetch_result.error or not fetch_result.text:
@@ -239,8 +251,8 @@ class KnowledgeBuilder:
             except Exception as exc:
                 result.errors.append(f"save_to_memory chunk {i} failed: {exc}")
 
-        # 3. Entity extraction + graph
-        if self._llm_fn is not None:
+        # 3. Entity extraction + graph (skippable for cron/background builds)
+        if self._llm_fn is not None and not skip_entity_extraction:
             entities, relations = await self.extract_entities(fetch_result.text)
             for entity in entities:
                 try:

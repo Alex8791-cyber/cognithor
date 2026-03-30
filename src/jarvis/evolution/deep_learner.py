@@ -358,7 +358,19 @@ class DeepLearner:
                         )
                         plan.save(str(self._plans_dir))
                         return False
-                    build_result = await builder.build(fr)
+                    # Skip entity extraction if system is busy (GPU contention)
+                    # Vault save + memory chunking still run (no LLM needed).
+                    # Entity extraction can run later in a dedicated cycle.
+                    _skip_ee = bool(
+                        self._resource_monitor
+                        and hasattr(self._resource_monitor, "last_snapshot")
+                        and self._resource_monitor.last_snapshot
+                        and self._resource_monitor.last_snapshot.is_busy
+                    )
+                    build_result = await builder.build(
+                        fr,
+                        skip_entity_extraction=_skip_ee,
+                    )
                     subgoal.chunks_created += build_result.chunks_created
                     subgoal.entities_created += build_result.entities_created
                     if build_result.vault_path:
