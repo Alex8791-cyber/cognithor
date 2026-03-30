@@ -491,7 +491,7 @@ class CognithorArcAgent:
             resp = httpx.post(
                 ollama_url,
                 json={
-                    "model": "qwen3.5:27b",
+                    "model": "qwen3.5:27b-16k",
                     "prompt": prompt + "\n/no_think",
                     "stream": False,
                     "options": {
