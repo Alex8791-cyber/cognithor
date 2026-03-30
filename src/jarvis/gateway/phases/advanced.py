@@ -29,27 +29,7 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
     Eagerly constructs instances where possible (matching original __init__).
     """
     result: PhaseResult = {
-        "monitoring_hub": None,
-        "isolation": None,
-        "workspace_guard": None,
-        "auth_gateway": None,
-        "connector_registry": None,
-        "workflow_engine": None,
-        "template_library": None,
-        "ecosystem_policy": None,
-        "model_registry": None,
-        "i18n": None,
-        "reputation_engine": None,
-        "recall_manager": None,
-        "abuse_reporter": None,
-        "governance_policy": None,
-        "interop": None,
-        "governance_hub": None,
-        "ecosystem_controller": None,
-        "user_portal": None,
-        "skill_cli": None,
-        "setup_wizard": None,
-        "perf_manager": None,
+        # Active systems (instantiated in init_advanced)
         "run_recorder": None,
         "governance_agent": None,
         "replay_engine": None,
@@ -64,7 +44,6 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         "knowledge_qa": None,
         "knowledge_lineage": None,
         "knowledge_ingest": None,
-        "self_improver": None,
         "reflexion_memory": None,
         "hermes_compat": None,
         "trace_store": None,
@@ -73,156 +52,30 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         "hashline_guard": None,
     }
 
-    # Phase 5: Live-Monitoring
-    try:
-        from jarvis.gateway.monitoring import MonitoringHub
+    # ── Enterprise Placeholders (deferred) ──────────────────────────────
+    # These modules are prepared for Cognithor Enterprise but have no
+    # runtime callers yet. They are NOT instantiated at startup to save
+    # ~200ms+ of import/init time. They remain accessible via API
+    # endpoints that lazy-import on first request.
+    #
+    # Modules deferred: MonitoringHub, MultiUserIsolation, WorkspaceGuard,
+    #   AuthGateway, ConnectorRegistry, WorkflowEngine, TemplateLibrary,
+    #   EcosystemPolicy, ModelExtensionRegistry, I18nManager,
+    #   ReputationEngine, SkillRecallManager, AbuseReporter,
+    #   GovernancePolicy, InteropProtocol, EcosystemController,
+    #   GovernanceHub, UserPortal, SkillCLI, SetupWizard,
+    #   PerformanceManager, SelfImprover
+    #
+    # To activate any of them, move the import block back here and
+    # wire the key methods into handle_message() or a background task.
 
-        result["monitoring_hub"] = MonitoringHub()
-    except Exception:
-        log.debug("monitoring_hub_init_skipped", exc_info=True)
-
-    # Phase 6: Agent-Isolation
-    try:
-        from jarvis.core.isolation import MultiUserIsolation, WorkspaceGuard
-
-        result["isolation"] = MultiUserIsolation()
-        workspace_root = Path(config.jarvis_home) / "workspace"
-        result["workspace_guard"] = WorkspaceGuard(workspace_root)
-    except Exception:
-        log.debug("agent_isolation_init_skipped", exc_info=True)
-
-    # Phase 7: Auth-Gateway (SSO + Per-Agent Sessions)
-    try:
-        from jarvis.gateway.auth import AuthGateway
-
-        result["auth_gateway"] = AuthGateway()
-    except Exception:
-        log.debug("auth_gateway_init_skipped", exc_info=True)
-
-    # Phase 15: Enterprise-Connectors
-    try:
-        from jarvis.channels.connectors import ConnectorRegistry
-
-        result["connector_registry"] = ConnectorRegistry()
-    except Exception:
-        log.debug("connector_registry_init_skipped", exc_info=True)
-
-    # Phase 16: Workflow-Engine & Template-Library
-    try:
-        from jarvis.core.workflows import TemplateLibrary, WorkflowEngine
-
-        result["workflow_engine"] = WorkflowEngine()
-        result["template_library"] = TemplateLibrary()
-    except Exception:
-        log.debug("workflow_engine_init_skipped", exc_info=True)
-
-    # Phase 16b: DAG WorkflowEngine
+    # Phase 16b: DAG WorkflowEngine (this one IS used — wired in gateway.py)
     try:
         from jarvis.core.workflow_engine import WorkflowEngine as DAGWorkflowEngine
 
         result["dag_workflow_engine"] = DAGWorkflowEngine()
     except Exception:
         log.debug("dag_workflow_engine_init_skipped", exc_info=True)
-
-    # Phase 17: Ecosystem-Policy
-    try:
-        from jarvis.core.workflows import EcosystemPolicy
-
-        result["ecosystem_policy"] = EcosystemPolicy()
-    except Exception:
-        log.debug("ecosystem_policy_init_skipped", exc_info=True)
-
-    # Phase 18: Model-Extension-Registry & i18n
-    try:
-        from jarvis.core.extensions import I18nManager, ModelExtensionRegistry
-
-        result["model_registry"] = ModelExtensionRegistry()
-        result["i18n"] = I18nManager(default_locale="de")
-    except Exception:
-        log.debug("model_registry_init_skipped", exc_info=True)
-
-    # Phase 20: Marketplace-Governance
-    try:
-        from jarvis.skills.governance import (
-            AbuseReporter,
-            GovernancePolicy,
-            ReputationEngine,
-            SkillRecallManager,
-        )
-
-        rep = ReputationEngine()
-        result["reputation_engine"] = rep
-        result["recall_manager"] = SkillRecallManager(rep)
-        result["abuse_reporter"] = AbuseReporter(rep)
-        result["governance_policy"] = GovernancePolicy()
-    except Exception:
-        log.debug("marketplace_governance_init_skipped", exc_info=True)
-
-    # Phase 22: Cross-Agent Interop
-    try:
-        from jarvis.core.interop import InteropProtocol
-
-        result["interop"] = InteropProtocol(local_agent_id="jarvis-main")
-    except Exception:
-        log.debug("interop_init_skipped", exc_info=True)
-
-    # Phase 28: Ecosystem-Control + Security-Training
-    try:
-        from jarvis.skills.ecosystem_control import EcosystemController
-
-        result["ecosystem_controller"] = EcosystemController()
-    except Exception:
-        log.debug("ecosystem_controller_init_skipped", exc_info=True)
-
-    # Phase 31: Governance Hub (Curation, Diversity, Budget, Explainability)
-    try:
-        from jarvis.core.curation import GovernanceHub
-
-        result["governance_hub"] = GovernanceHub()
-    except Exception:
-        log.debug("governance_hub_init_skipped", exc_info=True)
-
-    # Phase 34: User Portal (DSGVO, Consent, Transparency)
-    try:
-        from jarvis.core.user_portal import UserPortal
-
-        jarvis_home = getattr(config, "jarvis_home", Path.home() / ".jarvis")
-        consent_db = jarvis_home / "consent.db"
-        result["user_portal"] = UserPortal(consent_db_path=consent_db)
-    except Exception:
-        log.debug("user_portal_init_skipped", exc_info=True)
-
-    # Phase 35: Skill-CLI (Developer Tools, Rewards)
-    try:
-        from jarvis.tools.skill_cli import SkillCLI
-
-        result["skill_cli"] = SkillCLI()
-    except Exception:
-        log.debug("skill_cli_init_skipped", exc_info=True)
-
-    # Phase 36: Setup-Wizard (Hardware-Detection, Presets)
-    try:
-        from jarvis.core.installer import SetupWizard
-
-        result["setup_wizard"] = SetupWizard()
-    except Exception:
-        log.debug("setup_wizard_init_skipped", exc_info=True)
-
-    # Phase 37: Performance-Manager (Vector, Balancer, Fallback)
-    try:
-        from jarvis.core.performance import PerformanceManager
-
-        result["perf_manager"] = PerformanceManager()
-    except Exception:
-        log.debug("perf_manager_init_skipped", exc_info=True)
-
-    # SelfImprover (Error-pattern learning)
-    try:
-        from jarvis.learning.self_improver import SelfImprover
-
-        result["self_improver"] = SelfImprover()
-    except Exception:
-        log.debug("self_improver_init_skipped", exc_info=True)
 
     # GEPA — Execution Trace Store
     try:

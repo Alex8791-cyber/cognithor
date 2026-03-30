@@ -1053,6 +1053,13 @@ class Gateway:
         if self._active_learner is not None:
             try:
                 self._active_learner._memory = getattr(self, "_memory_manager", None)
+                # D3: Default watch_dirs if empty — scan vault + memory for new files
+                if not self._active_learner._watch_dirs:
+                    vault_dir = self._config.jarvis_home / "vault"
+                    wissen_dir = self._config.jarvis_home / "vault" / "wissen"
+                    for d in [vault_dir, wissen_dir]:
+                        if d.exists():
+                            self._active_learner._watch_dirs.append(str(d))
                 await self._active_learner.start()
                 log.info("active_learner_started")
             except Exception:
@@ -1399,25 +1406,29 @@ class Gateway:
             log.warning("no_channels_registered")
 
     async def _auto_update_skills(self) -> None:
-        """Background task: sync community registry if auto_update is enabled."""
-        try:
-            from jarvis.skills.community.sync import RegistrySync
+        """Background task: sync community registry periodically (daily)."""
+        while self._running:
+            try:
+                from jarvis.skills.community.sync import RegistrySync
 
-            sync = RegistrySync(
-                community_dir=self._config.jarvis_home / "skills" / "community",
-                skill_registry=self._skill_registry if hasattr(self, "_skill_registry") else None,
-            )
-            result = await sync.sync_once()
-            if result.success:
-                log.info(
-                    "auto_update_sync_done",
-                    skills=result.registry_skills,
-                    recalls=len(result.new_recalls),
+                sync = RegistrySync(
+                    community_dir=self._config.jarvis_home / "skills" / "community",
+                    skill_registry=self._skill_registry
+                    if hasattr(self, "_skill_registry")
+                    else None,
                 )
-            else:
-                log.warning("auto_update_sync_failed", errors=result.errors)
-        except Exception as exc:
-            log.debug("auto_update_skipped", reason=str(exc))
+                result = await sync.sync_once()
+                if result.success:
+                    log.info(
+                        "auto_update_sync_done",
+                        skills=result.registry_skills,
+                        recalls=len(result.new_recalls),
+                    )
+                else:
+                    log.warning("auto_update_sync_failed", errors=result.errors)
+            except Exception as exc:
+                log.debug("auto_update_skipped", reason=str(exc))
+            await asyncio.sleep(86400)  # Daily
 
     async def shutdown(self) -> None:
         """Faehrt den Gateway sauber herunter mit Session-Persistierung."""
