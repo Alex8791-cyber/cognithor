@@ -390,6 +390,23 @@ class DeepLearner:
                 coverage=self._quality_assessor.check_coverage(subgoal),
             )
 
+        # Drain entity extraction queue (deferred from busy periods)
+        if builder.entity_queue_size > 0:
+            _gpu_free = not (
+                self._resource_monitor
+                and self._resource_monitor.last_snapshot
+                and self._resource_monitor.last_snapshot.is_busy
+            )
+            if _gpu_free:
+                drained = await builder.drain_entity_queue(max_items=10)
+                if drained:
+                    subgoal.entities_created += drained
+                    log.info(
+                        "deep_learner_entity_queue_drained",
+                        drained=drained,
+                        remaining=builder.entity_queue_size,
+                    )
+
         # Quality test — with timeout protection
         subgoal.status = "testing"
         import asyncio as _asyncio

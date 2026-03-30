@@ -173,6 +173,10 @@ class KnowledgeBuilder:
     1. vault_save — full document into Vault
     2. chunk_text + save_to_memory — semantic chunks
     3. extract_entities + add_entity / add_relation — knowledge graph
+
+    When ``skip_entity_extraction=True``, step 3 is queued instead of
+    skipped.  Call :meth:`drain_entity_queue` later (when the GPU is
+    free) to process all pending entity extractions.
     """
 
     def __init__(
@@ -188,6 +192,7 @@ class KnowledgeBuilder:
         self._goal_slug = goal_slug
         self._validator = knowledge_validator
         self._goal_index = goal_index
+        self._entity_queue: List[str] = []  # Deferred texts for entity extraction
 
     # ------------------------------------------------------------------
     # Public API
@@ -251,8 +256,16 @@ class KnowledgeBuilder:
             except Exception as exc:
                 result.errors.append(f"save_to_memory chunk {i} failed: {exc}")
 
-        # 3. Entity extraction + graph (skippable for cron/background builds)
-        if self._llm_fn is not None and not skip_entity_extraction:
+        # 3. Entity extraction + graph
+        if self._llm_fn is not None and skip_entity_extraction:
+            # Queue for later processing instead of blocking GPU now
+            self._entity_queue.append(fetch_result.text[:4000])
+            log.debug(
+                "entity_extraction_queued",
+                url=fetch_result.url[:50],
+                queue_size=len(self._entity_queue),
+            )
+        elif self._llm_fn is not None:
             entities, relations = await self.extract_entities(fetch_result.text)
             for entity in entities:
                 try:
@@ -320,6 +333,82 @@ class KnowledgeBuilder:
                 log.debug("knowledge_claims_extraction_failed", exc_info=True)
 
         return result
+
+    @property
+    def entity_queue_size(self) -> int:
+        """Number of texts waiting for entity extraction."""
+        return len(self._entity_queue)
+
+    async def drain_entity_queue(self, max_items: int = 5) -> int:
+        """Process queued entity extractions (call when GPU is free).
+
+        Args:
+            max_items: Max items to process in one batch.
+
+        Returns:
+            Number of items successfully processed.
+        """
+        if not self._llm_fn or not self._entity_queue:
+            return 0
+
+        processed = 0
+        while self._entity_queue and processed < max_items:
+            text = self._entity_queue.pop(0)
+            try:
+                entities, relations = await self.extract_entities(text)
+                for entity in entities:
+                    try:
+                        attrs = dict(entity.get("attributes", {}))
+                        attrs["domain"] = self._goal_slug
+                        await self._mcp.call_tool(
+                            "add_entity",
+                            {
+                                "name": entity["name"],
+                                "entity_type": entity["type"],
+                                "attributes": json.dumps(attrs, ensure_ascii=False),
+                                "source_file": "",
+                            },
+                        )
+                        if self._goal_index:
+                            try:
+                                self._goal_index.add_entity(
+                                    entity["name"], entity["type"], attrs, ""
+                                )
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                for rel in relations:
+                    try:
+                        await self._mcp.call_tool(
+                            "add_relation",
+                            {
+                                "source_name": rel["source"],
+                                "relation_type": rel["relation"],
+                                "target_name": rel["target"],
+                                "attributes": json.dumps({}, ensure_ascii=False),
+                            },
+                        )
+                        if self._goal_index:
+                            try:
+                                self._goal_index.add_relation(
+                                    rel["source"], rel["relation"], rel["target"]
+                                )
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                processed += 1
+                log.info(
+                    "entity_queue_drained",
+                    entities=len(entities),
+                    relations=len(relations),
+                    remaining=len(self._entity_queue),
+                )
+            except Exception:
+                log.debug("entity_queue_drain_failed", exc_info=True)
+                break  # LLM likely still busy, stop draining
+        return processed
 
     # ------------------------------------------------------------------
     # Chunking
