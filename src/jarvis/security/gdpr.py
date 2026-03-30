@@ -484,6 +484,42 @@ DEFAULT_RETENTION_POLICIES: list[RetentionPolicy] = [
 ]
 
 
+def build_retention_policies(retention_config: Any = None) -> list[RetentionPolicy]:
+    """Build retention policies from config, falling back to defaults.
+
+    Maps RetentionConfig fields to policy retention_days:
+      episodic_days → query_retention (90)
+      session_days → conversation_retention (180)
+      model_usage_log_days → telemetry_retention (365)
+      him_report_days → voice_retention (30)
+      vault_osint_days → memory_retention (365)
+    """
+    policies = list(DEFAULT_RETENTION_POLICIES)
+    if retention_config is None:
+        return policies
+
+    _map = {
+        "query_retention": "episodic_days",
+        "conversation_retention": "session_days",
+        "telemetry_retention": "model_usage_log_days",
+        "voice_retention": "him_report_days",
+        "memory_retention": "vault_osint_days",
+    }
+    for i, policy in enumerate(policies):
+        cfg_field = _map.get(policy.name)
+        if cfg_field:
+            val = getattr(retention_config, cfg_field, None)
+            if val is not None and val != policy.retention_days:
+                policies[i] = RetentionPolicy(
+                    name=policy.name,
+                    category=policy.category,
+                    retention_days=val,
+                    action=policy.action,
+                    description=policy.description,
+                )
+    return policies
+
+
 class RetentionEnforcer:
     """Enforces retention policies by identifying and marking expired records."""
 

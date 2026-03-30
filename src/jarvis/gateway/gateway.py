@@ -365,6 +365,10 @@ class Gateway:
         if getattr(self, "_prompt_evolution", None) and getattr(self, "_planner", None):
             self._planner._prompt_evolution = self._prompt_evolution
 
+        # D2: Wire confidence_manager to reflector (created in advanced, after PGE)
+        if getattr(self, "_confidence_manager", None) and getattr(self, "_reflector", None):
+            self._reflector._confidence_manager = self._confidence_manager
+
         # Wire prompt_evolution LLM client (meta-prompt generation)
         if getattr(self, "_prompt_evolution", None) and self._llm and self._model_router:
             try:
@@ -427,10 +431,12 @@ class Gateway:
             )
             if getattr(getattr(self._config, "compliance", None), "privacy_mode", False):
                 self._compliance_engine.set_privacy_mode(True)
-            # Wire GDPRComplianceManager for retention enforcement + erasure API
-            from jarvis.security.gdpr import GDPRComplianceManager
+            # Wire GDPRComplianceManager with retention config from config.yaml
+            from jarvis.security.gdpr import GDPRComplianceManager, build_retention_policies
 
-            self._gdpr_manager = GDPRComplianceManager()
+            _retention_cfg = getattr(self._config, "retention", None)
+            _policies = build_retention_policies(_retention_cfg)
+            self._gdpr_manager = GDPRComplianceManager(retention_policies=_policies)
             self._gdpr_compliance_manager = self._gdpr_manager  # alias for cron
             log.info("gdpr_compliance_engine_initialized")
         except Exception:

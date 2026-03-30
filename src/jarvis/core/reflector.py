@@ -120,6 +120,7 @@ class Reflector:
         weight_optimizer: Any = None,
         reward_calculator: Any = None,
         cost_tracker: Any = None,
+        confidence_manager: Any = None,
     ) -> None:
         """Initialisiert den Reflector mit LLM-Client und Model-Router.
 
@@ -133,6 +134,7 @@ class Reflector:
             weight_optimizer: Optionaler SearchWeightOptimizer fuer Such-Feedback.
             reward_calculator: Optionaler RewardCalculator fuer Composite-Scores.
             cost_tracker: Optionaler CostTracker fuer LLM-Kosten-Tracking.
+            confidence_manager: Optionaler KnowledgeConfidenceManager fuer Entity-Feedback.
         """
         self._config = config
         self._ollama = ollama
@@ -143,6 +145,7 @@ class Reflector:
         self._weight_optimizer = weight_optimizer
         self._reward_calculator = reward_calculator
         self._cost_tracker = cost_tracker
+        self._confidence_manager = confidence_manager
 
     # ------------------------------------------------------------------
     # Public API
@@ -974,6 +977,18 @@ Regeln:
                 )
                 indexer.upsert_relation(relation)
                 written += 1
+
+            # Confidence feedback: extracted facts validate entity knowledge
+            if self._confidence_manager and entity_id:
+                try:
+                    feedback_type = "positive" if fact.confidence >= 0.5 else "negative"
+                    self._confidence_manager.apply_feedback(
+                        entity_id,
+                        current_confidence=fact.confidence,
+                        feedback_type=feedback_type,
+                    )
+                except Exception:
+                    pass
 
         log.debug("reflection_wrote_semantic", count=written)
         return written
