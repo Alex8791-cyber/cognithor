@@ -381,18 +381,14 @@ if not errorlevel 1 (
 )
 
 :: Check if llama-server is installed
-set "LLAMA_SERVER=C:\Users\ArtiCall\AppData\Local\Microsoft\WinGet\Packages\ggml.llamacpp_Microsoft.Winget.Source_8wekyb3d8bbwe\llama-server.exe"
+set "LLAMA_SERVER=C:\Users\ArtiCall\llama-cpp-cuda\llama-server.exe"
 if not exist "%LLAMA_SERVER%" (
-    where llama-server >nul 2>&1
-    if errorlevel 1 (
-        echo   [ERROR] llama-server not found! Install with: winget install llama.cpp
-        goto :eof
-    )
-    set "LLAMA_SERVER=llama-server"
+    echo   [ERROR] llama-server CUDA build not found at %LLAMA_SERVER%
+    goto :eof
 )
 
-:: Find the qwen3.5:27b GGUF model (Ollama blob)
-set "LLAMA_MODEL=C:\Users\ArtiCall\.ollama\models\blobs\sha256-d4b8b4f4c350f5d322dc8235175eeae02d32c6f3fd70bdb9ea481e3abb7d7fc4"
+:: Official GGUF from Hugging Face (bartowski Q4_K_M)
+set "LLAMA_MODEL=C:\Users\ArtiCall\models\Qwen3.5-27B-Q4_K_M.gguf"
 if not exist "%LLAMA_MODEL%" (
     echo   [ERROR] qwen3.5:27b GGUF not found at %LLAMA_MODEL%
     echo          Run: ollama pull qwen3.5:27b
@@ -400,7 +396,7 @@ if not exist "%LLAMA_MODEL%" (
 )
 
 echo   [INFO] Starting llama-server (qwen3.5:27b, 252K context, KV Q8_0^)...
-start "llama-server" /MIN "%LLAMA_SERVER%" -m "%LLAMA_MODEL%" -c 258048 -ctk q8_0 -ctv q8_0 -ngl 99 -fa --port 8080 --host 0.0.0.0 -t 8
+start "llama-server" /MIN "%LLAMA_SERVER%" -m "%LLAMA_MODEL%" -c 258048 -ctk q8_0 -ctv q8_0 -ngl 99 -fa on --port 8080 --host 0.0.0.0 -t 8
 
 :: Wait for server to be ready (up to 60 seconds)
 echo   [INFO] Waiting for llama-server to load model...
