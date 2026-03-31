@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 
-__all__ = ["EvolutionLoop", "EvolutionCycleResult", "_match_goal_for_action"]
+__all__ = ["EvolutionCycleResult", "EvolutionLoop", "_match_goal_for_action"]
 
 
 def _match_goal_for_action(action: Any, goals: list) -> Any | None:
