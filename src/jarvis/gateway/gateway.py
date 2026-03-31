@@ -2378,7 +2378,14 @@ class Gateway:
             ),
             success=not any(r.is_error for r in all_results) if all_results else True,
         )
-        await self._run_post_processing(session, wm, agent_result, active_skill, run_id)
+        # Post-processing (reflection, skill tracking, telemetry) runs in background
+        # so handle_message returns the response immediately without blocking on
+        # the 30-60s reflection LLM call.
+        import asyncio as _aio_pp
+
+        _aio_pp.create_task(
+            self._run_post_processing(session, wm, agent_result, active_skill, run_id)
+        )
 
         # Complete explainability trail
         if getattr(self, "_explainability", None) and _expl_trail_id:
@@ -4391,6 +4398,64 @@ class Gateway:
             (is_coding, complexity) -- complexity ist "simple" oder "complex"
         """
         if not self._model_router or not self._llm:
+            return False, "simple"
+
+        # Fast-path: skip LLM call if message has no code signals at all.
+        # Saves 10-30s of GPU time for conversational messages.
+        _lower = user_message.lower()
+        _code_signals = (
+            "code",
+            "bug",
+            "fix",
+            "fehler",
+            "function",
+            "funktion",
+            "class",
+            "import",
+            "refactor",
+            "test",
+            "debug",
+            "compile",
+            "build",
+            "deploy",
+            "api",
+            "endpoint",
+            "database",
+            "sql",
+            "script",
+            "programm",
+            "implement",
+            "variable",
+            "return",
+            "async",
+            "await",
+            "exception",
+            "error",
+            "python",
+            "javascript",
+            "typescript",
+            "java",
+            "rust",
+            "golang",
+            "git",
+            "commit",
+            "merge",
+            "branch",
+            "pull request",
+            "pr ",
+            "datei",
+            "file",
+            "ordner",
+            "verzeichnis",
+            "pfad",
+            "```",
+            "def ",
+            "class ",
+            "const ",
+            "let ",
+            "var ",
+        )
+        if not any(sig in _lower for sig in _code_signals):
             return False, "simple"
 
         classify_prompt = (
