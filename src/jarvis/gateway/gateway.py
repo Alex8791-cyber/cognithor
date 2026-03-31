@@ -662,7 +662,7 @@ class Gateway:
         if self._llm and self._model_router:
 
             async def _evolution_llm_call(prompt: str) -> str:
-                model = self._model_router.select_model("planning", "medium")
+                model = self._model_router.select_model("summarization", "low")
                 resp = await self._llm.chat(
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
@@ -730,8 +730,9 @@ class Gateway:
                     if self._llm and self._model_router:
 
                         async def _entity_llm_call(prompt: str) -> str:
+                            _entity_model = self._model_router.select_model("summarization", "low")
                             resp = await self._llm.chat(
-                                model="qwen3:8b",
+                                model=_entity_model,
                                 messages=[{"role": "user", "content": prompt}],
                                 temperature=0.3,
                                 options={"num_predict": 2000},
