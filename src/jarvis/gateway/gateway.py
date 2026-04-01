@@ -352,6 +352,8 @@ class Gateway:
             self._exploration_executor._memory = self._memory_manager
         if getattr(self, "_knowledge_ingest", None) and self._memory_manager:
             self._knowledge_ingest._memory = self._memory_manager
+        if getattr(self, "_session_analyzer", None) and self._memory_manager:
+            self._session_analyzer._memory_manager = self._memory_manager
 
         # Wire DAG WorkflowEngine with MCP client + Gatekeeper
         if getattr(self, "_dag_workflow_engine", None):
