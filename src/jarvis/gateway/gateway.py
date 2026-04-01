@@ -4425,6 +4425,7 @@ class Gateway:
             "class",
             "import",
             "refactor",
+            "refaktor",
             "test",
             "debug",
             "compile",
