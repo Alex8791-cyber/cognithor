@@ -375,8 +375,6 @@ class TestATLAutoPersist:
     @pytest.mark.asyncio
     async def test_research_result_persisted(self):
         """search_and_read result flows through synthesis -> KnowledgeBuilder."""
-        from unittest.mock import AsyncMock, MagicMock
-
         from jarvis.evolution.loop import EvolutionLoop
 
         loop = EvolutionLoop.__new__(EvolutionLoop)
@@ -425,8 +423,6 @@ class TestATLAutoPersist:
 
     @pytest.mark.asyncio
     async def test_dedup_prevents_double_persist(self):
-        from unittest.mock import AsyncMock, MagicMock
-
         from jarvis.evolution.loop import EvolutionLoop
 
         loop = EvolutionLoop.__new__(EvolutionLoop)
@@ -455,8 +451,6 @@ class TestATLAutoPersist:
 
     @pytest.mark.asyncio
     async def test_no_persist_when_synthesis_returns_none(self):
-        from unittest.mock import AsyncMock, MagicMock
-
         from jarvis.evolution.loop import EvolutionLoop
 
         loop = EvolutionLoop.__new__(EvolutionLoop)

@@ -11,6 +11,10 @@ import contextlib
 import re
 from pathlib import Path
 
+from jarvis.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
 try:
     from jarvis.security.encrypted_file import efile as _efile
 except ImportError:  # encryption module not available
