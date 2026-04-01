@@ -234,6 +234,7 @@ def _score_source_confidence(url: str) -> float:
 
 # ── LLM JSON Parsing with Fallback ──────────────────────────────────
 
+
 def _parse_llm_json(raw: str, fallback_content: str, url: str) -> dict:
     """Parse LLM response with graceful degradation.
 
@@ -271,12 +272,14 @@ def _parse_llm_json(raw: str, fallback_content: str, url: str) -> dict:
         tags: list[str] = []
         if tags_m:
             tags = re.findall(r'"([^"]+)"', tags_m.group(1))
-        return _validate_parsed({
-            "summary": summary_m.group(1),
-            "memory_type": type_m.group(1) if type_m else "semantic",
-            "tags": tags,
-            "is_useful": (useful_m.group(1).lower() == "true") if useful_m else True,
-        })
+        return _validate_parsed(
+            {
+                "summary": summary_m.group(1),
+                "memory_type": type_m.group(1) if type_m else "semantic",
+                "tags": tags,
+                "is_useful": (useful_m.group(1).lower() == "true") if useful_m else True,
+            }
+        )
 
     # Tier 4: fallback
     return {
@@ -612,12 +615,12 @@ class KnowledgeBuilder:
         "Quelle: {url}\n\n"
         "Text:\n{text}\n\n"
         "Antworte NUR mit validem JSON:\n"
-        '{{\n'
+        "{{\n"
         '  "summary": "Praegnante Zusammenfassung in 3-8 Saetzen. Nur Fakten, kein Fuelltext.",\n'
         '  "memory_type": "semantic|procedural|episodic",\n'
         '  "tags": ["tag1", "tag2", "tag3"],\n'
         '  "is_useful": true/false\n'
-        '}}\n\n'
+        "}}\n\n"
         "Regeln:\n"
         '- memory_type "semantic" = Fakten, Wissen, Definitionen\n'
         '- memory_type "procedural" = Anleitungen, Prozesse, How-To\n'

@@ -453,12 +453,14 @@ class TestParseLLMJson:
     def test_tier1_valid_json(self):
         from jarvis.evolution.knowledge_builder import _parse_llm_json
 
-        raw = json.dumps({
-            "summary": "Das VVG regelt Versicherungen.",
-            "memory_type": "semantic",
-            "tags": ["versicherung", "recht"],
-            "is_useful": True,
-        })
+        raw = json.dumps(
+            {
+                "summary": "Das VVG regelt Versicherungen.",
+                "memory_type": "semantic",
+                "tags": ["versicherung", "recht"],
+                "is_useful": True,
+            }
+        )
         result = _parse_llm_json(raw, "fallback text", "https://example.com")
         assert result["summary"] == "Das VVG regelt Versicherungen."
         assert result["memory_type"] == "semantic"
@@ -494,7 +496,9 @@ class TestParseLLMJson:
         from jarvis.evolution.knowledge_builder import _parse_llm_json
 
         raw = "I cannot process this request. Here is some random text."
-        result = _parse_llm_json(raw, "Original article about insurance law and regulation.", "https://example.com")
+        result = _parse_llm_json(
+            raw, "Original article about insurance law and regulation.", "https://example.com"
+        )
         assert result["summary"] == "Original article about insurance law and regulation."
         assert result["memory_type"] == "semantic"
         assert result["tags"] == []
@@ -510,12 +514,14 @@ class TestParseLLMJson:
     def test_is_useful_false_parsed(self):
         from jarvis.evolution.knowledge_builder import _parse_llm_json
 
-        raw = json.dumps({
-            "summary": "Nichts relevantes.",
-            "memory_type": "semantic",
-            "tags": [],
-            "is_useful": False,
-        })
+        raw = json.dumps(
+            {
+                "summary": "Nichts relevantes.",
+                "memory_type": "semantic",
+                "tags": [],
+                "is_useful": False,
+            }
+        )
         result = _parse_llm_json(raw, "fallback", "https://example.com")
         assert result["is_useful"] is False
 
@@ -523,7 +529,7 @@ class TestParseLLMJson:
         from jarvis.evolution.knowledge_builder import _parse_llm_json
 
         raw = (
-            '<think>Let me analyze this text.</think>\n'
+            "<think>Let me analyze this text.</think>\n"
             '{"summary": "Nach dem Denken.", "memory_type": "semantic", '
             '"tags": ["ki"], "is_useful": true}'
         )
@@ -531,12 +537,14 @@ class TestParseLLMJson:
         assert result["summary"] == "Nach dem Denken."
 
 
-_LLM_SUMMARY_JSON = json.dumps({
-    "summary": "Das VVG regelt die Rechtsbeziehungen zwischen Versicherungsnehmer und Versicherer.",
-    "memory_type": "semantic",
-    "tags": ["versicherung", "vvg", "recht"],
-    "is_useful": True,
-})
+_LLM_SUMMARY_JSON = json.dumps(
+    {
+        "summary": "Das VVG regelt die Rechtsbeziehungen zwischen Versicherungsnehmer und Versicherer.",
+        "memory_type": "semantic",
+        "tags": ["versicherung", "vvg", "recht"],
+        "is_useful": True,
+    }
+)
 
 
 async def _mock_summary_llm(prompt: str) -> str:
@@ -570,7 +578,11 @@ class TestSummarizeForIdentity:
         mm.sync_document_to_identity.assert_called_once()
         call_args = mm.sync_document_to_identity.call_args
         # Check summary contains VVG (from LLM response)
-        summary_arg = call_args.kwargs.get("summary", "") if call_args.kwargs else call_args[1].get("summary", "")
+        summary_arg = (
+            call_args.kwargs.get("summary", "")
+            if call_args.kwargs
+            else call_args[1].get("summary", "")
+        )
         assert "VVG" in summary_arg
 
     @pytest.mark.asyncio
@@ -614,6 +626,7 @@ class TestSummarizeForIdentity:
         mm.sync_document_to_identity = MagicMock()
 
         llm_call_count = 0
+
         async def counting_llm(prompt: str) -> str:
             nonlocal llm_call_count
             llm_call_count += 1
@@ -631,7 +644,11 @@ class TestSummarizeForIdentity:
 
         mm.sync_document_to_identity.assert_called_once()
         call_args = mm.sync_document_to_identity.call_args
-        confidence = call_args.kwargs.get("confidence", 0) if call_args.kwargs else call_args[1].get("confidence", 0)
+        confidence = (
+            call_args.kwargs.get("confidence", 0)
+            if call_args.kwargs
+            else call_args[1].get("confidence", 0)
+        )
         assert confidence == 0.5  # example.com -> default
 
     @pytest.mark.asyncio
@@ -687,12 +704,14 @@ class TestSummarizeForIdentity:
 
         async def useless_llm(prompt: str) -> str:
             if "Wissenskurator" in prompt:
-                return json.dumps({
-                    "summary": "Nichts relevantes.",
-                    "memory_type": "semantic",
-                    "tags": [],
-                    "is_useful": False,
-                })
+                return json.dumps(
+                    {
+                        "summary": "Nichts relevantes.",
+                        "memory_type": "semantic",
+                        "tags": [],
+                        "is_useful": False,
+                    }
+                )
             return _LLM_ENTITY_JSON
 
         mcp = _make_mcp()
