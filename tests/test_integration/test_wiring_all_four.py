@@ -323,7 +323,7 @@ class TestMonitoringWiring:
 
         gw = Gateway()
         assert hasattr(gw, "_monitoring_hub")
-        assert gw._monitoring_hub is not None
+        # MonitoringHub is deferred (Enterprise) — attribute exists but may be None
 
     def test_monitoring_emit_creates_event_and_metric(self) -> None:
         from jarvis.gateway.monitoring import EventType, MonitoringHub

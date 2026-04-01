@@ -51,6 +51,7 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         "evolution_orchestrator": None,
         "hashline_guard": None,
         "strategy_memory": None,
+        "monitoring_hub": None,
     }
 
     # ── Enterprise Placeholders (deferred) ──────────────────────────────
