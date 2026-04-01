@@ -1216,7 +1216,7 @@ class WebTools:
 
     async def search_and_read(
         self,
-        query: str,
+        query: str = "",
         num_results: int = 3,
         language: str = "de",
         cross_check: bool = False,
@@ -1234,6 +1234,8 @@ class WebTools:
         Returns:
             Zusammengefasste Inhalte der Top-Ergebnisse.
         """
+        if not query or not query.strip():
+            return "Fehler: 'query' ist erforderlich fuer search_and_read."
         search_results = await self.web_search(query, num_results, language)
 
         # URLs aus den Suchergebnissen extrahieren (begrenzt auf num_results)

@@ -662,12 +662,22 @@ class Gateway:
         if self._llm and self._model_router:
 
             async def _evolution_llm_call(prompt: str) -> str:
+                import asyncio as _evo_aio
+
                 model = self._model_router.select_model("summarization", "low")
-                resp = await self._llm.chat(
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7,
-                )
+                try:
+                    resp = await _evo_aio.wait_for(
+                        self._llm.chat(
+                            model=model,
+                            messages=[{"role": "user", "content": prompt}],
+                            temperature=0.7,
+                            options={"num_predict": 2000},
+                        ),
+                        timeout=120,  # ATL calls fail fast, don't block 10min
+                    )
+                except _evo_aio.TimeoutError:
+                    log.debug("evolution_llm_timeout", model=model)
+                    return ""
                 return resp.get("message", {}).get("content", "")
 
             self._llm_call = _evolution_llm_call

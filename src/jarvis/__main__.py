@@ -374,6 +374,22 @@ def main() -> None:
         api_server = None
         _bg_tasks: set[asyncio.Task[Any]] = set()
 
+        # Suppress harmless ConnectionResetError from Windows ProactorEventLoop
+        # when WebSocket clients disconnect abruptly.
+        _loop = asyncio.get_running_loop()
+        _orig_handler = _loop.get_exception_handler()
+
+        def _quiet_exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+            exc = context.get("exception")
+            if isinstance(exc, ConnectionResetError):
+                return  # Silently ignore WS disconnect noise
+            if _orig_handler:
+                _orig_handler(loop, context)
+            else:
+                loop.default_exception_handler(context)
+
+        _loop.set_exception_handler(_quiet_exception_handler)
+
         try:
             # Initialize all subsystems
             await gateway.initialize()
