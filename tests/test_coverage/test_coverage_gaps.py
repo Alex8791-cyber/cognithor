@@ -746,7 +746,9 @@ class TestGatewayIntegration:
 
     @pytest.mark.asyncio()
     async def test_handle_message_with_reflection(self, gateway):
-        """Reflexion wird nach erfolgreicher Antwort ausgeführt."""
+        """Reflexion wird nach erfolgreicher Antwort ausgeführt (background task)."""
+        import asyncio
+
         from jarvis.models import ActionPlan, IncomingMessage, ReflectionResult
 
         gateway._planner.plan.return_value = ActionPlan(
@@ -762,9 +764,15 @@ class TestGatewayIntegration:
                 evaluation="Alles gut",
             )
         )
+        gateway._reflector.apply = AsyncMock(
+            return_value={"episodic": 1, "semantic": 0, "procedural": 0}
+        )
 
         msg = IncomingMessage(channel="cli", user_id="alex", text="Hallo")
         response = await gateway.handle_message(msg)
+
+        # Reflection runs as background task — give it a chance to execute
+        await asyncio.sleep(0.05)
 
         assert response.text == "Fertig!"
         gateway._reflector.reflect.assert_awaited_once()
