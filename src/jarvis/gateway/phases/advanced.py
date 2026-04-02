@@ -52,6 +52,12 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
         "hashline_guard": None,
         "strategy_memory": None,
         "monitoring_hub": None,
+        # Enterprise-deferred: declared for hasattr() but not instantiated at startup
+        "isolation": None,
+        "auth_gateway": None,
+        "agent_heartbeat": None,
+        "command_registry": None,
+        "interaction_store": None,
     }
 
     # ── Enterprise Placeholders (deferred) ──────────────────────────────

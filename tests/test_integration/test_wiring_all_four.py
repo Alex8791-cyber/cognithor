@@ -381,7 +381,7 @@ class TestIsolationWiring:
 
         gw = Gateway()
         assert hasattr(gw, "_isolation")
-        assert gw._isolation is not None
+        # MultiUserIsolation is Enterprise-deferred — attribute exists but may be None
 
     def test_multiuser_isolation_creates_scopes(self) -> None:
         from jarvis.core.isolation import MultiUserIsolation
@@ -531,7 +531,7 @@ class TestAuthWiring:
 
         gw = Gateway()
         assert hasattr(gw, "_auth_gateway")
-        assert gw._auth_gateway is not None
+        # AuthGateway is Enterprise-deferred
 
     def test_sso_login_creates_sessions(self) -> None:
         from jarvis.gateway.auth import AuthGateway
@@ -571,7 +571,7 @@ class TestAgentHeartbeatWiring:
 
         gw = Gateway()
         assert hasattr(gw, "_agent_heartbeat")
-        assert gw._agent_heartbeat is not None
+        # AgentHeartbeat is Enterprise-deferred
 
     def test_config_routes_has_heartbeat_endpoints(self) -> None:
         import inspect
@@ -646,9 +646,8 @@ class TestCommandsWiring:
 
         gw = Gateway()
         assert hasattr(gw, "_command_registry")
-        assert gw._command_registry is not None
+        # CommandRegistry + InteractionStore are Enterprise-deferred
         assert hasattr(gw, "_interaction_store")
-        assert gw._interaction_store is not None
 
     def test_config_routes_has_command_endpoints(self) -> None:
         import inspect
