@@ -136,6 +136,104 @@ class CUAgentExecutor:
         ]
         return json.dumps(compact, ensure_ascii=False, indent=None)
 
+    async def execute(
+        self,
+        goal: str,
+        initial_plan: ActionPlan,
+        status_callback: Callable | None = None,
+        cancel_check: Callable | None = None,
+    ) -> CUAgentResult:
+        """Run the CU agent loop until done or aborted."""
+        result = CUAgentResult()
+        start = time.monotonic()
+
+        async def _status(phase: str, msg: str) -> None:
+            if status_callback:
+                try:
+                    await status_callback(phase, msg)
+                except Exception:
+                    pass
+
+        # Execute initial plan steps
+        await _status("computer_use", f"Starte: {goal[:60]}...")
+        for step in initial_plan.steps:
+            tool_result = await self._execute_tool(step.tool, step.params)
+            result.tool_results.append(tool_result)
+            self._action_history.append(
+                f"{step.tool}({self._format_params(step.params)}) "
+                f"-> {'OK' if tool_result.success else 'FAIL'}"
+            )
+
+        # Main agent loop: screenshot → decide → act
+        while True:
+            result.iterations += 1
+
+            abort = self._check_abort(result, start, cancel_check)
+            if abort:
+                result.abort_reason = abort
+                break
+
+            await _status(
+                "computer_use",
+                f"Schritt {result.iterations}/{self._config.max_iterations}: "
+                f"Analysiere Bildschirm...",
+            )
+
+            screenshot = await self._take_and_analyze_screenshot()
+            if not screenshot:
+                self._action_history.append("computer_screenshot() -> FAIL")
+                continue
+
+            result.final_screenshot_description = screenshot.get("description", "")
+
+            decision = await self._decide_next_step(goal, screenshot)
+
+            if decision is None:
+                self._action_history.append("decide() -> no valid action")
+                continue
+
+            if decision.get("done"):
+                result.success = True
+                result.abort_reason = "done"
+                summary = decision.get("summary", "")
+                self._action_history.append(f"DONE: {summary}")
+                break
+
+            if decision.get("tool") == "extract_text":
+                text = await self._extract_text_from_screen()
+                if text:
+                    result.extracted_content += text + "\n\n"
+                    self._action_history.append(f"extract_text() -> {len(text)} chars")
+                continue
+
+            tool = decision["tool"]
+            params = decision.get("params", {})
+            await _status("computer_use", f"Schritt {result.iterations}: {tool}...")
+
+            tool_result = await self._execute_tool(tool, params)
+            result.tool_results.append(tool_result)
+            self._action_history.append(
+                f"{tool}({self._format_params(params)}) "
+                f"-> {'OK' if tool_result.success else 'FAIL'}"
+            )
+
+            action_key = f"{tool}:{sorted(params.items())}"
+            self._recent_actions.append(action_key)
+            if len(self._recent_actions) > self._config.stuck_detection_threshold:
+                self._recent_actions.pop(0)
+
+        result.duration_ms = int((time.monotonic() - start) * 1000)
+        result.action_history = list(self._action_history)
+        log.info(
+            "cu_agent_complete",
+            success=result.success,
+            iterations=result.iterations,
+            duration_ms=result.duration_ms,
+            abort_reason=result.abort_reason,
+            actions=len(self._action_history),
+        )
+        return result
+
     def _parse_tool_decision(self, raw: str) -> dict | None:
         """Parse a single tool call from the planner response."""
         # Tier 1: direct JSON parse

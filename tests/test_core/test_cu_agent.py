@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from jarvis.core.cu_agent import CUAgentConfig, CUAgentExecutor, CUAgentResult
+from jarvis.models import ActionPlan, PlannedAction
 
 
 class TestCUAgentConfig:
@@ -145,3 +146,99 @@ class TestCUToolExecution:
 
         assert result.is_error is True
         assert "pyautogui crash" in result.content
+
+
+class TestCUAgentExecuteLoop:
+    """Tests for the full execute() loop."""
+
+    @pytest.mark.asyncio
+    async def test_happy_path_done_in_3_iterations(self):
+        """Agent: exec → screenshot(sees window) → decide(DONE)."""
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        planner._ollama.chat = AsyncMock(side_effect=[
+            {"message": {"content": '{"tool": "computer_click", "params": {"x": 200, "y": 300}, "rationale": "click window"}'}},
+            {"message": {"content": "DONE: Taschenrechner zeigt 459"}},
+        ])
+
+        mcp = MagicMock()
+        screenshot_handler = AsyncMock(return_value={
+            "success": True, "width": 1920, "height": 1080,
+            "description": "Rechner sichtbar",
+            "elements": [{"name": "Rechner", "type": "window", "x": 200, "y": 300, "clickable": True}],
+        })
+        click_handler = AsyncMock(return_value={"success": True})
+        exec_handler = AsyncMock(return_value="OK")
+        mcp._builtin_handlers = {
+            "computer_screenshot": screenshot_handler,
+            "computer_click": click_handler,
+            "exec_command": exec_handler,
+        }
+
+        initial_plan = ActionPlan(
+            goal="Rechner oeffnen",
+            steps=[PlannedAction(tool="exec_command", params={"command": "start calc.exe"}, rationale="start")],
+        )
+
+        agent = CUAgentExecutor(planner, mcp, MagicMock(), MagicMock(), {})
+        result = await agent.execute(goal="Rechner oeffnen", initial_plan=initial_plan)
+
+        assert result.success is True
+        assert result.abort_reason == "done"
+        assert result.iterations >= 1
+        assert len(result.action_history) >= 2
+        assert "459" in str(result.action_history)
+
+    @pytest.mark.asyncio
+    async def test_abort_on_max_iterations(self):
+        """Agent stops after max_iterations."""
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        planner._ollama.chat = AsyncMock(return_value={
+            "message": {"content": '{"tool": "computer_click", "params": {"x": 100, "y": 100}}'},
+        })
+
+        mcp = MagicMock()
+        mcp._builtin_handlers = {
+            "computer_screenshot": AsyncMock(return_value={
+                "success": True, "description": "screen", "elements": [],
+            }),
+            "computer_click": AsyncMock(return_value={"success": True}),
+        }
+
+        config = CUAgentConfig(max_iterations=3)
+        agent = CUAgentExecutor(planner, mcp, MagicMock(), MagicMock(), {}, config)
+
+        initial_plan = ActionPlan(goal="test", steps=[])
+        result = await agent.execute(goal="test", initial_plan=initial_plan)
+
+        assert result.success is False
+        assert result.abort_reason == "max_iterations"
+        assert result.iterations == 3
+
+    @pytest.mark.asyncio
+    async def test_abort_on_user_cancel(self):
+        """Agent stops when cancel_check returns True."""
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        planner._ollama.chat = AsyncMock(return_value={
+            "message": {"content": '{"tool": "computer_click", "params": {"x": 1, "y": 1}}'},
+        })
+
+        mcp = MagicMock()
+        mcp._builtin_handlers = {
+            "computer_screenshot": AsyncMock(return_value={
+                "success": True, "description": "screen", "elements": [],
+            }),
+            "computer_click": AsyncMock(return_value={"success": True}),
+        }
+
+        agent = CUAgentExecutor(planner, mcp, MagicMock(), MagicMock(), {})
+        result = await agent.execute(
+            goal="test",
+            initial_plan=ActionPlan(goal="test", steps=[]),
+            cancel_check=lambda: True,
+        )
+
+        assert result.abort_reason == "user_cancel"
+        assert result.iterations <= 1
