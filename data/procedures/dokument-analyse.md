@@ -1,6 +1,6 @@
 ---
 name: dokument-analyse
-trigger_keywords: [Dokument, analysieren, PDF, Vertrag, Angebot, zusammenfassen, DOCX, Analyse, auswerten, Bericht, Protokoll]
+trigger_keywords: [Dokument, analysieren, PDF, Vertrag, Angebot, DOCX, Analyse, auswerten, Bericht, Protokoll]
 tools_required: [media_extract_text, analyze_document, vault_save]
 category: analysis
 priority: 5

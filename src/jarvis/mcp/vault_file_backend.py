@@ -359,17 +359,35 @@ class VaultFileBackend(VaultBackend):
         return (self._vault_root / path).exists()
 
     def find_note(self, identifier: str) -> NoteData | None:
-        # 1. Direct path
-        note = self.read(identifier)
-        if note:
-            return note
-        # 2. Index by title
+        # Normalize path separators
+        normalized = identifier.replace("\\", "/")
+
+        # 1. Direct path (try both original and normalized)
+        for path_variant in (identifier, normalized):
+            note = self.read(path_variant)
+            if note:
+                return note
+
+        # 2. Try with .md extension if not present
+        if not normalized.endswith(".md"):
+            note = self.read(normalized + ".md")
+            if note:
+                return note
+
+        # 3. Index by title (case-insensitive)
+        id_lower = identifier.lower().strip()
         index = self._read_index()
         for title, meta in index.items():
-            if title.lower() == identifier.lower():
+            if title.lower() == id_lower:
                 return self.read(meta["path"])
-        # 3. Slug search
-        slug = identifier.lower().replace(" ", "-")
+
+        # 4. Index by partial title match
+        for title, meta in index.items():
+            if id_lower in title.lower() or title.lower() in id_lower:
+                return self.read(meta["path"])
+
+        # 5. Slug search across filesystem
+        slug = id_lower.replace(" ", "-")
         for md_file in self._vault_root.rglob("*.md"):
             if slug in md_file.stem.lower():
                 rel = str(md_file.relative_to(self._vault_root))

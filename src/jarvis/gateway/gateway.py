@@ -3130,7 +3130,7 @@ class Gateway:
                     )
                     break
                 final_response = (
-                    "I couldn't create a plan for this. Could you rephrase your question?"
+                    "Ich konnte keinen Plan dafuer erstellen. Kannst du deine Frage umformulieren?"
                 )
                 break
 
