@@ -324,38 +324,42 @@ class Executor:
             async with semaphore:
                 result = await self._execute_single(action.tool, params)
 
-                # After launching a GUI app, wait then focus it via Windows API
+                # After launching a GUI app, wait then focus via vision
                 if action.tool == "exec_command" and result.success and _has_computer_use:
                     await asyncio.sleep(2.0)
-                    # Focus the most recently created window (UWP apps like
-                    # Calculator run as ApplicationFrameHost, so process name
-                    # matching doesn't work — use the newest visible window)
+                    # Vision-based focusing: screenshot → find window → click
                     try:
-                        import subprocess as _sp
-
-                        _ps = (
-                            "Add-Type -Name W -Namespace W -Member "
-                            '\'[DllImport("user32.dll")] public static extern bool '
-                            "SetForegroundWindow(IntPtr h);"
-                            '[DllImport("user32.dll")] public static extern IntPtr '
-                            "GetForegroundWindow();';"
-                            "$all = Get-Process | Where-Object "
-                            "{$_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -ne ''} "
-                            "| Sort-Object StartTime -Descending | Select-Object -First 1;"
-                            "if ($all) { [W.W]::SetForegroundWindow($all.MainWindowHandle) }"
+                        _ss_handler = self._mcp_client._builtin_handlers.get(
+                            "computer_screenshot"
                         )
-                        loop = asyncio.get_running_loop()
-                        await loop.run_in_executor(
-                            None,
-                            lambda: _sp.run(
-                                ["powershell", "-NoProfile", "-Command", _ps],
-                                capture_output=True,
-                                timeout=5,
-                            ),
+                        _click_handler = self._mcp_client._builtin_handlers.get(
+                            "computer_click"
                         )
-                        await asyncio.sleep(0.5)
+                        if _ss_handler and _click_handler:
+                            _ss = await _ss_handler()
+                            _elements = _ss.get("elements", [])
+                            _windows = [
+                                e
+                                for e in _elements
+                                if e.get("type") == "window" and e.get("clickable", True)
+                            ]
+                            if _windows:
+                                _target = _windows[0]
+                                await _click_handler(x=_target["x"], y=_target["y"])
+                                await asyncio.sleep(0.3)
+                                log.info(
+                                    "vision_focus_window",
+                                    name=_target.get("name", "?"),
+                                    x=_target["x"],
+                                    y=_target["y"],
+                                )
+                            else:
+                                log.debug(
+                                    "vision_focus_no_windows_found",
+                                    elements=len(_elements),
+                                )
                     except Exception:
-                        pass  # Best effort
+                        log.debug("vision_focus_failed", exc_info=True)
 
             results[idx] = result
             if result.success:

@@ -521,6 +521,19 @@ class Gatekeeper:
         if tool in self._disabled_tools:
             return RiskLevel.RED
 
+        # Computer Use active tools: GREEN when user opted in via config
+        _tools_cfg = getattr(self._config, "tools", None)
+        if getattr(_tools_cfg, "computer_use_enabled", False):
+            _cu_active = {
+                "computer_click",
+                "computer_type",
+                "computer_hotkey",
+                "computer_scroll",
+                "computer_drag",
+            }
+            if tool in _cu_active:
+                return RiskLevel.GREEN
+
         # GREEN: Read-Only Operationen
         green_tools = {
             "read_file",
