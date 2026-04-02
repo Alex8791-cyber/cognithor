@@ -216,5 +216,5 @@ class TestToolSchemas:
     def test_schema_count(self) -> None:
         from jarvis.mcp.media import MEDIA_TOOL_SCHEMAS
 
-        # 8 original + 3 new = 11
-        assert len(MEDIA_TOOL_SCHEMAS) == 11
+        # 8 original + 3 read_* + 5 new (typst_render, template_list, template_render, read_xlsx, read_ppt) = 16
+        assert len(MEDIA_TOOL_SCHEMAS) == 16
