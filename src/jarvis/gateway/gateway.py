@@ -2726,6 +2726,17 @@ class Gateway:
             working_memory=wm,
         )
 
+    @staticmethod
+    def _is_cu_plan(plan: ActionPlan) -> bool:
+        """Check if a plan uses Computer Use tools."""
+        _CU_TOOLS = frozenset({
+            "computer_screenshot", "computer_click", "computer_type",
+            "computer_hotkey", "computer_scroll", "computer_drag",
+        })
+        return plan.has_actions and any(
+            step.tool in _CU_TOOLS for step in plan.steps
+        )
+
     async def _run_pge_loop(
         self,
         msg: IncomingMessage,
@@ -3018,6 +3029,53 @@ class Gateway:
                 except Exception:
                     log.debug("run_recorder_plan_failed", exc_info=True)
 
+            # Computer Use: delegate to CUAgentExecutor for multi-turn interaction
+            if self._is_cu_plan(plan):
+                from jarvis.core.cu_agent import CUAgentConfig, CUAgentExecutor
+
+                _vision_model = getattr(self._config, "vision_model", "qwen3-vl:32b")
+                cu_agent = CUAgentExecutor(
+                    planner=self._planner,
+                    mcp_client=self._mcp_client,
+                    gatekeeper=self._gatekeeper,
+                    working_memory=wm,
+                    tool_schemas=tool_schemas,
+                    config=CUAgentConfig(
+                        max_iterations=30,
+                        max_duration_seconds=480,
+                        vision_model=_vision_model,
+                    ),
+                )
+                cu_result = await cu_agent.execute(
+                    goal=msg.text,
+                    initial_plan=plan,
+                    status_callback=_status_cb,
+                    cancel_check=lambda: msg.session_id in self._cancelled_sessions,
+                )
+                all_results.extend(cu_result.tool_results)
+                if cu_result.action_history:
+                    wm.add_message(
+                        Message(
+                            role=MessageRole.SYSTEM,
+                            content=(
+                                "[Computer Use Ergebnis]\n"
+                                + "\n".join(cu_result.action_history[-10:])
+                                + f"\n\nAbschluss: {cu_result.abort_reason}"
+                                + (
+                                    f"\nExtrahierter Text:\n{cu_result.extracted_content[:2000]}"
+                                    if cu_result.extracted_content
+                                    else ""
+                                )
+                            ),
+                            channel=msg.channel,
+                        )
+                    )
+                await _status_cb("finishing", "Formuliere Antwort...")
+                final_response = await self._formulate_response(
+                    msg.text, all_results, wm, stream_callback,
+                )
+                break
+
             # JSON parse failed even after retry — recover gracefully
             if getattr(plan, "parse_failed", False):
                 log.warning(
@@ -3068,46 +3126,6 @@ class Gateway:
                         no_tool_streak=_consecutive_no_tool_iters,
                         preview=_resp[:100],
                     )
-                    # Computer Use: if previous iteration had successful CU tools,
-                    # take a verification screenshot then formulate response.
-                    # This prevents double execution while still verifying success.
-                    _CU_DONE = {"computer_type", "computer_click", "computer_hotkey"}
-                    if all_results and any(
-                        r.success and r.tool_name in _CU_DONE for r in all_results
-                    ):
-                        log.info("computer_use_verify_screenshot", reason="CU tools succeeded")
-                        # Take verification screenshot so LLM can see the result
-                        _verify_desc = ""
-                        try:
-                            _cu_handler = self._mcp_client._builtin_handlers.get(
-                                "computer_screenshot"
-                            )
-                            if _cu_handler:
-                                _ss_result = await _cu_handler()
-                                _verify_desc = _ss_result.get("description", "")
-                                if _verify_desc:
-                                    all_results.append(
-                                        ToolResult(
-                                            tool_name="computer_screenshot",
-                                            content=f"Verification screenshot: {_verify_desc}",
-                                            is_error=False,
-                                        )
-                                    )
-                                    log.info(
-                                        "computer_use_verified",
-                                        description_len=len(_verify_desc),
-                                    )
-                        except Exception:
-                            log.debug("computer_use_verify_failed", exc_info=True)
-
-                        await _status_cb("finishing", "Composing response...")
-                        final_response = await self._formulate_response(
-                            msg.text,
-                            all_results,
-                            wm,
-                            stream_callback,
-                        )
-                        break
                     # On first iteration with no tool results, the LLM is
                     # hallucinating REPLAN text for a conversational message.
                     # Don't retry — immediately formulate a direct response.

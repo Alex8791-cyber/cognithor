@@ -120,3 +120,37 @@ class TestGatekeeperCUClassification:
         for tool in ["computer_click", "computer_type", "computer_hotkey"]:
             action = PlannedAction(tool=tool, params={}, rationale="test")
             assert gk._classify_risk(action).name == "YELLOW", f"{tool} must be YELLOW"
+
+
+class TestGatewayCUDetection:
+    """Tests for _is_cu_plan detection."""
+
+    def test_cu_plan_with_computer_click(self):
+        from jarvis.gateway.gateway import Gateway
+        from jarvis.models import ActionPlan, PlannedAction
+
+        plan = ActionPlan(
+            goal="test",
+            steps=[
+                PlannedAction(tool="exec_command", params={"command": "calc.exe"}, rationale="start"),
+                PlannedAction(tool="computer_click", params={"x": 100, "y": 200}, rationale="click"),
+            ],
+        )
+        assert Gateway._is_cu_plan(plan) is True
+
+    def test_non_cu_plan(self):
+        from jarvis.gateway.gateway import Gateway
+        from jarvis.models import ActionPlan, PlannedAction
+
+        plan = ActionPlan(
+            goal="test",
+            steps=[PlannedAction(tool="web_search", params={"query": "test"}, rationale="search")],
+        )
+        assert Gateway._is_cu_plan(plan) is False
+
+    def test_direct_response_not_cu(self):
+        from jarvis.gateway.gateway import Gateway
+        from jarvis.models import ActionPlan
+
+        plan = ActionPlan(goal="test", direct_response="Hello!")
+        assert Gateway._is_cu_plan(plan) is False
