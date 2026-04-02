@@ -260,6 +260,23 @@ class Executor:
         if max_parallel is None:
             max_parallel = self._max_parallel
 
+        # --- Computer Use: force sequential execution ---
+        # When computer_* tools are in the plan, they MUST run one-by-one
+        # because each step depends on the screen state from the previous.
+        _CU_TOOLS = frozenset(
+            {
+                "computer_screenshot",
+                "computer_click",
+                "computer_type",
+                "computer_hotkey",
+                "computer_scroll",
+                "computer_drag",
+            }
+        )
+        _has_computer_use = any(a.tool in _CU_TOOLS for a in actions)
+        if _has_computer_use:
+            max_parallel = 1
+
         # --- Build DAG from actions ---
         plan = ActionPlan(goal="execution", steps=actions)
         graph = PlanGraph.from_action_plan(plan)
@@ -306,6 +323,10 @@ class Executor:
 
             async with semaphore:
                 result = await self._execute_single(action.tool, params)
+
+                # After launching a GUI app, wait for it to appear
+                if action.tool == "exec_command" and result.success and _has_computer_use:
+                    await asyncio.sleep(1.5)
 
             results[idx] = result
             if result.success:
