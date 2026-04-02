@@ -136,6 +136,19 @@ Beispiel -- "Was weisst du ueber Projekt Alpha?":
 "rationale": "Memory durchsuchen"}}], "confidence": 0.9}}
 ```
 
+Beispiel -- "Oeffne den Taschenrechner und tippe 1+4=":
+```json
+{{"goal": "Taschenrechner oeffnen und Rechnung eintippen", \
+"reasoning": "Desktop-Automation: erst oeffnen, dann Screenshot, dann tippen.", \
+"steps": [\
+{{"tool": "exec_command", "params": {{"command": "start calc.exe"}}, \
+"rationale": "Taschenrechner starten"}}, \
+{{"tool": "computer_screenshot", "params": {{}}, \
+"rationale": "Bildschirm ansehen um Taschenrechner-Position zu finden"}}, \
+{{"tool": "computer_type", "params": {{"text": "1+4="}}, \
+"rationale": "Rechnung eintippen"}}], "confidence": 0.85}}
+```
+
 ## Wichtige Prinzipien
 
 **Aktualitaet:** Bei EXTERNEN Fakten, Nachrichten, Zahlen -- Web-Recherche nutzen. \
