@@ -324,16 +324,6 @@ class Executor:
             async with semaphore:
                 result = await self._execute_single(action.tool, params)
 
-                # After launching a GUI app, poll for window then focus via vision
-                if action.tool == "exec_command" and result.success and _has_computer_use:
-                    await self._cu_wait_and_focus()
-
-                # Before computer_type/hotkey: ensure a window is focused.
-                # If the planner skipped computer_screenshot + computer_click
-                # (common with qwen3.5), auto-inject them as a safety net.
-                if action.tool in ("computer_type", "computer_hotkey") and _has_computer_use:
-                    await self._cu_ensure_focus()
-
             results[idx] = result
             if result.success:
                 completed_ids.add(nid)
@@ -398,92 +388,6 @@ class Executor:
                 )
 
         return results  # type: ignore[return-value]
-
-    # ── Computer Use helpers ─────────────────────────────────────────
-
-    async def _cu_wait_and_focus(self, max_wait: float = 15.0) -> None:
-        """Poll for a new window after exec_command, then click to focus.
-
-        Instead of a hardcoded sleep, polls via computer_screenshot every
-        1s until a window element appears or max_wait is reached. This
-        handles vision model swap time (qwen3-vl:32b loading) gracefully.
-        """
-        _ss = self._mcp_client._builtin_handlers.get("computer_screenshot")
-        _click = self._mcp_client._builtin_handlers.get("computer_click")
-        if not _ss or not _click:
-            await asyncio.sleep(2.0)  # Fallback if handlers missing
-            return
-
-        import time
-
-        _start = time.monotonic()
-        _attempt = 0
-        while time.monotonic() - _start < max_wait:
-            _attempt += 1
-            await asyncio.sleep(1.0)  # Give the app time to open
-            try:
-                _result = await _ss()
-                _elements = _result.get("elements", [])
-                _windows = [
-                    e for e in _elements if e.get("type") == "window" and e.get("clickable", True)
-                ]
-                if _windows:
-                    _target = _windows[0]
-                    await _click(x=_target["x"], y=_target["y"])
-                    await asyncio.sleep(0.3)
-                    log.info(
-                        "cu_focus_success",
-                        name=_target.get("name", "?"),
-                        x=_target["x"],
-                        y=_target["y"],
-                        attempt=_attempt,
-                        wait_s=round(time.monotonic() - _start, 1),
-                    )
-                    return
-                # No windows yet — vision model might still be loading
-                log.debug(
-                    "cu_focus_poll",
-                    attempt=_attempt,
-                    elements=len(_elements),
-                )
-            except Exception:
-                log.debug("cu_focus_poll_error", attempt=_attempt, exc_info=True)
-
-        log.warning("cu_focus_timeout", max_wait=max_wait, attempts=_attempt)
-
-    async def _cu_ensure_focus(self) -> None:
-        """Ensure a window has focus before typing/hotkey.
-
-        If the planner skipped computer_screenshot + computer_click
-        (e.g. 2-step plan: exec→type instead of 4-step: exec→ss→click→type),
-        this method auto-injects a screenshot + click as a safety net.
-        """
-        _ss = self._mcp_client._builtin_handlers.get("computer_screenshot")
-        _click = self._mcp_client._builtin_handlers.get("computer_click")
-        if not _ss or not _click:
-            return
-
-        try:
-            _result = await _ss()
-            _elements = _result.get("elements", [])
-            # Find clickable elements — prefer textfields, then windows
-            _textfields = [
-                e for e in _elements if e.get("type") == "textfield" and e.get("clickable")
-            ]
-            _windows = [e for e in _elements if e.get("type") == "window" and e.get("clickable")]
-            _target = (_textfields or _windows or [None])[0]
-            if _target:
-                await _click(x=_target["x"], y=_target["y"])
-                await asyncio.sleep(0.3)
-                log.info(
-                    "cu_ensure_focus",
-                    name=_target.get("name", "?"),
-                    type=_target.get("type", "?"),
-                    x=_target["x"],
-                    y=_target["y"],
-                )
-        except Exception:
-            log.debug("cu_ensure_focus_failed", exc_info=True)
 
     async def _execute_single(
         self,
