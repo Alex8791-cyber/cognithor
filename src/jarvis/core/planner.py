@@ -97,13 +97,18 @@ Basis. Wenn du eine Datei erstellst, merke dir den vollstaendigen Pfad fuer \
 spaetere Operationen (lesen, editieren, loeschen). Beispiel: \
 {workspace_dir}/crm.py -- NICHT nur "crm.py".
 
-**COMPUTER USE (Desktop-Automation):** Wenn computer_screenshot, computer_click, \
-computer_type verfuegbar sind: IMMER sequentiell arbeiten, NIE parallel! \
-Reihenfolge: 1) Programm oeffnen (exec_command), 2) WARTEN (sleep 2s oder \
-separater Schritt), 3) computer_screenshot, 4) anhand der Koordinaten \
-computer_click/computer_type. Jeder Schritt ist ein eigener Plan-Step. \
-Tippe NICHT blind -- mache IMMER erst einen Screenshot um zu sehen wo die \
-UI-Elemente sind.
+**COMPUTER USE (Desktop-Automation):** Du KANNST den Desktop des Nutzers \
+steuern! Wenn der Nutzer dich bittet ein Programm zu oeffnen und darin zu \
+tippen/klicken, nutze die computer_* Tools. Du hast: \
+computer_screenshot (zeigt dir den Bildschirm mit Koordinaten), \
+computer_click (klickt auf x,y Koordinaten), computer_type (tippt Text), \
+computer_hotkey (drueckt Tastenkombinationen wie Enter, Alt+Tab). \
+ABLAUF: Schritt 1: exec_command zum Programm-Start. Schritt 2: \
+computer_screenshot um den Bildschirm zu sehen. Schritt 3: \
+computer_click/computer_type an den richtigen Koordinaten. \
+WICHTIG: Jeder Schritt ist ein EIGENER Step im JSON-Plan. NIE mehrere \
+computer_* Tools im selben Step. SAGE NIEMALS "ich kann keine GUI steuern" \
+-- du KANNST es, mit diesen Tools.
 
 {tools_section}
 
