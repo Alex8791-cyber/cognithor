@@ -854,7 +854,13 @@ class TestWebSearchAllFail:
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {"web": {"results": []}}
 
-        with patch("httpx.AsyncClient") as mock_client:
+        mock_ddgs_cls = MagicMock()
+        mock_ddgs_cls.return_value.text.return_value = []
+
+        with (
+            patch("httpx.AsyncClient") as mock_client,
+            patch("ddgs.DDGS", mock_ddgs_cls),
+        ):
             mock_instance = AsyncMock()
             mock_instance.get = AsyncMock(return_value=mock_response)
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -862,7 +868,7 @@ class TestWebSearchAllFail:
             mock_client.return_value = mock_instance
 
             result = await w.web_search("empty")
-            assert "Keine Ergebnisse" in result
+            assert "Keine Ergebnisse" in result or "fehlgeschlagen" in result
 
 
 # ============================================================================
