@@ -147,12 +147,11 @@ class ComputerUseTools:
     async def computer_type(
         self,
         text: str,
-        interval: float = 0.05,
+        interval: float = 0.03,
     ) -> dict[str, Any]:
         """Type text using the keyboard.
 
-        Uses pyautogui.press() for each character to work with apps
-        that don't accept typewrite (like Windows Calculator).
+        Uses typewrite() for ASCII text (handles special chars like *, +, =).
         Falls back to clipboard paste for Unicode characters.
         """
         try:
@@ -160,15 +159,10 @@ class ComputerUseTools:
             loop = asyncio.get_running_loop()
 
             # Brief wait to ensure target window has focus
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.3)
 
             if text.isascii():
-                # Use press() per character — works with Calculator and most apps
-                for char in text:
-                    await loop.run_in_executor(
-                        None, lambda c=char: gui.press(c) if len(c) == 1 else None
-                    )
-                    await asyncio.sleep(interval)
+                await loop.run_in_executor(None, lambda: gui.typewrite(text, interval=interval))
             else:
                 # Unicode (ae, oe, ue, etc.) — use clipboard + paste
                 import pyperclip

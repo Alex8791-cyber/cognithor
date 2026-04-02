@@ -324,9 +324,18 @@ class Executor:
             async with semaphore:
                 result = await self._execute_single(action.tool, params)
 
-                # After launching a GUI app, wait for it to appear
+                # After launching a GUI app, wait then focus it
                 if action.tool == "exec_command" and result.success and _has_computer_use:
                     await asyncio.sleep(1.5)
+                    # Alt+Tab to focus the newly opened window
+                    try:
+                        import pyautogui
+
+                        loop = asyncio.get_running_loop()
+                        await loop.run_in_executor(None, lambda: pyautogui.hotkey("alt", "tab"))
+                        await asyncio.sleep(0.5)  # Let focus settle
+                    except Exception:
+                        pass  # Best effort
 
             results[idx] = result
             if result.success:
