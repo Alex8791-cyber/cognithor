@@ -829,9 +829,12 @@ class TestWebSearchAllFail:
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {"results": []}
 
+        mock_ddgs_cls = MagicMock()
+        mock_ddgs_cls.return_value.text.return_value = []
+
         with (
             patch("httpx.AsyncClient") as mock_client,
-            patch.object(w, "_ddg_search", new_callable=AsyncMock, return_value=[]),
+            patch("ddgs.DDGS", mock_ddgs_cls),
         ):
             mock_instance = AsyncMock()
             mock_instance.get = AsyncMock(return_value=mock_response)
