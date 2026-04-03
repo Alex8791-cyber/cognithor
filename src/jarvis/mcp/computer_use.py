@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import hashlib
 import io
 import time
@@ -76,8 +77,9 @@ def _take_screenshot_b64(monitor_index: int = 0) -> tuple[str, int, int, float]:
 class ComputerUseTools:
     """MCP tools for desktop computer use via vision + coordinates."""
 
-    def __init__(self, vision_analyzer: Any = None) -> None:
+    def __init__(self, vision_analyzer: Any = None, uia_provider: Any = None) -> None:
         self._vision = vision_analyzer
+        self._uia_provider = uia_provider
         self._last_scale_factor: float = 1.0
 
     async def _wait_for_stable_screen(
@@ -125,8 +127,37 @@ class ComputerUseTools:
                 None, lambda: _take_screenshot_b64(monitor_index=int(monitor))
             )
             self._last_scale_factor = scale_factor
-            elements = []
-            if self._vision:
+
+            # Try UIA first for exact element coordinates
+            uia_elements: list[dict] = []
+            if self._uia_provider:
+                with contextlib.suppress(Exception):
+                    uia_elements = await loop.run_in_executor(
+                        None, self._uia_provider.get_focused_window_elements
+                    )
+
+            if uia_elements:
+                elements = uia_elements
+                # Vision still provides description (scene context)
+                if self._vision:
+                    try:
+                        result = await self._vision.analyze_desktop(b64, task_context=task_context)
+                        description = (
+                            result.description
+                            if result.success
+                            else f"Screenshot taken ({width}x{height})."
+                        )
+                    except Exception as exc:
+                        description = f"Screenshot taken ({width}x{height}). Vision error: {exc}"
+                else:
+                    description = f"Screenshot taken ({width}x{height})."
+                log.info(
+                    "desktop_uia_elements",
+                    count=len(elements),
+                    names=[e["name"] for e in elements[:5]],
+                )
+            elif self._vision:
+                # Fallback: vision provides both description AND elements
                 try:
                     result = await self._vision.analyze_desktop(b64, task_context=task_context)
                     description = (
@@ -146,11 +177,12 @@ class ComputerUseTools:
                         )
                 except Exception as exc:
                     description = f"Screenshot taken ({width}x{height}). Vision error: {exc}"
+                    elements = []
             else:
                 description = (
-                    f"Screenshot taken ({width}x{height}). "
-                    "No vision analyzer — use coordinates from previous analysis."
+                    f"Screenshot taken ({width}x{height}). No vision analyzer or UIA available."
                 )
+                elements = []
 
             return {
                 "success": True,
@@ -313,6 +345,7 @@ class ComputerUseTools:
 def register_computer_use_tools(
     client: Any,
     vision_analyzer: Any = None,
+    uia_provider: Any = None,
 ) -> ComputerUseTools | None:
     """Register computer use MCP tools."""
     try:
@@ -329,7 +362,7 @@ def register_computer_use_tools(
         log.debug("computer_use_skip", reason=str(exc))
         return None
 
-    tools = ComputerUseTools(vision_analyzer=vision_analyzer)
+    tools = ComputerUseTools(vision_analyzer=vision_analyzer, uia_provider=uia_provider)
 
     client.register_builtin_handler(
         "computer_screenshot",

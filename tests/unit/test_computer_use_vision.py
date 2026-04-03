@@ -212,6 +212,94 @@ class TestCoordinateScaling:
             assert move_args[0][1] == 400  # start_y scaled
 
 
+class TestUIAIntegration:
+    @pytest.mark.asyncio
+    async def test_uia_elements_replace_vision_elements(self):
+        mock_uia = MagicMock()
+        mock_uia.get_focused_window_elements.return_value = [
+            {
+                "name": "OK",
+                "type": "Button",
+                "x": 150,
+                "y": 200,
+                "w": 80,
+                "h": 30,
+                "clickable": True,
+                "text": "",
+                "source": "uia",
+            },
+        ]
+        mock_vision = MagicMock()
+        mock_vision_result = MagicMock()
+        mock_vision_result.success = True
+        mock_vision_result.description = "Dialog with OK button"
+        mock_vision_result.elements = [{"name": "OK", "type": "button", "x": 145, "y": 195}]
+        mock_vision.analyze_desktop = AsyncMock(return_value=mock_vision_result)
+
+        tools = ComputerUseTools(vision_analyzer=mock_vision, uia_provider=mock_uia)
+        with patch("jarvis.mcp.computer_use._take_screenshot_b64") as mock_ss:
+            mock_ss.return_value = ("b64data", 1920, 1080, 1.0)
+            result = await tools.computer_screenshot()
+
+        assert result["success"] is True
+        assert len(result["elements"]) == 1
+        assert result["elements"][0]["source"] == "uia"
+        assert result["elements"][0]["x"] == 150
+        assert "Dialog" in result["description"]
+
+    @pytest.mark.asyncio
+    async def test_vision_fallback_when_uia_empty(self):
+        mock_uia = MagicMock()
+        mock_uia.get_focused_window_elements.return_value = []
+        mock_vision = MagicMock()
+        mock_vision_result = MagicMock()
+        mock_vision_result.success = True
+        mock_vision_result.description = "Game screen"
+        mock_vision_result.elements = [{"name": "Play", "type": "button", "x": 500, "y": 300}]
+        mock_vision.analyze_desktop = AsyncMock(return_value=mock_vision_result)
+
+        tools = ComputerUseTools(vision_analyzer=mock_vision, uia_provider=mock_uia)
+        with patch("jarvis.mcp.computer_use._take_screenshot_b64") as mock_ss:
+            mock_ss.return_value = ("b64data", 1920, 1080, 1.0)
+            result = await tools.computer_screenshot()
+
+        assert result["elements"][0]["name"] == "Play"
+
+    @pytest.mark.asyncio
+    async def test_no_uia_provider_uses_vision_only(self):
+        mock_vision = MagicMock()
+        mock_vision_result = MagicMock()
+        mock_vision_result.success = True
+        mock_vision_result.description = "Desktop"
+        mock_vision_result.elements = [{"name": "Start", "type": "button", "x": 50, "y": 1060}]
+        mock_vision.analyze_desktop = AsyncMock(return_value=mock_vision_result)
+
+        tools = ComputerUseTools(vision_analyzer=mock_vision)
+        with patch("jarvis.mcp.computer_use._take_screenshot_b64") as mock_ss:
+            mock_ss.return_value = ("b64data", 1920, 1080, 1.0)
+            result = await tools.computer_screenshot()
+
+        assert result["elements"][0]["name"] == "Start"
+
+    @pytest.mark.asyncio
+    async def test_uia_exception_falls_back_to_vision(self):
+        mock_uia = MagicMock()
+        mock_uia.get_focused_window_elements.side_effect = RuntimeError("COM error")
+        mock_vision = MagicMock()
+        mock_vision_result = MagicMock()
+        mock_vision_result.success = True
+        mock_vision_result.description = "Screen"
+        mock_vision_result.elements = [{"name": "X", "type": "button", "x": 10, "y": 10}]
+        mock_vision.analyze_desktop = AsyncMock(return_value=mock_vision_result)
+
+        tools = ComputerUseTools(vision_analyzer=mock_vision, uia_provider=mock_uia)
+        with patch("jarvis.mcp.computer_use._take_screenshot_b64") as mock_ss:
+            mock_ss.return_value = ("b64data", 1920, 1080, 1.0)
+            result = await tools.computer_screenshot()
+
+        assert result["elements"][0]["name"] == "X"
+
+
 class TestWaitForStableScreen:
     @pytest.mark.asyncio
     async def test_returns_on_stable_screen(self):
