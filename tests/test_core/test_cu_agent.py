@@ -795,3 +795,43 @@ class TestSubTaskLoop:
 
         assert result.success is True
         assert "1/1" in result.task_summary
+
+
+class TestGatewayResultMessage:
+    def test_result_message_includes_summary_and_files(self):
+        cu_result = CUAgentResult(
+            success=True,
+            iterations=5,
+            abort_reason="done",
+            action_history=["click -> OK", "DONE: fertig"],
+            task_summary="2/2 Phasen abgeschlossen. Dateien erstellt: C:\\out.txt.",
+            output_files=["C:\\out.txt"],
+            extracted_content="## posts 1\nHello world",
+        )
+
+        content = (
+            "[Computer Use Ergebnis]\n"
+            + "\n".join(cu_result.action_history[-10:])
+            + f"\n\nAbschluss: {cu_result.abort_reason}"
+            + (
+                f"\nZusammenfassung: {cu_result.task_summary}"
+                if cu_result.task_summary
+                else ""
+            )
+            + (
+                f"\nErstellte Dateien: {', '.join(cu_result.output_files)}"
+                if cu_result.output_files
+                else ""
+            )
+            + (
+                f"\nExtrahierter Text:\n{cu_result.extracted_content[:2000]}"
+                if cu_result.extracted_content
+                else ""
+            )
+        )
+
+        assert "2/2 Phasen" in content
+        assert "C:\\out.txt" in content
+        assert "posts 1" in content
+        assert "Zusammenfassung:" in content
+        assert "Erstellte Dateien:" in content

@@ -2729,13 +2729,17 @@ class Gateway:
     @staticmethod
     def _is_cu_plan(plan: ActionPlan) -> bool:
         """Check if a plan uses Computer Use tools."""
-        _CU_TOOLS = frozenset({
-            "computer_screenshot", "computer_click", "computer_type",
-            "computer_hotkey", "computer_scroll", "computer_drag",
-        })
-        return plan.has_actions and any(
-            step.tool in _CU_TOOLS for step in plan.steps
+        _CU_TOOLS = frozenset(
+            {
+                "computer_screenshot",
+                "computer_click",
+                "computer_type",
+                "computer_hotkey",
+                "computer_scroll",
+                "computer_drag",
+            }
         )
+        return plan.has_actions and any(step.tool in _CU_TOOLS for step in plan.steps)
 
     async def _run_pge_loop(
         self,
@@ -3062,6 +3066,16 @@ class Gateway:
                                 + "\n".join(cu_result.action_history[-10:])
                                 + f"\n\nAbschluss: {cu_result.abort_reason}"
                                 + (
+                                    f"\nZusammenfassung: {cu_result.task_summary}"
+                                    if cu_result.task_summary
+                                    else ""
+                                )
+                                + (
+                                    f"\nErstellte Dateien: {', '.join(cu_result.output_files)}"
+                                    if cu_result.output_files
+                                    else ""
+                                )
+                                + (
                                     f"\nExtrahierter Text:\n{cu_result.extracted_content[:2000]}"
                                     if cu_result.extracted_content
                                     else ""
@@ -3072,7 +3086,10 @@ class Gateway:
                     )
                 await _status_cb("finishing", "Formuliere Antwort...")
                 final_response = await self._formulate_response(
-                    msg.text, all_results, wm, stream_callback,
+                    msg.text,
+                    all_results,
+                    wm,
+                    stream_callback,
                 )
                 break
 
