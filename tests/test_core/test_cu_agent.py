@@ -13,6 +13,7 @@ from jarvis.core.cu_agent import (
     CUAgentExecutor,
     CUAgentResult,
     CUSubTask,
+    CUTaskDecomposer,
     CUTaskPlan,
 )
 from jarvis.models import ActionPlan, PlannedAction
@@ -425,3 +426,158 @@ class TestScreenshotSimilarity:
             "Reddit Seite mit locallama Posts und Kommentare sichtbar",
         )
         assert sim > 0.7
+
+
+class TestCUTaskDecomposerVariables:
+    def _make_decomposer(self) -> CUTaskDecomposer:
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        return CUTaskDecomposer(planner, CUAgentConfig())
+
+    def test_resolve_variables_has_date(self):
+        d = self._make_decomposer()
+        v = d._resolve_variables("some goal")
+        assert "date" in v
+        assert len(v["date"]) == 8
+        assert v["date"].isdigit()
+
+    def test_resolve_variables_has_documents(self):
+        d = self._make_decomposer()
+        v = d._resolve_variables("some goal")
+        assert "documents" in v
+        assert "Documents" in v["documents"] or "documents" in v["documents"].lower()
+
+    def test_resolve_variables_has_date_formats(self):
+        d = self._make_decomposer()
+        v = d._resolve_variables("some goal")
+        assert "date_dots" in v
+        assert "date_iso" in v
+
+    def test_resolve_output_path_simple(self):
+        d = self._make_decomposer()
+        variables = {"date": "20260403", "documents": "C:\\Users\\Test\\Documents"}
+        path = d._resolve_output_path("Reddit_fetch_{date}.txt", variables)
+        assert path == "C:\\Users\\Test\\Documents\\Reddit_fetch_20260403.txt"
+
+    def test_resolve_output_path_no_variables(self):
+        d = self._make_decomposer()
+        variables = {"date": "20260403", "documents": "C:\\Users\\Test\\Documents"}
+        path = d._resolve_output_path("static_name.txt", variables)
+        assert path == "C:\\Users\\Test\\Documents\\static_name.txt"
+
+
+class TestCUTaskDecomposerParsing:
+    def _make_decomposer(self) -> CUTaskDecomposer:
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        return CUTaskDecomposer(planner, CUAgentConfig())
+
+    def test_parse_subtasks_valid_json(self):
+        d = self._make_decomposer()
+        raw = json.dumps([
+            {"name": "open_app", "goal": "Oeffne Reddit", "completion_hint": "Reddit sichtbar",
+             "max_iterations": 8, "tools": ["computer_click"], "extract_content": False,
+             "content_key": "", "output_file": ""},
+            {"name": "search", "goal": "Suche locallama", "completion_hint": "locallama in URL",
+             "max_iterations": 6, "tools": ["computer_type", "computer_click"],
+             "extract_content": False, "content_key": "", "output_file": ""},
+        ])
+        tasks = d._parse_subtasks(raw)
+        assert len(tasks) == 2
+        assert tasks[0].name == "open_app"
+        assert tasks[0].max_iterations == 8
+        assert tasks[1].available_tools == ["computer_type", "computer_click"]
+
+    def test_parse_subtasks_markdown_block(self):
+        d = self._make_decomposer()
+        raw = (
+            "Hier ist der Plan:\n```json\n"
+            + json.dumps([{"name": "step1", "goal": "Do thing", "completion_hint": "done",
+                          "max_iterations": 5, "tools": [], "extract_content": False,
+                          "content_key": "", "output_file": ""}])
+            + "\n```\nDas war der Plan."
+        )
+        tasks = d._parse_subtasks(raw)
+        assert len(tasks) == 1
+        assert tasks[0].name == "step1"
+
+    def test_parse_subtasks_garbage_returns_empty(self):
+        d = self._make_decomposer()
+        tasks = d._parse_subtasks("This is not JSON at all, just rambling text.")
+        assert tasks == []
+
+    def test_parse_subtasks_partial_fields_uses_defaults(self):
+        d = self._make_decomposer()
+        raw = json.dumps([{"name": "x", "goal": "y", "completion_hint": "z"}])
+        tasks = d._parse_subtasks(raw)
+        assert len(tasks) == 1
+        assert tasks[0].max_iterations == 10
+        assert tasks[0].extract_content is False
+        assert tasks[0].available_tools == []
+
+    def test_parse_subtasks_tools_mapped_to_available_tools(self):
+        d = self._make_decomposer()
+        raw = json.dumps([{"name": "a", "goal": "b", "completion_hint": "c",
+                          "tools": ["computer_click", "extract_text"]}])
+        tasks = d._parse_subtasks(raw)
+        assert tasks[0].available_tools == ["computer_click", "extract_text"]
+
+
+class TestCUTaskDecomposerDecompose:
+    @pytest.mark.asyncio
+    async def test_decompose_happy_path(self):
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        planner._ollama.chat = AsyncMock(return_value={
+            "message": {"content": json.dumps([
+                {"name": "open_app", "goal": "Oeffne Reddit", "completion_hint": "Reddit sichtbar",
+                 "max_iterations": 8, "tools": ["computer_click"], "output_file": ""},
+                {"name": "write_result", "goal": "Schreibe Datei", "completion_hint": "Datei geschrieben",
+                 "max_iterations": 5, "tools": ["write_file"], "output_file": "result_{date}.txt"},
+            ])}
+        })
+        d = CUTaskDecomposer(planner, CUAgentConfig())
+        plan = await d.decompose("Oeffne Reddit und speichere")
+        assert len(plan.sub_tasks) == 2
+        assert plan.sub_tasks[0].name == "open_app"
+        assert "result_" in plan.sub_tasks[1].output_file
+        assert "Documents" in plan.sub_tasks[1].output_file
+        assert plan.output_filename == plan.sub_tasks[1].output_file
+
+    @pytest.mark.asyncio
+    async def test_decompose_llm_failure_degrades_to_single_task(self):
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        planner._ollama.chat = AsyncMock(side_effect=RuntimeError("connection refused"))
+        d = CUTaskDecomposer(planner, CUAgentConfig())
+        plan = await d.decompose("Mach etwas")
+        assert len(plan.sub_tasks) == 1
+        assert plan.sub_tasks[0].name == "full_task"
+        assert plan.sub_tasks[0].goal == "Mach etwas"
+
+    @pytest.mark.asyncio
+    async def test_decompose_garbage_response_degrades(self):
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        planner._ollama.chat = AsyncMock(return_value={
+            "message": {"content": "Ich bin ein Sprachmodell und kann keine Phasen erzeugen."}
+        })
+        d = CUTaskDecomposer(planner, CUAgentConfig())
+        plan = await d.decompose("Irgendwas")
+        assert len(plan.sub_tasks) == 1
+        assert plan.sub_tasks[0].name == "full_task"
+
+    @pytest.mark.asyncio
+    async def test_decompose_think_tags_stripped(self):
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        planner._ollama.chat = AsyncMock(return_value={
+            "message": {"content": (
+                "<think>Let me think about this...</think>"
+                + json.dumps([{"name": "step1", "goal": "do it", "completion_hint": "done"}])
+            )}
+        })
+        d = CUTaskDecomposer(planner, CUAgentConfig())
+        plan = await d.decompose("Test")
+        assert len(plan.sub_tasks) == 1
+        assert plan.sub_tasks[0].name == "step1"

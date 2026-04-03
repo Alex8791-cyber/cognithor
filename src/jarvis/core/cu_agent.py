@@ -17,6 +17,8 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable
 
 from jarvis.models import ActionPlan, PlannedAction, ToolResult
@@ -59,6 +61,165 @@ class CUTaskPlan:
     sub_tasks: list[CUSubTask]
     output_filename: str = ""
     variables: dict[str, str] = field(default_factory=dict)
+
+
+class CUTaskDecomposer:
+    """Breaks a complex CU goal into ordered sub-tasks via LLM."""
+
+    _CU_DECOMPOSE_PROMPT = (
+        "Du bist ein Desktop-Automations-Planer. Zerlege die folgende Aufgabe "
+        "in einzelne Phasen.\n\n"
+        "Aufgabe: {goal}\n\n"
+        "Antworte als JSON-Array. Jede Phase hat:\n"
+        '- "name": kurzer Bezeichner (snake_case)\n'
+        '- "goal": was in dieser Phase erreicht werden soll\n'
+        '- "completion_hint": woran man erkennt, dass die Phase abgeschlossen ist '
+        "(sichtbar auf dem Bildschirm)\n"
+        '- "max_iterations": maximale Schritte (Standard: 10)\n'
+        '- "tools": Liste erlaubter Tools fuer diese Phase\n'
+        '- "extract_content": true wenn Text gesammelt werden soll\n'
+        '- "content_key": Schluessel fuer gesammelten Text (z.B. "posts")\n'
+        '- "output_file": Dateiname falls diese Phase eine Datei schreibt '
+        "(leer wenn nicht)\n\n"
+        "Verfuegbare Tools: computer_screenshot, computer_click, computer_type, "
+        "computer_hotkey, computer_scroll, exec_command, write_file, extract_text\n\n"
+        "Variablen die du im output_file nutzen kannst:\n"
+        "{variables_doc}\n\n"
+        "Beispiel fuer 'Oeffne Rechner und rechne 5+3':\n"
+        "```json\n"
+        "[\n"
+        '  {{"name": "open_calculator", "goal": "Oeffne die Rechner-App", '
+        '"completion_hint": "Rechner-Fenster ist sichtbar", "max_iterations": 8, '
+        '"tools": ["computer_screenshot", "computer_click", "computer_type", '
+        '"computer_hotkey"], "extract_content": false, "content_key": "", '
+        '"output_file": ""}},\n'
+        '  {{"name": "calculate", "goal": "Tippe 5+3 und druecke Enter", '
+        '"completion_hint": "Ergebnis 8 ist sichtbar", "max_iterations": 6, '
+        '"tools": ["computer_screenshot", "computer_click", "computer_type"], '
+        '"extract_content": false, "content_key": "", "output_file": ""}}\n'
+        "]\n"
+        "```"
+    )
+
+    def __init__(self, planner: Any, config: CUAgentConfig) -> None:
+        self._planner = planner
+        self._config = config
+
+    def _resolve_variables(self, goal: str) -> dict[str, str]:
+        """Resolve dynamic variables from goal context."""
+        today = datetime.now()
+        return {
+            "date": today.strftime("%Y%m%d"),
+            "date_dots": today.strftime("%d.%m.%Y"),
+            "date_iso": today.isoformat()[:10],
+            "user_home": str(Path.home()),
+            "documents": str(Path.home() / "Documents"),
+        }
+
+    @staticmethod
+    def _resolve_output_path(filename: str, variables: dict[str, str]) -> str:
+        """Resolve filename template to absolute path."""
+        for key, val in variables.items():
+            filename = filename.replace(f"{{{key}}}", val)
+        return str(Path(variables["documents"]) / filename)
+
+    def _parse_subtasks(self, raw: str) -> list[CUSubTask]:
+        """Parse LLM response into CUSubTask list. 3-tier JSON parsing."""
+        data = None
+
+        # Tier 1: direct JSON parse
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        # Tier 2: markdown code block
+        if data is None:
+            md_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", raw, re.DOTALL)
+            if md_match:
+                try:
+                    data = json.loads(md_match.group(1))
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
+        # Tier 3: find JSON array
+        if data is None:
+            arr_match = re.search(r"\[.*\]", raw, re.DOTALL)
+            if arr_match:
+                try:
+                    data = json.loads(arr_match.group())
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
+        if not isinstance(data, list):
+            return []
+
+        tasks: list[CUSubTask] = []
+        for item in data:
+            if not isinstance(item, dict) or "name" not in item:
+                continue
+            tasks.append(
+                CUSubTask(
+                    name=item.get("name", ""),
+                    goal=item.get("goal", ""),
+                    completion_hint=item.get("completion_hint", ""),
+                    max_iterations=item.get("max_iterations", 10),
+                    available_tools=item.get("tools", []),
+                    extract_content=item.get("extract_content", False),
+                    content_key=item.get("content_key", ""),
+                    output_file=item.get("output_file", ""),
+                )
+            )
+        return tasks
+
+    async def decompose(self, goal: str) -> CUTaskPlan:
+        """Decompose a complex goal into ordered sub-tasks."""
+        variables = self._resolve_variables(goal)
+        variables_doc = "\n".join(f"  {{{k}}} = {v}" for k, v in variables.items())
+
+        prompt = self._CU_DECOMPOSE_PROMPT.format(goal=goal, variables_doc=variables_doc)
+
+        try:
+            response = await self._planner._ollama.chat(
+                model=self._config.vision_model,
+                messages=[
+                    {"role": "system", "content": "Du bist ein Desktop-Automations-Planer."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            )
+            text = response.get("message", {}).get("content", "")
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+            sub_tasks = self._parse_subtasks(text)
+        except Exception as exc:
+            log.warning("cu_decompose_failed", error=str(exc)[:200])
+            sub_tasks = []
+
+        # Graceful degradation: if parsing failed, fall back to single sub-task
+        if not sub_tasks:
+            sub_tasks = [
+                CUSubTask(
+                    name="full_task",
+                    goal=goal,
+                    completion_hint="",
+                    max_iterations=self._config.max_iterations,
+                )
+            ]
+
+        # Resolve output_file paths
+        output_filename = ""
+        for st in sub_tasks:
+            if st.output_file:
+                st.output_file = self._resolve_output_path(st.output_file, variables)
+                output_filename = st.output_file
+
+        return CUTaskPlan(
+            original_goal=goal,
+            sub_tasks=sub_tasks,
+            output_filename=output_filename,
+            variables=variables,
+        )
 
 
 @dataclass
