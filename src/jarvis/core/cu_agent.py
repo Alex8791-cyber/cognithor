@@ -162,6 +162,28 @@ class CUAgentExecutor:
         ]
         return json.dumps(compact, ensure_ascii=False, indent=None)
 
+    @staticmethod
+    def _check_completion_hint(hint: str, screenshot_desc: str) -> bool:
+        """Fuzzy check if the completion hint is satisfied (60% keyword overlap)."""
+        if not hint:
+            return False
+        hint_lower = hint.lower()
+        desc_lower = screenshot_desc.lower()
+        keywords = [w for w in hint_lower.split() if len(w) > 4]
+        if not keywords:
+            return False
+        matches = sum(1 for kw in keywords if kw in desc_lower)
+        return matches / len(keywords) >= 0.6
+
+    @staticmethod
+    def _screenshot_similarity(prev: str, curr: str) -> float:
+        """Jaccard similarity between two screenshot descriptions."""
+        words_a = set(prev.lower().split())
+        words_b = set(curr.lower().split())
+        if not words_a or not words_b:
+            return 0.0
+        return len(words_a & words_b) / len(words_a | words_b)
+
     async def execute(
         self,
         goal: str,

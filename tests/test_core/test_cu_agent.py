@@ -345,3 +345,83 @@ class TestCUAgentResultExtended:
         )
         assert len(r.output_files) == 1
         assert "3/3" in r.task_summary
+
+
+class TestCompletionHintMatching:
+    def _make_agent(self) -> CUAgentExecutor:
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        mcp = MagicMock()
+        mcp._builtin_handlers = {}
+        return CUAgentExecutor(planner, mcp, MagicMock(), MagicMock(), {})
+
+    def test_hint_matches_when_keywords_present(self):
+        agent = self._make_agent()
+        assert agent._check_completion_hint(
+            "locallama erscheint in URL oder Titel",
+            "Browser zeigt reddit.com/r/locallama im Titel",
+        ) is True
+
+    def test_hint_no_match_when_keywords_missing(self):
+        agent = self._make_agent()
+        assert agent._check_completion_hint(
+            "locallama erscheint in URL oder Titel",
+            "Desktop mit verschiedenen Icons sichtbar",
+        ) is False
+
+    def test_hint_empty_returns_false(self):
+        agent = self._make_agent()
+        assert agent._check_completion_hint("", "something on screen") is False
+
+    def test_hint_short_words_ignored(self):
+        agent = self._make_agent()
+        assert agent._check_completion_hint(
+            "in URL Titel locallama erscheint",
+            "locallama erscheint Titel",
+        ) is True
+
+    def test_hint_partial_match_below_threshold(self):
+        agent = self._make_agent()
+        assert agent._check_completion_hint(
+            "Rechner Fenster zeigt Ergebnis sichtbar",
+            "Rechner Fenster ist im Hintergrund",
+        ) is False
+
+    def test_hint_60_percent_threshold(self):
+        agent = self._make_agent()
+        assert agent._check_completion_hint(
+            "Reddit Seite zeigt locallama Ergebnisse",
+            "Reddit zeigt locallama und andere Dinge Ergebnisse",
+        ) is True
+
+
+class TestScreenshotSimilarity:
+    def _make_agent(self) -> CUAgentExecutor:
+        planner = MagicMock()
+        planner._ollama = AsyncMock()
+        mcp = MagicMock()
+        mcp._builtin_handlers = {}
+        return CUAgentExecutor(planner, mcp, MagicMock(), MagicMock(), {})
+
+    def test_identical_descriptions(self):
+        agent = self._make_agent()
+        assert agent._screenshot_similarity("Desktop mit Icons", "Desktop mit Icons") == 1.0
+
+    def test_completely_different(self):
+        agent = self._make_agent()
+        sim = agent._screenshot_similarity("Rechner zeigt Ergebnis", "Browser offen leer")
+        assert sim < 0.2
+
+    def test_empty_strings(self):
+        agent = self._make_agent()
+        assert agent._screenshot_similarity("", "something") == 0.0
+        assert agent._screenshot_similarity("something", "") == 0.0
+        assert agent._screenshot_similarity("", "") == 0.0
+
+    def test_high_overlap(self):
+        agent = self._make_agent()
+        sim = agent._screenshot_similarity(
+            "Reddit Seite mit locallama Posts sichtbar",
+            "Reddit Seite mit locallama Posts und Kommentare sichtbar",
+        )
+        assert sim > 0.7
