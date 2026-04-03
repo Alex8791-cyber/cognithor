@@ -46,15 +46,17 @@ class CUAgentConfig:
     vision_model: str = "qwen3-vl:32b"
     screenshot_after_action: bool = True
     stuck_detection_threshold: int = 3
-    action_delays_ms: dict[str, int] = field(default_factory=lambda: {
-        "computer_click": 400,
-        "computer_type": 300,
-        "computer_hotkey": 800,
-        "computer_scroll": 200,
-        "computer_drag": 500,
-        "exec_command": 2000,
-        "write_file": 100,
-    })
+    action_delays_ms: dict[str, int] = field(
+        default_factory=lambda: {
+            "computer_click": 400,
+            "computer_type": 300,
+            "computer_hotkey": 800,
+            "computer_scroll": 200,
+            "computer_drag": 500,
+            "exec_command": 2000,
+            "write_file": 100,
+        }
+    )
 
 
 @dataclass
@@ -206,14 +208,8 @@ class CUTaskDecomposer:
         variables = self._resolve_variables(goal)
         variables_doc = "\n".join(f"  {{{k}}} = {v}" for k, v in variables.items())
 
-        goal_block = (
-            "[BENUTZERZIEL ANFANG]\n"
-            f"{goal}\n"
-            "[BENUTZERZIEL ENDE]"
-        )
-        prompt = self._CU_DECOMPOSE_PROMPT.format(
-            goal=goal_block, variables_doc=variables_doc
-        )
+        goal_block = f"[BENUTZERZIEL ANFANG]\n{goal}\n[BENUTZERZIEL ENDE]"
+        prompt = self._CU_DECOMPOSE_PROMPT.format(goal=goal_block, variables_doc=variables_doc)
 
         try:
             response = await self._planner._ollama.chat(
@@ -775,11 +771,7 @@ class CUAgentExecutor:
             )
 
         # Wait for UI to stabilize after action
-        if (
-            not tool_result.is_error
-            and tool != "computer_screenshot"
-            and self._cu_tools
-        ):
+        if not tool_result.is_error and tool != "computer_screenshot" and self._cu_tools:
             min_delay = self._config.action_delays_ms.get(tool, 300)
             with contextlib.suppress(Exception):
                 await self._cu_tools._wait_for_stable_screen(min_delay_ms=min_delay)
@@ -801,18 +793,10 @@ class CUAgentExecutor:
         self, goal: str, screenshot: dict, subtask_context: str = ""
     ) -> dict | None:
         """Ask the planner what to do next based on the screenshot."""
-        goal_block = (
-            "[BENUTZERZIEL ANFANG]\n"
-            f"{goal}\n"
-            "[BENUTZERZIEL ENDE]\n\n"
-        )
+        goal_block = f"[BENUTZERZIEL ANFANG]\n{goal}\n[BENUTZERZIEL ENDE]\n\n"
 
         screenshot_desc = screenshot.get("description", "")[:1000]
-        screenshot_block = (
-            "[SCREENSHOT ANFANG]\n"
-            f"{screenshot_desc}\n"
-            "[SCREENSHOT ENDE]\n\n"
-        )
+        screenshot_block = f"[SCREENSHOT ANFANG]\n{screenshot_desc}\n[SCREENSHOT ENDE]\n\n"
 
         elements_block = (
             "[ELEMENTE ANFANG]\n"
@@ -863,10 +847,12 @@ class CUAgentExecutor:
         """Extract all visible text from current screen via vision model."""
         try:
             from jarvis.mcp.computer_use import _take_screenshot_b64
+
             _bvm = build_vision_message
             _ffb = format_for_backend
 
-            b64, _, _, _ = await asyncio.get_running_loop().run_in_executor(None, _take_screenshot_b64)
+            loop = asyncio.get_running_loop()
+            b64, _, _, _ = await loop.run_in_executor(None, _take_screenshot_b64)
             msg = _bvm(
                 "Lies ALLEN sichtbaren Text in diesem Screenshot ab. "
                 "Gib den Text zeilenweise wieder. Antworte NUR mit dem Text.",

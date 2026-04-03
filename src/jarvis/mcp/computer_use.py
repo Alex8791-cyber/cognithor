@@ -98,7 +98,7 @@ class ComputerUseTools:
             try:
                 loop = asyncio.get_running_loop()
                 b64, _, _, _ = await loop.run_in_executor(None, _take_screenshot_b64)
-                current_hash = hashlib.md5(b64.encode()).hexdigest()  # noqa: S324
+                current_hash = hashlib.md5(b64.encode()).hexdigest()
 
                 if current_hash == last_hash:
                     stable_count += 1

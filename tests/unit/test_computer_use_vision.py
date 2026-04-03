@@ -235,6 +235,7 @@ class TestWaitForStableScreen:
 
         with patch("jarvis.mcp.computer_use._take_screenshot_b64", side_effect=changing_screenshot):
             import time as _time
+
             start = _time.monotonic()
             await tools._wait_for_stable_screen(
                 min_delay_ms=10, poll_interval_ms=10, timeout_ms=200
