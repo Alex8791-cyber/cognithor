@@ -94,7 +94,7 @@ def _ask_vision(grid: np.ndarray, actions: list[int]) -> dict | None:
                     "images": [b64],
                 }
             ],
-            options={"num_predict": 4096, "temperature": 0.3, "num_ctx": 8192},
+            options={"num_predict": 8192, "temperature": 0.3, "num_ctx": 8192},
         )
 
         raw = resp.get("message", {}).get("content", "")
