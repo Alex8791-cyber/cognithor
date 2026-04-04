@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-__all__ = ["ArcTask", "Grid", "Solution", "GameResult"]
+__all__ = ["ArcTask", "GameResult", "Grid", "Solution"]
 
 Grid = list[list[int]]
 
