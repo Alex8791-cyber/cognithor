@@ -41,7 +41,7 @@ echo  ^| ^|   ^| ^| ^| ^| ^|  _^|  \^| ^|^| ^|  ^| ^| ^| ^|_^| ^| ^| ^| ^| ^|_^)
 echo  ^| ^|___^| ^|_^| ^| ^|_^| ^| ^|\  ^|^| ^|  ^| ^| ^|  _  ^| ^|_^| ^|  _ ^<
 echo   \____^|\___/ \____^|_^| \_^|___^| ^|_^| ^|_^| ^|_^|\___/^|_^| \_\
 echo.
-echo   v0.69.0 - ATL + CAPTCHA + AACS
+echo   v0.71.0 - Computer Use + ARC Redesign + Skill Lifecycle
 echo.
 
 set "REPO_ROOT=%~dp0"
@@ -92,7 +92,12 @@ call :detect_flutter
 echo   Starting bootstrap...
 echo.
 
-%PYTHON_CMD% "%REPO_ROOT%\scripts\bootstrap_windows.py" --repo-root "%REPO_ROOT%"
+:: Skip model downloads by default (set COGNITHOR_PULL_MODELS=1 to enable)
+set "SKIP_MODELS_FLAG=--skip-models"
+if defined COGNITHOR_PULL_MODELS (
+    if "%COGNITHOR_PULL_MODELS%"=="1" set "SKIP_MODELS_FLAG="
+)
+%PYTHON_CMD% "%REPO_ROOT%\scripts\bootstrap_windows.py" --repo-root "%REPO_ROOT%" %SKIP_MODELS_FLAG%
 if errorlevel 1 (
     echo.
     echo   [ERROR] Bootstrap failed!
