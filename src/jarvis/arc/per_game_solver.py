@@ -102,7 +102,7 @@ class PerGameSolver:
         from jarvis.arc.cluster_solver import ClusterSolver
 
         outcome = StrategyOutcome()
-        timeout = 60.0  # per level timeout (seconds)
+        timeout = 120.0  # per level timeout (seconds)
 
         if target_color is None:
             unique_colors = [int(c) for c in np.unique(initial_grid) if c != 0]
@@ -362,7 +362,7 @@ class PerGameSolver:
     def solve(
         self,
         max_levels: int = 10,
-        timeout_s: float = 300.0,
+        timeout_s: float = 1200.0,
         base_dir: Any | None = None,
     ) -> SolveResult:
         """Solve the game level by level with budget-based strategy mix."""
