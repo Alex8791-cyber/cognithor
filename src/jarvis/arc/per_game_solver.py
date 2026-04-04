@@ -151,7 +151,14 @@ class PerGameSolver:
         target_level: int,
         timeout: float,
     ) -> list[tuple[int, int]] | None:
-        """Smart elimination search: O(n) for common cases, brute-force fallback for small n."""
+        """Smart elimination search using env.reset() (0.5ms) instead of arcade.make() (380ms).
+
+        Strategy:
+          1. Click all → win? Done.
+          2. Find poison clusters (cause GAME_OVER) → remove iteratively.
+          3. Single elimination (skip 1 at a time).
+          4. Progressive elimination (skip 2, 3, ... at a time).
+        """
         import itertools
         import time
 
@@ -162,17 +169,19 @@ class PerGameSolver:
         t0 = time.monotonic()
         solver = ClusterSolver(target_color=target_color, max_skip=0)
 
-        def make_env_at_level():
-            """Create env and replay to target level."""
-            env = self._arcade.make(game_id)
+        # Create ONE env, reuse via reset() — 760x faster than arcade.make()
+        env = self._arcade.make(game_id)
+
+        def replay_to_level() -> Any:
+            """Reset env and replay previous solutions to reach target level."""
             obs = env.reset()
             for sol in prev_solutions:
                 for cx, cy in sol:
                     obs = env.step(6, data={"x": cx, "y": cy})
-            return env, obs
+            return obs
 
-        # Get current level grid
-        env, obs = make_env_at_level()
+        # Get current level grid and cluster positions
+        obs = replay_to_level()
         grid = np.array(obs.frame)
         if grid.ndim == 3:
             grid = grid[0]
@@ -183,62 +192,63 @@ class PerGameSolver:
             return None
 
         current_levels = obs.levels_completed
+        combos_tested = 0
 
         def test_combo(click_indices: list[int]) -> bool:
-            """Test a click combo. Returns True if level advances."""
-            env2, obs2 = make_env_at_level()
+            """Test a click combo using env.reset() + replay. ~1ms per test."""
+            nonlocal combos_tested
+            combos_tested += 1
+            obs2 = replay_to_level()
             for idx in click_indices:
                 cx, cy = centers[idx]
-                obs2 = env2.step(6, data={"x": cx, "y": cy})
+                obs2 = env.step(6, data={"x": cx, "y": cy})
                 if obs2.state == GameState.GAME_OVER:
                     return False
             return obs2.levels_completed > current_levels
 
-        def find_poison_clusters(all_indices: list[int]) -> set[int]:
-            """Click all clusters and identify which click triggers GAME_OVER."""
-            env2, obs2 = make_env_at_level()
-            for idx in all_indices:
+        def find_poison_clusters(indices: list[int]) -> set[int]:
+            """Click clusters in order, find which one triggers GAME_OVER."""
+            obs2 = replay_to_level()
+            for idx in indices:
                 cx, cy = centers[idx]
-                obs2 = env2.step(6, data={"x": cx, "y": cy})
+                obs2 = env.step(6, data={"x": cx, "y": cy})
                 if obs2.state == GameState.GAME_OVER:
-                    return {idx}  # This cluster is poison
+                    return {idx}
             return set()
 
         # Phase 1: Try clicking ALL clusters
         all_idx = list(range(n))
         if test_combo(all_idx):
+            log.info("arc.smart_solve", phase=1, level=target_level, n=n, combos=combos_tested)
             return [centers[i] for i in all_idx]
 
-        # Phase 2: Identify poison clusters — which clicks cause GAME_OVER?
-        poison = find_poison_clusters(all_idx)
-        if poison:
-            # Remove poison clusters and try again
+        # Phase 2: Iteratively remove poison clusters
+        poison: set[int] = set()
+        safe_idx = list(all_idx)
+        for _ in range(min(n, 8)):
+            if time.monotonic() - t0 > timeout:
+                break
+            found = find_poison_clusters(safe_idx)
+            if not found:
+                break
+            poison |= found
             safe_idx = [i for i in all_idx if i not in poison]
             if test_combo(safe_idx):
+                log.info("arc.smart_solve", phase=2, level=target_level, n=n, poison=len(poison), combos=combos_tested)
                 return [centers[i] for i in safe_idx]
 
-            # Maybe there are more poison clusters after the first
-            # Iteratively remove poison until we win or run out
-            for _ in range(min(n, 5)):
-                if time.monotonic() - t0 > timeout:
-                    break
-                more_poison = find_poison_clusters(safe_idx)
-                if not more_poison:
-                    break
-                safe_idx = [i for i in safe_idx if i not in more_poison]
-                if test_combo(safe_idx):
-                    return [centers[i] for i in safe_idx]
-
-        # Phase 3: Single elimination — remove each cluster one at a time
+        # Phase 3: Single elimination — skip each cluster one at a time
         for skip_idx in range(n):
             if time.monotonic() - t0 > timeout:
                 break
             combo = [i for i in range(n) if i != skip_idx]
             if test_combo(combo):
+                log.info("arc.smart_solve", phase=3, level=target_level, n=n, skipped=1, combos=combos_tested)
                 return [centers[i] for i in combo]
 
-        # Phase 4: Progressive elimination — try removing pairs, triples
-        for skip_count in range(2, min(n, 7)):
+        # Phase 4: Progressive elimination — skip 2, 3, ..., up to max_skip
+        max_skip = min(n - 1, 6)
+        for skip_count in range(2, max_skip + 1):
             if time.monotonic() - t0 > timeout:
                 break
             for skip_combo in itertools.combinations(range(n), skip_count):
@@ -246,18 +256,14 @@ class PerGameSolver:
                     break
                 combo = [i for i in range(n) if i not in skip_combo]
                 if test_combo(combo):
+                    log.info(
+                        "arc.smart_solve", phase=4, level=target_level, n=n,
+                        skipped=skip_count, combos=combos_tested,
+                    )
                     return [centers[i] for i in combo]
 
-        # Phase 5: For small n (≤10), full brute-force via find_solution
-        if n <= 10 and time.monotonic() - t0 < timeout:
-            full_solver = ClusterSolver(target_color=target_color, max_skip=6)
-            return full_solver.find_solution(
-                env_factory=lambda: self._arcade.make(game_id),
-                action_id=6,
-                prev_solutions=prev_solutions,
-                target_level=target_level,
-            )
-
+        log.info("arc.smart_solve_failed", level=target_level, n=n, combos=combos_tested,
+                 time_s=round(time.monotonic() - t0, 1))
         return None
 
     def _execute_strategy(
