@@ -1,18 +1,19 @@
-"""ARC-AGI-3 Hybrid Solver — fast cluster detection + subset search.
+"""ARC-AGI-3 Hybrid Solver — 1 GPU vision call + fast CPU solver.
 
-Click games: ndimage.label() finds clusters instantly (no SDK calls),
-then subset search validates on SDK. This is the approach that solved
-ft09 Level 1 (17 clicks, 60s) and Level 2 (9 clicks).
+Strategy:
+1. Take screenshot of initial game frame
+2. ONE vision call to qwen3-vl:32b: "What game is this? What should I click/press?"
+3. Use the answer to configure the right solver (click targets, keyboard sequence)
+4. Execute fast on CPU
 
-Keyboard games: epsilon-greedy with pixel reward (200 steps).
-
-Mixed games: try click approach first, keyboard fallback.
+This combines GPU intelligence with CPU speed.
 """
 
 from __future__ import annotations
 
 import itertools
 import random
+import re
 import time
 from typing import Any
 
@@ -26,101 +27,221 @@ __all__ = ["HybridSolver", "run_all_games"]
 log = get_logger(__name__)
 
 
-class HybridSolver:
-    """Fast solver using cluster detection for clicks, exploration for keyboard."""
+def _ask_vision(grid: np.ndarray, actions: list[int]) -> dict | None:
+    """ONE vision call: ask what the game is and how to play."""
+    try:
+        import base64
+        import io
+        import json
 
-    def __init__(self, max_skip: int = 6, max_keyboard_steps: int = 200) -> None:
+        from PIL import Image
+
+        PALETTE = [
+            (255, 255, 255),
+            (0, 0, 0),
+            (0, 116, 217),
+            (255, 65, 54),
+            (46, 204, 64),
+            (255, 220, 0),
+            (170, 170, 170),
+            (255, 133, 27),
+            (127, 219, 255),
+            (135, 12, 37),
+            (240, 18, 190),
+            (200, 200, 200),
+            (200, 200, 100),
+            (100, 50, 150),
+            (0, 200, 200),
+            (128, 0, 255),
+        ]
+
+        if grid.ndim == 3:
+            grid = grid[0]
+        h, w = grid.shape
+        scale = 4
+        img = np.zeros((h * scale, w * scale, 3), dtype=np.uint8)
+        for r in range(h):
+            for c in range(w):
+                color = PALETTE[min(int(grid[r, c]), 15)]
+                img[r * scale : (r + 1) * scale, c * scale : (c + 1) * scale] = color
+
+        buf = io.BytesIO()
+        Image.fromarray(img).save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+
+        action_desc = []
+        for a in actions:
+            names = {1: "UP", 2: "DOWN", 3: "LEFT", 4: "RIGHT", 5: "Interact", 6: "Click(x,y)"}
+            action_desc.append(f"ACTION{a}={names.get(a, '?')}")
+
+        import ollama
+
+        resp = ollama.chat(
+            model="qwen3-vl:32b",
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"64x64 pixel puzzle game. Actions: {', '.join(action_desc)}.\n"
+                        "1. What type of game is this?\n"
+                        "2. For CLICK games: which color should I click? "
+                        "Give the color NUMBER (0-15).\n"
+                        "3. For KEYBOARD games: what sequence should I try?\n"
+                        'Reply JSON: {"game_type": "click" or "keyboard", '
+                        '"target_color": N or null, "strategy": "...", '
+                        '"first_actions": ["ACTION1","ACTION2",...]}'
+                    ),
+                    "images": [b64],
+                }
+            ],
+            options={"num_predict": 2000, "temperature": 0.3, "num_ctx": 8192},
+        )
+
+        raw = resp.get("message", {}).get("content", "")
+        raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+
+        # Parse JSON
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        md = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", raw, re.DOTALL)
+        if md:
+            try:
+                return json.loads(md.group(1))
+            except (json.JSONDecodeError, ValueError):
+                pass
+        pos = raw.find("{")
+        if pos != -1:
+            depth = 0
+            for i in range(pos, len(raw)):
+                if raw[i] == "{":
+                    depth += 1
+                elif raw[i] == "}":
+                    depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(raw[pos : i + 1])
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                    break
+
+        log.debug("vision_parse_failed", raw=raw[:200])
+        return None
+
+    except Exception as exc:
+        log.debug("vision_call_failed", error=str(exc)[:200])
+        return None
+
+
+class HybridSolver:
+    """1 GPU vision call + fast CPU solver per game."""
+
+    def __init__(self, max_skip: int = 6, max_keyboard_steps: int = 300) -> None:
         self.max_skip = max_skip
         self.max_keyboard_steps = max_keyboard_steps
 
-    def solve_game(self, game_id: str) -> dict[str, Any]:
-        """Play one game with the best strategy."""
+    def solve_game(self, game_id: str, use_vision: bool = True) -> dict[str, Any]:
+        """Play one game."""
         import arc_agi
 
         arcade = arc_agi.Arcade()
         env = arcade.make(game_id)
         obs = env.reset()
 
-        actions = [
-            a.value if hasattr(a, "value") else int(a) for a in (obs.available_actions or [])
-        ]
-        has_click = 6 in actions
-        has_keyboard = any(a in [1, 2, 3, 4] for a in actions)
-
-        t0 = time.monotonic()
-
-        if has_click:
-            result = self._solve_click(arcade, game_id)
-            if result["levels_completed"] > 0 or not has_keyboard:
-                result["elapsed_s"] = round(time.monotonic() - t0, 1)
-                result["game_id"] = game_id.split("-")[0]
-                return result
-
-        # Keyboard fallback
-        result = self._solve_keyboard(arcade, game_id)
-        result["elapsed_s"] = round(time.monotonic() - t0, 1)
-        result["game_id"] = game_id.split("-")[0]
-        return result
-
-    def _find_clusters(self, grid: np.ndarray) -> dict[int, list[tuple[int, int]]]:
-        """Find cluster centers for each non-background color. Pure numpy, no SDK."""
+        grid = np.array(obs.frame)
         if grid.ndim == 3:
             grid = grid[0]
 
-        # Background = most common color
+        actions = [
+            a.value if hasattr(a, "value") else int(a) for a in (obs.available_actions or [])
+        ]
+
+        t0 = time.monotonic()
+
+        # Step 1: ONE vision call
+        guidance = None
+        if use_vision:
+            guidance = _ask_vision(grid, actions)
+            if guidance:
+                log.info(
+                    "hybrid_vision",
+                    game=game_id.split("-")[0],
+                    type=guidance.get("game_type"),
+                    color=guidance.get("target_color"),
+                    strategy=str(guidance.get("strategy", ""))[:80],
+                )
+
+        # Step 2: Route to right solver
+        has_click = 6 in actions
+
+        if has_click:
+            target_color = None
+            if guidance and guidance.get("target_color") is not None:
+                target_color = int(guidance["target_color"])
+            result = self._solve_click(arcade, game_id, grid, target_color)
+        else:
+            first_actions = None
+            if guidance and guidance.get("first_actions"):
+                first_actions = guidance["first_actions"]
+            result = self._solve_keyboard(arcade, game_id, first_actions)
+
+        result["elapsed_s"] = round(time.monotonic() - t0, 1)
+        result["game_id"] = game_id.split("-")[0]
+        result["vision_used"] = guidance is not None
+        return result
+
+    def _solve_click(
+        self,
+        arcade: Any,
+        game_id: str,
+        grid: np.ndarray,
+        target_color: int | None = None,
+    ) -> dict[str, Any]:
+        """Click solver: find clusters of target color, subset search."""
+        from arcengine.enums import GameState
+
         colors, counts = np.unique(grid, return_counts=True)
         bg = colors[np.argmax(counts)]
 
-        result: dict[int, list[tuple[int, int]]] = {}
-        for c in colors:
-            if c == bg:
-                continue
-            mask = grid == c
-            labeled, n = ndimage.label(mask)
-            if n > 0:
-                centers = []
-                for i in range(1, n + 1):
-                    ys, xs = np.where(labeled == i)
-                    centers.append((int(np.mean(xs)), int(np.mean(ys))))
-                result[int(c)] = centers
-
-        return result
-
-    def _solve_click(self, arcade: Any, game_id: str) -> dict[str, Any]:
-        """Solve click game using cluster detection + subset search."""
-        from arcengine.enums import GameState
+        if target_color is not None:
+            color_order = [target_color]
+        else:
+            color_order = []
+            for c in colors:
+                if c == bg:
+                    continue
+                _, n = ndimage.label(grid == c)
+                if 2 <= n <= 30:
+                    color_order.append((n, int(c)))
+            color_order.sort()
+            color_order = [c for _, c in color_order]
 
         all_solutions: list[list[tuple[int, int]]] = []
         levels = 0
 
-        for _level_attempt in range(10):
-            # Get current grid state
+        for _attempt in range(10):
             env = arcade.make(game_id)
             obs = env.reset()
             for sol in all_solutions:
                 for cx, cy in sol:
                     obs = env.step(6, data={"x": cx, "y": cy})
 
-            grid = np.array(obs.frame)
-            if grid.ndim == 3:
-                grid = grid[0]
+            cur_grid = np.array(obs.frame)
+            if cur_grid.ndim == 3:
+                cur_grid = cur_grid[0]
 
-            # Find all non-bg clusters
-            color_clusters = self._find_clusters(grid)
-
-            if not color_clusters:
-                break
-
-            # Try each color's clusters as click targets
             solved = False
-            for color, centers in sorted(
-                color_clusters.items(), key=lambda x: len(x[1]), reverse=True
-            ):
-                n = len(centers)
+            for color in color_order:
+                labeled, n = ndimage.label(cur_grid == color)
                 if n == 0:
                     continue
 
-                # Try subsets: click all, skip 1, skip 2, ...
+                centers = []
+                for i in range(1, n + 1):
+                    ys, xs = np.where(labeled == i)
+                    centers.append((int(np.mean(xs)), int(np.mean(ys))))
+
                 for skip in range(min(n + 1, self.max_skip + 1)):
                     if solved:
                         break
@@ -128,10 +249,8 @@ class HybridSolver:
                         click_idx = [i for i in range(n) if i not in combo]
                         clicks = [centers[i] for i in click_idx]
 
-                        # Validate on fresh env
                         env_t = arcade.make(game_id)
                         obs_t = env_t.reset()
-
                         ok = True
                         for prev in all_solutions:
                             for cx, cy in prev:
@@ -152,18 +271,11 @@ class HybridSolver:
                         if obs_t.levels_completed > levels:
                             all_solutions.append(clicks)
                             levels = obs_t.levels_completed
-                            log.info(
-                                "hybrid_click_solved",
-                                game=game_id.split("-")[0],
-                                level=levels,
-                                color=color,
-                                clicks=len(clicks),
-                                skipped=skip,
-                                total_clusters=n,
+                            print(
+                                f"  L{levels}: color={color} {len(clicks)}/{n} clicks", flush=True
                             )
                             solved = True
                             break
-
                         if obs_t.state == GameState.GAME_OVER:
                             break
                 if solved:
@@ -178,8 +290,13 @@ class HybridSolver:
             "method": "click",
         }
 
-    def _solve_keyboard(self, arcade: Any, game_id: str) -> dict[str, Any]:
-        """Solve keyboard game with epsilon-greedy exploration."""
+    def _solve_keyboard(
+        self,
+        arcade: Any,
+        game_id: str,
+        first_actions: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Keyboard solver with optional vision-guided first actions."""
         from arcengine.enums import GameState
 
         env = arcade.make(game_id)
@@ -190,16 +307,33 @@ class HybridSolver:
             for a in (obs.available_actions or [1, 2, 3, 4])
         ]
 
+        name_to_id = {"ACTION1": 1, "ACTION2": 2, "ACTION3": 3, "ACTION4": 4, "ACTION5": 5}
+
         levels = 0
         total_steps = 0
         prev_grid = np.array(obs.frame)
         if prev_grid.ndim == 3:
             prev_grid = prev_grid[0]
 
-        action_reward: dict[int, float] = {a: 1.0 for a in actions}
+        if first_actions:
+            for action_name in first_actions[:20]:
+                aid = name_to_id.get(action_name.upper())
+                if aid and aid in actions:
+                    obs = env.step(aid)
+                    total_steps += 1
+                    if obs.levels_completed > levels:
+                        levels = obs.levels_completed
+                    if obs.state == GameState.WIN:
+                        return {
+                            "levels_completed": levels,
+                            "total_actions": total_steps,
+                            "method": "keyboard+vision",
+                        }
+                    if obs.state == GameState.GAME_OVER:
+                        obs = env.reset()
 
+        action_reward: dict[int, float] = {a: 1.0 for a in actions}
         for _step in range(self.max_keyboard_steps):
-            # 30% random, 70% best
             if random.random() < 0.3:
                 action = random.choice(actions)
             else:
@@ -207,24 +341,15 @@ class HybridSolver:
 
             obs = env.step(action)
             total_steps += 1
-
             cur = np.array(obs.frame)
             if cur.ndim == 3:
                 cur = cur[0]
             changed = int(np.sum(cur != prev_grid))
             prev_grid = cur
-
             action_reward[action] = action_reward.get(action, 0) * 0.9 + changed * 0.1
 
             if obs.levels_completed > levels:
                 levels = obs.levels_completed
-                log.info(
-                    "hybrid_keyboard_level",
-                    game=game_id.split("-")[0],
-                    level=levels,
-                    step=total_steps,
-                )
-
             if obs.state == GameState.WIN:
                 break
             if obs.state == GameState.GAME_OVER:
@@ -233,15 +358,11 @@ class HybridSolver:
                 if prev_grid.ndim == 3:
                     prev_grid = prev_grid[0]
 
-        return {
-            "levels_completed": levels,
-            "total_actions": total_steps,
-            "method": "keyboard",
-        }
+        return {"levels_completed": levels, "total_actions": total_steps, "method": "keyboard"}
 
 
-def run_all_games() -> list[dict]:
-    """Run hybrid solver on all available games."""
+def run_all_games(use_vision: bool = True) -> list[dict]:
+    """Run hybrid solver on all games."""
     import arc_agi
 
     arcade = arc_agi.Arcade()
@@ -257,15 +378,16 @@ def run_all_games() -> list[dict]:
 
         solver = HybridSolver()
         try:
-            result = solver.solve_game(gid)
+            result = solver.solve_game(gid, use_vision=use_vision)
             total_levels += result["levels_completed"]
             results.append(result)
 
             status = "WIN" if result["levels_completed"] > 0 else "---"
+            vis = "GPU" if result.get("vision_used") else "CPU"
             print(
                 f"{short:5s}: {status} levels={result['levels_completed']} "
-                f"actions={result['total_actions']} method={result['method']} "
-                f"{result['elapsed_s']}s",
+                f"actions={result['total_actions']} {result['method']} "
+                f"[{vis}] {result['elapsed_s']}s",
                 flush=True,
             )
         except Exception as exc:
