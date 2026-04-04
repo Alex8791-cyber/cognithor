@@ -5,6 +5,31 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.72.0] -- 2026-04-04
+
+### Added
+- **ARC-AGI-3 GameAnalyzer** — automated per-game analysis pipeline
+  - `GameAnalyzer` (`src/jarvis/arc/game_analyzer.py`): sacrifice-level exploration + 2 qwen3-vl:32b vision calls
+  - `GameProfile` (`src/jarvis/arc/game_profile.py`): persistent JSON profiles with strategy metrics, learning across runs
+  - `PerGameSolver` (`src/jarvis/arc/per_game_solver.py`): budget-based strategy mix (cluster_click, targeted_click, keyboard_explore, keyboard_sequence, hybrid)
+  - Smart elimination search: poison-cluster detection, progressive skip, O(n) for common cases
+  - Toggle-pair detection from sacrifice level (fallback when vision unavailable)
+  - **FT09: 10/10 levels solved** (reproducible, ~1s per level)
+- **CLI**: `--mode analyzer` + `--reanalyze` flags for `python -m jarvis.arc`
+- **61 new tests** across 4 test files (237 total ARC tests)
+
+### Changed
+- `env.reset()` replaces `arcade.make()` for combo testing — 760x faster (0.5ms vs 380ms)
+- Click game budget raised from 20 to 200 actions
+- Game timeout raised to 20 minutes, per-level timeout 120s
+
+### Fixed
+- Cluster_click strategy now replays winning clicks on main env (env sync bug)
+- Sacrifice level checks for WIN state (not just GAME_OVER)
+- `initial_levels` tracking uses None sentinel instead of faulty `or` idiom
+- `keyboard_sequence` now distinct from `keyboard_explore` (4x repeat per direction)
+- Non-numeric vision `target_color` (e.g. "green") handled gracefully
+
 ## [0.68.0] -- 2026-03-30
 
 ### Added

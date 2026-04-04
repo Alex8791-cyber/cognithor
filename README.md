@@ -16,13 +16,13 @@
     <a href="#tests"><img src="https://img.shields.io/badge/tests-12%2C300%2B%20passing-brightgreen?style=flat-square" alt="Tests"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/coverage-89%25-brightgreen?style=flat-square" alt="Coverage"></a>
     <a href="#tests"><img src="https://img.shields.io/badge/lint-0%20errors-brightgreen?style=flat-square" alt="Lint"></a>
-    <img src="https://img.shields.io/badge/version-v0.71.0-blue?style=flat-square" alt="v0.71.0">
+    <img src="https://img.shields.io/badge/version-v0.72.0-blue?style=flat-square" alt="v0.72.0">
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
     <a href="https://github.com/Alex8791-cyber/cognithor/releases"><img src="https://img.shields.io/github/v/release/Alex8791-cyber/cognithor?style=flat-square&color=blue" alt="Release"></a>
   </p>
 </p>
 
-> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (12,300+ tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
+> **Note:** Cognithor is in **active development (Beta)**. While the test suite is extensive (12,500+ tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. Contributions, bug reports, and feedback are very welcome. See [Status & Maturity](#status--maturity) for details.
 
   [![clawdboard](https://clawdboard.ai/api/badge/Alex8791-cyber)](https://clawdboard.ai/user/Alex8791-cyber)
 
@@ -30,7 +30,7 @@
   <a href="https://clawdboard.ai/recap/6fd37b26-7e41-4b0f-958a-3f2580427ccf"><strong>Weekly Recap: Rank #1 | $1,644 spent vibe-engineering</strong></a>
 </p>
 
-> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security), backed by 12,300+ tests, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
+> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security), backed by 12,500+ tests, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
 
 ---
 
@@ -38,7 +38,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 18 channels, 122+ MCP tools, 6-tier memory, knowledge vault, voice, browser automation, Computer Use, and more — all wired together from day one. 12,300+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 18 channels, 122+ MCP tools, 6-tier memory, knowledge vault, voice, browser automation, Computer Use, and more — all wired together from day one. 12,500+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 **In plain terms:** Cognithor is an AI assistant that lives entirely on your computer. You talk to it through your terminal, a web UI, Telegram, Discord, or any of 18 supported channels — and it talks back, remembers what you said last week, and acts on your behalf. It can search the web, write and edit files, run shell commands, control your browser, automate your desktop (clicking, typing, reading windows), manage your calendar, and learn new skills over time. Think of it as a local, private, self-improving Jarvis.
 
@@ -62,7 +62,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 | **Voice mode / TTS** | Alpha — experimental, hardware-dependent |
 | **Browser automation** | Stable — Playwright-based, CAPTCHA solving, stealth mode |
 | **Computer Use** | Stable — 6 phases (Vision, Agent Loop, Planner Intelligence, Security, Robustness, UI Automation) |
-| **ARC-AGI-3 Benchmark** | Beta — DSL solver + RL agent + multimodal vision, first level wins |
+| **ARC-AGI-3 Benchmark** | Beta — GameAnalyzer + smart solver, FT09 10/10 levels solved, 7 click games supported |
 | **Skill Marketplace** | Stable — GitHub registry, 5-check validation, publisher verification |
 | **Windows UI Automation** | Beta — pywinauto UIA for exact element coordinates |
 | **Deployment (Docker, bare-metal)** | Beta — tested on limited configurations |
@@ -76,7 +76,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 | **Encryption at Rest** | Stable — SQLCipher (AES-256) for all databases, Fernet for files, OS Keyring key management |
 | **OSINT / HIM Module** | Beta — person/project/org investigation with trust scoring |
 
-**What the test suite covers:** Unit tests, integration tests, real-life scenario tests, and live Ollama tests for all modules. The 12,300+ tests verify code correctness in controlled environments.
+**What the test suite covers:** Unit tests, integration tests, real-life scenario tests, and live Ollama tests for all modules. The 12,500+ tests verify code correctness in controlled environments.
 
 **What the test suite does NOT cover:** Real-world deployment scenarios, network edge cases, long-running stability, multi-user load, hardware-specific voice/GPU issues, or actual LLM response quality.
 
@@ -120,6 +120,19 @@ What makes it different from other local AI tools is that Cognithor is not just 
 ---
 
 ## What's New
+
+### What's New in v0.72.0
+
+**ARC-AGI-3: GameAnalyzer + Smart Solver** — Fully automated game analysis and solving pipeline for click-based ARC-AGI-3 games.
+
+- **GameAnalyzer** (`game_analyzer.py`): Sacrifices one level to learn game mechanics, 2 vision calls (qwen3-vl:32b) for strategy guidance, persistent GameProfile cache (`~/.jarvis/arc/game_profiles/`)
+- **PerGameSolver** (`per_game_solver.py`): Budget-based strategy mix (5 strategies), stagnation detection, smart elimination search with poison-cluster removal
+- **760x faster combo testing**: `env.reset()` (0.5ms) replaces `arcade.make()` (380ms) for subset search
+- **FT09: 10/10 levels solved** (reproducible, ~1s per level after analysis)
+- **Toggle-pair detection**: Automatically identifies which colors change on click when vision is unavailable
+- **CLI**: `python -m jarvis.arc --mode analyzer --game ft09-0d8bbf25 --verbose`
+- **Learning profiles**: Strategy metrics persist across runs, ranking improves with each game
+- **3 new files**, 61 new tests (237 total ARC tests passing)
 
 ### What's New in v0.71.0
 
@@ -512,7 +525,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
 - **Model Context Protocol (MCP)** — 122+ tools across 12 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, documents, automation, coordination, arc) + A2A delegation
 - **Computer Use** — Complete desktop automation: screenshots, clicking, typing, scrolling, dragging, Windows UI Automation via pywinauto for exact element coordinates, 3-layer security, adaptive wait
-- **ARC-AGI-3 Benchmark Agent** — Compete in ARC Prize 2026: dual-mode RL + DSL solver, 25 grid primitives, multimodal vision, first level wins
+- **ARC-AGI-3 Benchmark Agent** — Compete in ARC Prize 2026: GameAnalyzer + smart solver, FT09 10/10 levels solved, multimodal vision (qwen3-vl), persistent game profiles
 - **Distributed Locking** — Redis-backed (with file-based fallback) locks for multi-instance deployments
 - **Durable Message Queue** — SQLite-backed persistent queue with priorities, DLQ, and automatic retry
 - **Prometheus Metrics** — /metrics endpoint with Grafana dashboard for production observability
@@ -544,7 +557,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **Agent SDK** — Decorator-based agent registration (`@agent`, `@tool`, `@hook`), project scaffolding
 - **Plugin Remote Registry** — Remote manifests with SHA-256 checksums, dependency resolution, install/update/rollback
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
-- **12,300+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
+- **12,500+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
 
 ## Architecture
 
@@ -973,7 +986,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **12,300+ tests** · **100% pass rate** · **89% coverage** · **~118,000 LOC source** · **~108,000 LOC tests**
+Current status: **12,500+ tests** · **100% pass rate** · **89% coverage** · **~118,000 LOC source** · **~108,000 LOC tests**
 
 Notable test suites: 183 Computer Use tests, 176 ARC tests.
 
@@ -1104,7 +1117,7 @@ cognithor/
 │   ├── vite.config.js             # Dev server with backend launcher plugin (deprecated)
 │   ├── package.json               # Dependencies (react, vite)
 │   └── src/                       # React components (deprecated)
-├── tests/                         # 12,300+ tests, ~108,000 LOC
+├── tests/                         # 12,500+ tests, ~108,000 LOC
 │   ├── test_core/                 # Planner, Gatekeeper, Executor, Distributed Lock
 │   ├── test_memory/               # All 5 memory tiers, hybrid search
 │   ├── test_mcp/                  # MCP tools and client
@@ -1289,7 +1302,7 @@ Alternatively, use [terminalizer](https://github.com/faressoft/terminalizer) for
 
 ---
 
-**Metrics:** ~118,000 LOC source · ~108,000 LOC tests · 12,300+ tests · 89% coverage · 0 lint errors · **Status: Beta**
+**Metrics:** ~118,000 LOC source · ~108,000 LOC tests · 12,500+ tests · 89% coverage · 0 lint errors · **Status: Beta**
 
 ## Contributors
 
