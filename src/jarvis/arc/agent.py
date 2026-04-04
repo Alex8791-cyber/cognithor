@@ -281,6 +281,32 @@ class CognithorArcAgent:
 
         current_hash = self.state_graph.hash_grid(self.current_obs.raw_grid)
 
+        # === VISION GUIDE: consult LLM when due (before any action selection) ===
+        if self.vision_guide.should_call(self.current_obs.changed_pixels):
+            action_names = [
+                getattr(a, "name", str(a)) for a in (self.current_obs.available_actions or [])
+            ]
+            guidance = self.vision_guide.analyze_sync(self.current_obs.raw_grid, action_names)
+            if guidance and guidance.get("next_action"):
+                action = self._resolve_action(guidance["next_action"])
+                if action is not None:
+                    data: dict[str, Any] = {}
+                    action_str = self._action_to_str(action, data)
+                    self.vision_guide.actions_followed += 1
+
+                    # Execute vision-guided action immediately
+                    previous_obs = self.current_obs
+                    self.current_obs = self.adapter.act(action, data)
+                    self.total_steps += 1
+                    self._record_step(previous_obs, action_str or "", data)
+                    self.frame_analyzer.analyze(self.current_obs.raw_grid, action=action_str)
+                    self.pixel_explorer.record_reward(action, self.current_obs.changed_pixels)
+                    self.telemetry.record_step(
+                        action=action_str or str(action),
+                        changed_pixels=self.current_obs.changed_pixels,
+                    )
+                    return self._check_game_state()
+
         # === NAVIGATION MODE: Win path known → follow it ===
         if (
             self._navigation_mode
@@ -371,24 +397,7 @@ class CognithorArcAgent:
 
                     data = {"x": random.randint(0, 63), "y": random.randint(0, 63)}
 
-        # 3. Vision guide (if enough steps/pixels since last call)
-        if (
-            action_str is None
-            and self.vision_guide is not None
-            and self.vision_guide.should_call(self.current_obs.changed_pixels)
-        ):
-            action_names = [
-                getattr(a, "name", str(a)) for a in (self.current_obs.available_actions or [])
-            ]
-            guidance = self.vision_guide.analyze_sync(self.current_obs.raw_grid, action_names)
-            if guidance and guidance.get("next_action"):
-                action = self._resolve_action(guidance["next_action"])
-                if action is not None:
-                    data = {}
-                    action_str = self._action_to_str(action, data)
-                    self.vision_guide.actions_followed += 1
-
-        # 4. Frame-analyzer suggestion (if it has learned enough)
+        # 3. Frame-analyzer suggestion (if it has learned enough)
         if action_str is None:
             suggested = self.frame_analyzer.suggest_action(
                 self.current_obs.available_actions or [1, 2, 3, 4]

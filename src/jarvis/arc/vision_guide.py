@@ -134,7 +134,7 @@ class ArcVisionGuide:
         self._steps_since_call: int = 0
         self._pixels_since_call: int = 0
         self._last_strategy: dict | None = None
-        self._force_next: bool = True  # First call always
+        self._force_next: bool = False  # Wait for call_interval before first call
         self.call_count: int = 0
         self.actions_followed: int = 0
 
@@ -183,6 +183,7 @@ class ArcVisionGuide:
                         "images": [b64],
                     }
                 ],
+                options={"num_predict": 500, "temperature": 0.3},
             )
 
             raw = response.get("message", {}).get("content", "")
