@@ -32,9 +32,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--mode",
-        choices=["single", "benchmark", "swarm"],
+        choices=["single", "benchmark", "swarm", "analyzer"],
         default="single",
-        help="Run mode: single (default), benchmark (all games sequential), swarm (parallel)",
+        help="Run mode: single (default), benchmark, swarm (parallel), analyzer (game analysis)",
     )
     parser.add_argument(
         "--no-llm",
@@ -72,6 +72,12 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         default="",
         help="Path to Jarvis config.yaml (optional)",
+    )
+    parser.add_argument(
+        "--reanalyze",
+        action="store_true",
+        default=False,
+        help="Force re-analysis of games (ignore cached profiles, analyzer mode only)",
     )
     return parser
 
@@ -208,6 +214,84 @@ def _run_swarm(use_llm: bool, parallel: int, verbose: bool, config: Any) -> int:
     return 0
 
 
+def _run_analyzer(game_id: str, reanalyze: bool, verbose: bool, config: Any) -> int:
+    """Run GameAnalyzer + PerGameSolver. Returns exit code."""
+    try:
+        from jarvis.arc.game_analyzer import GameAnalyzer
+        from jarvis.arc.per_game_solver import PerGameSolver
+    except ImportError as exc:
+        print(f"[FAIL] Could not import GameAnalyzer: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        import arc_agi
+
+        arcade = arc_agi.Arcade()
+    except Exception as exc:
+        print(f"[FAIL] Could not create Arcade: {exc}", file=sys.stderr)
+        return 1
+
+    # Determine games to analyze
+    if game_id:
+        game_ids = [game_id]
+    else:
+        try:
+            from jarvis.arc.adapter import ArcEnvironmentAdapter
+
+            game_ids = ArcEnvironmentAdapter.list_games()
+        except Exception:
+            game_ids = []
+
+    if not game_ids:
+        print("[FAIL] No games found.", file=sys.stderr)
+        return 1
+
+    if verbose:
+        print(f"[INFO] Analyzer mode: {len(game_ids)} game(s), reanalyze={reanalyze}")
+
+    analyzer = GameAnalyzer(arcade=arcade)
+    total_levels = 0
+    total_score = 0.0
+
+    for gid in game_ids:
+        if verbose:
+            print(f"\n[INFO] Analyzing {gid}...")
+
+        try:
+            profile = analyzer.analyze(gid, force=reanalyze)
+            if verbose:
+                print(f"  type={profile.game_type}, actions={profile.available_actions}")
+                print(f"  click_zones={len(profile.click_zones)}, win={profile.win_condition}")
+
+            solver = PerGameSolver(profile, arcade=arcade)
+            result = solver.solve()
+
+            total_levels += result.levels_completed
+            total_score += result.score
+
+            print(f"[RESULT] {gid}: {result.levels_completed} levels, {result.total_steps} steps")
+            for entry in result.strategy_log:
+                status = "WIN" if entry["won"] else "FAIL"
+                print(f"  Level {entry['level']}: {status} via {entry['strategy']} ({entry['steps']} steps)")
+
+        except Exception as exc:
+            print(f"[FAIL] {gid}: {exc}", file=sys.stderr)
+            if verbose:
+                import traceback
+
+                traceback.print_exc()
+
+    print(f"\n[SUMMARY] Total levels: {total_levels}, Total score: {total_score:.1f}")
+
+    try:
+        scorecard = arcade.get_scorecard()
+        print(f"[SCORECARD] {scorecard.score}")
+    except Exception:
+        pass
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns process exit code."""
     parser = _build_parser()
@@ -256,6 +340,14 @@ def main(argv: list[str] | None = None) -> int:
         return _run_swarm(
             use_llm=use_llm,
             parallel=args.parallel,
+            verbose=args.verbose,
+            config=config,
+        )
+
+    if args.mode == "analyzer":
+        return _run_analyzer(
+            game_id=args.game,
+            reanalyze=args.reanalyze,
             verbose=args.verbose,
             config=config,
         )

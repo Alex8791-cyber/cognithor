@@ -331,3 +331,29 @@ class TestAnalyze:
             result = analyzer.analyze("force_test", force=True, base_dir=tmp_path)
 
         assert result.vision_description != "old"
+
+
+class TestCLIIntegration:
+    def test_build_parser_accepts_analyzer_mode(self):
+        from jarvis.arc.__main__ import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["--mode", "analyzer", "--game", "ft09"])
+        assert args.mode == "analyzer"
+        assert args.game == "ft09"
+
+    def test_build_parser_accepts_reanalyze_flag(self):
+        from jarvis.arc.__main__ import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["--mode", "analyzer", "--reanalyze"])
+        assert args.reanalyze is True
+
+    def test_analyzer_mode_requires_game_or_all(self):
+        """analyzer mode should work without --game (runs all games)."""
+        from jarvis.arc.__main__ import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["--mode", "analyzer"])
+        assert args.mode == "analyzer"
+        assert args.game == ""
