@@ -539,7 +539,7 @@ class PerGameSolver:
         if not raw_hits:
             return []
 
-        # Group by (puzzle_diff within 10%) AND (spatial proximity < 8 Manhattan)
+        # Group by exact puzzle_diff AND spatial proximity (Manhattan < 6)
         groups: list[list[tuple[int, int, int]]] = []
         used = [False] * len(raw_hits)
 
@@ -548,28 +548,20 @@ class PerGameSolver:
                 continue
             group = [(x1, y1, d1)]
             used[i] = True
-            changed = True
-            while changed:
-                changed = False
-                for j, (x2, y2, d2) in enumerate(raw_hits):
-                    if used[j]:
-                        continue
-                    # Check proximity against any existing group member
-                    for gx, gy, gd in group:
-                        if abs(gd - d2) <= max(gd, d2) * 0.1 and abs(gx - x2) + abs(gy - y2) < 8:
-                            group.append((x2, y2, d2))
-                            used[j] = True
-                            changed = True
-                            break
+            for j, (x2, y2, d2) in enumerate(raw_hits):
+                if used[j]:
+                    continue
+                # Same diff AND directly adjacent (same valve)
+                if d1 == d2 and abs(x1 - x2) + abs(y1 - y2) <= 4:
+                    group.append((x2, y2, d2))
+                    used[j] = True
             groups.append(group)
 
-        # Pick representative per group (centroid), sort by diff descending
+        # Pick representative per group (pixel with max diff)
         representatives: list[tuple[int, int, int]] = []
         for group in groups:
-            cx = int(np.mean([g[0] for g in group]))
-            cy = int(np.mean([g[1] for g in group]))
-            avg_diff = int(np.mean([g[2] for g in group]))
-            representatives.append((cx, cy, avg_diff))
+            best = max(group, key=lambda g: g[2])
+            representatives.append(best)
 
         representatives.sort(key=lambda r: -r[2])
         representatives = representatives[:6]

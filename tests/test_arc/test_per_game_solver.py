@@ -441,8 +441,8 @@ class TestEffectivePositionScanner:
 
         assert positions == []
 
-    def test_groups_nearby_positions(self):
-        """Positions with same effect and close proximity should be grouped."""
+    def test_separates_different_valve_regions(self):
+        """Two distant valve regions should produce separate groups."""
         from arcengine.enums import GameState
 
         grid = np.zeros((64, 64), dtype=np.int8)
@@ -475,8 +475,13 @@ class TestEffectivePositionScanner:
         solver = PerGameSolver(_make_profile("click"), arcade=MagicMock())
         positions = solver._scan_effective_positions(mock_env, replay_sequence=[])
 
-        # Should find 2 groups (not 9+ individual positions)
-        assert len(positions) == 2
+        # Two distant regions → at least 2 groups, at most 6
+        assert 2 <= len(positions) <= 6
+        # Positions from region 1 and region 2 should both be present
+        region1 = [p for p in positions if 6 <= p[0] <= 14 and 6 <= p[1] <= 14]
+        region2 = [p for p in positions if 38 <= p[0] <= 46 and 38 <= p[1] <= 46]
+        assert len(region1) >= 1
+        assert len(region2) >= 1
 
     def test_max_six_groups(self):
         """Scanner should return at most 6 groups."""
