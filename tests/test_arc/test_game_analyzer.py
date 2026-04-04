@@ -67,3 +67,118 @@ class TestSacrificeReport:
         assert r.unique_states_seen == 0
         assert r.game_over_trigger is None
         assert r.frames == []
+
+
+from jarvis.arc.error_handler import safe_frame_extract
+
+
+def _make_mock_obs(grid=None, state="NOT_FINISHED", levels=0, actions=None):
+    """Create a mock ARC SDK observation."""
+    if grid is None:
+        grid = np.zeros((1, 64, 64), dtype=np.int8)
+    obs = MagicMock()
+    obs.frame = grid
+    obs.state = state
+    obs.levels_completed = levels
+    obs.available_actions = actions or []
+    obs.win_levels = 0
+    return obs
+
+
+def _make_mock_game_state(name):
+    state = MagicMock()
+    state.name = name
+    state.__eq__ = lambda self, other: getattr(other, "name", other) == name
+    return state
+
+
+class TestSacrificeLevel:
+    def test_run_sacrifice_keyboard_only(self):
+        """Keyboard-only game: tests directions 1-4, no clicks."""
+        initial_grid = np.zeros((64, 64), dtype=np.int8)
+        initial_grid[30:34, 30:34] = 2  # blue block
+
+        moved_grid = np.zeros((64, 64), dtype=np.int8)
+        moved_grid[31:35, 30:34] = 2  # shifted down
+
+        not_finished = _make_mock_game_state("NOT_FINISHED")
+
+        mock_env = MagicMock()
+        call_count = [0]
+
+        def mock_step(action, data=None):
+            call_count[0] += 1
+            obs = _make_mock_obs(
+                grid=np.expand_dims(moved_grid if call_count[0] % 2 else initial_grid, 0),
+                state=not_finished,
+                actions=[MagicMock(value=a) for a in [1, 2, 3, 4, 5]],
+            )
+            return obs
+
+        mock_env.step = mock_step
+
+        analyzer = GameAnalyzer.__new__(GameAnalyzer)
+        report = analyzer._run_sacrifice_level(
+            mock_env, initial_grid, available_action_ids=[1, 2, 3, 4, 5]
+        )
+
+        assert isinstance(report, SacrificeReport)
+        # Should have tested all 4 directions
+        assert len(report.movements_tested) == 4
+        assert report.unique_states_seen >= 1
+
+    def test_run_sacrifice_click_game(self):
+        """Click game: finds clusters and tests clicks."""
+        initial_grid = np.zeros((64, 64), dtype=np.int8)
+        # Two distinct clusters of colour 3
+        initial_grid[10:15, 10:15] = 3
+        initial_grid[40:45, 40:45] = 3
+
+        toggled_grid = initial_grid.copy()
+        toggled_grid[10:15, 10:15] = 5  # toggled to colour 5
+
+        not_finished = _make_mock_game_state("NOT_FINISHED")
+
+        mock_env = MagicMock()
+        click_count = [0]
+
+        def mock_step(action, data=None):
+            click_count[0] += 1
+            obs = _make_mock_obs(
+                grid=np.expand_dims(toggled_grid, 0),
+                state=not_finished,
+                actions=[MagicMock(value=a) for a in [5, 6]],
+            )
+            return obs
+
+        mock_env.step = mock_step
+
+        analyzer = GameAnalyzer.__new__(GameAnalyzer)
+        report = analyzer._run_sacrifice_level(
+            mock_env, initial_grid, available_action_ids=[5, 6]
+        )
+
+        assert isinstance(report, SacrificeReport)
+        assert len(report.clicks_tested) > 0
+        assert report.unique_states_seen >= 1
+
+    def test_run_sacrifice_game_over(self):
+        """GAME_OVER during sacrifice is handled gracefully."""
+        initial_grid = np.zeros((64, 64), dtype=np.int8)
+        initial_grid[20:30, 20:30] = 3
+
+        game_over = _make_mock_game_state("GAME_OVER")
+
+        mock_env = MagicMock()
+        mock_env.step.return_value = _make_mock_obs(
+            grid=np.expand_dims(initial_grid, 0),
+            state=game_over,
+            actions=[MagicMock(value=6)],
+        )
+
+        analyzer = GameAnalyzer.__new__(GameAnalyzer)
+        report = analyzer._run_sacrifice_level(
+            mock_env, initial_grid, available_action_ids=[5, 6]
+        )
+
+        assert report.game_over_trigger is not None
