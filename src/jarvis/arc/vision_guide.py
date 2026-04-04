@@ -183,7 +183,7 @@ class ArcVisionGuide:
                         "images": [b64],
                     }
                 ],
-                options={"num_predict": 500, "temperature": 0.3},
+                options={"num_predict": 2000, "temperature": 0.3, "num_ctx": 8192},
             )
 
             raw = response.get("message", {}).get("content", "")
