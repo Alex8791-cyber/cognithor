@@ -203,12 +203,20 @@ class KeyboardSolver:
             path.extend(actions_taken)
             stack.append(smart_action_order(actions_taken[0]))
 
-            # Try INTERACT if available
-            if 5 in self._actions:
-                obs_interact = env.step(5)
-                if obs_interact.levels_completed > current_levels:
-                    path.append(5)
+            # At each new position, try INTERACT and CLICK
+            for try_action in [5, 6, 7]:
+                if try_action not in self._actions:
+                    continue
+                if try_action == 6:
+                    # Click at grid center (common target)
+                    obs_try = env.step(6, data={"x": 32, "y": 32})
+                else:
+                    obs_try = env.step(try_action)
+                if obs_try.levels_completed > current_levels:
+                    path.append(try_action)
                     return path
+                # Undo: reset to current path
+                self._replay_to(env, replay_prefix, path)
 
         log.info("arc.keyboard_dfs_exhausted",
                  states=len(visited), path_len=len(path),
