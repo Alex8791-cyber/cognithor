@@ -60,7 +60,9 @@ class VisionAgent:
 
             current_levels = obs.levels_completed
             level_actions: list[int | tuple] = []
-            strategy = None
+            grid = safe_frame_extract(obs)
+            strategy = self._get_strategy(grid)
+            last_actions: list[str] = []
 
             for step in range(100):  # max 100 steps per level
                 if time.monotonic() - t0 > timeout_s:
@@ -68,8 +70,8 @@ class VisionAgent:
 
                 grid = safe_frame_extract(obs)
 
-                # Ask vision what to do
-                action, data = self._ask_vision(grid, step, strategy)
+                # Ask vision what to do (with history context)
+                action, data = self._ask_vision(grid, step, strategy, last_actions)
                 if action is None:
                     break
 
@@ -77,9 +79,11 @@ class VisionAgent:
                 if action == 6 and data:
                     obs = env.step(6, data=data)
                     level_actions.append((data["x"], data["y"]))
+                    last_actions.append(f"CLICK({data['x']},{data['y']})")
                 else:
                     obs = env.step(action)
                     level_actions.append(action)
+                    last_actions.append(_ACTION_NAMES.get(action, f"A{action}"))
 
                 result.total_steps += 1
 
@@ -118,9 +122,9 @@ class VisionAgent:
                 messages=[{
                     "role": "user",
                     "content": (
-                        f"64x64 pixel game. Actions: {self._action_str}. "
-                        "What is the goal? What strategy should I use? "
-                        "Answer in 1-2 sentences. No thinking."
+                        f"64x64 pixel game. I can press: {self._action_str}. "
+                        "What is the goal of this game? Where should I navigate to? "
+                        "Describe the target position briefly."
                     ),
                     "images": [b64],
                 }],
@@ -134,7 +138,8 @@ class VisionAgent:
             return None
 
     def _ask_vision(
-        self, grid: np.ndarray, step: int, strategy: str | None
+        self, grid: np.ndarray, step: int, strategy: str | None,
+        last_actions: list[str] | None = None,
     ) -> tuple[int | None, dict | None]:
         """Ask vision for the next action."""
         try:
@@ -144,7 +149,10 @@ class VisionAgent:
 
             context = ""
             if strategy:
-                context = f"Strategy: {strategy}\n"
+                context = f"Goal: {strategy}\n"
+            if last_actions:
+                recent = ", ".join(last_actions[-10:])
+                context += f"My last moves: {recent}\n"
 
             resp = ollama.chat(
                 model="qwen3-vl:32b",
@@ -152,8 +160,8 @@ class VisionAgent:
                     "role": "user",
                     "content": (
                         f"{context}"
-                        f"I can press: {self._action_str}. "
-                        "Tell me which direction or action to take."
+                        f"I can ONLY press: {self._action_str}. "
+                        f"What should I press NEXT to reach the goal? Say just the action name."
                     ),
                     "images": [b64],
                 }],
@@ -170,24 +178,42 @@ class VisionAgent:
 
     def _parse_action(self, raw: str) -> tuple[int | None, dict | None]:
         """Parse vision response into action + data."""
-        raw = raw.strip().upper()
+        # Strip markdown bold/italic
+        clean = re.sub(r"\*+", "", raw).strip().upper()
 
         # Check for CLICK with coordinates
-        click_match = re.search(r"CLICK\s*\(?(\d+)\s*,\s*(\d+)\)?", raw)
+        click_match = re.search(r"CLICK\s*\(?(\d+)\s*,\s*(\d+)\)?", clean)
         if click_match:
             x, y = int(click_match.group(1)), int(click_match.group(2))
             return 6, {"x": min(63, x), "y": min(63, y)}
 
-        # Match action names
+        # Match action names (check available actions first)
         for name, action_id in _NAME_TO_ACTION.items():
-            if name in raw and action_id in self._actions:
+            if name in clean and action_id in self._actions:
+                log.debug("arc.vision_parsed", raw=raw[:60], action=name)
                 return action_id, None
 
+        # If vision says UP/DOWN but only LEFT/RIGHT available (or vice versa),
+        # map to the first available keyboard action
+        for name, action_id in _NAME_TO_ACTION.items():
+            if name in clean:
+                # Action not available — try first available keyboard action
+                for fallback in [1, 2, 3, 4, 5]:
+                    if fallback in self._actions:
+                        log.debug("arc.vision_fallback",
+                                  wanted=name, using=_ACTION_NAMES.get(fallback))
+                        return fallback, None
+
         # Fallback: try to find any action number
-        num_match = re.search(r"ACTION\s*(\d+)", raw)
+        num_match = re.search(r"ACTION\s*(\d+)", clean)
         if num_match:
             a = int(num_match.group(1))
             if a in self._actions:
                 return a, None
+
+        # Last resort: return first available action
+        if self._actions:
+            log.debug("arc.vision_unparsed", raw=raw[:80])
+            return self._actions[0], None
 
         return None, None
