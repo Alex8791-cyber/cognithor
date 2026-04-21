@@ -11,7 +11,7 @@ Diagnostic smoke-test that sends a probe through the full Planner → Gatekeeper
 
 1. **Invoke the skill** with any input:
    ```
-   jarvis test <eingabe>
+   cognithor test <eingabe>
    ```
 2. **Planner** receives the input and identifies this skill via SkillRegistry matching
 3. **Gatekeeper** validates the request against the skill's empty permission set (always passes)
@@ -24,8 +24,8 @@ Diagnostic smoke-test that sends a probe through the full Planner → Gatekeeper
 ## Example
 
 ```
-User > jarvis test Hallo Welt
-Jarvis > {"status": "ok", "result": "TODO"}
+User > cognithor test Hallo Welt
+Cognithor > {"status": "ok", "result": "TODO"}
 
 # Healthy pipeline — skill loaded, registered, and executed successfully
 ```
@@ -35,7 +35,7 @@ Jarvis > {"status": "ok", "result": "TODO"}
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Skill not found | Not registered in SkillRegistry | Restart Cognithor to re-scan `skills/` |
-| Import error | `jarvis.skills.base` missing | Verify installation: `pip install -e ".[all]"` |
+| Import error | `cognithor.skills.base` missing | Verify installation: `pip install -e ".[all]"` |
 | No response | Executor timeout | Check logs at `$COGNITHOR_HOME/logs/` for stack traces |
 
 ## Notes

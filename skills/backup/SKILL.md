@@ -35,7 +35,7 @@ Automated backup skill that creates timestamped archives of Cognithor configurat
 
 ```
 User > Starte ein Backup meiner Cognithor-Daten
-Jarvis > Backup erstellt: cognithor_20260420_140000.tar.gz (12 MB)
+Cognithor > Backup erstellt: cognithor_20260420_140000.tar.gz (12 MB)
          Nächstes automatisches Backup: 15:00 Uhr
 ```
 

@@ -11,7 +11,7 @@ Retrieves current weather conditions (temperature, humidity, wind speed, conditi
 
 1. **Parse location** — extract city name or coordinates from user input:
    ```
-   jarvis wetter_abfrage München
+   cognithor wetter_abfrage München
    ```
 2. **Query weather API** — fetch current conditions and forecast data:
    ```python
@@ -38,7 +38,7 @@ Retrieves current weather conditions (temperature, humidity, wind speed, conditi
 
 ```
 User > Wie wird das Wetter morgen in Berlin?
-Jarvis > Berlin — morgen: 22°C, sonnig
+Cognithor > Berlin — morgen: 22°C, sonnig
          Luftfeuchtigkeit: 45% | Wind: 8 km/h SO
          UV-Index: 6 (hoch) — Sonnenschutz empfohlen
 ```

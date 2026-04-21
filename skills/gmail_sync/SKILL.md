@@ -31,7 +31,7 @@ Fetches Gmail messages, syncs labels, and processes attachments via the Gmail RE
 
 ```
 User > Synchronisiere meine Gmail-Inbox
-Jarvis > 14 neue Nachrichten synchronisiert (3 ungelesen, 2 mit Anhängen)
+Cognithor > 14 neue Nachrichten synchronisiert (3 ungelesen, 2 mit Anhängen)
          Letzte Synchronisation: 2026-04-20 14:00 UTC
 ```
 

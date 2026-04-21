@@ -11,7 +11,7 @@ Extended diagnostic that validates the full skill lifecycle: directory scan → 
 
 1. **Trigger the skill** — Cognithor must match via keyword similarity:
    ```
-   jarvis test_skill <eingabe>
+   cognithor test_skill <eingabe>
    ```
 2. **Verify registration** — confirm the skill appears in the registry:
    ```
@@ -28,8 +28,8 @@ Extended diagnostic that validates the full skill lifecycle: directory scan → 
 ## Example
 
 ```
-User > jarvis test_skill Prüfe den Lifecycle
-Jarvis > {"status": "ok", "result": "TODO"}
+User > cognithor test_skill Prüfe den Lifecycle
+Cognithor > {"status": "ok", "result": "TODO"}
 
 # Success: skill was discovered, matched, and executed asynchronously
 ```
