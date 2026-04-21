@@ -274,7 +274,9 @@ class TestExecutionRecorder:
         final = recorder.get(rec.recording_id)
         assert final.event_count == 7
         assert final.success is True
-        assert final.finished_at > final.started_at
+        # Use >= because time.time() has only millisecond resolution on Windows,
+        # so a fast-executing lifecycle may start and finish within the same tick.
+        assert final.finished_at >= final.started_at
 
     def test_stats(self) -> None:
         recorder = ExecutionRecorder()
