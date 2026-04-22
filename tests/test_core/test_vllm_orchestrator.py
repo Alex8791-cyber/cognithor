@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from cognithor.core.llm_backend import VLLMHardwareError
 from cognithor.core.vllm_orchestrator import (
     ContainerInfo,
     DockerInfo,
@@ -72,3 +77,60 @@ class TestOrchestratorInit:
         assert orch.port == 8000
         assert orch._hf_token == "hf_test"
         assert orch.state.hardware_ok is False
+
+
+class TestCheckHardware:
+    def _mk_orch(self):
+        return VLLMOrchestrator()
+
+    def test_detects_rtx_5090(self):
+        mock_result = MagicMock(returncode=0, stdout="NVIDIA GeForce RTX 5090, 32768, 12.0\n")
+        with patch("subprocess.run", return_value=mock_result):
+            info = self._mk_orch().check_hardware()
+        assert info.gpu_name == "NVIDIA GeForce RTX 5090"
+        assert info.vram_gb == 32
+        assert info.compute_capability == (12, 0)
+
+    def test_detects_rtx_4090(self):
+        mock_result = MagicMock(returncode=0, stdout="NVIDIA GeForce RTX 4090, 24564, 8.9\n")
+        with patch("subprocess.run", return_value=mock_result):
+            info = self._mk_orch().check_hardware()
+        assert info.gpu_name == "NVIDIA GeForce RTX 4090"
+        assert info.vram_gb == 24
+        assert info.compute_capability == (8, 9)
+
+    def test_raises_when_nvidia_smi_missing(self):
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            with pytest.raises(VLLMHardwareError) as exc:
+                self._mk_orch().check_hardware()
+            assert "nvidia-smi" in str(exc.value).lower()
+
+    def test_raises_when_no_gpu_detected(self):
+        mock_result = MagicMock(returncode=0, stdout="")
+        with patch("subprocess.run", return_value=mock_result):
+            with pytest.raises(VLLMHardwareError):
+                self._mk_orch().check_hardware()
+
+    def test_raises_when_nvidia_smi_fails(self):
+        mock_result = MagicMock(returncode=9, stdout="", stderr="NVIDIA-SMI has failed")
+        with patch("subprocess.run", return_value=mock_result):
+            with pytest.raises(VLLMHardwareError):
+                self._mk_orch().check_hardware()
+
+    def test_picks_first_gpu_when_multiple(self):
+        mock_result = MagicMock(
+            returncode=0,
+            stdout="NVIDIA GeForce RTX 5090, 32768, 12.0\nNVIDIA GeForce RTX 3060, 12288, 8.6\n",
+        )
+        with patch("subprocess.run", return_value=mock_result):
+            info = self._mk_orch().check_hardware()
+        assert "5090" in info.gpu_name
+
+    def test_state_updated_after_success(self):
+        mock_result = MagicMock(returncode=0, stdout="NVIDIA GeForce RTX 4080, 16380, 8.9\n")
+        orch = self._mk_orch()
+        with patch("subprocess.run", return_value=mock_result):
+            orch.check_hardware()
+        assert orch.state.hardware_ok is True
+        assert orch.state.hardware_info is not None
+        assert orch.state.hardware_info.compute_capability == (8, 9)

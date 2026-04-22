@@ -10,9 +10,11 @@ See spec: docs/superpowers/specs/2026-04-22-vllm-opt-in-backend-design.md
 from __future__ import annotations
 
 import collections
+import subprocess
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from cognithor.core.llm_backend import VLLMHardwareError
 from cognithor.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -126,3 +128,53 @@ class VLLMOrchestrator:
     def get_logs(self) -> list[str]:
         """Snapshot of the container-log ring buffer."""
         return list(self._log_ring)
+
+    def check_hardware(self) -> HardwareInfo:
+        """Detect NVIDIA GPU. Raises VLLMHardwareError on any failure."""
+        cmd = [
+            "nvidia-smi",
+            "--query-gpu=name,memory.total,compute_cap",
+            "--format=csv,noheader,nounits",
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        except FileNotFoundError as exc:
+            raise VLLMHardwareError(
+                "nvidia-smi not found — NVIDIA driver not installed?",
+                recovery_hint="Install the NVIDIA GPU driver from nvidia.com.",
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise VLLMHardwareError(
+                "nvidia-smi timed out",
+                recovery_hint="Check GPU driver health.",
+            ) from exc
+
+        if result.returncode != 0:
+            raise VLLMHardwareError(
+                f"nvidia-smi failed: {result.stderr.strip() or 'unknown error'}",
+            )
+
+        first_line = result.stdout.strip().split("\n")[0] if result.stdout.strip() else ""
+        if not first_line:
+            raise VLLMHardwareError("No NVIDIA GPU detected")
+
+        parts = [p.strip() for p in first_line.split(",")]
+        if len(parts) < 3:
+            raise VLLMHardwareError(f"Unexpected nvidia-smi output: {first_line!r}")
+
+        gpu_name = parts[0]
+        try:
+            vram_mib = int(parts[1])
+            cc_parts = parts[2].split(".")
+            compute_capability = (int(cc_parts[0]), int(cc_parts[1]))
+        except (ValueError, IndexError) as exc:
+            raise VLLMHardwareError(f"Cannot parse nvidia-smi output: {first_line!r}") from exc
+
+        info = HardwareInfo(
+            gpu_name=gpu_name,
+            vram_gb=round(vram_mib / 1024),
+            compute_capability=compute_capability,
+        )
+        self.state.hardware_info = info
+        self.state.hardware_ok = True
+        return info
