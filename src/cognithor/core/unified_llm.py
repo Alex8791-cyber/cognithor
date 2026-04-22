@@ -19,9 +19,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from cognithor.core.llm_backend import LLMBackendError, LLMBadRequestError
+from cognithor.core.llm_backend import LLMBackendError, LLMBadRequestError, VLLMNotReadyError
 from cognithor.core.model_router import OllamaClient, OllamaError
-from cognithor.utils.circuit_breaker import CircuitBreaker, CircuitState
+from cognithor.utils.circuit_breaker import CircuitBreaker, CircuitBreakerOpen, CircuitState
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -215,6 +215,7 @@ class UnifiedLLMClient:
         format_json: bool = False,
         options: dict[str, Any] | None = None,
         backend_override: str = "",
+        images: list[str] | None = None,
     ) -> dict[str, Any]:
         """Chat-Completion im Ollama-Response-Format.
 
@@ -310,27 +311,59 @@ class UnifiedLLMClient:
             return result
 
         # Via LLMBackend
+        is_image_request = bool(images)
         effective_backend_type = getattr(effective_backend, "backend_type", self._backend_type)
         if hasattr(effective_backend_type, "value"):
             effective_backend_type = effective_backend_type.value
         breaker = self._breaker_for(str(effective_backend_type))
         try:
-            response = await breaker.call(
-                effective_backend.chat(
+            backend_call_kwargs: dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "tools": tools,
+                "temperature": temperature,
+                "top_p": top_p,
+                "format_json": format_json,
+            }
+            if images is not None:
+                backend_call_kwargs["images"] = images
+            response = await breaker.call(effective_backend.chat(**backend_call_kwargs))
+        except LLMBadRequestError:
+            self._refresh_status()
+            raise
+        except (VLLMNotReadyError, CircuitBreakerOpen) as exc:
+            self._refresh_status()
+            if is_image_request:
+                # Images cannot be processed by Ollama fallback — hard error
+                if isinstance(exc, CircuitBreakerOpen):
+                    raise VLLMNotReadyError(
+                        "vLLM offline — cannot process image",
+                        recovery_hint="Start vLLM from LLM Backends settings.",
+                    ) from exc
+                raise
+            # Text-only: transparent fallback to Ollama
+            if self._ollama is not None:
+                log.warning("vllm_fallback_to_ollama", error=str(exc))
+                self._refresh_status()
+                return await self._ollama.chat(
                     model=model,
                     messages=messages,
                     tools=tools,
                     temperature=temperature,
                     top_p=top_p,
+                    stream=stream,
                     format_json=format_json,
+                    options=options,
                 )
-            )
-        except LLMBadRequestError:
-            self._refresh_status()
-            raise
+            # No Ollama available — wrap and raise
+            bt = backend_override or self._backend_type
+            raise OllamaError(
+                f"LLM-Backend-Fehler ({bt}): {exc}",
+                status_code=getattr(exc, "status_code", None),
+            ) from exc
         except Exception as exc:
             self._refresh_status()
-            # Alle Backend-Fehler als OllamaError wrappen
+            # Alle anderen Backend-Fehler als OllamaError wrappen
             # so Planner/Reflector catch blocks keep working
             bt = backend_override or self._backend_type
             raise OllamaError(
