@@ -154,3 +154,35 @@ class TestPullImageSSE:
         data_lines = [l for l in lines if l.startswith("data:")]
         assert len(data_lines) >= 3
         assert any("Downloading" in l for l in data_lines)
+
+
+class TestSetActiveBackend:
+    def _client_with_gateway(self, cfg, gateway):
+        from cognithor.channels.backends_api import build_backends_app
+
+        app = build_backends_app(config=cfg, gateway=gateway)
+        return TestClient(app)
+
+    def test_switch_to_vllm_reinits_unified_client(self):
+        from unittest.mock import MagicMock
+
+        from cognithor.config import CognithorConfig, VLLMConfig
+
+        cfg = CognithorConfig(vllm=VLLMConfig(enabled=True))
+        gateway = MagicMock()
+        client = self._client_with_gateway(cfg, gateway)
+        r = client.post("/api/backends/active", json={"backend": "vllm"})
+        assert r.status_code == 200
+        gateway.rebuild_llm_client.assert_called_once_with("vllm")
+        assert r.json()["active"] == "vllm"
+
+    def test_rejects_unknown_backend(self):
+        from unittest.mock import MagicMock
+
+        from cognithor.config import CognithorConfig, VLLMConfig
+
+        cfg = CognithorConfig(vllm=VLLMConfig(enabled=True))
+        gateway = MagicMock()
+        client = self._client_with_gateway(cfg, gateway)
+        r = client.post("/api/backends/active", json={"backend": "unicorn"})
+        assert r.status_code == 422  # Pydantic Literal rejects invalid value

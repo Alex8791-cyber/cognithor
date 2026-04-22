@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json as _json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -25,6 +25,30 @@ backends_router = APIRouter(prefix="/api/backends", tags=["backends"])
 
 class StartRequest(BaseModel):
     model: str
+
+
+class SetActiveRequest(BaseModel):
+    backend: Literal[
+        "ollama",
+        "openai",
+        "anthropic",
+        "gemini",
+        "groq",
+        "deepseek",
+        "mistral",
+        "together",
+        "openrouter",
+        "xai",
+        "cerebras",
+        "github",
+        "bedrock",
+        "huggingface",
+        "moonshot",
+        "lmstudio",
+        "vllm",
+        "llama_cpp",
+        "claude-code",
+    ]
 
 
 # Module-level orchestrator singleton. Reset across app builds by wiring
@@ -157,6 +181,19 @@ async def vllm_stop(request: Request) -> dict:
     return {"status": "stopped"}
 
 
+@backends_router.post("/active")
+async def set_active_backend(request: Request, body: SetActiveRequest) -> dict:
+    """Switch the active LLM backend and re-init UnifiedLLMClient."""
+    gateway = request.app.state.gateway
+    if gateway is None:
+        raise HTTPException(
+            status_code=503,
+            detail={"message": "Gateway not wired — backend switching not available"},
+        )
+    gateway.rebuild_llm_client(body.backend)
+    return {"active": body.backend}
+
+
 @backends_router.get("/vllm/logs")
 async def vllm_logs(request: Request) -> dict:
     config: CognithorConfig = request.app.state.config
@@ -200,7 +237,11 @@ async def vllm_pull_image(request: Request) -> StreamingResponse:
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-def build_backends_app(*, config: CognithorConfig) -> FastAPI:
+def build_backends_app(
+    *,
+    config: CognithorConfig,
+    gateway: object | None = None,
+) -> FastAPI:
     """Minimal FastAPI app exposing just the backends router.
 
     Used by tests. In production the router is included directly in the
@@ -208,5 +249,6 @@ def build_backends_app(*, config: CognithorConfig) -> FastAPI:
     """
     app = FastAPI()
     app.state.config = config
+    app.state.gateway = gateway
     app.include_router(backends_router)
     return app
