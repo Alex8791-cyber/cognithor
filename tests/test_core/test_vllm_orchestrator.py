@@ -134,3 +134,42 @@ class TestCheckHardware:
         assert orch.state.hardware_ok is True
         assert orch.state.hardware_info is not None
         assert orch.state.hardware_info.compute_capability == (8, 9)
+
+
+class TestCheckDocker:
+    def test_docker_running(self):
+        mock_stdout = '{"Client":{"Version":"26.0.0"},"Server":{"Version":"26.0.0"}}'
+        mock_result = MagicMock(returncode=0, stdout=mock_stdout)
+        with patch("subprocess.run", return_value=mock_result):
+            info = VLLMOrchestrator().check_docker()
+        assert info.available is True
+        assert info.server_running is True
+        assert info.version == "26.0.0"
+
+    def test_docker_installed_but_server_down(self):
+        mock_stdout = '{"Client":{"Version":"26.0.0"}}'
+        mock_result = MagicMock(returncode=0, stdout=mock_stdout)
+        with patch("subprocess.run", return_value=mock_result):
+            info = VLLMOrchestrator().check_docker()
+        assert info.available is True
+        assert info.server_running is False
+
+    def test_docker_cli_missing(self):
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            info = VLLMOrchestrator().check_docker()
+        assert info.available is False
+        assert info.server_running is False
+
+    def test_docker_cmd_fails(self):
+        mock_result = MagicMock(returncode=1, stdout="", stderr="daemon not running")
+        with patch("subprocess.run", return_value=mock_result):
+            info = VLLMOrchestrator().check_docker()
+        assert info.available is True
+        assert info.server_running is False
+
+    def test_state_updated(self):
+        mock_stdout = '{"Client":{"Version":"26.0.0"},"Server":{"Version":"26.0.0"}}'
+        orch = VLLMOrchestrator()
+        with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout=mock_stdout)):
+            orch.check_docker()
+        assert orch.state.docker_ok is True

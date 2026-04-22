@@ -10,6 +10,7 @@ See spec: docs/superpowers/specs/2026-04-22-vllm-opt-in-backend-design.md
 from __future__ import annotations
 
 import collections
+import json as _json
 import subprocess
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -177,4 +178,49 @@ class VLLMOrchestrator:
         )
         self.state.hardware_info = info
         self.state.hardware_ok = True
+        return info
+
+    def check_docker(self) -> DockerInfo:
+        """Detect Docker Desktop. Never raises — returns DockerInfo with flags."""
+        try:
+            result = subprocess.run(
+                ["docker", "version", "--format", "json"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except FileNotFoundError:
+            info = DockerInfo(available=False)
+            self.state.docker_ok = False
+            self.state.docker_info = info
+            return info
+        except subprocess.TimeoutExpired:
+            info = DockerInfo(available=True, server_running=False)
+            self.state.docker_ok = False
+            self.state.docker_info = info
+            return info
+
+        if result.returncode != 0:
+            info = DockerInfo(available=True, server_running=False)
+            self.state.docker_ok = False
+            self.state.docker_info = info
+            return info
+
+        try:
+            parsed = _json.loads(result.stdout)
+        except _json.JSONDecodeError:
+            info = DockerInfo(available=True, server_running=False)
+            self.state.docker_ok = False
+            self.state.docker_info = info
+            return info
+
+        server = parsed.get("Server")
+        version = (server or parsed.get("Client", {})).get("Version", "")
+        info = DockerInfo(
+            available=True,
+            version=version,
+            server_running=server is not None,
+        )
+        self.state.docker_ok = info.server_running
+        self.state.docker_info = info
         return info
