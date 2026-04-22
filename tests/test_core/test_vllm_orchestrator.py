@@ -324,3 +324,16 @@ class TestStopAndReuse:
         with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="")):
             info = VLLMOrchestrator().reuse_existing()
         assert info is None
+
+
+class TestStatusAggregator:
+    def test_status_returns_current_state(self):
+        orch = VLLMOrchestrator()
+        orch.state.hardware_ok = True
+        orch.state.docker_ok = True
+        snapshot = orch.status()
+        assert snapshot.hardware_ok is True
+        assert snapshot.docker_ok is True
+        # Mutating the returned copy must not leak back into orch.state
+        snapshot.hardware_ok = False
+        assert orch.state.hardware_ok is True

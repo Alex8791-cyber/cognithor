@@ -10,6 +10,7 @@ See spec: docs/superpowers/specs/2026-04-22-vllm-opt-in-backend-design.md
 from __future__ import annotations
 
 import collections
+import dataclasses
 import json as _json
 import re
 import socket
@@ -140,6 +141,10 @@ class VLLMOrchestrator:
     def get_logs(self) -> list[str]:
         """Snapshot of the container-log ring buffer."""
         return list(self._log_ring)
+
+    def status(self) -> VLLMState:
+        """Return a snapshot copy of the current state (safe to mutate)."""
+        return dataclasses.replace(self.state)
 
     def pull_image(
         self,
