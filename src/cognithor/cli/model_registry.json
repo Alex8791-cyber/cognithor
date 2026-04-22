@@ -75,6 +75,76 @@
       "models": [
         "claude-sonnet-4"
       ]
+    },
+    "vllm": {
+      "description": "Vision-language models tested against vLLM. Entries include quantization format, min CUDA compute capability, and min vLLM version required.",
+      "models": [
+        {
+          "id": "mmangkad/Qwen3.6-27B-NVFP4",
+          "display_name": "Qwen3.6-27B · NVFP4 (Blackwell-native)",
+          "base_model": "Qwen/Qwen3.6-27B",
+          "quantization": "NVFP4",
+          "vram_gb_min": 14,
+          "min_compute_capability": "12.0",
+          "min_vllm_version": "pending",
+          "capability": "vision",
+          "priority": "premium",
+          "tested": false,
+          "notes": "Fastest option on RTX 50xx / Blackwell. Uses native FP4 tensor cores (~2x FP8 throughput). Built with NVIDIA ModelOpt toolkit. Recommended default for RTX 5090."
+        },
+        {
+          "id": "Qwen/Qwen3.6-27B-FP8",
+          "display_name": "Qwen3.6-27B · FP8 (official)",
+          "base_model": "Qwen/Qwen3.6-27B",
+          "quantization": "FP8",
+          "vram_gb_min": 32,
+          "min_compute_capability": "8.9",
+          "min_vllm_version": "pending",
+          "capability": "vision",
+          "priority": "premium",
+          "tested": false,
+          "notes": "Official Qwen FP8 block-128 quantization. Near-identical quality to bf16. Needs RTX 4090 (24 GB) with tight KV budget, RTX 5090 (32 GB), or workstation GPU."
+        },
+        {
+          "id": "cyankiwi/Qwen3.6-27B-AWQ-INT4",
+          "display_name": "Qwen3.6-27B · AWQ-INT4 (community)",
+          "base_model": "Qwen/Qwen3.6-27B",
+          "quantization": "AWQ-INT4",
+          "vram_gb_min": 16,
+          "min_compute_capability": "8.0",
+          "min_vllm_version": "pending",
+          "capability": "vision",
+          "priority": "standard",
+          "tested": false,
+          "notes": "Community 4-bit AWQ. Runs on RTX 3090, 4070 Ti Super, 4080 (16 GB cards). Quality trade ~3-5% vs. bf16."
+        },
+        {
+          "id": "Qwen/Qwen3.6-35B-A3B-FP8",
+          "display_name": "Qwen3.6-35B-A3B · FP8 (MoE, official)",
+          "base_model": "Qwen/Qwen3.6-35B-A3B",
+          "quantization": "FP8",
+          "vram_gb_min": 40,
+          "min_compute_capability": "8.9",
+          "min_vllm_version": "pending",
+          "capability": "vision",
+          "priority": "standard",
+          "tested": false,
+          "notes": "MoE with 3B active params — very fast inference. Needs workstation GPU (A6000, RTX 6000 Ada)."
+        },
+        {
+          "id": "Qwen/Qwen2.5-VL-7B-Instruct",
+          "display_name": "Qwen2.5-VL-7B · BF16 (fallback)",
+          "base_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+          "quantization": "bf16",
+          "vram_gb_min": 16,
+          "min_compute_capability": "7.5",
+          "min_vllm_version": "0.7.0",
+          "capability": "vision",
+          "priority": "fallback",
+          "tested": true,
+          "notes": "Current default until vLLM ships Qwen3.6 architecture support. Well-tested, runs on any 16 GB NVIDIA GPU including RTX 3090 / 4060 Ti 16 GB."
+        }
+      ]
     }
   }
 }
