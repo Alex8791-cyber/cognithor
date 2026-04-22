@@ -15,7 +15,7 @@
 | 1 | **Scope:** Flutter in-app wizard with full container lifecycle (Option B, not point-at-existing) | "Funktional anbieten" requires install + start + stop, not just a config field |
 | 2 | **Install tech:** Docker Desktop + official vLLM image | Cleanest lifecycle, officially supported, fast image pull vs. hour-long `pip install vllm` |
 | 3 | **Docker bootstrap:** Link + detect (Option B) — we don't install Docker Desktop automatically | Docker install needs reboot; silent third-party install is a trust issue |
-| 4 | **Hardware gate:** Strict — NVIDIA vendor + ≥16 GB VRAM (fits the smallest curated VLM, Qwen2.5-VL-7B at FP16) checked before vLLM is selectable | 30-min setup ending in OOM is worse UX than an upfront "not supported" message; override via config flag. Passing the gate only means "can run the smallest curated model." The UI shows a per-model VRAM badge and disables models whose `vram_gb_min` exceeds detected VRAM |
+| 4 | **Hardware gate:** Strict — NVIDIA vendor + ≥16 GB VRAM + detected CUDA compute capability. Each curated model specifies a `min_compute_capability` (SM version) and `vram_gb_min`. The UI disables entries whose requirements exceed the detected GPU | 30-min setup ending in OOM or "no kernel for this arch" is worse UX than upfront "not supported." Blackwell (SM 12.0, RTX 50xx) unlocks NVFP4; Ada (SM 8.9, RTX 40xx) unlocks FP8; Ampere (SM 8.0-8.6, RTX 30xx) falls back to AWQ/INT8. Override via `skip_hardware_check` config flag |
 | 5 | **Model scope:** Hybrid curated + custom (Option Y+Z) | Curated dropdown with tested models, last entry is "Custom (HF repo id…)" text field with disclaimer |
 | 6 | **Flutter UX:** Dedicated sub-screen "LLM Backends" (Option C) | Room for status, metrics, model management per backend; extensible for future backends |
 | 7 | **Setup-page layout:** Status cards on one page (Option B) | All prerequisites visible at once, each card has its own action button, recoverable after partial failure |
@@ -47,16 +47,18 @@ Backend switching is live — the existing `gateway.py:1968+` re-init path for `
 - VLM-aware image-payload conversion: `images: list[str]` path-arg → OpenAI-vision format `{"type":"image_url","image_url":{"url":"data:image/png;base64,..."}}`
 - `httpx.AsyncClient` with connection pooling, configurable timeout (default 60s)
 
-**`vllm_orchestrator.py` — ~400 LOC, no new deps**
-- State: `VLLMState` dataclass — `hardware_ok`, `docker_ok`, `image_pulled`, `container_running`, `current_model`, `last_error`
+**`vllm_orchestrator.py` — ~450 LOC, no new deps**
+- State: `VLLMState` dataclass — `hardware_ok`, `hardware_info` (GPU name, VRAM GB, compute capability as tuple like `(12, 0)`), `docker_ok`, `image_pulled`, `container_running`, `current_model`, `last_error`
 - Methods:
-  - `check_hardware() -> HardwareInfo` — parses `nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits`
+  - `check_hardware() -> HardwareInfo` — parses `nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv,noheader,nounits`. Returns name, VRAM GB, and compute capability as `(major, minor)` tuple for model-compatibility filtering (Blackwell SM 12.0, Ada SM 8.9, Ampere SM 8.x)
   - `check_docker() -> DockerInfo` — `docker version --format json`
   - `pull_image(tag, progress_callback) -> None` — streams `docker pull --progress=auto` stdout, parses layer-progress JSON. Typical image size ~10.5 GB (vllm/vllm-openai includes CUDA runtime + torch + vllm wheels).
   - `start_container(model, port=8000) -> ContainerInfo` — constructs `docker run` with `--gpus all`, `-v cognithor-hf-cache:/root/.cache/huggingface`, `-e HF_TOKEN=$token`, label `cognithor.managed=true`; auto-falls-back 8000→8009 on port conflict
   - `stop_container() -> None` — `docker stop` + `docker rm` on labeled container
   - `reuse_existing() -> Optional[ContainerInfo]` — scans `docker ps --filter "label=cognithor.managed=true"`
   - `status() -> VLLMState` — aggregates all above
+  - `recommend_model(hardware: HardwareInfo, registry: list[ModelEntry], prefer: Literal["vision","text"]="vision") -> ModelEntry` — returns the best curated model that fits the detected GPU. Ranking: (1) `tested==true` beats `tested==false`, (2) matching capability beats non-matching, (3) higher priority (`premium > standard > fallback`) within VRAM limits, (4) tie-break by lower VRAM-to-weights ratio (headroom for KV cache)
+  - `filter_registry(hardware: HardwareInfo, registry: list[ModelEntry]) -> list[ModelEntry]` — returns all entries that pass the hardware gate, used by the Flutter dropdown to show enabled/disabled state
 - Ring-buffer last 500 lines of container stdout/stderr for diagnostics
 
 ### API Layer (`src/cognithor/channels/api.py` — existing FastAPI)
@@ -86,11 +88,11 @@ New Pydantic sub-model:
 class VLLMConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     enabled: bool = False
-    model: str = "Qwen/Qwen2.5-VL-7B-Instruct"  # see model-registry note below
-    docker_image: str = "vllm/vllm-openai:v0.19.1"  # stable at brainstorm time
+    model: str = ""  # empty → orchestrator.recommend_model() picks the best fit for detected hardware on first start
+    docker_image: str = "vllm/vllm-openai:v0.19.1"  # stable at brainstorm time; set to ":nightly" for bleed-edge Qwen3.6
     port: int = 8000
     auto_stop_on_close: bool = False  # default: stop on close; user opts in to persistent
-    skip_hardware_check: bool = False  # override for edge cases (wrong detection, smaller models)
+    skip_hardware_check: bool = False  # override for edge cases (wrong detection, smaller models, unlisted GPUs)
     request_timeout_seconds: int = 60
     # HF token is NOT stored here — it's read from the top-level
     # `config.huggingface_api_key` which the existing SecretStore keyring-backs
@@ -98,27 +100,100 @@ class VLLMConfig(BaseModel):
     # container as `-e HF_TOKEN=$value`.
 ```
 
+**Recommendation flow on empty `model`:** orchestrator calls `recommend_model(hardware_info, registry)` and caches the result back to `config.vllm.model` so subsequent starts are deterministic. User can override via the Flutter dropdown at any time.
+
 Embedded in existing `LLMBackendsConfig`. Loaded via the existing legacy-key-tolerant `load_config()` path. **HF-token handling reuses the existing `config.huggingface_api_key` field (already in `_SECRET_FIELDS`, keyring-backed via `SecretStore`) rather than introducing a new nested secret.**
 
 ### Model Registry (`src/cognithor/cli/model_registry.json`)
 
-New provider section. VRAM values account for model weights at the given quantization **plus** KV cache + vLLM scheduler overhead (~1.3× weight size for typical context lengths):
+New provider section. The registry is **per-quantization**, not per-base-model — different quants of the same base model become separate entries so the orchestrator can pick the best fit per detected GPU. VRAM values account for model weights **plus** KV cache + vLLM scheduler overhead (~1.3× weight size for typical context lengths):
 
 ```json
 "vllm": {
-  "description": "Vision-language models tested against vLLM on consumer NVIDIA GPUs. Focus is on vision — text-only models are supported via the Custom path.",
+  "description": "Vision-language models tested against vLLM. Entries include the quantization format, minimum CUDA compute capability and minimum vLLM version required to load the model.",
   "models": [
-    {"id": "Qwen/Qwen2.5-VL-7B-Instruct", "vram_gb_min": 16, "capability": "vision", "tested": true,  "min_vllm_version": "0.7.0",  "quantization": "bf16", "notes": "Default. Well-supported in vLLM, fits on a 16 GB card."},
-    {"id": "QuantTrio/Qwen3.6-35B-A3B-AWQ", "vram_gb_min": 24, "capability": "vision", "tested": false, "min_vllm_version": "pending", "quantization": "AWQ-4bit", "notes": "Community 4-bit AWQ. Awaiting vLLM Qwen3.6 architecture support."},
-    {"id": "Qwen/Qwen3.6-27B-FP8", "vram_gb_min": 32, "capability": "vision", "tested": false, "min_vllm_version": "pending", "quantization": "FP8", "notes": "Official FP8 weights. Awaiting vLLM Qwen3.6 architecture support."},
-    {"id": "Qwen/Qwen3.6-35B-A3B-FP8", "vram_gb_min": 40, "capability": "vision", "tested": false, "min_vllm_version": "pending", "quantization": "FP8", "notes": "Official FP8 MoE. Awaiting vLLM Qwen3.6 architecture support."}
+    {
+      "id": "mmangkad/Qwen3.6-27B-NVFP4",
+      "display_name": "Qwen3.6-27B · NVFP4 (Blackwell-native)",
+      "base_model": "Qwen/Qwen3.6-27B",
+      "quantization": "NVFP4",
+      "vram_gb_min": 14,
+      "min_compute_capability": "12.0",
+      "min_vllm_version": "pending",
+      "capability": "vision",
+      "priority": "premium",
+      "tested": false,
+      "notes": "Fastest option on RTX 50xx / Blackwell. Uses native FP4 tensor cores (~2× FP8 throughput). Built with NVIDIA's ModelOpt toolkit. Recommended default for RTX 5090."
+    },
+    {
+      "id": "Qwen/Qwen3.6-27B-FP8",
+      "display_name": "Qwen3.6-27B · FP8 (official)",
+      "base_model": "Qwen/Qwen3.6-27B",
+      "quantization": "FP8",
+      "vram_gb_min": 32,
+      "min_compute_capability": "8.9",
+      "min_vllm_version": "pending",
+      "capability": "vision",
+      "priority": "premium",
+      "tested": false,
+      "notes": "Official Qwen FP8 block-128 quantization. Near-identical quality to bf16. Needs RTX 4090 (24 GB) with tight KV budget, RTX 5090 (32 GB), or workstation GPU."
+    },
+    {
+      "id": "cyankiwi/Qwen3.6-27B-AWQ-INT4",
+      "display_name": "Qwen3.6-27B · AWQ-INT4 (community)",
+      "base_model": "Qwen/Qwen3.6-27B",
+      "quantization": "AWQ-INT4",
+      "vram_gb_min": 16,
+      "min_compute_capability": "8.0",
+      "min_vllm_version": "pending",
+      "capability": "vision",
+      "priority": "standard",
+      "tested": false,
+      "notes": "Community 4-bit AWQ. Runs on RTX 3090, 4070 Ti Super, 4080 (16 GB cards). Quality trade ~3-5% vs. bf16."
+    },
+    {
+      "id": "Qwen/Qwen3.6-35B-A3B-FP8",
+      "display_name": "Qwen3.6-35B-A3B · FP8 (MoE, official)",
+      "base_model": "Qwen/Qwen3.6-35B-A3B",
+      "quantization": "FP8",
+      "vram_gb_min": 40,
+      "min_compute_capability": "8.9",
+      "min_vllm_version": "pending",
+      "capability": "vision",
+      "priority": "standard",
+      "tested": false,
+      "notes": "MoE with 3B active params — very fast inference. Needs workstation GPU (A6000, RTX 6000 Ada)."
+    },
+    {
+      "id": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "display_name": "Qwen2.5-VL-7B · BF16 (fallback)",
+      "base_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "quantization": "bf16",
+      "vram_gb_min": 16,
+      "min_compute_capability": "7.5",
+      "min_vllm_version": "0.7.0",
+      "capability": "vision",
+      "priority": "fallback",
+      "tested": true,
+      "notes": "Current default until vLLM ships Qwen3.6 architecture support. Well-tested, runs on any 16 GB NVIDIA GPU including RTX 3090 / 4060 Ti 16 GB."
+    }
   ]
 }
 ```
 
-**vLLM-version compatibility**: vLLM v0.19.1 (current stable as of brainstorm) does **not** yet support the Qwen3.6 architecture — Qwen3.6 was released on 2026-04-21, three days after v0.19.1. Until a vLLM release adds `qwen3_6`/`qwen3_5_vl` architecture support (expected v0.19.2 or v0.20.0), Qwen3.6 entries are marked `tested: false` with `min_vllm_version: "pending"`. The Flutter dropdown surfaces them as disabled with a tooltip "Requires vLLM ≥X — pull image first". Users who want to bleed-edge can set `docker_image: "vllm/vllm-openai:latest"` or `:nightly` manually via config.
+**Field semantics:**
+- `priority`: `premium` > `standard` > `fallback`. Orchestrator's `recommend_model()` prefers higher priority within hardware limits. `premium` marks the expected-best choice for each GPU class.
+- `min_compute_capability`: CUDA SM version as `"major.minor"`. `12.0` = Blackwell, `8.9` = Ada, `8.0` = Ampere-A100, `7.5` = Turing. The orchestrator converts `nvidia-smi`'s reported capability to a tuple and compares.
+- `tested: true` means we've verified the model actually loads and produces sensible output on real hardware. `false` = included based on registry-level research but not yet smoke-tested.
+- `min_vllm_version: "pending"` = Qwen3.6 architecture is not yet supported by vLLM stable (v0.19.1 as of 2026-04-22). Will be flipped to the actual version when support lands.
 
-Flutter reads this list for the curated dropdown; the last option is always a "Custom (HF repo id…)" text field with a disclaimer. The registry's `min_vllm_version` is used at implementation time to gate curated entries against the resolved Docker image.
+**Qwen3.6 architecture status (as of 2026-04-22):** vLLM v0.19.1 (released 2026-04-18) predates Qwen3.6 (released 2026-04-21). Qwen3.6 NVFP4/FP8/AWQ weights have already been uploaded to HF by Qwen and the community, but the `qwen3_5_vl` / `qwen3_6` architecture loader is not yet in vLLM's main branch. Curated Qwen3.6 entries stay `tested: false` until a vLLM release lands — expected v0.19.2 or v0.20.0. Users can set `docker_image: "vllm/vllm-openai:nightly"` to bleed-edge it now.
+
+**Flutter behavior:**
+- Dropdown groups entries by `base_model`, shows quant as the differentiator
+- Orchestrator's `recommend_model()` output is rendered with a "⭐ Recommended for your GPU" badge
+- Entries failing `min_compute_capability` or `vram_gb_min` render disabled with a tooltip showing *why* ("Requires Blackwell GPU" / "Needs 32 GB VRAM, you have 16 GB" / "Requires vLLM ≥ 0.20.0")
+- The last dropdown slot is always "Custom (HF repo id…)" with a disclaimer about untested models
 
 ---
 
@@ -130,8 +205,8 @@ Flutter reads this list for the curated dropdown; the last option is always a "C
 2. `vllm_setup_screen.dart` mounts, `LlmBackendProvider` begins polling `GET /api/backends/vllm/status`
 3. Backend runs `orchestrator.check_hardware()` + `check_docker()` synchronously → Cards 1 + 2 render immediately (✓ or ✗)
 4. User clicks "Pull image now" on Card 3 → `POST /api/backends/vllm/pull-image` (SSE stream) → Flutter renders progress bar from layer events
-5. After successful pull, Card 4 "Select & load model" enables → dropdown from `model_registry.json.providers.vllm.models` + Custom text field
-6. User picks a model, clicks "Start vLLM" → `POST /api/backends/vllm/start {model}` → `orchestrator.start_container()` → waits for vLLM `/health` ping (timeout 120 s) → response
+5. After successful pull, Card 4 "Select & load model" enables → dropdown sourced from `orchestrator.filter_registry(hardware, registry)` (entries failing `min_compute_capability` or `vram_gb_min` render disabled with a "why" tooltip). The entry matching `orchestrator.recommend_model(hardware)` is marked with a "⭐ Recommended for your GPU" badge. Last dropdown slot is always "Custom (HF repo id…)"
+6. User picks a model (or accepts the recommendation), clicks "Start vLLM" → `POST /api/backends/vllm/start {model}` → `orchestrator.start_container()` → waits for vLLM `/health` ping (timeout 120 s, bumped to 300 s for first-load of models ≥ 20 GB since HF download + vLLM weight loading is slow) → response
 7. User clicks "Make active" → `POST /api/backends/active {backend:"vllm"}` → `UnifiedLLMClient` re-init → hot-switch without app restart
 
 ### Flow B — Chat Request with Vision
@@ -233,12 +308,20 @@ CI runners have no GPU and no way to actually start vLLM. No Docker-in-Docker, n
   - `is_available()` against 200-ok and connection-refused
   - Error propagation (5xx → `VLLMNotReadyError`, 400 → `LLMBackendError`)
 - **`tests/test_core/test_vllm_orchestrator.py`** — orchestrator with `subprocess.run` mocked
-  - `check_hardware()` parses `nvidia-smi` output correctly (real + empty + garbled)
+  - `check_hardware()` parses `nvidia-smi` output correctly (real + empty + garbled), extracts compute capability tuple (tested matrix: Blackwell 12.0, Ada 8.9, Ampere 8.6, Turing 7.5)
   - `check_docker()` handles missing Docker gracefully
   - `pull_image()` parses Docker-progress JSON
   - `start_container()` constructs the `docker run` command correctly (including `--gpus all`, volume, label, HF token env)
   - `reuse_existing()` filters by label
   - Port-fallback logic (8000 busy → 8001)
+- **`tests/test_core/test_vllm_recommend_model.py`** — model-recommendation logic against the full registry
+  - Blackwell SM 12.0 + 32 GB → picks `mmangkad/Qwen3.6-27B-NVFP4` (premium, native FP4)
+  - Ada SM 8.9 + 24 GB → picks `Qwen/Qwen3.6-27B-FP8` (premium, fits)
+  - Ada SM 8.9 + 16 GB → picks `cyankiwi/Qwen3.6-27B-AWQ-INT4` (fits budget, drops to standard tier)
+  - Ampere SM 8.0 + 24 GB → picks AWQ-INT4 (no FP8 tensor cores on Ampere, vLLM emulates badly)
+  - Turing SM 7.5 + 16 GB → picks `Qwen2.5-VL-7B-Instruct` (fallback, only tested model that matches)
+  - Override: when `prefer="text"` and no text model is curated, returns `None` → UI shows "No curated text model — use Custom path"
+  - `filter_registry()` correctly disables entries whose `min_compute_capability` exceeds detected capability
 - **`tests/test_core/test_unified_llm_circuit_breaker.py`** — circuit-breaker state machine
   - 3 fails in 60 s → `DEGRADED`
   - Health-ping recovered → `OK`
@@ -320,16 +403,16 @@ Documented in `docs/vllm-manual-test.md`. Run once on a dev machine with real NV
 **1.5–2 calendar weeks, single engineer.** Breakdown:
 
 - `VLLMBackend` class + unit tests: 1 day
-- `vllm_orchestrator.py` + unit tests: 2 days
+- `vllm_orchestrator.py` + unit tests (including `recommend_model()` + `filter_registry()` GPU-awareness): 2.5 days
 - FastAPI endpoints including SSE streaming for pull progress: 1 day (was underestimated at 0.5 day — SSE server-side + client-side `EventSource` in Flutter is not trivial)
-- Flutter screens + widget tests + SSE progress consumption: 2 days (was underestimated at 1.5 days)
+- Flutter screens + widget tests + SSE progress consumption + per-model enable/disable logic + "⭐ Recommended" badge rendering: 2.5 days
 - Config extension + `VLLMConfig` + `huggingface_api_key` env-var wiring: 0.5 day
 - Wiring existing `CircuitBreaker` into `UnifiedLLMClient` per-backend + tests: 0.5 day (lighter than "new circuit breaker" because code is reused)
 - User-facing guide (`docs/vllm-user-guide.md`) + manual-test doc: 1 day
 - Manual smoke test on real NVIDIA hardware + bug fixes from it: 1 day
 - Buffer / polish / PR cycle / spec-reviewer loops: 1 day
 
-**Total: ~10 working days = 2 calendar weeks** if everything lines up. Best-case 1.5 weeks if the SSE and Flutter widget work goes smoothly. Revised upward from the original 1-week estimate because of (a) SSE non-triviality on both ends, (b) user-docs budgeted explicitly, (c) real-hardware smoke test typically surfaces 1-2 bugs worth a day.
+**Total: ~11 working days = 2.2 calendar weeks** if everything lines up. Revised upward from the original 1-week estimate because of (a) SSE non-triviality on both ends, (b) user-docs budgeted explicitly, (c) real-hardware smoke test typically surfaces 1-2 bugs worth a day, (d) added `recommend_model()` + `filter_registry()` hardware-awareness (0.5 day orchestrator + 0.5 day Flutter).
 
 ---
 
@@ -345,4 +428,5 @@ Documented in `docs/vllm-manual-test.md`. Run once on a dev machine with real NV
 - ~~HF-token storage~~ → reuse existing top-level `config.huggingface_api_key` (already keyring-backed via `SecretStore._SECRET_FIELDS`), no new nested secret field
 - ~~Circuit breaker implementation~~ → reuse existing `cognithor.utils.circuit_breaker.CircuitBreaker`, per-backend instance, do not reinvent
 - ~~Model-registry VRAM math~~ → original draft used bf16 sizes which fail on consumer hardware; curated list now uses FP8/AWQ quantized variants with realistic per-model VRAM minima
-- ~~Qwen3.6 vLLM support status~~ → vLLM v0.19.1 does **not** yet support the Qwen3.6 architecture (Qwen3.6 released 3 days after v0.19.1). Curated Qwen3.6 entries ship with `tested: false` and `min_vllm_version: "pending"`. Default curated model is Qwen2.5-VL-7B until vLLM ships Qwen3.6 support
+- ~~Qwen3.6 vLLM support status~~ → vLLM v0.19.1 does **not** yet support the Qwen3.6 architecture (Qwen3.6 released 3 days after v0.19.1). Curated Qwen3.6 entries ship with `tested: false` and `min_vllm_version: "pending"`. Until support lands, orchestrator's `recommend_model()` falls back to Qwen2.5-VL-7B-Instruct (the only `tested: true` entry)
+- ~~Hardware-aware model recommendation~~ → registry entries now include `min_compute_capability` (CUDA SM version) and `priority` tier. `orchestrator.recommend_model()` picks the best entry per detected GPU — Blackwell users get NVFP4 as default, Ada users get FP8, Ampere users get AWQ-INT4, Turing falls back to Qwen2.5-VL-7B. Flutter dropdown shows "⭐ Recommended for your GPU" badge on the top pick and disables entries failing the detected GPU's capabilities with actionable tooltips. Unblocks RTX 5090 users to hit native NVFP4 throughput (~2× FP8) on day one
