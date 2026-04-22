@@ -31,9 +31,9 @@ def _major_minor(v: str) -> str:
 class TestFlutterVersionInSyncWithBackend:
     def test_kfrontendversion_matches_backend_major_minor(self):
         src = CONNECTION_PROVIDER.read_text(encoding="utf-8")
-        match = re.search(
-            r"kFrontendVersion\s*=\s*'([^']+)'", src
-        ) or re.search(r'kFrontendVersion\s*=\s*"([^"]+)"', src)
+        match = re.search(r"kFrontendVersion\s*=\s*'([^']+)'", src) or re.search(
+            r'kFrontendVersion\s*=\s*"([^"]+)"', src
+        )
         assert match, (
             f"Could not find kFrontendVersion in {CONNECTION_PROVIDER}. "
             f"The release checklist / this cross-check needs updating."
