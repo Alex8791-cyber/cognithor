@@ -9,6 +9,8 @@ See spec: docs/superpowers/specs/2026-04-22-vllm-opt-in-backend-design.md
 
 from __future__ import annotations
 
+import base64
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -19,6 +21,7 @@ from cognithor.core.llm_backend import (
     LLMBackend,
     LLMBackendError,
     LLMBackendType,
+    LLMBadRequestError,
     VLLMNotReadyError,
 )
 from cognithor.utils.logging import get_logger
@@ -27,6 +30,61 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 log = get_logger(__name__)
+
+
+def _encode_image_to_data_url(path: str) -> str | None:
+    """Read an image file, return OpenAI-vision data-URL string. None if unreadable."""
+    try:
+        p = Path(path)
+        if not p.is_file():
+            return None
+        data = p.read_bytes()
+    except OSError:
+        return None
+
+    suffix = p.suffix.lower().lstrip(".")
+    mime_map = {
+        "png": "png",
+        "jpg": "jpeg",
+        "jpeg": "jpeg",
+        "webp": "webp",
+        "gif": "gif",
+        "bmp": "bmp",
+    }
+    mime = mime_map.get(suffix, "png")
+    b64 = base64.b64encode(data).decode("ascii")
+    return f"data:image/{mime};base64,{b64}"
+
+
+def _attach_images_to_last_user(
+    messages: list[dict[str, Any]],
+    images: list[str],
+) -> list[dict[str, Any]]:
+    """Return a NEW messages list with images attached to the last user message
+    in OpenAI-vision format. Never mutates the caller's list."""
+    if not images:
+        return list(messages)
+
+    encoded = [e for e in (_encode_image_to_data_url(p) for p in images) if e]
+    if not encoded:
+        return list(messages)
+
+    new_messages = [dict(m) for m in messages]
+    for i in range(len(new_messages) - 1, -1, -1):
+        if new_messages[i].get("role") == "user":
+            existing = new_messages[i].get("content")
+            text_part = existing if isinstance(existing, str) else ""
+            content_list: list[dict[str, Any]] = []
+            if text_part:
+                content_list.append({"type": "text", "text": text_part})
+            for url in encoded:
+                content_list.append({"type": "image_url", "image_url": {"url": url}})
+            new_messages[i] = {**new_messages[i], "content": content_list}
+            break
+    else:
+        content_list = [{"type": "image_url", "image_url": {"url": u}} for u in encoded]
+        new_messages.append({"role": "user", "content": content_list})
+    return new_messages
 
 
 class VLLMBackend(LLMBackend):
@@ -78,9 +136,76 @@ class VLLMBackend(LLMBackend):
             await self._client.aclose()
             self._client = None
 
-    # Stubs — implemented in Tasks 14-16
-    async def chat(self, *args: Any, **kwargs: Any) -> ChatResponse:
-        raise NotImplementedError
+    # chat() implemented in Task 14; chat_stream/embed in Tasks 15-16
+    async def chat(
+        self,
+        model: str,
+        messages: list[dict[str, Any]],
+        *,
+        tools: list[dict[str, Any]] | None = None,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        format_json: bool = False,
+        images: list[str] | None = None,
+    ) -> ChatResponse:
+        """Send a chat-completion request to vLLM.
+
+        Raises:
+            LLMBadRequestError: on HTTP 400 (excluded from circuit breaker).
+            VLLMNotReadyError: on HTTP 5xx or connection failure (counts toward breaker).
+            LLMBackendError: on HTTP 4xx (other than 400).
+        """
+        if images:
+            messages = _attach_images_to_last_user(messages, images)
+
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+        }
+        if tools:
+            payload["tools"] = tools
+        if format_json:
+            payload["response_format"] = {"type": "json_object"}
+
+        client = await self._ensure_client()
+        try:
+            r = await client.post(f"{self._base_url}/chat/completions", json=payload)
+        except httpx.RequestError as exc:
+            raise VLLMNotReadyError(
+                f"vLLM not reachable: {exc}",
+                recovery_hint="Check vLLM container is running.",
+            ) from exc
+
+        if r.status_code == 400:
+            raise LLMBadRequestError(
+                f"vLLM rejected the request: {r.text[:200]}",
+                status_code=400,
+            )
+        if r.status_code >= 500:
+            raise VLLMNotReadyError(
+                f"vLLM returned {r.status_code}: {r.text[:200]}",
+                status_code=r.status_code,
+                recovery_hint="vLLM may still be loading the model.",
+            )
+        if r.status_code >= 400:
+            raise LLMBackendError(
+                f"vLLM returned {r.status_code}: {r.text[:200]}",
+                status_code=r.status_code,
+            )
+
+        data = r.json()
+        first_choice = data.get("choices", [{}])[0]
+        content = first_choice.get("message", {}).get("content", "")
+        tool_calls = first_choice.get("message", {}).get("tool_calls")
+        return ChatResponse(
+            content=content,
+            tool_calls=tool_calls,
+            model=data.get("model", model),
+            usage=data.get("usage"),
+            raw=data,
+        )
 
     async def chat_stream(self, *args: Any, **kwargs: Any) -> AsyncIterator[str]:
         raise NotImplementedError
