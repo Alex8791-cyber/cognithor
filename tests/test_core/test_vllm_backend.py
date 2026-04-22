@@ -136,3 +136,39 @@ class TestVLLMBackendChat:
     async def test_chat_raises_not_ready_on_connection_refused(self, backend):
         with pytest.raises(VLLMNotReadyError):
             await backend.chat(model="x", messages=[{"role": "user", "content": "a"}])
+
+
+class TestVLLMBackendChatStream:
+    @pytest.mark.asyncio
+    async def test_stream_yields_content_chunks(self, backend, httpx_mock):
+        sse_lines = (
+            b'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n'
+            b'data: {"choices":[{"delta":{"content":"lo"}}]}\n\n'
+            b"data: [DONE]\n\n"
+        )
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/chat/completions",
+            status_code=200,
+            content=sse_lines,
+            headers={"content-type": "text/event-stream"},
+        )
+        chunks: list[str] = []
+        async for piece in backend.chat_stream(
+            model="x",
+            messages=[{"role": "user", "content": "hi"}],
+        ):
+            chunks.append(piece)
+        assert "".join(chunks) == "Hello"
+
+    @pytest.mark.asyncio
+    async def test_stream_raises_on_5xx(self, backend, httpx_mock):
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/chat/completions",
+            status_code=503,
+        )
+        with pytest.raises(VLLMNotReadyError):
+            async for _ in backend.chat_stream(
+                model="x",
+                messages=[{"role": "user", "content": "hi"}],
+            ):
+                pass

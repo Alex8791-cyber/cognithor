@@ -10,6 +10,7 @@ See spec: docs/superpowers/specs/2026-04-22-vllm-opt-in-backend-design.md
 from __future__ import annotations
 
 import base64
+import json as _json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -207,9 +208,60 @@ class VLLMBackend(LLMBackend):
             raw=data,
         )
 
-    async def chat_stream(self, *args: Any, **kwargs: Any) -> AsyncIterator[str]:
-        raise NotImplementedError
-        yield  # pragma: no cover
+    async def chat_stream(
+        self,
+        model: str,
+        messages: list[dict[str, Any]],
+        *,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        images: list[str] | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream response tokens from vLLM. Parses OpenAI SSE format."""
+        if images:
+            messages = _attach_images_to_last_user(messages, images)
+
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+            "stream": True,
+        }
+        client = await self._ensure_client()
+        try:
+            async with client.stream(
+                "POST",
+                f"{self._base_url}/chat/completions",
+                json=payload,
+            ) as r:
+                if r.status_code >= 500:
+                    raise VLLMNotReadyError(f"vLLM streaming returned {r.status_code}")
+                if r.status_code == 400:
+                    raise LLMBadRequestError(f"vLLM rejected stream request: {r.status_code}")
+                if r.status_code >= 400:
+                    raise LLMBackendError(f"vLLM streaming returned {r.status_code}")
+
+                async for line in r.aiter_lines():
+                    line = line.strip()
+                    if not line or not line.startswith("data:"):
+                        continue
+                    payload_str = line[5:].strip()
+                    if payload_str == "[DONE]":
+                        return
+                    try:
+                        event = _json.loads(payload_str)
+                    except _json.JSONDecodeError:
+                        continue
+                    choices = event.get("choices", [])
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta") or {}
+                    piece = delta.get("content")
+                    if piece:
+                        yield piece
+        except httpx.RequestError as exc:
+            raise VLLMNotReadyError(f"vLLM stream not reachable: {exc}") from exc
 
     async def embed(self, *args: Any, **kwargs: Any) -> EmbedResponse:
         raise NotImplementedError
