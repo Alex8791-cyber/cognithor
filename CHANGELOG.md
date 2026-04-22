@@ -5,7 +5,7 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [unreleased]
+## [Unreleased]
 
 ### Added
 - **Qwen3.6 model registry + installer** (`cognithor models install <name>`).
@@ -41,6 +41,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   format the current Flutter client has never sent. File uploads from
   Flutter were silently dropped. The gate is now `metadata.file_base64`
   presence, covering the real message shape.
+
+### Fixed
+- **`config.yaml` with legacy keys no longer hard-crashes at startup**
+  (closes #131). Upgrading users whose `config.yaml` still contains fields
+  the current `CognithorConfig` no longer recognizes (e.g. `max_agents`,
+  `max_concurrent`, `memory_limit_mb`, `rag`) would hit
+  `pydantic_core.ValidationError: extra_forbidden` inside `load_config`
+  and be completely unable to launch. `load_config` now catches
+  `extra_forbidden` errors from the on-disk YAML read path, strips the
+  offending keys, logs a clear WARN listing them, and re-validates once.
+  `CognithorConfig` keeps `extra="forbid"` on the model itself so
+  programmatic construction in tests still catches typos — only the
+  user-supplied YAML is self-healing.
 
 ### Deferred
 - **Video input** is explicitly deferred. Qwen3.6-27B (VLM) can process
