@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from cognithor.core.llm_backend import (
-    DockerError,
     LLMBackendError,
     LLMBadRequestError,
+    VLLMDockerError,
     VLLMHardwareError,
     VLLMNotReadyError,
 )
@@ -14,7 +14,7 @@ class TestErrorHierarchy:
         assert issubclass(LLMBadRequestError, LLMBackendError)
         assert issubclass(VLLMNotReadyError, LLMBackendError)
         assert issubclass(VLLMHardwareError, LLMBackendError)
-        assert issubclass(DockerError, LLMBackendError)
+        assert issubclass(VLLMDockerError, LLMBackendError)
 
     def test_errors_carry_recovery_hint(self):
         err = VLLMNotReadyError("container down", recovery_hint="Run: docker start vllm")
@@ -22,7 +22,7 @@ class TestErrorHierarchy:
         assert str(err) == "container down"
 
     def test_recovery_hint_defaults_to_empty(self):
-        err = DockerError("Docker not found")
+        err = VLLMDockerError("Docker not found")
         assert err.recovery_hint == ""
 
     def test_status_code_preserved_from_base(self):

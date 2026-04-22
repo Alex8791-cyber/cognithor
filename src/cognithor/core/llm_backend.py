@@ -103,7 +103,7 @@ class VLLMHardwareError(LLMBackendError):
     """NVIDIA GPU not detected, VRAM insufficient, or unsupported compute capability."""
 
 
-class DockerError(LLMBackendError):
+class VLLMDockerError(LLMBackendError):
     """Docker Desktop unreachable or wrong version."""
 
 

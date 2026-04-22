@@ -34,7 +34,7 @@
 - `flutter_app/test/widgets/vllm_setup_screen_test.dart` — widget tests
 
 **Modified Python files:**
-- `src/cognithor/core/llm_backend.py` — add `LLMBadRequestError`, `VLLMNotReadyError`, `VLLMHardwareError`, `DockerError`; extend `LLMBackendType` enum with `VLLM`
+- `src/cognithor/core/llm_backend.py` — add `LLMBadRequestError`, `VLLMNotReadyError`, `VLLMHardwareError`, `VLLMDockerError`; extend `LLMBackendType` enum with `VLLM`
 - `src/cognithor/core/unified_llm.py` — per-backend `CircuitBreaker`, fail-flow dispatch, `backend_status` notification
 - `src/cognithor/config.py` — add `VLLMConfig` sub-model, embed on `CognithorConfig`
 - `src/cognithor/cli/model_registry.json` — new `vllm` provider section
@@ -73,7 +73,7 @@ from __future__ import annotations
 import pytest
 
 from cognithor.core.llm_backend import (
-    DockerError,
+    VLLMDockerError,
     LLMBackendError,
     LLMBadRequestError,
     VLLMHardwareError,
@@ -86,7 +86,7 @@ class TestErrorHierarchy:
         assert issubclass(LLMBadRequestError, LLMBackendError)
         assert issubclass(VLLMNotReadyError, LLMBackendError)
         assert issubclass(VLLMHardwareError, LLMBackendError)
-        assert issubclass(DockerError, LLMBackendError)
+        assert issubclass(VLLMDockerError, LLMBackendError)
 
     def test_errors_carry_recovery_hint(self):
         err = VLLMNotReadyError("container down", recovery_hint="Run: docker start vllm")
@@ -94,7 +94,7 @@ class TestErrorHierarchy:
         assert str(err) == "container down"
 
     def test_recovery_hint_defaults_to_empty(self):
-        err = DockerError("Docker not found")
+        err = VLLMDockerError("Docker not found")
         assert err.recovery_hint == ""
 
     def test_status_code_preserved_from_base(self):
@@ -145,7 +145,7 @@ class VLLMHardwareError(LLMBackendError):
     """NVIDIA GPU not detected, VRAM insufficient, or unsupported compute capability."""
 
 
-class DockerError(LLMBackendError):
+class VLLMDockerError(LLMBackendError):
     """Docker Desktop unreachable or wrong version."""
 ```
 
@@ -1267,7 +1267,7 @@ def pull_image(
     """Run ``docker pull`` streaming JSON progress to the callback.
 
     Raises:
-        DockerError: if the pull exits non-zero.
+        VLLMDockerError: if the pull exits non-zero.
     """
     cmd = ["docker", "pull", "--progress=auto", tag]
     proc = subprocess.Popen(
@@ -1293,7 +1293,7 @@ def pull_image(
         proc.wait()
 
     if proc.returncode != 0:
-        raise DockerError(
+        raise VLLMDockerError(
             f"docker pull {tag} failed with exit {proc.returncode}",
             recovery_hint="Check Docker Desktop is running and you have network access.",
         )
@@ -1301,10 +1301,10 @@ def pull_image(
     self.state.image_pulled = True
 ```
 
-Import `DockerError` at module top:
+Import `VLLMDockerError` at module top:
 
 ```python
-from cognithor.core.llm_backend import DockerError, VLLMHardwareError
+from cognithor.core.llm_backend import VLLMDockerError, VLLMHardwareError
 ```
 
 - [ ] **Step 4: Run test**

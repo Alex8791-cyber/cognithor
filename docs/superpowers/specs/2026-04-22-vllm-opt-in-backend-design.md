@@ -243,14 +243,14 @@ New provider section. The registry is **per-quantization**, not per-base-model �
 - `LLMBadRequestError(LLMBackendError)` — wraps HTTP 400 responses (context too long, malformed request, unsupported model field). **Marked as `excluded_exceptions` on the `CircuitBreaker`** so these never count toward opening the circuit — they're user/context problems, not backend faults
 - `VLLMNotReadyError(LLMBackendError)` — container not running or model not loaded
 - `VLLMHardwareError(LLMBackendError)` — NVIDIA not detected, VRAM insufficient
-- `DockerError(LLMBackendError)` — Docker Desktop unreachable
+- `VLLMDockerError(LLMBackendError)` — Docker Desktop unreachable
 
 All exceptions carry a `recovery_hint: str` field which Flutter renders alongside the error message.
 
 ### Setup-Time Errors (Orchestrator Level)
 
 - `check_hardware()`: `nvidia-smi` returns empty → `VLLMHardwareError("NVIDIA GPU not detected")`, Card 1 stays red, other cards disabled
-- `docker version` return code ≠ 0 → `DockerError("Docker Desktop not running")`, Card 2 shows "Start Docker Desktop" hint
+- `docker version` return code ≠ 0 → `VLLMDockerError("Docker Desktop not running")`, Card 2 shows "Start Docker Desktop" hint
 - `docker pull` timeout (10 min default) → error with retry button; partial layers stay in cache
 - `start_container()` port 8000 busy → automatic fallback 8001 … 8009. Beyond 8010 → error
 - vLLM `/health` doesn't answer within `start_container(...)`'s `health_timeout` (120 s for models < 20 GB, 300 s for larger) → last 50 lines of container logs shown in error panel (`docker logs`)
