@@ -53,7 +53,7 @@ Backend switching is live — the existing `gateway.py:1968+` re-init path for `
   - `check_hardware() -> HardwareInfo` — parses `nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv,noheader,nounits`. Returns name, VRAM GB, and compute capability as `(major, minor)` tuple for model-compatibility filtering (Blackwell SM 12.0, Ada SM 8.9, Ampere SM 8.x)
   - `check_docker() -> DockerInfo` — `docker version --format json`
   - `pull_image(tag, progress_callback) -> None` — streams `docker pull --progress=auto` stdout, parses layer-progress JSON. Typical image size ~10.5 GB (vllm/vllm-openai includes CUDA runtime + torch + vllm wheels).
-  - `start_container(model, port=8000) -> ContainerInfo` — constructs `docker run` with `--gpus all`, `-v cognithor-hf-cache:/root/.cache/huggingface`, `-e HF_TOKEN=$token`, label `cognithor.managed=true`; auto-falls-back 8000→8009 on port conflict
+  - `start_container(model, port=8000, health_timeout=None) -> ContainerInfo` — constructs `docker run` with `--gpus all`, `-v cognithor-hf-cache:/root/.cache/huggingface`, `-e HF_TOKEN=$token`, label `cognithor.managed=true`; auto-falls-back 8000→8009 on port conflict. `health_timeout` defaults to **120 s** for models under 20 GB weights, **300 s** for larger models — first-load includes HF download + vLLM weight-mapping which is slow for big models
   - `stop_container() -> None` — `docker stop` + `docker rm` on labeled container
   - `reuse_existing() -> Optional[ContainerInfo]` — scans `docker ps --filter "label=cognithor.managed=true"`
   - `status() -> VLLMState` — aggregates all above
@@ -220,12 +220,12 @@ New provider section. The registry is **per-quantization**, not per-base-model �
 
 ### Flow C — Fail Flow (vLLM Offline Mid-Chat)
 
-1. `VLLMBackend.chat()` raises `VLLMNotReadyError` (timeout or connection refused)
-2. `UnifiedLLMClient` catches, marks `backend_status = DEGRADED`, notifies Gateway via event
+1. `VLLMBackend.chat()` (wrapped in the vLLM `CircuitBreaker.call()`) raises `VLLMNotReadyError` (timeout or connection refused). After 3 consecutive failures the breaker transitions `CLOSED → OPEN`
+2. `UnifiedLLMClient` catches the `VLLMNotReadyError` / `CircuitBreakerOpen` and marks its own public-facing `backend_status = DEGRADED`, notifies Gateway via event
 3. Gateway sends WebSocket event `backend_status_changed` → Flutter renders banner "⚠ vLLM offline — fallback to Ollama active"
 4. **If text-request** (`working_memory.image_attachments` is empty): `UnifiedLLMClient` transparent-fallback to `OllamaBackend` with the same prompt
-5. **If image-request** (`working_memory.image_attachments` is non-empty — same trigger the Planner uses for vision routing): `VLLMNotReadyError` propagates as error bubble in chat: "vLLM offline — cannot process image". No silent fallback because Ollama cannot do vision
-6. Next request: `VLLMBackend.is_available()` checked → success? → `backend_status = OK`, banner dismisses
+5. **If image-request** (`working_memory.image_attachments` is non-empty — same trigger the Planner uses for vision routing): the error propagates as a red bubble in chat: "vLLM offline — cannot process image". No silent fallback because Ollama cannot do vision
+6. **Recovery is automatic via the breaker**, not via a separate `is_available()` poll: after `recovery_timeout` (60 s) the breaker enters `HALF_OPEN` and lets the next real request through as a probe. Probe success → breaker `CLOSED` → `UnifiedLLMClient` flips `backend_status = OK` → banner dismisses. Probe failure → breaker back to `OPEN`, banner stays
 
 ### Flow D — App Close / Re-Open
 
@@ -240,9 +240,10 @@ New provider section. The registry is **per-quantization**, not per-base-model �
 ### Error Hierarchy (`src/cognithor/core/llm_backend.py`)
 
 - `LLMBackendError` — base (exists)
-- `VLLMNotReadyError` — container not running or model not loaded
-- `VLLMHardwareError` — NVIDIA not detected, VRAM insufficient
-- `DockerError` — Docker Desktop unreachable
+- `LLMBadRequestError(LLMBackendError)` — wraps HTTP 400 responses (context too long, malformed request, unsupported model field). **Marked as `excluded_exceptions` on the `CircuitBreaker`** so these never count toward opening the circuit — they're user/context problems, not backend faults
+- `VLLMNotReadyError(LLMBackendError)` — container not running or model not loaded
+- `VLLMHardwareError(LLMBackendError)` — NVIDIA not detected, VRAM insufficient
+- `DockerError(LLMBackendError)` — Docker Desktop unreachable
 
 All exceptions carry a `recovery_hint: str` field which Flutter renders alongside the error message.
 
@@ -252,14 +253,14 @@ All exceptions carry a `recovery_hint: str` field which Flutter renders alongsid
 - `docker version` return code ≠ 0 → `DockerError("Docker Desktop not running")`, Card 2 shows "Start Docker Desktop" hint
 - `docker pull` timeout (10 min default) → error with retry button; partial layers stay in cache
 - `start_container()` port 8000 busy → automatic fallback 8001 … 8009. Beyond 8010 → error
-- vLLM `/health` doesn't answer within 120 s → last 50 lines of container logs shown in error panel (`docker logs`)
+- vLLM `/health` doesn't answer within `start_container(...)`'s `health_timeout` (120 s for models < 20 GB, 300 s for larger) → last 50 lines of container logs shown in error panel (`docker logs`)
 
 ### Runtime Errors (Request Level)
 
 - `chat()` timeout 60 s default → configurable via `vllm.request_timeout_seconds`
-- HTTP 5xx from vLLM → `VLLMNotReadyError`, triggers fail flow (Flow C)
-- HTTP 400 (e.g. context too long) → `LLMBackendError` propagates directly, **no fallback** (real user error; Ollama wouldn't solve it either)
-- Connection refused → same as 5xx → fail flow
+- HTTP 5xx from vLLM → `VLLMNotReadyError`, triggers fail flow (Flow C) and counts toward the breaker
+- HTTP 400 (e.g. context too long) → `LLMBadRequestError` propagates directly, **no fallback** (real user error; Ollama wouldn't solve it either). Excluded from breaker counting
+- Connection refused → `VLLMNotReadyError` → fail flow
 
 ### Circuit Breaker (reuses existing `cognithor.utils.circuit_breaker.CircuitBreaker`)
 
@@ -297,7 +298,7 @@ No separate health-check thread — the existing breaker heals itself via the HA
 
 ### Constraints
 
-CI runners have no GPU and no way to actually start vLLM. No Docker-in-Docker, no 8 GB image pull. All integration testing uses mocks or fakes.
+CI runners have no GPU and no way to actually start vLLM. No Docker-in-Docker, no ~10.5 GB image pull. All integration testing uses mocks or fakes.
 
 ### Unit Layer (GitHub Actions, free runners)
 
@@ -306,7 +307,7 @@ CI runners have no GPU and no way to actually start vLLM. No Docker-in-Docker, n
   - Image-payload conversion (path → `data:image/…` URL)
   - `chat_stream()` parses SSE chunks correctly
   - `is_available()` against 200-ok and connection-refused
-  - Error propagation (5xx → `VLLMNotReadyError`, 400 → `LLMBackendError`)
+  - Error propagation (5xx → `VLLMNotReadyError`, 400 → `LLMBadRequestError`)
 - **`tests/test_core/test_vllm_orchestrator.py`** — orchestrator with `subprocess.run` mocked
   - `check_hardware()` parses `nvidia-smi` output correctly (real + empty + garbled), extracts compute capability tuple (tested matrix: Blackwell 12.0, Ada 8.9, Ampere 8.6, Turing 7.5)
   - `check_docker()` handles missing Docker gracefully
@@ -322,10 +323,11 @@ CI runners have no GPU and no way to actually start vLLM. No Docker-in-Docker, n
   - Turing SM 7.5 + 16 GB → picks `Qwen2.5-VL-7B-Instruct` (fallback, only tested model that matches)
   - Override: when `prefer="text"` and no text model is curated, returns `None` → UI shows "No curated text model — use Custom path"
   - `filter_registry()` correctly disables entries whose `min_compute_capability` exceeds detected capability
-- **`tests/test_core/test_unified_llm_circuit_breaker.py`** — circuit-breaker state machine
-  - 3 fails in 60 s → `DEGRADED`
-  - Health-ping recovered → `OK`
-  - Fail-flow dispatch (text → Ollama, image → error)
+- **`tests/test_core/test_unified_llm_circuit_breaker.py`** — `UnifiedLLMClient`'s integration of the existing `CircuitBreaker` per backend. Does NOT retest the breaker's state machine itself (that has its own tests in `tests/test_utils/test_circuit_breaker.py`), only the wiring:
+  - 3 consecutive `VLLMNotReadyError` → breaker `OPEN` → `UnifiedLLMClient.backend_status = DEGRADED`
+  - `LLMBadRequestError` thrown by `VLLMBackend.chat()` → breaker counter does NOT increment (excluded_exception), `backend_status` stays `OK`
+  - Breaker `HALF_OPEN` probe succeeds → breaker `CLOSED` → `backend_status = OK`, banner dismisses
+  - Fail-flow dispatch: with `DEGRADED` set, text-request auto-routes to `OllamaBackend`, image-request raises to the caller
 
 ### Integration Layer (GitHub Actions, free runners)
 
@@ -400,7 +402,7 @@ Documented in `docs/vllm-manual-test.md`. Run once on a dev machine with real NV
 
 ## Estimate
 
-**1.5–2 calendar weeks, single engineer.** Breakdown:
+**~2.2 calendar weeks (11 working days), single engineer.** Breakdown:
 
 - `VLLMBackend` class + unit tests: 1 day
 - `vllm_orchestrator.py` + unit tests (including `recommend_model()` + `filter_registry()` GPU-awareness): 2.5 days
