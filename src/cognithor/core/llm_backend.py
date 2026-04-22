@@ -43,6 +43,7 @@ class LLMBackendType(StrEnum):
     GEMINI = "gemini"
     LMSTUDIO = "lmstudio"
     CLAUDE_CODE = "claude-code"
+    VLLM = "vllm"
 
 
 @dataclass
