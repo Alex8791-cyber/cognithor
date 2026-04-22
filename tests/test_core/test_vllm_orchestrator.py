@@ -288,3 +288,39 @@ class TestStartContainer:
         call = wait_mock.call_args
         got_timeout = call.kwargs.get("timeout", 120) if call.kwargs else 120
         assert got_timeout == 120
+
+
+class TestStopAndReuse:
+    def test_stop_container_via_label(self):
+        find_result = MagicMock(returncode=0, stdout="abc123def456\n")
+        stop_result = MagicMock(returncode=0)
+        rm_result = MagicMock(returncode=0)
+        orch = VLLMOrchestrator()
+        orch.state.container_running = True
+
+        with patch("subprocess.run", side_effect=[find_result, stop_result, rm_result]):
+            orch.stop_container()
+
+        assert orch.state.container_running is False
+
+    def test_stop_when_no_container_is_noop(self):
+        find_result = MagicMock(returncode=0, stdout="")
+        orch = VLLMOrchestrator()
+        with patch("subprocess.run", return_value=find_result):
+            orch.stop_container()
+
+    def test_reuse_existing_returns_info(self):
+        ps_stdout = (
+            '{"ID":"abc123def456","Ports":"0.0.0.0:8000->8000/tcp",'
+            '"Image":"vllm/vllm-openai:v0.19.1","Command":"... --model Qwen/Qwen3.6-27B-FP8 ..."}\n'
+        )
+        with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout=ps_stdout)):
+            info = VLLMOrchestrator().reuse_existing()
+        assert info is not None
+        assert info.container_id == "abc123def456"
+        assert info.port == 8000
+
+    def test_reuse_existing_returns_none_when_nothing_running(self):
+        with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="")):
+            info = VLLMOrchestrator().reuse_existing()
+        assert info is None

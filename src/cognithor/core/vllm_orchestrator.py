@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import collections
 import json as _json
+import re
 import socket
 import subprocess
 import time
@@ -395,6 +396,66 @@ class VLLMOrchestrator:
                 f"vLLM /health did not respond within {timeout}s",
                 recovery_hint="Check `docker logs <id>` for model-loading errors.",
             )
+
+        info = ContainerInfo(container_id=container_id, port=port, model=model)
+        self.state.container_running = True
+        self.state.current_model = model
+        return info
+
+    def stop_container(self) -> None:
+        """Stop and remove the cognithor-managed vLLM container. Noop if none."""
+        find = subprocess.run(
+            ["docker", "ps", "-q", "--filter", "label=cognithor.managed=true"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        container_id = find.stdout.strip().split("\n")[0] if find.stdout.strip() else ""
+        if not container_id:
+            self.state.container_running = False
+            return
+
+        subprocess.run(["docker", "stop", container_id], capture_output=True, timeout=30)
+        subprocess.run(["docker", "rm", container_id], capture_output=True, timeout=10)
+        self.state.container_running = False
+        self.state.current_model = None
+
+    def reuse_existing(self) -> ContainerInfo | None:
+        """If a cognithor-managed container is already running, return its info."""
+        result = subprocess.run(
+            [
+                "docker",
+                "ps",
+                "--filter",
+                "label=cognithor.managed=true",
+                "--format",
+                "json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+
+        first_line = result.stdout.strip().split("\n")[0]
+        try:
+            row = _json.loads(first_line)
+        except _json.JSONDecodeError:
+            return None
+
+        container_id = row.get("ID", "").strip()
+        ports = row.get("Ports", "")
+        cmd = row.get("Command", "")
+
+        port_match = re.search(r"0\.0\.0\.0:(\d+)->8000/tcp", ports)
+        port = int(port_match.group(1)) if port_match else self.port
+
+        model_match = re.search(r"--model\s+(\S+)", cmd)
+        model = model_match.group(1) if model_match else ""
+
+        if not container_id:
+            return None
 
         info = ContainerInfo(container_id=container_id, port=port, model=model)
         self.state.container_running = True
