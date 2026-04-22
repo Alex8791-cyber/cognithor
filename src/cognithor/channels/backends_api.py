@@ -7,9 +7,12 @@ main APIChannel app so it can be included or tested independently.
 
 from __future__ import annotations
 
+import asyncio
+import json as _json
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -159,6 +162,42 @@ async def vllm_logs(request: Request) -> dict:
     config: CognithorConfig = request.app.state.config
     orch = _get_orchestrator(config)
     return {"lines": orch.get_logs()}
+
+
+@backends_router.post("/vllm/pull-image")
+async def vllm_pull_image(request: Request) -> StreamingResponse:
+    """Stream docker-pull progress to the client as SSE."""
+    config: CognithorConfig = request.app.state.config
+    orch = _get_orchestrator(config)
+
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    def progress_cb(event: dict) -> None:
+        queue.put_nowait(event)
+
+    async def worker() -> None:
+        """Run the blocking pull_image in a thread, enqueue events, sentinel at end."""
+        try:
+            await asyncio.to_thread(
+                orch.pull_image,
+                config.vllm.docker_image,
+                progress_callback=progress_cb,
+            )
+        finally:
+            queue.put_nowait(None)
+
+    async def event_stream():
+        task = asyncio.create_task(worker())
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+                yield f"data: {_json.dumps(event)}\n\n"
+        finally:
+            await task
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 def build_backends_app(*, config: CognithorConfig) -> FastAPI:

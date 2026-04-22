@@ -124,3 +124,33 @@ class TestVLLMActions:
             r = client.get("/api/backends/vllm/logs")
         assert r.status_code == 200
         assert r.json()["lines"] == ["line1", "line2"]
+
+
+class TestPullImageSSE:
+    def test_pull_image_streams_sse_events(self, client_with_vllm_enabled):
+        client, _ = client_with_vllm_enabled
+
+        def fake_pull(tag, progress_callback=None):
+            if progress_callback:
+                progress_callback({"status": "Pulling", "id": "layer1"})
+                progress_callback(
+                    {
+                        "status": "Downloading",
+                        "id": "layer1",
+                        "progressDetail": {"current": 500, "total": 1000},
+                    }
+                )
+                progress_callback({"status": "Download complete", "id": "layer1"})
+
+        with patch(
+            "cognithor.core.vllm_orchestrator.VLLMOrchestrator.pull_image",
+            side_effect=fake_pull,
+        ):
+            with client.stream("POST", "/api/backends/vllm/pull-image") as r:
+                assert r.status_code == 200
+                assert r.headers["content-type"].startswith("text/event-stream")
+                lines = list(r.iter_lines())
+
+        data_lines = [l for l in lines if l.startswith("data:")]
+        assert len(data_lines) >= 3
+        assert any("Downloading" in l for l in data_lines)
