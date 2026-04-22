@@ -1480,10 +1480,11 @@ def create_backend(config: CognithorConfig) -> LLMBackend:
                 timeout=config.ollama.timeout_seconds,
             )
         case "vllm":
-            return OpenAIBackend(
-                api_key=getattr(config, "vllm_api_key", "") or "vllm",
-                base_url=getattr(config, "vllm_base_url", "http://localhost:8000/v1"),
-                timeout=config.ollama.timeout_seconds,
+            from cognithor.core.vllm_backend import VLLMBackend
+
+            return VLLMBackend(
+                base_url=f"http://localhost:{config.vllm.port}/v1",
+                timeout=config.vllm.request_timeout_seconds,
             )
         case "llama_cpp":
             return OpenAIBackend(
