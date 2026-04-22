@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from cognithor.config import CognithorConfig
@@ -17,6 +18,11 @@ if TYPE_CHECKING:
 
 
 backends_router = APIRouter(prefix="/api/backends", tags=["backends"])
+
+
+class StartRequest(BaseModel):
+    model: str
+
 
 # Module-level orchestrator singleton. Reset across app builds by wiring
 # through app.state.config → build_backends_app().
@@ -88,6 +94,71 @@ async def vllm_status(request: Request) -> dict:
         "current_model": st.current_model,
         "last_error": st.last_error,
     }
+
+
+@backends_router.post("/vllm/check-hardware")
+async def check_hardware_endpoint(request: Request) -> dict:
+    config: CognithorConfig = request.app.state.config
+    orch = _get_orchestrator(config)
+    try:
+        info = orch.check_hardware()
+    except Exception as exc:
+        from cognithor.core.llm_backend import VLLMHardwareError
+
+        if isinstance(exc, VLLMHardwareError):
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "message": str(exc),
+                    "recovery_hint": exc.recovery_hint,
+                },
+            ) from exc
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+    return {
+        "gpu_name": info.gpu_name,
+        "vram_gb": info.vram_gb,
+        "compute_capability": info.sm_string,
+    }
+
+
+@backends_router.post("/vllm/start")
+async def vllm_start(request: Request, body: StartRequest) -> dict:
+    config: CognithorConfig = request.app.state.config
+    orch = _get_orchestrator(config)
+    try:
+        info = orch.start_container(body.model)
+    except Exception as exc:
+        from cognithor.core.llm_backend import VLLMNotReadyError
+
+        if isinstance(exc, VLLMNotReadyError):
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "message": str(exc),
+                    "recovery_hint": getattr(exc, "recovery_hint", ""),
+                },
+            ) from exc
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+    return {
+        "container_id": info.container_id,
+        "port": info.port,
+        "model": info.model,
+    }
+
+
+@backends_router.post("/vllm/stop")
+async def vllm_stop(request: Request) -> dict:
+    config: CognithorConfig = request.app.state.config
+    orch = _get_orchestrator(config)
+    orch.stop_container()
+    return {"status": "stopped"}
+
+
+@backends_router.get("/vllm/logs")
+async def vllm_logs(request: Request) -> dict:
+    config: CognithorConfig = request.app.state.config
+    orch = _get_orchestrator(config)
+    return {"lines": orch.get_logs()}
 
 
 def build_backends_app(*, config: CognithorConfig) -> FastAPI:
