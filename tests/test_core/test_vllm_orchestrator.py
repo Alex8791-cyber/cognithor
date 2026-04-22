@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cognithor.core.llm_backend import VLLMHardwareError
+from cognithor.core.llm_backend import VLLMHardwareError, VLLMNotReadyError
 from cognithor.core.vllm_orchestrator import (
     ContainerInfo,
     DockerInfo,
@@ -220,3 +220,71 @@ class TestPullImage:
         with patch("subprocess.Popen", return_value=mock_proc):
             orch.pull_image(orch.docker_image, progress_callback=None)
         assert orch.state.image_pulled is True
+
+
+class TestStartContainer:
+    def test_constructs_docker_run_command(self):
+        with (
+            patch.object(VLLMOrchestrator, "_port_available", return_value=True),
+            patch("subprocess.run") as run_mock,
+            patch.object(VLLMOrchestrator, "_wait_for_health", return_value=True),
+        ):
+            run_mock.return_value = MagicMock(returncode=0, stdout="abc123def456")
+            orch = VLLMOrchestrator(
+                docker_image="vllm/vllm-openai:v0.19.1", port=8000, hf_token="hf_x"
+            )
+            info = orch.start_container("Qwen/Qwen3.6-27B-FP8")
+
+        args = run_mock.call_args[0][0]
+        assert "run" in args
+        assert "-d" in args
+        assert "--gpus" in args and "all" in args
+        assert any("HF_TOKEN=hf_x" in a for a in args)
+        assert any("cognithor.managed=true" in a for a in args)
+        assert any("vllm-openai:v0.19.1" in a for a in args)
+        assert "Qwen/Qwen3.6-27B-FP8" in args
+        assert info.port == 8000
+        assert info.model == "Qwen/Qwen3.6-27B-FP8"
+
+    def test_port_fallback_when_busy(self):
+        orch = VLLMOrchestrator(port=8000)
+        with (
+            patch.object(orch, "_port_available", side_effect=[False, False, True]),
+            patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="cid")),
+            patch.object(orch, "_wait_for_health", return_value=True),
+        ):
+            info = orch.start_container("Qwen/Qwen2.5-VL-7B-Instruct")
+        assert info.port == 8002
+
+    def test_raises_when_all_ports_busy(self):
+        orch = VLLMOrchestrator(port=8000)
+        with patch.object(orch, "_port_available", return_value=False):
+            with pytest.raises(VLLMNotReadyError) as exc:
+                orch.start_container("Qwen/Qwen2.5-VL-7B-Instruct")
+            assert "port" in str(exc.value).lower()
+
+    def test_health_timeout_scales_with_explicit_argument(self):
+        orch = VLLMOrchestrator(port=8000)
+        with (
+            patch.object(orch, "_port_available", return_value=True),
+            patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="cid")),
+            patch.object(orch, "_wait_for_health", return_value=True) as wait_mock,
+        ):
+            orch.start_container("x", health_timeout=300)
+        call = wait_mock.call_args
+        got_timeout = call.kwargs.get("timeout") if call.kwargs else None
+        if got_timeout is None and call.args:
+            got_timeout = call.args[-1] if len(call.args) > 1 else None
+        assert got_timeout == 300
+
+    def test_default_health_timeout_is_120(self):
+        orch = VLLMOrchestrator(port=8000)
+        with (
+            patch.object(orch, "_port_available", return_value=True),
+            patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="cid")),
+            patch.object(orch, "_wait_for_health", return_value=True) as wait_mock,
+        ):
+            orch.start_container("x")
+        call = wait_mock.call_args
+        got_timeout = call.kwargs.get("timeout", 120) if call.kwargs else 120
+        assert got_timeout == 120

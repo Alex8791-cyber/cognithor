@@ -11,12 +11,16 @@ from __future__ import annotations
 
 import collections
 import json as _json
+import socket
 import subprocess
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from cognithor.core.llm_backend import VLLMDockerError, VLLMHardwareError
+import httpx
+
+from cognithor.core.llm_backend import VLLMDockerError, VLLMHardwareError, VLLMNotReadyError
 from cognithor.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -116,6 +120,7 @@ class VLLMOrchestrator:
     """Stateful vLLM lifecycle manager. Methods added in later tasks."""
 
     _PRIORITY_ORDER: dict[str, int] = {"premium": 0, "standard": 1, "fallback": 2}
+    _MAX_PORT_FALLBACKS = 10
 
     def __init__(
         self,
@@ -313,3 +318,85 @@ class VLLMOrchestrator:
 
         candidates.sort(key=sort_key)
         return candidates[0]
+
+    def _port_available(self, port: int) -> bool:
+        """True if nothing is listening on localhost:port."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            try:
+                s.bind(("127.0.0.1", port))
+                return True
+            except OSError:
+                return False
+
+    def _wait_for_health(self, port: int, *, timeout: int = 120) -> bool:
+        """Poll vLLM /health until 200 or timeout."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                with httpx.Client(timeout=2.0) as client:
+                    r = client.get(f"http://localhost:{port}/health")
+                    if r.status_code == 200:
+                        return True
+            except Exception:
+                pass
+            time.sleep(2.0)
+        return False
+
+    def start_container(
+        self,
+        model: str,
+        *,
+        health_timeout: int | None = None,
+    ) -> ContainerInfo:
+        """Start a vLLM container. Auto-falls-back self.port → self.port+N on port conflict."""
+        port = self.port
+        for offset in range(self._MAX_PORT_FALLBACKS):
+            candidate = self.port + offset
+            if self._port_available(candidate):
+                port = candidate
+                break
+        else:
+            raise VLLMNotReadyError(
+                f"All ports {self.port}..{self.port + self._MAX_PORT_FALLBACKS - 1} are busy",
+                recovery_hint="Stop other services or change config.vllm.port.",
+            )
+
+        cmd = [
+            "docker",
+            "run",
+            "-d",
+            "--gpus",
+            "all",
+            "-v",
+            "cognithor-hf-cache:/root/.cache/huggingface",
+            "-e",
+            f"HF_TOKEN={self._hf_token}",
+            "-p",
+            f"{port}:8000",
+            "--label",
+            "cognithor.managed=true",
+            self.docker_image,
+            "--model",
+            model,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            raise VLLMNotReadyError(
+                f"docker run failed: {result.stderr.strip()}",
+                recovery_hint="Check Docker Desktop logs.",
+            )
+
+        container_id = result.stdout.strip().split("\n")[-1][:12]
+
+        timeout = health_timeout if health_timeout is not None else 120
+        if not self._wait_for_health(port, timeout=timeout):
+            raise VLLMNotReadyError(
+                f"vLLM /health did not respond within {timeout}s",
+                recovery_hint="Check `docker logs <id>` for model-loading errors.",
+            )
+
+        info = ContainerInfo(container_id=container_id, port=port, model=model)
+        self.state.container_running = True
+        self.state.current_model = model
+        return info
