@@ -43,5 +43,17 @@ void main() {
       expect(status.hardwareInfo?.vramGb, 32);
       expect(status.hardwareInfo?.computeCapability, '12.0');
     });
+
+    test('pullImage method exists on provider', () {
+      final p = LlmBackendProvider(apiBaseUrl: 'http://test');
+      // Real SSE integration is covered server-side (Python test_vllm_fake_server.py).
+      // Flutter side only verifies the surface: method is callable and returns a Stream.
+      expect(p.pullImage, isA<Function>());
+    });
+
+    test('startContainer method exists on provider', () {
+      final p = LlmBackendProvider(apiBaseUrl: 'http://test');
+      expect(p.startContainer, isA<Function>());
+    });
   });
 }

@@ -141,6 +141,54 @@ class LlmBackendProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  /// Kick off docker-pull and yield progress events as parsed maps.
+  /// Events: {"status":"Downloading","progressDetail":{"current":N,"total":M},"id":"layer..."}
+  Stream<Map<String, dynamic>> pullImage() async* {
+    final uri = Uri.parse('$apiBaseUrl/api/backends/vllm/pull-image');
+    final request = http.Request('POST', uri);
+    final streamed = await _http.send(request);
+    if (streamed.statusCode != 200) {
+      throw Exception('Pull failed: HTTP ${streamed.statusCode}');
+    }
+    String buffer = '';
+    await for (final chunk in streamed.stream.transform(utf8.decoder)) {
+      buffer += chunk;
+      while (true) {
+        final sep = buffer.indexOf('\n\n');
+        if (sep == -1) break;
+        final block = buffer.substring(0, sep);
+        buffer = buffer.substring(sep + 2);
+        for (final line in block.split('\n')) {
+          if (line.startsWith('data:')) {
+            final payload = line.substring(5).trim();
+            if (payload.isEmpty) continue;
+            try {
+              yield jsonDecode(payload) as Map<String, dynamic>;
+            } catch (_) {
+              // Ignore malformed events
+            }
+          }
+        }
+      }
+    }
+    // Refresh full status after pull completes
+    await refreshVllmStatus();
+  }
+
+  /// POST /api/backends/vllm/start — start a container for the given model.
+  Future<void> startContainer(String model) async {
+    final r = await _http.post(
+      Uri.parse('$apiBaseUrl/api/backends/vllm/start'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'model': model}),
+    );
+    if (r.statusCode != 200) {
+      final body = jsonDecode(r.body);
+      throw Exception(body['detail']?['message'] ?? 'Start failed');
+    }
+    await refreshVllmStatus();
+  }
+
   Future<void> setActive(String backend) async {
     final r = await _http.post(
       Uri.parse('$apiBaseUrl/api/backends/active'),

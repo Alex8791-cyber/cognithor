@@ -166,26 +166,75 @@ class _DockerCard extends StatelessWidget {
   }
 }
 
-class _ImageCard extends StatelessWidget {
+class _ImageCard extends StatefulWidget {
   final VLLMStatus? status;
   const _ImageCard({required this.status});
 
   @override
+  State<_ImageCard> createState() => _ImageCardState();
+}
+
+class _ImageCardState extends State<_ImageCard> {
+  double? _progress;
+  String? _layer;
+  bool _pulling = false;
+
+  Future<void> _pull() async {
+    setState(() {
+      _pulling = true;
+      _progress = null;
+      _layer = null;
+    });
+    try {
+      final p = context.read<LlmBackendProvider>();
+      await for (final ev in p.pullImage()) {
+        final detail = ev['progressDetail'] as Map<String, dynamic>?;
+        final current = detail?['current'] as int?;
+        final total = detail?['total'] as int?;
+        if (current != null && total != null && total > 0) {
+          setState(() {
+            _progress = current / total;
+            _layer = ev['id'] as String?;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Pull failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _pulling = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final pulled = status?.imagePulled ?? false;
+    final pulled = widget.status?.imagePulled ?? false;
     return _StatusCard(
       cardKey: const ValueKey('card-image'),
       title: 'vLLM Docker image',
       subtitle: pulled
           ? 'vllm/vllm-openai:v0.19.1 ready'
-          : 'Pull required (~10 GB, one-time)',
-      state: pulled ? _CardState.ok : _CardState.todo,
+          : _pulling
+              ? 'Downloading${_layer != null ? " layer ${_layer!.length >= 12 ? _layer!.substring(0, 12) : _layer!}..." : "…"}'
+              : 'Pull required (~10 GB, one-time)',
+      state: pulled
+          ? _CardState.ok
+          : _pulling
+              ? _CardState.pending
+              : _CardState.todo,
       action: pulled
           ? null
-          : FilledButton.tonal(
-              onPressed: () {}, // wired up in Task 28 (SSE progress)
-              child: const Text('Pull image'),
-            ),
+          : _pulling
+              ? SizedBox(
+                  width: 100,
+                  child: LinearProgressIndicator(value: _progress),
+                )
+              : FilledButton.tonal(
+                  onPressed: _pull,
+                  child: const Text('Pull image'),
+                ),
     );
   }
 }
