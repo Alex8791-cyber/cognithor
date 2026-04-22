@@ -2546,6 +2546,26 @@ class SocialConfig(BaseModel):
         )
 
 
+class VLLMConfig(BaseModel):
+    """Configuration for the optional vLLM backend.
+
+    HF token is NOT stored here — read from the top-level
+    ``config.huggingface_api_key`` which is keyring-backed via
+    ``SecretStore._SECRET_FIELDS``. The orchestrator passes it to
+    the container as ``-e HF_TOKEN=$value``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = Field(default=False)
+    model: str = Field(default="")
+    docker_image: str = Field(default="vllm/vllm-openai:v0.19.1")
+    port: int = Field(default=8000, ge=1024, le=65535)
+    auto_stop_on_close: bool = Field(default=False)
+    skip_hardware_check: bool = Field(default=False)
+    request_timeout_seconds: int = Field(default=60, ge=5, le=600)
+
+
 # ============================================================================
 # Haupt-Konfiguration
 # ============================================================================
@@ -2648,6 +2668,7 @@ class CognithorConfig(BaseModel):
         default="http://localhost:8000/v1",
         description="vLLM server URL",
     )
+    vllm: VLLMConfig = Field(default_factory=VLLMConfig)
     llama_cpp_api_key: str = Field(
         default="",
         description="llama-cpp-python API key (usually empty for local)",
