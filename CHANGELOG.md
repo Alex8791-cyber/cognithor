@@ -5,6 +5,23 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **vLLM as opt-in LLM backend** with full Flutter-driven lifecycle (install,
+  pull-image, start, stop, hot-switch) — spec at
+  `docs/superpowers/specs/2026-04-22-vllm-opt-in-backend-design.md`,
+  plan at `docs/superpowers/plans/2026-04-22-vllm-opt-in-backend.md`. Ollama
+  remains the default — vLLM is purely additive. Unlocks native FP4 on
+  Blackwell GPUs (RTX 50xx), FP8 on Ada, AWQ-INT4 on Ampere. Model registry
+  carries per-quantization entries with `min_compute_capability` and
+  `vram_gb_min` so the UI can disable models that don't fit the detected GPU
+  and auto-recommend the best fit. New `LlmBackendsScreen` and
+  `VllmSetupScreen` in Flutter. New FastAPI endpoints under
+  `/api/backends/vllm/*` including SSE-streamed pull progress. User guide
+  at `docs/vllm-user-guide.md`, manual test recipe at
+  `docs/vllm-manual-test.md`.
+
 ## [0.92.5] -- 2026-04-22
 
 ### Added
