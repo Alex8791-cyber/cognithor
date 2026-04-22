@@ -307,6 +307,83 @@ class TestOllamaClientPIIRedactor:
 
 
 # ============================================================================
+# Multimodal image attachments (VLM routing)
+# ============================================================================
+
+
+class TestOllamaClientImageAttachments:
+    """``chat(images=...)`` must base64-encode files and attach them to the
+    last user message, per Ollama's multimodal chat API spec."""
+
+    @pytest.mark.asyncio
+    async def test_encodes_path_and_attaches_to_last_user_message(
+        self, client: OllamaClient, tmp_path
+    ) -> None:
+        img = tmp_path / "pic.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\nfakeimage")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "message": {"role": "assistant", "content": "ok"},
+        }
+        with patch.object(client, "_ensure_client") as mock_ensure:
+            mock_http = AsyncMock()
+            mock_http.post = AsyncMock(return_value=mock_response)
+            mock_ensure.return_value = mock_http
+            await client.chat(
+                model="qwen3.6-vl:27b",
+                messages=[
+                    {"role": "system", "content": "you are helpful"},
+                    {"role": "user", "content": "what's in this?"},
+                ],
+                images=[str(img)],
+            )
+            payload = mock_http.post.call_args.kwargs["json"]
+        # The last user message must carry a non-empty base64 images list.
+        user_msg = payload["messages"][-1]
+        assert user_msg["role"] == "user"
+        assert isinstance(user_msg.get("images"), list)
+        assert len(user_msg["images"]) == 1
+        assert user_msg["images"][0].isprintable()  # base64 is printable ASCII
+
+    @pytest.mark.asyncio
+    async def test_unreadable_path_is_skipped_not_raised(self, client: OllamaClient) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": {"role": "assistant", "content": "ok"}}
+        with patch.object(client, "_ensure_client") as mock_ensure:
+            mock_http = AsyncMock()
+            mock_http.post = AsyncMock(return_value=mock_response)
+            mock_ensure.return_value = mock_http
+            # Bad path — must not raise; images field simply ends up absent.
+            await client.chat(
+                model="qwen3.6-vl:27b",
+                messages=[{"role": "user", "content": "hi"}],
+                images=["/does/not/exist.png"],
+            )
+            payload = mock_http.post.call_args.kwargs["json"]
+        assert payload["messages"][0].get("images", []) == []
+
+    @pytest.mark.asyncio
+    async def test_caller_messages_not_mutated(self, client: OllamaClient, tmp_path) -> None:
+        img = tmp_path / "a.png"
+        img.write_bytes(b"\x89PNG")
+        caller = [{"role": "user", "content": "hi"}]
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": {"role": "assistant", "content": "ok"}}
+        with patch.object(client, "_ensure_client") as mock_ensure:
+            mock_http = AsyncMock()
+            mock_http.post = AsyncMock(return_value=mock_response)
+            mock_ensure.return_value = mock_http
+            await client.chat(model="qwen3.6-vl:27b", messages=caller, images=[str(img)])
+        # Original dict from caller must be untouched.
+        assert "images" not in caller[0]
+
+
+# ============================================================================
 # messages_to_ollama Konvertierung
 # ============================================================================
 

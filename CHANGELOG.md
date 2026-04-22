@@ -5,6 +5,49 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [unreleased]
+
+### Added
+- **Qwen3.6 model registry + installer** (`cognithor models install <name>`).
+  New CLI commands:
+    - `cognithor models list` — print all known models grouped by provider.
+    - `cognithor models install <name>` — install an Ollama tag (e.g.
+      `qwen3.6:35b`) or a community HuggingFace GGUF (e.g.
+      `unsloth/Qwen3.6-27B-GGUF`). HF GGUFs are downloaded via
+      `huggingface_hub` and imported into the local Ollama via
+      `ollama create -f Modelfile`, ending up under the registry's
+      `import_as` tag (e.g. `qwen3.6-vl:27b`).
+  Model registry gained a `community_gguf` provider section + Qwen3.6
+  entries. Registry updated timestamp: 2026-04-22.
+- **Vision routing for the Planner**. When `WorkingMemory.image_attachments`
+  is non-empty, `Planner.formulate_response()` routes the LLM call through
+  `config.vision_model_detail` and passes the image paths to
+  `OllamaClient.chat(images=...)`. The Ollama client encodes paths (or
+  pre-encoded base64 strings) and attaches them to the last user message
+  per Ollama's multimodal chat API.
+- **Flutter WebUI image uploads → VLM**. When the user attaches an image
+  in the chat input (`chat_input.dart` already supports PNG/JPG/WEBP/...),
+  the WebUI backend now:
+    - Detects the image MIME from the filename extension.
+    - Saves the raw bytes to `~/.cognithor/workspace/uploads/`.
+    - Populates `IncomingMessage.attachments` with the path (instead of
+      forcing a text-extraction pass that would lose visual context).
+  The Gateway filters `msg.attachments` for image extensions and sets
+  `WorkingMemory.image_attachments` on the current turn, triggering the
+  Planner's vision routing. The chat bubble renders a thumbnail preview
+  of uploaded images via `metadata.image_base64`.
+- **Latent file-upload bug fix**. The WebUI WebSocket file-upload handler
+  previously only fired when `text.startswith("[file_upload]")` — a legacy
+  format the current Flutter client has never sent. File uploads from
+  Flutter were silently dropped. The gate is now `metadata.file_base64`
+  presence, covering the real message shape.
+
+### Deferred
+- **Video input** is explicitly deferred. Qwen3.6-27B (VLM) can process
+  video frames, but Ollama's `/api/chat` endpoint does not support video
+  input. End-to-end video would require a direct Transformers/vLLM
+  backend — tracked separately.
+
 ## [0.92.4] -- 2026-04-22
 
 ### Added

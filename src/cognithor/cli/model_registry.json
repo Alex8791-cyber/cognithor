@@ -1,9 +1,12 @@
 {
-  "updated": "2026-04-10",
+  "updated": "2026-04-22",
   "providers": {
     "ollama": {
       "discovery_url": "http://localhost:11434/api/tags",
       "models": [
+        "qwen3.6:35b",
+        "qwen3.6:35b-a3b-q4",
+        "qwen3.6:35b-a3b-q8",
         "qwen3:32b",
         "qwen3:8b",
         "qwen3:1.7b",
@@ -15,6 +18,22 @@
         "nomic-embed-text",
         "deepseek-r1:32b"
       ]
+    },
+    "community_gguf": {
+      "discovery_url": null,
+      "description": "Community GGUF quants from HuggingFace, imported into local Ollama via the model installer.",
+      "models": [
+        "unsloth/Qwen3.6-27B-GGUF"
+      ],
+      "entries": {
+        "unsloth/Qwen3.6-27B-GGUF": {
+          "import_as": "qwen3.6-vl:27b",
+          "file_hint": "Qwen3.6-27B-Q4_K_M.gguf",
+          "license": "apache-2.0",
+          "kind": "vision",
+          "notes": "Vision-Language model. Use as vision_model_detail. Video input not supported through Ollama's chat API."
+        }
+      }
     },
     "openai": {
       "discovery_url": "https://api.openai.com/v1/models",

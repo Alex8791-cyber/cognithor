@@ -493,6 +493,9 @@ class WorkingMemory(BaseModel):
     token_count: int = 0
     max_tokens: int = 32768  # Qwen3-32B Default
     session_state: dict[str, Any] = Field(default_factory=dict)
+    # Paths to image attachments on this turn. Routed to vision_model_detail
+    # by the Planner when non-empty. Cleared by the Gateway after one turn.
+    image_attachments: list[str] = Field(default_factory=list)
 
     @property
     def usage_ratio(self) -> float:
@@ -568,6 +571,10 @@ class WorkingMemory(BaseModel):
         self.active_plan = None
         self.injected_memories = []
         self.injected_procedures = []
+        # image_attachments are per-turn — the Gateway sets them from the
+        # incoming message before each turn, so clearing here avoids bleed
+        # from the previous turn.
+        self.image_attachments = []
 
 
 # ============================================================================

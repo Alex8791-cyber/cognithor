@@ -2728,6 +2728,14 @@ class Gateway:
         wm = self._get_or_create_working_memory(session)
         wm.clear_for_new_request()
 
+        # Route image attachments to the VLM for this turn. Cleared by
+        # clear_for_new_request() so it only affects the current turn.
+        _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+        if msg.attachments:
+            wm.image_attachments = [
+                a for a in msg.attachments if any(a.lower().endswith(ext) for ext in _IMAGE_EXTS)
+            ]
+
         # Start explainability trail for this request
         _expl_trail_id: str | None = None
         if getattr(self, "_explainability", None) is not None:

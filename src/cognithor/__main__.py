@@ -204,6 +204,19 @@ def parse_args() -> argparse.Namespace:
     get_p = config_sub.add_parser("get", help="Get a config value")
     get_p.add_argument("key", help="Dot-path config key")
 
+    # `cognithor models …` — install and list models (Ollama + community GGUF).
+    models_parser = sub.add_parser("models", help="Manage local LLM models")
+    models_sub = models_parser.add_subparsers(dest="models_action")
+    models_sub.add_parser("list", help="Show known models from the registry")
+    inst_p = models_sub.add_parser("install", help="Download + import a model")
+    inst_p.add_argument(
+        "name",
+        help=(
+            "Ollama tag (e.g. qwen3.6:35b) or HF repo id from the registry "
+            "(e.g. unsloth/Qwen3.6-27B-GGUF)."
+        ),
+    )
+
     return parser.parse_args()
 
 
@@ -370,6 +383,18 @@ def main() -> None:
         args.no_cli = True
         if not args.api_host:
             args.api_host = "127.0.0.1"
+
+    if getattr(args, "command", None) == "models":
+        from cognithor.cli import models_cmd
+
+        action = getattr(args, "models_action", None)
+        if action == "list":
+            sys.exit(models_cmd.cmd_list())
+        elif action == "install":
+            sys.exit(models_cmd.cmd_install(args.name))
+        else:
+            print("Usage: cognithor models <list|install>", file=sys.stderr)
+            sys.exit(2)
 
     if getattr(args, "command", None) == "config":
         from cognithor.cli import config_cmd, config_tui

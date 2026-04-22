@@ -600,9 +600,16 @@ class WebUIChannel(Channel):
                 else:
                     return  # Fehler wurde bereits gesendet
 
-            # --- File upload: save file and extract text ---
-            if metadata.get("file_base64") and text.startswith("[file_upload]"):
-                file_text = await self._process_file_upload(metadata, ws, session_id)
+            # --- File upload: save file and either extract text or
+            # route as an image attachment (VLM handles in Planner).
+            # Legacy gate was text.startswith("[file_upload]"); the
+            # current Flutter client sends "[File: name]" so we just
+            # check for the base64 payload directly.
+            _upload_attachment_path: str | None = None
+            if metadata.get("file_base64"):
+                file_text, _upload_attachment_path = await self._process_file_upload(
+                    metadata, ws, session_id
+                )
                 if file_text:
                     text = file_text
 
@@ -632,6 +639,7 @@ class WebUIChannel(Channel):
                 session_id=session_id,
                 user_id="web_user",
                 metadata=metadata,
+                attachments=[_upload_attachment_path] if _upload_attachment_path else [],
             )
 
             # Stream callback: sends events to client in real-time
@@ -856,13 +864,20 @@ class WebUIChannel(Channel):
         metadata: dict[str, Any],
         ws: Any,
         session_id: str,
-    ) -> str | None:
+    ) -> tuple[str | None, str | None]:
         """Verarbeitet einen Datei-Upload vom WebChat-Widget.
 
-        Speichert die Datei und extrahiert Text wenn moeglich.
+        Saves the file under ``~/.cognithor/workspace/uploads/`` and
+        either (a) returns an extracted-text synopsis (PDFs, .md, code)
+        or (b) hands the file path back as an image attachment so the
+        Gateway can route to the VLM.
 
         Returns:
-            Aufbereiteter Text fuer den Handler oder None.
+            Tuple ``(text, attachment_path)`` — exactly one of which is
+            typically non-None. ``text`` is the user-message text
+            (replaces the stub "[File: name]"); ``attachment_path`` is
+            the saved file location for images that should flow to the
+            vision model. ``(None, None)`` on hard errors.
         """
         import base64
         from pathlib import Path
@@ -872,7 +887,7 @@ class WebUIChannel(Channel):
         file_type = metadata.get("file_type", "")
 
         if not file_b64:
-            return None
+            return None, None
 
         # Check estimated file size (Base64 → ~75% of original size)
         estimated_size = len(file_b64) * 3 // 4
@@ -888,7 +903,7 @@ class WebUIChannel(Channel):
                     ),
                 },
             )
-            return None
+            return None, None
 
         try:
             file_bytes = base64.b64decode(file_b64)
@@ -902,12 +917,23 @@ class WebUIChannel(Channel):
             save_path = (workspace / safe_name).resolve()
             if not str(save_path).startswith(str(workspace.resolve())):
                 log.warning("path_traversal_blocked", file_name=file_name)
-                return None
+                return None, None
             save_path.write_bytes(file_bytes)
 
             log.info("file_uploaded", name=file_name, size=len(file_bytes), session_id=session_id)
 
-            # Attempt text extraction
+            # Images → route to VLM via IncomingMessage.attachments.
+            # Do NOT run text extraction on images (would force OCR which
+            # loses visual context). The Gateway will pass the raw file
+            # path to the vision model on this turn.
+            _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+            if any(safe_name.lower().endswith(ext) for ext in _IMAGE_EXTS):
+                return (
+                    f"[Bild hochgeladen: {file_name}, {len(file_bytes)} Bytes]",
+                    str(save_path),
+                )
+
+            # Non-image: attempt text extraction
             try:
                 from cognithor.mcp.media import MediaPipeline
 
@@ -916,18 +942,24 @@ class WebUIChannel(Channel):
 
                 if result.success and result.text.strip():
                     return (
-                        f"[Datei hochgeladen: {file_name}, "
-                        f"{len(file_bytes)} Bytes]\n\n"
-                        f"Inhalt:\n{result.text}"
+                        (
+                            f"[Datei hochgeladen: {file_name}, "
+                            f"{len(file_bytes)} Bytes]\n\n"
+                            f"Inhalt:\n{result.text}"
+                        ),
+                        None,
                     )
             except Exception:
                 pass  # Cleanup — file content extraction failure is non-critical
 
             # Fallback: file info only
             return (
-                f"[Datei hochgeladen: {file_name}, "
-                f"{len(file_bytes)} Bytes, Typ: {file_type}]\n"
-                f"Gespeichert unter: {save_path}"
+                (
+                    f"[Datei hochgeladen: {file_name}, "
+                    f"{len(file_bytes)} Bytes, Typ: {file_type}]\n"
+                    f"Gespeichert unter: {save_path}"
+                ),
+                None,
             )
 
         except Exception as exc:
@@ -939,7 +971,7 @@ class WebUIChannel(Channel):
                     "error": "Datei-Upload fehlgeschlagen.",
                 },
             )
-            return None
+            return None, None
 
     async def _ws_send(self, ws: Any, data: dict[str, Any]) -> None:
         """Sendet JSON ueber WebSocket (mit Fehlerbehandlung)."""

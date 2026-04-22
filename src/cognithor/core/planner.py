@@ -1044,7 +1044,14 @@ class Planner:
         max_retries mal neu generiert (response_regen). tool_ignorance fuehrt
         zu einem ResponseEnvelope mit PGEReloopDirective.
         """
-        model = self._router.select_model("summarization", "medium")
+        # If this turn carries image attachments, route the response
+        # through the detail vision model so the VLM can actually see them.
+        # Falls back to the text planner model when no attachments.
+        image_paths = list(working_memory.image_attachments or [])
+        if image_paths and getattr(self._config, "vision_model_detail", None):
+            model = self._config.vision_model_detail
+        else:
+            model = self._router.select_model("summarization", "medium")
         messages = self._build_formulate_messages(user_message, results, working_memory)
 
         observer_cfg = self._config.observer
@@ -1068,6 +1075,7 @@ class Planner:
                 model=model,
                 messages=messages,
                 session_id=working_memory.session_id,
+                images=image_paths or None,
             )
             if content is None:
                 # Both LLM attempts failed — existing fallback behavior.
@@ -1260,12 +1268,21 @@ class Planner:
         model: str,
         messages: list[dict[str, Any]],
         session_id: str,
+        images: list[str] | None = None,
     ) -> str | None:
-        """Call ollama.chat with 2 attempts. Returns None if both fail (caller uses fallback)."""
+        """Call ollama.chat with 2 attempts. Returns None if both fail (caller uses fallback).
+
+        When ``images`` is non-empty the call routes to a VLM (see
+        ``OllamaClient.chat`` — attaches base64-encoded images to the
+        last user message per Ollama's multimodal API).
+        """
         for _fmt_attempt in range(2):
             try:
                 response = await self._ollama.chat(
-                    model=model, messages=messages, options=self._build_llm_options()
+                    model=model,
+                    messages=messages,
+                    options=self._build_llm_options(),
+                    images=images,
                 )
                 self._record_cost(response, model, session_id=session_id)
                 return response.get("message", {}).get("content", "")

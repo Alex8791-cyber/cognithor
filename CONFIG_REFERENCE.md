@@ -50,6 +50,20 @@ The configuration file is automatically created on first start.
 | `vision_model` | string | `"openbmb/minicpm-v4.5"` | Default vision model (fast). |
 | `vision_model_detail` | string | `"qwen3-vl:32b"` | Detail vision model (highest quality). |
 
+**Vision-routing in the chat loop.** When a WebUI user attaches an image to their message, the Gateway stores the path in `WorkingMemory.image_attachments` for that turn. `Planner.formulate_response()` then calls the LLM with `model=vision_model_detail` and `images=[<paths>]`, which `OllamaClient.chat()` base64-encodes and attaches to the last user message per Ollama's multimodal spec. Suggested choice for `vision_model_detail`: `qwen3.6-vl:27b` after running `cognithor models install unsloth/Qwen3.6-27B-GGUF` (see below).
+
+### Installing new models
+
+```bash
+cognithor models list                           # show the registry
+cognithor models install qwen3.6:35b            # pull an Ollama tag
+cognithor models install unsloth/Qwen3.6-27B-GGUF   # HF GGUF → Ollama via ollama create
+```
+
+For HuggingFace GGUFs listed in the registry's `community_gguf` section, the installer downloads the `.gguf` via `huggingface_hub` and wraps it in a minimal `Modelfile` so Ollama can serve it. The resulting local tag is set by the registry's `import_as` field (e.g. `Qwen3.6-27B-GGUF` becomes `qwen3.6-vl:27b` in Ollama). `huggingface_hub` is an optional dep — install with `pip install huggingface_hub` if you plan to use the community GGUF path.
+
+**Note on video:** Qwen3.6-27B can process video internally, but Ollama's `/api/chat` endpoint has no video-input surface. End-to-end video requires a future Transformers/vLLM backend — not available in this release.
+
 ### Backend Auto-Detection
 
 If `llm_backend_type` is `"ollama"` but an API key is set, the backend is auto-detected. Priority order: Anthropic > OpenAI > Gemini > Groq > DeepSeek > Mistral > Together > OpenRouter > xAI > Cerebras > GitHub > Bedrock > Hugging Face > Moonshot.

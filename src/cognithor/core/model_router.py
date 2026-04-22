@@ -81,6 +81,44 @@ _coding_override_var: contextvars.ContextVar[str | None] = contextvars.ContextVa
 )
 
 
+def _prepare_image_payload(images: list[str]) -> list[str]:
+    """Normalize a mixed list of image paths + raw base64 strings.
+
+    Each entry may be:
+      - An absolute or relative filesystem path to an image file
+      - A string already in base64 encoding (identified by being
+        decodable as valid base64 and longer than 256 characters).
+
+    Returns a list of base64 strings suitable for Ollama's
+    ``messages[i].images`` field. Unreadable entries are skipped with a
+    warning so one bad attachment never tanks a whole turn.
+    """
+    import base64 as _b64
+    from pathlib import Path as _Path
+
+    out: list[str] = []
+    for entry in images:
+        if not entry:
+            continue
+        # Heuristic: does this look like an already-encoded blob?
+        # base64 strings don't contain path separators or dots in the
+        # traditional file-path sense, and are typically very long.
+        stripped = entry.strip()
+        if len(stripped) > 256 and "/" not in stripped and "\\" not in stripped:
+            try:
+                _b64.b64decode(stripped, validate=True)
+                out.append(stripped)
+                continue
+            except Exception:
+                pass  # Not base64 — fall through to path handling.
+        try:
+            raw = _Path(entry).read_bytes()
+            out.append(_b64.b64encode(raw).decode("ascii"))
+        except Exception as exc:
+            log.warning("image_payload_unreadable", entry=entry, error=str(exc))
+    return out
+
+
 class OllamaError(Exception):
     """Error communicating with Ollama."""
 
@@ -181,6 +219,7 @@ class OllamaClient:
         stream: bool = False,
         format_json: bool = False,
         options: dict[str, Any] | None = None,
+        images: list[str] | None = None,
     ) -> dict[str, Any]:
         """Sendet eine Chat-Completion-Anfrage an Ollama.
 
@@ -192,6 +231,10 @@ class OllamaClient:
             top_p: Nucleus-Sampling-Parameter
             stream: Whether to stream token by token
             format_json: Ob die Antwort als JSON erzwungen werden soll
+            images: Optional list of image file paths OR pre-encoded
+                base64 strings. Attached to the LAST user message so the
+                VLM (e.g. qwen3.6-vl:27b) can see them. Ollama's chat API
+                expects ``messages[i].images = [<base64>, ...]``.
 
         Returns:
             Ollama-Response als Dict mit 'message' Key.
@@ -200,6 +243,25 @@ class OllamaClient:
             OllamaError: Bei Kommunikations- oder Server-Fehlern.
         """
         client = await self._ensure_client()
+
+        # Attach images to the most-recent user message so the VLM can see
+        # them. This mutates a *copy* to keep the caller's list intact.
+        if images:
+            encoded = _prepare_image_payload(images)
+            if encoded:
+                new_messages: list[dict[str, Any]] = [dict(m) for m in messages]
+                for i in range(len(new_messages) - 1, -1, -1):
+                    if new_messages[i].get("role") == "user":
+                        existing = list(new_messages[i].get("images") or [])
+                        new_messages[i] = {
+                            **new_messages[i],
+                            "images": [*existing, *encoded],
+                        }
+                        break
+                else:
+                    # No user message yet — create one so the image has a home.
+                    new_messages.append({"role": "user", "content": "", "images": list(encoded)})
+                messages = new_messages
 
         # Strip PII from outbound messages if redactor is enabled.
         if self._pii_redactor is not None:

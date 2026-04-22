@@ -271,7 +271,18 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void sendFile(String name, String type, String base64) {
-    messages.add(ChatMessage(role: MessageRole.user, text: '[File: $name]'));
+    // Keep a local preview for images so the chat bubble can render a
+    // thumbnail without re-downloading. Non-image files skip the payload.
+    const imageExts = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'};
+    final isImage = imageExts.contains(type.toLowerCase());
+    final msg = ChatMessage(
+      role: MessageRole.user,
+      text: isImage ? '[Bild: $name]' : '[File: $name]',
+      metadata: isImage
+          ? {'image_base64': base64, 'image_name': name, 'image_type': type}
+          : {},
+    );
+    messages.add(msg);
     _ws?.sendFile(name, type, base64);
     notifyListeners();
   }

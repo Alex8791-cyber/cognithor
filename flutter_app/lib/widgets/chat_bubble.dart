@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -66,34 +68,65 @@ class ChatBubble extends StatelessWidget {
               : baseColor.withValues(alpha: 0.50),
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Flexible(
-            child: SelectableText(
-              text,
-              style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                fontSize: 14,
-                height: 1.5,
+          if (_imagePreviewBytes() != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  _imagePreviewBytes()!,
+                  width: 240,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                ),
               ),
             ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(
+                child: SelectableText(
+                  text,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              if (isStreaming) ...[
+                const SizedBox(width: 6),
+                const SizedBox(
+                  width: 8,
+                  height: 8,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: CognithorTheme.sectionChat,
+                  ),
+                ),
+              ],
+            ],
           ),
-          if (isStreaming) ...[
-            const SizedBox(width: 6),
-            const SizedBox(
-              width: 8,
-              height: 8,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color: CognithorTheme.sectionChat,
-              ),
-            ),
-          ],
         ],
       ),
     );
+  }
+
+  /// Decode the image_base64 metadata if present. Returns null for non-image
+  /// messages or if the base64 is malformed — never throws.
+  Uint8List? _imagePreviewBytes() {
+    final b64 = metadata['image_base64'];
+    if (b64 is! String || b64.isEmpty) return null;
+    try {
+      return base64Decode(b64);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Whether the agent name is a non-default agent (i.e. a delegated agent).
