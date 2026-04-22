@@ -239,24 +239,126 @@ class _ImageCardState extends State<_ImageCard> {
   }
 }
 
-class _ModelCard extends StatelessWidget {
+class _ModelCard extends StatefulWidget {
   final VLLMStatus? status;
   const _ModelCard({required this.status});
 
   @override
+  State<_ModelCard> createState() => _ModelCardState();
+}
+
+class _ModelCardState extends State<_ModelCard> {
+  String? _selected;
+  bool _starting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<LlmBackendProvider>().fetchAvailableModels();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final running = status?.containerRunning ?? false;
-    final model = status?.currentModel;
-    final imagePulled = status?.imagePulled ?? false;
-    return _StatusCard(
-      cardKey: const ValueKey('card-model'),
-      title: 'Model',
-      subtitle: running
-          ? 'Running: ${model ?? 'unknown'}'
-          : 'Pick a model to start',
-      state: running
-          ? _CardState.ok
-          : (imagePulled ? _CardState.todo : _CardState.pending),
+    final p = context.watch<LlmBackendProvider>();
+    final running = widget.status?.containerRunning ?? false;
+    final pulled = widget.status?.imagePulled ?? false;
+
+    if (running) {
+      return _StatusCard(
+        cardKey: const ValueKey('card-model'),
+        title: 'Model',
+        subtitle: 'Running: ${widget.status?.currentModel ?? "unknown"}',
+        state: _CardState.ok,
+      );
+    }
+
+    if (!pulled) {
+      return const _StatusCard(
+        cardKey: ValueKey('card-model'),
+        title: 'Model',
+        subtitle: 'Available after image pull',
+        state: _CardState.pending,
+      );
+    }
+
+    final models = p.availableModels;
+    final recommendedId = p.recommendedModelId;
+    _selected ??=
+        recommendedId ?? (models.isNotEmpty ? models[0]['id'] as String : null);
+
+    return Card(
+      key: const ValueKey('card-model'),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Model',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            DropdownButton<String>(
+              value: _selected,
+              isExpanded: true,
+              onChanged: (v) => setState(() => _selected = v),
+              items: [
+                for (final m in models)
+                  DropdownMenuItem<String>(
+                    value: m['id'] as String,
+                    enabled: m['fits'] as bool,
+                    child: Row(
+                      children: [
+                        if (m['id'] == recommendedId)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 6),
+                            child: Icon(
+                              Icons.star,
+                              size: 14,
+                              color: Colors.amber,
+                            ),
+                          ),
+                        Expanded(child: Text(m['display_name'] as String)),
+                        Text(
+                          '${m['vram_gb_min']} GB',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: (m['fits'] as bool)
+                                ? Colors.grey
+                                : Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: _starting || _selected == null
+                  ? null
+                  : () async {
+                      setState(() => _starting = true);
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await p.startContainer(_selected!);
+                      } catch (e) {
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Start failed: $e')),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _starting = false);
+                      }
+                    },
+              child: Text(_starting ? 'Starting\u2026' : 'Start vLLM'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

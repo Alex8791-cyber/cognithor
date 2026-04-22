@@ -186,3 +186,23 @@ class TestSetActiveBackend:
         client = self._client_with_gateway(cfg, gateway)
         r = client.post("/api/backends/active", json={"backend": "unicorn"})
         assert r.status_code == 422  # Pydantic Literal rejects invalid value
+
+
+class TestAvailableModels:
+    def test_returns_filtered_registry_with_recommendation_flag(self, client_with_vllm_enabled):
+        client, _ = client_with_vllm_enabled
+        from cognithor.core.vllm_orchestrator import HardwareInfo
+
+        with patch(
+            "cognithor.core.vllm_orchestrator.VLLMOrchestrator.check_hardware",
+            return_value=HardwareInfo("RTX 5090", 32, (12, 0)),
+        ):
+            r = client.get("/api/backends/vllm/available-models")
+        assert r.status_code == 200
+        data = r.json()
+        assert "recommended_id" in data
+        assert "models" in data
+        assert len(data["models"]) >= 1
+        for m in data["models"]:
+            assert "id" in m
+            assert "fits" in m

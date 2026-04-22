@@ -82,6 +82,8 @@ class LlmBackendProvider extends ChangeNotifier {
   String active = 'ollama';
   VLLMStatus? vllmStatus;
   String? error;
+  List<Map<String, dynamic>> availableModels = [];
+  String? recommendedModelId;
 
   bool get isPolling => _pollTimer != null;
 
@@ -201,5 +203,16 @@ class LlmBackendProvider extends ChangeNotifier {
     } else {
       throw Exception('Backend switch failed: ${r.statusCode}');
     }
+  }
+
+  Future<void> fetchAvailableModels() async {
+    final r = await _http.get(
+      Uri.parse('$apiBaseUrl/api/backends/vllm/available-models'),
+    );
+    if (r.statusCode != 200) return;
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    recommendedModelId = body['recommended_id'] as String?;
+    availableModels = (body['models'] as List).cast<Map<String, dynamic>>();
+    notifyListeners();
   }
 }

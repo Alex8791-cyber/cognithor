@@ -201,6 +201,61 @@ async def vllm_logs(request: Request) -> dict:
     return {"lines": orch.get_logs()}
 
 
+@backends_router.get("/vllm/available-models")
+async def vllm_available_models(request: Request) -> dict:
+    """Return the curated vLLM model registry filtered against detected hardware.
+
+    Response shape:
+        {
+          "recommended_id": "<model id or null>",
+          "models": [ {<ModelEntry fields>, "fits": bool}, ... ]
+        }
+    """
+    import json as _json
+    from pathlib import Path
+
+    from cognithor.core.vllm_orchestrator import ModelEntry
+
+    config: CognithorConfig = request.app.state.config
+    orch = _get_orchestrator(config)
+
+    registry_path = Path(__file__).resolve().parents[1] / "cli" / "model_registry.json"
+    registry_data = _json.loads(registry_path.read_text(encoding="utf-8"))
+    entries = [ModelEntry.from_dict(m) for m in registry_data["providers"]["vllm"]["models"]]
+
+    hw = orch.state.hardware_info
+    if hw is None:
+        try:
+            hw = orch.check_hardware()
+        except Exception:
+            hw = None
+
+    recommended_id: str | None = None
+    fits_ids: set[str] = set()
+    if hw is not None:
+        best = orch.recommend_model(hw, entries)
+        recommended_id = best.id if best else None
+        fits_ids = {m.id for m in orch.filter_registry(hw, entries)}
+
+    return {
+        "recommended_id": recommended_id,
+        "models": [
+            {
+                "id": e.id,
+                "display_name": e.display_name,
+                "quantization": e.quantization,
+                "vram_gb_min": e.vram_gb_min,
+                "min_compute_capability": e.min_compute_capability,
+                "priority": e.priority,
+                "tested": e.tested,
+                "notes": e.notes,
+                "fits": e.id in fits_ids,
+            }
+            for e in entries
+        ],
+    }
+
+
 @backends_router.post("/vllm/pull-image")
 async def vllm_pull_image(request: Request) -> StreamingResponse:
     """Stream docker-pull progress to the client as SSE."""
