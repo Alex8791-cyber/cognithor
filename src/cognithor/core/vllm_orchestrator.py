@@ -112,6 +112,8 @@ class VLLMState:
 class VLLMOrchestrator:
     """Stateful vLLM lifecycle manager. Methods added in later tasks."""
 
+    _PRIORITY_ORDER: dict[str, int] = {"premium": 0, "standard": 1, "fallback": 2}
+
     def __init__(
         self,
         *,
@@ -224,3 +226,46 @@ class VLLMOrchestrator:
         self.state.docker_ok = info.server_running
         self.state.docker_info = info
         return info
+
+    def filter_registry(
+        self,
+        hardware: HardwareInfo,
+        registry: list[ModelEntry],
+    ) -> list[ModelEntry]:
+        """Returns entries that fit the detected GPU (VRAM + compute capability)."""
+        return [
+            m
+            for m in registry
+            if m.vram_gb_min <= hardware.vram_gb and m.min_cc_tuple <= hardware.compute_capability
+        ]
+
+    def recommend_model(
+        self,
+        hardware: HardwareInfo,
+        registry: list[ModelEntry],
+        *,
+        prefer: Literal["vision", "text"] = "vision",
+    ) -> ModelEntry | None:
+        """Pick the best curated model for detected hardware.
+
+        Ranking:
+          1. Matches requested capability (vision/text)
+          2. tested==True beats tested==False
+          3. Higher priority (premium > standard > fallback)
+          4. Tie-break: smaller vram_gb_min (more headroom for KV cache)
+          5. Stable min_vllm_version before "pending"
+        """
+        candidates = [m for m in self.filter_registry(hardware, registry) if m.capability == prefer]
+        if not candidates:
+            return None
+
+        def sort_key(m: ModelEntry) -> tuple[int, int, int, int]:
+            return (
+                0 if m.tested else 1,
+                self._PRIORITY_ORDER[m.priority],
+                m.vram_gb_min,
+                0 if m.min_vllm_version != "pending" else 1,
+            )
+
+        candidates.sort(key=sort_key)
+        return candidates[0]
