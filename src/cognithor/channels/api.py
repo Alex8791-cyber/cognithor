@@ -331,6 +331,15 @@ class APIChannel(Channel):
                 future.set_result(resp.approved)
             return {"status": "processed"}
 
+        # Include the backends router for LLM-backend management endpoints
+        try:
+            from cognithor.channels.backends_api import backends_router as _backends_router
+
+            app.include_router(_backends_router)
+            app.state.config = self._config if hasattr(self, "_config") else None
+        except Exception as exc:
+            log.warning("backends_router_include_failed", error=str(exc))
+
         return app
 
     @property
