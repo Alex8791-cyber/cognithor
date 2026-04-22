@@ -102,13 +102,13 @@ class TestVisionRouting:
     """When working_memory.image_attachments is non-empty, the Planner
     must route the LLM call through ``vision_model_detail`` and pass the
     image paths to ``OllamaClient.chat(images=...)`` — giving a VLM like
-    qwen3.6-vl:27b a chance to actually see the image."""
+    qwen3.6:27b a chance to actually see the image."""
 
     async def test_image_attachment_selects_vision_model(self, planner_with_mocks, tmp_path):
         from cognithor.models import WorkingMemory
 
         # Make vision_model_detail distinct from the text router default.
-        planner_with_mocks._config.vision_model_detail = "qwen3.6-vl:27b"
+        planner_with_mocks._config.vision_model_detail = "qwen3.6:27b"
 
         img = tmp_path / "pic.png"
         img.write_bytes(b"\x89PNG\r\n\x1a\n")
@@ -124,7 +124,7 @@ class TestVisionRouting:
 
         # chat() must have been called with the vision model AND images.
         call = planner_with_mocks._ollama.chat.call_args
-        assert call.kwargs.get("model") == "qwen3.6-vl:27b"
+        assert call.kwargs.get("model") == "qwen3.6:27b"
         assert call.kwargs.get("images") == [str(img)]
         # Sanity: router.select_model must NOT have been used when images present.
         planner_with_mocks._router.select_model.assert_not_called()

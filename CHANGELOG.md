@@ -16,7 +16,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
       `unsloth/Qwen3.6-27B-GGUF`). HF GGUFs are downloaded via
       `huggingface_hub` and imported into the local Ollama via
       `ollama create -f Modelfile`, ending up under the registry's
-      `import_as` tag (e.g. `qwen3.6-vl:27b`).
+      `import_as` tag (e.g. `qwen3.6:27b`, matching upstream).
   Model registry gained a `community_gguf` provider section + Qwen3.6
   entries. Registry updated timestamp: 2026-04-22.
 - **Vision routing for the Planner**. When `WorkingMemory.image_attachments`

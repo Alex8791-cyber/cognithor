@@ -41,7 +41,7 @@ class InstallResult:
 
     model_name: str
     status: Literal["installed", "already_present", "failed"]
-    local_tag: str  # The name now usable by Ollama (e.g. "qwen3.6-vl:27b")
+    local_tag: str  # The name now usable by Ollama (e.g. "qwen3.6:27b")
     message: str
     bytes_downloaded: int = 0
 

@@ -332,7 +332,7 @@ class TestOllamaClientImageAttachments:
             mock_http.post = AsyncMock(return_value=mock_response)
             mock_ensure.return_value = mock_http
             await client.chat(
-                model="qwen3.6-vl:27b",
+                model="qwen3.6:27b",
                 messages=[
                     {"role": "system", "content": "you are helpful"},
                     {"role": "user", "content": "what's in this?"},
@@ -358,7 +358,7 @@ class TestOllamaClientImageAttachments:
             mock_ensure.return_value = mock_http
             # Bad path — must not raise; images field simply ends up absent.
             await client.chat(
-                model="qwen3.6-vl:27b",
+                model="qwen3.6:27b",
                 messages=[{"role": "user", "content": "hi"}],
                 images=["/does/not/exist.png"],
             )
@@ -378,7 +378,7 @@ class TestOllamaClientImageAttachments:
             mock_http = AsyncMock()
             mock_http.post = AsyncMock(return_value=mock_response)
             mock_ensure.return_value = mock_http
-            await client.chat(model="qwen3.6-vl:27b", messages=caller, images=[str(img)])
+            await client.chat(model="qwen3.6:27b", messages=caller, images=[str(img)])
         # Original dict from caller must be untouched.
         assert "images" not in caller[0]
 

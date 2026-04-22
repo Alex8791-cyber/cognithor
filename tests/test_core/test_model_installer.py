@@ -91,13 +91,13 @@ class TestCommunityGGUFInstall:
             return_value=InstallResult(
                 model_name="unsloth/Qwen3.6-27B-GGUF",
                 status="installed",
-                local_tag="qwen3.6-vl:27b",
+                local_tag="qwen3.6:27b",
                 message="ok",
             ),
         ) as mock_hf:
             r = install_model("unsloth/Qwen3.6-27B-GGUF")
         assert mock_hf.called
-        assert r.local_tag == "qwen3.6-vl:27b"
+        assert r.local_tag == "qwen3.6:27b"
 
     def test_missing_huggingface_hub_degrades_gracefully(self):
         # Simulate huggingface_hub not being installed: the function must
@@ -116,9 +116,9 @@ class TestCommunityGGUFInstall:
 class TestIsInstalled:
     def test_community_gguf_checks_import_as(self):
         # For community GGUF entries, is_installed() should check
-        # the import_as tag (qwen3.6-vl:27b), not the raw HF repo id.
+        # the import_as tag (qwen3.6:27b), not the raw HF repo id.
         resp = MagicMock()
         resp.status_code = 200
-        resp.json.return_value = {"models": [{"name": "qwen3.6-vl:27b"}]}
+        resp.json.return_value = {"models": [{"name": "qwen3.6:27b"}]}
         with patch("httpx.get", return_value=resp):
             assert is_installed("unsloth/Qwen3.6-27B-GGUF") is True

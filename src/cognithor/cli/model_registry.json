@@ -27,7 +27,7 @@
       ],
       "entries": {
         "unsloth/Qwen3.6-27B-GGUF": {
-          "import_as": "qwen3.6-vl:27b",
+          "import_as": "qwen3.6:27b",
           "file_hint": "Qwen3.6-27B-Q4_K_M.gguf",
           "license": "apache-2.0",
           "kind": "vision",

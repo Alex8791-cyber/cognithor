@@ -233,7 +233,7 @@ class OllamaClient:
             format_json: Ob die Antwort als JSON erzwungen werden soll
             images: Optional list of image file paths OR pre-encoded
                 base64 strings. Attached to the LAST user message so the
-                VLM (e.g. qwen3.6-vl:27b) can see them. Ollama's chat API
+                VLM (e.g. qwen3.6:27b) can see them. Ollama's chat API
                 expects ``messages[i].images = [<base64>, ...]``.
 
         Returns:
