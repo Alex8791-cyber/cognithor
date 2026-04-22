@@ -75,9 +75,36 @@ class EmbedResponse:
 class LLMBackendError(Exception):
     """Error communicating with the LLM backend."""
 
-    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        recovery_hint: str = "",
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.recovery_hint = recovery_hint
+
+
+class LLMBadRequestError(LLMBackendError):
+    """Wraps HTTP 400 responses — user/context problem, not a backend fault.
+
+    Excluded from circuit-breaker failure counting via ``excluded_exceptions``
+    when the breaker is wired in ``UnifiedLLMClient``.
+    """
+
+
+class VLLMNotReadyError(LLMBackendError):
+    """vLLM container not running or model not loaded."""
+
+
+class VLLMHardwareError(LLMBackendError):
+    """NVIDIA GPU not detected, VRAM insufficient, or unsupported compute capability."""
+
+
+class DockerError(LLMBackendError):
+    """Docker Desktop unreachable or wrong version."""
 
 
 # ============================================================================
