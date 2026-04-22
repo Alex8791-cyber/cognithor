@@ -172,3 +172,26 @@ class TestVLLMBackendChatStream:
                 messages=[{"role": "user", "content": "hi"}],
             ):
                 pass
+
+
+class TestVLLMBackendEmbed:
+    @pytest.mark.asyncio
+    async def test_embed_returns_vector(self, backend, httpx_mock):
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/embeddings",
+            status_code=200,
+            json={"data": [{"embedding": [0.1, 0.2, 0.3]}], "model": "embed-model"},
+        )
+        resp = await backend.embed(model="embed-model", text="hello")
+        assert resp.embedding == [0.1, 0.2, 0.3]
+        assert resp.model == "embed-model"
+
+    @pytest.mark.asyncio
+    async def test_embed_raises_when_model_doesnt_support(self, backend, httpx_mock):
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/embeddings",
+            status_code=400,
+            json={"error": "not an embedding model"},
+        )
+        with pytest.raises(LLMBadRequestError):
+            await backend.embed(model="qwen-chat-only", text="hello")

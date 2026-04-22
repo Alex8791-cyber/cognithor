@@ -263,5 +263,35 @@ class VLLMBackend(LLMBackend):
         except httpx.RequestError as exc:
             raise VLLMNotReadyError(f"vLLM stream not reachable: {exc}") from exc
 
-    async def embed(self, *args: Any, **kwargs: Any) -> EmbedResponse:
-        raise NotImplementedError
+    async def embed(self, model: str, text: str) -> EmbedResponse:
+        """Send an embedding request to vLLM.
+
+        Raises:
+            LLMBadRequestError: on HTTP 400 (excluded from circuit breaker).
+            VLLMNotReadyError: on HTTP 5xx or connection failure (counts toward breaker).
+            LLMBackendError: on HTTP 4xx (other than 400) or missing data.
+        """
+        client = await self._ensure_client()
+        try:
+            r = await client.post(
+                f"{self._base_url}/embeddings",
+                json={"model": model, "input": text},
+            )
+        except httpx.RequestError as exc:
+            raise VLLMNotReadyError(f"vLLM embed not reachable: {exc}") from exc
+
+        if r.status_code == 400:
+            raise LLMBadRequestError(f"vLLM embed rejected: {r.text[:200]}")
+        if r.status_code >= 500:
+            raise VLLMNotReadyError(f"vLLM embed 5xx: {r.status_code}")
+        if r.status_code >= 400:
+            raise LLMBackendError(f"vLLM embed: {r.status_code}")
+
+        data = r.json()
+        items = data.get("data", [])
+        if not items:
+            raise LLMBackendError("vLLM embed returned no data")
+        return EmbedResponse(
+            embedding=items[0].get("embedding", []),
+            model=data.get("model", model),
+        )
