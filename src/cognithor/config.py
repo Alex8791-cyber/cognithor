@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from cognithor.models import ModelConfig, SandboxConfig
 
@@ -3240,13 +3240,58 @@ def load_config(config_path: Path | None = None) -> CognithorConfig:
             if isinstance(val, str):
                 data["models"][role] = {"name": val}
 
-    # 6. Pydantic validates and fills defaults
-    cfg = CognithorConfig(**data)
+    # 6. Pydantic validates and fills defaults.
+    #    Legacy/unknown YAML keys (e.g. from old Jarvis versions) are stripped
+    #    with a warning instead of crashing the whole launch (see issue #131).
+    #    `extra="forbid"` is kept on the model so programmatic construction in
+    #    tests still catches typos — only user-supplied YAML is self-healing.
+    try:
+        cfg = CognithorConfig(**data)
+    except ValidationError as exc:
+        extra_errors = [e for e in exc.errors() if e.get("type") == "extra_forbidden"]
+        if not extra_errors:
+            raise
+        stripped = _strip_extra_forbidden_keys(data, extra_errors)
+        if stripped:
+            import logging
+
+            logging.getLogger("cognithor.config").warning(
+                "Unbekannte Felder in config.yaml ignoriert (bitte aus der Datei entfernen): %s",
+                ", ".join(stripped),
+            )
+        cfg = CognithorConfig(**data)
 
     # 7. Keyring fallback: fill empty API-key fields from OS Keyring
     _resolve_secrets(cfg)
 
     return cfg
+
+
+def _strip_extra_forbidden_keys(
+    data: dict[str, Any], extra_errors: list[dict[str, Any]]
+) -> list[str]:
+    """Remove keys flagged as ``extra_forbidden`` from ``data`` in-place.
+
+    Navigates the nested ``loc`` path from each Pydantic error and drops the
+    leaf key. Returns the dotted paths of keys actually removed so the caller
+    can report them to the user.
+    """
+    stripped: list[str] = []
+    for err in extra_errors:
+        loc = err.get("loc") or ()
+        if not loc:
+            continue
+        parent: Any = data
+        for key in loc[:-1]:
+            if not isinstance(parent, dict) or key not in parent:
+                parent = None
+                break
+            parent = parent[key]
+        leaf = loc[-1]
+        if isinstance(parent, dict) and leaf in parent:
+            del parent[leaf]
+            stripped.append(".".join(str(k) for k in loc))
+    return stripped
 
 
 def _resolve_secrets(config: CognithorConfig) -> None:

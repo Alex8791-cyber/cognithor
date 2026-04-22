@@ -5,6 +5,21 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **`config.yaml` with legacy keys no longer hard-crashes at startup**
+  (closes #131). Upgrading users whose `config.yaml` still contains fields
+  the current `CognithorConfig` no longer recognizes (e.g. `max_agents`,
+  `max_concurrent`, `memory_limit_mb`, `rag`) would hit
+  `pydantic_core.ValidationError: extra_forbidden` inside `load_config`
+  and be completely unable to launch. `load_config` now catches
+  `extra_forbidden` errors from the on-disk YAML read path, strips the
+  offending keys, logs a clear WARN listing them, and re-validates once.
+  `CognithorConfig` keeps `extra="forbid"` on the model itself so
+  programmatic construction in tests still catches typos — only the
+  user-supplied YAML is self-healing.
+
 ## [0.92.4] -- 2026-04-22
 
 ### Added
