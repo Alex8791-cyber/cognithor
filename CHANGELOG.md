@@ -48,6 +48,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   input. End-to-end video would require a direct Transformers/vLLM
   backend — tracked separately.
 
+### Fixed (continued)
+- **Flutter version mismatch overlay blocked the app on every 0.92.x
+  installer** (reported on #131 by @PCAssistSoftware). The Flutter
+  frontend hard-coded `kFrontendVersion = '0.91.0'` in
+  `connection_provider.dart` and `version: 0.91.0+1` in `pubspec.yaml`;
+  neither was bumped during the 0.92.x release cadence, so every fresh
+  0.92.x install reported itself as 0.91 to the backend, tripped the
+  major.minor compatibility check, and wedged users behind the "Version
+  Mismatch" overlay with no way out. Both constants are now bumped to
+  0.92.4 and a new `tests/test_flutter_version_sync.py` cross-checks the
+  Flutter version against `cognithor.__version__` so CI fails loudly if
+  a future release bump forgets Flutter.
+
 ## [0.92.4] -- 2026-04-22
 
 ### Added
