@@ -15,7 +15,7 @@
 | 1 | **Scope:** Flutter in-app wizard with full container lifecycle (Option B, not point-at-existing) | "Funktional anbieten" requires install + start + stop, not just a config field |
 | 2 | **Install tech:** Docker Desktop + official vLLM image | Cleanest lifecycle, officially supported, fast image pull vs. hour-long `pip install vllm` |
 | 3 | **Docker bootstrap:** Link + detect (Option B) — we don't install Docker Desktop automatically | Docker install needs reboot; silent third-party install is a trust issue |
-| 4 | **Hardware gate:** Strict — NVIDIA vendor + ≥16 GB VRAM (the minimum for *any* curated model) checked before vLLM is selectable | 30-min setup ending in OOM is worse UX than an upfront "not supported" message; override via config flag. Note: passing the gate only means "can run the smallest curated model." The UI shows a per-model VRAM badge and disables models whose `vram_gb_min` exceeds detected VRAM |
+| 4 | **Hardware gate:** Strict — NVIDIA vendor + ≥16 GB VRAM (fits the smallest curated VLM, Qwen2.5-VL-7B at FP16) checked before vLLM is selectable | 30-min setup ending in OOM is worse UX than an upfront "not supported" message; override via config flag. Passing the gate only means "can run the smallest curated model." The UI shows a per-model VRAM badge and disables models whose `vram_gb_min` exceeds detected VRAM |
 | 5 | **Model scope:** Hybrid curated + custom (Option Y+Z) | Curated dropdown with tested models, last entry is "Custom (HF repo id…)" text field with disclaimer |
 | 6 | **Flutter UX:** Dedicated sub-screen "LLM Backends" (Option C) | Room for status, metrics, model management per backend; extensible for future backends |
 | 7 | **Setup-page layout:** Status cards on one page (Option B) | All prerequisites visible at once, each card has its own action button, recoverable after partial failure |
@@ -52,7 +52,7 @@ Backend switching is live — the existing `gateway.py:1968+` re-init path for `
 - Methods:
   - `check_hardware() -> HardwareInfo` — parses `nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits`
   - `check_docker() -> DockerInfo` — `docker version --format json`
-  - `pull_image(tag, progress_callback) -> None` — streams `docker pull --progress=auto`, emits layer-progress events
+  - `pull_image(tag, progress_callback) -> None` — streams `docker pull --progress=auto` stdout, parses layer-progress JSON. Typical image size ~10.5 GB (vllm/vllm-openai includes CUDA runtime + torch + vllm wheels).
   - `start_container(model, port=8000) -> ContainerInfo` — constructs `docker run` with `--gpus all`, `-v cognithor-hf-cache:/root/.cache/huggingface`, `-e HF_TOKEN=$token`, label `cognithor.managed=true`; auto-falls-back 8000→8009 on port conflict
   - `stop_container() -> None` — `docker stop` + `docker rm` on labeled container
   - `reuse_existing() -> Optional[ContainerInfo]` — scans `docker ps --filter "label=cognithor.managed=true"`
@@ -66,7 +66,7 @@ Backend switching is live — the existing `gateway.py:1968+` re-init path for `
 | `/api/backends` | GET | List all backends with status |
 | `/api/backends/vllm/status` | GET | `VLLMState` as JSON |
 | `/api/backends/vllm/check-hardware` | POST | Trigger hardware detection |
-| `/api/backends/vllm/pull-image` | POST | SSE-stream for pull progress |
+| `/api/backends/vllm/pull-image` | POST | SSE-stream (FastAPI `StreamingResponse` with `text/event-stream`) for pull progress. Flutter consumes via `EventSource`-equivalent. Line format: `data: {"layer":"sha256:...","current":1234567,"total":10000000}\n\n` |
 | `/api/backends/vllm/start` | POST | Body: `{model: str}` — starts container |
 | `/api/backends/vllm/stop` | POST | Stops container |
 | `/api/backends/vllm/logs` | GET | Ring-buffer of last container logs |
@@ -86,34 +86,39 @@ New Pydantic sub-model:
 class VLLMConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     enabled: bool = False
-    model: str = "Qwen/Qwen3.6-27B"
-    docker_image: str = "vllm/vllm-openai:v0.6.3"
+    model: str = "Qwen/Qwen2.5-VL-7B-Instruct"  # see model-registry note below
+    docker_image: str = "vllm/vllm-openai:v0.19.1"  # stable at brainstorm time
     port: int = 8000
     auto_stop_on_close: bool = False  # default: stop on close; user opts in to persistent
     skip_hardware_check: bool = False  # override for edge cases (wrong detection, smaller models)
     request_timeout_seconds: int = 60
-    hf_token: str = ""  # for gated models, falls back to HF_TOKEN env var
+    # HF token is NOT stored here — it's read from the top-level
+    # `config.huggingface_api_key` which the existing SecretStore keyring-backs
+    # via `_SECRET_FIELDS` in config.py. The orchestrator passes it to the
+    # container as `-e HF_TOKEN=$value`.
 ```
 
-Embedded in existing `LLMBackendsConfig`. Loaded via the existing legacy-key-tolerant `load_config()` path.
+Embedded in existing `LLMBackendsConfig`. Loaded via the existing legacy-key-tolerant `load_config()` path. **HF-token handling reuses the existing `config.huggingface_api_key` field (already in `_SECRET_FIELDS`, keyring-backed via `SecretStore`) rather than introducing a new nested secret.**
 
 ### Model Registry (`src/cognithor/cli/model_registry.json`)
 
-New provider section:
+New provider section. VRAM values account for model weights at the given quantization **plus** KV cache + vLLM scheduler overhead (~1.3× weight size for typical context lengths):
 
 ```json
 "vllm": {
-  "description": "Models tested against vLLM backend on NVIDIA GPUs.",
+  "description": "Vision-language models tested against vLLM on consumer NVIDIA GPUs. Focus is on vision — text-only models are supported via the Custom path.",
   "models": [
-    {"id": "Qwen/Qwen3.6-27B",        "vram_gb_min": 16, "capability": "vision", "tested": true},
-    {"id": "Qwen/Qwen3.6-35B-A3B",    "vram_gb_min": 20, "capability": "vision", "tested": true},
-    {"id": "Qwen/Qwen3-32B",          "vram_gb_min": 20, "capability": "text",   "tested": true},
-    {"id": "meta-llama/Llama-3.3-70B-Instruct", "vram_gb_min": 40, "capability": "text", "tested": true}
+    {"id": "Qwen/Qwen2.5-VL-7B-Instruct", "vram_gb_min": 16, "capability": "vision", "tested": true,  "min_vllm_version": "0.7.0",  "quantization": "bf16", "notes": "Default. Well-supported in vLLM, fits on a 16 GB card."},
+    {"id": "QuantTrio/Qwen3.6-35B-A3B-AWQ", "vram_gb_min": 24, "capability": "vision", "tested": false, "min_vllm_version": "pending", "quantization": "AWQ-4bit", "notes": "Community 4-bit AWQ. Awaiting vLLM Qwen3.6 architecture support."},
+    {"id": "Qwen/Qwen3.6-27B-FP8", "vram_gb_min": 32, "capability": "vision", "tested": false, "min_vllm_version": "pending", "quantization": "FP8", "notes": "Official FP8 weights. Awaiting vLLM Qwen3.6 architecture support."},
+    {"id": "Qwen/Qwen3.6-35B-A3B-FP8", "vram_gb_min": 40, "capability": "vision", "tested": false, "min_vllm_version": "pending", "quantization": "FP8", "notes": "Official FP8 MoE. Awaiting vLLM Qwen3.6 architecture support."}
   ]
 }
 ```
 
-Flutter reads this list for the curated dropdown; the last option is always a "Custom (HF repo id…)" text field with a disclaimer.
+**vLLM-version compatibility**: vLLM v0.19.1 (current stable as of brainstorm) does **not** yet support the Qwen3.6 architecture — Qwen3.6 was released on 2026-04-21, three days after v0.19.1. Until a vLLM release adds `qwen3_6`/`qwen3_5_vl` architecture support (expected v0.19.2 or v0.20.0), Qwen3.6 entries are marked `tested: false` with `min_vllm_version: "pending"`. The Flutter dropdown surfaces them as disabled with a tooltip "Requires vLLM ≥X — pull image first". Users who want to bleed-edge can set `docker_image: "vllm/vllm-openai:latest"` or `:nightly` manually via config.
+
+Flutter reads this list for the curated dropdown; the last option is always a "Custom (HF repo id…)" text field with a disclaimer. The registry's `min_vllm_version` is used at implementation time to gate curated entries against the resolved Docker image.
 
 ---
 
@@ -133,7 +138,7 @@ Flutter reads this list for the curated dropdown; the last option is always a "C
 
 1. User types prompt + attaches image → Flutter sends via WebSocket to Gateway
 2. Gateway → Planner → `working_memory.image_attachments = [path]`
-3. Planner selects model: `config.vision_model_detail` (e.g., `Qwen/Qwen3.6-27B`) → `unified_llm.chat(images=[path])`
+3. Planner selects model: `config.vision_model_detail` (e.g., `Qwen/Qwen2.5-VL-7B-Instruct` — the curated default; `Qwen/Qwen3.6-27B-FP8` once vLLM ships Qwen3.6 support) → `unified_llm.chat(images=[path])`
 4. `UnifiedLLMClient` dispatches to `VLLMBackend` (active backend)
 5. `VLLMBackend.chat()` converts image paths to OpenAI-vision format (`data:image/png;base64,...`), POSTs to `http://localhost:8000/v1/chat/completions`
 6. vLLM container processes, streams response back → Planner → Gateway → WebSocket → Flutter
@@ -181,10 +186,25 @@ All exceptions carry a `recovery_hint: str` field which Flutter renders alongsid
 - HTTP 400 (e.g. context too long) → `LLMBackendError` propagates directly, **no fallback** (real user error; Ollama wouldn't solve it either)
 - Connection refused → same as 5xx → fail flow
 
-### Circuit Breaker (new, in `UnifiedLLMClient`)
+### Circuit Breaker (reuses existing `cognithor.utils.circuit_breaker.CircuitBreaker`)
 
-- After 3 consecutive failures in 60 s: vLLM backend marked `DEGRADED`, **not dispatched**. Auto-fallback to Ollama for every request until health-check heals. Prevents every user turn from hitting the 60 s timeout while vLLM is down.
-- Health-check thread pings every 30 s in the background → once green, `DEGRADED → OK`, banner dismisses.
+The repo already has a production-grade async circuit breaker with a full `CLOSED → OPEN → HALF_OPEN → CLOSED` state machine (`src/cognithor/utils/circuit_breaker.py`). We reuse it — do not reinvent.
+
+**Integration:** `UnifiedLLMClient` owns one `CircuitBreaker` instance **per backend** (`vllm_breaker`, `ollama_breaker`, …). Per-backend scope prevents a flaky vLLM from tripping Ollama's breaker.
+
+**Parameters** for the vLLM breaker:
+- `name="llm_backend_vllm"`
+- `failure_threshold=3` — three consecutive failures open the circuit
+- `recovery_timeout=60.0` — 60 s in OPEN, then HALF_OPEN for a probe request
+- `half_open_max_calls=1` — one probe at a time in HALF_OPEN
+- `excluded_exceptions=(LLMBadRequestError,)` — HTTP 400 errors are user/context problems, **not** backend faults, so they never count toward the breaker threshold
+
+**Behavior:**
+- `CLOSED` (healthy): normal dispatch
+- `OPEN` (after 3 fails): `CircuitBreakerOpen` raised immediately → `UnifiedLLMClient` treats this as DEGRADED, routes per the fail-flow rules (text → Ollama, image → error). Banner shows.
+- `HALF_OPEN` (after recovery_timeout): next request goes through as a probe. Success → `CLOSED`, banner dismisses. Failure → back to `OPEN` with fresh 60 s countdown.
+
+No separate health-check thread — the existing breaker heals itself via the HALF_OPEN probe on the next real request. Saves a timer thread + 30 s polling cost.
 
 ### Logging
 
@@ -245,7 +265,7 @@ CI runners have no GPU and no way to actually start vLLM. No Docker-in-Docker, n
 
 Documented in `docs/vllm-manual-test.md`. Run once on a dev machine with real NVIDIA GPU + Docker Desktop:
 
-- Full setup flow (click through cards, pull image, start Qwen3.6-27B)
+- Full setup flow (click through cards, pull image, start Qwen2.5-VL-7B-Instruct as the curated default)
 - Chat with text + image
 - App close with/without auto-stop toggle
 - Manually stop vLLM container mid-session → verify fail flow
@@ -276,12 +296,14 @@ Documented in `docs/vllm-manual-test.md`. Run once on a dev machine with real NV
 **In scope:**
 - `VLLMBackend` class implementing `LLMBackend` ABC
 - `vllm_orchestrator.py` for container lifecycle
-- FastAPI endpoints for the Flutter UI
+- FastAPI endpoints for the Flutter UI, including SSE streaming for pull progress
 - New Flutter screens (`LlmBackendsScreen`, `VllmSetupScreen`)
 - Config extension (`VLLMConfig` Pydantic model)
-- Model registry additions
-- Circuit breaker in `UnifiedLLMClient`
+- Model registry additions (curated VLMs + per-model vLLM-version gating)
+- `UnifiedLLMClient` integration of the existing `cognithor.utils.circuit_breaker.CircuitBreaker` per backend
 - Banner + situational fallback in the fail flow
+- **User-facing documentation** at `docs/vllm-user-guide.md` — install prerequisites, enable-vLLM walkthrough, troubleshooting
+- Manual smoke-test instructions at `docs/vllm-manual-test.md`
 - Tests per the testing strategy above
 
 **Out of scope (tracked separately):**
@@ -295,21 +317,32 @@ Documented in `docs/vllm-manual-test.md`. Run once on a dev machine with real NV
 
 ## Estimate
 
-**1 calendar week, single engineer.** Breakdown:
+**1.5–2 calendar weeks, single engineer.** Breakdown:
 
 - `VLLMBackend` class + unit tests: 1 day
 - `vllm_orchestrator.py` + unit tests: 2 days
-- FastAPI endpoints + integration fake-server test: 0.5 day
-- Flutter screens + widget tests: 1.5 days
-- Config extension + migration handling: 0.5 day
-- Manual smoke test on real hardware + docs: 0.5 day
-- Circuit breaker extension in `UnifiedLLMClient` + tests: 0.5 day
-- Buffer / polish / PR cycle: 0.5 day
+- FastAPI endpoints including SSE streaming for pull progress: 1 day (was underestimated at 0.5 day — SSE server-side + client-side `EventSource` in Flutter is not trivial)
+- Flutter screens + widget tests + SSE progress consumption: 2 days (was underestimated at 1.5 days)
+- Config extension + `VLLMConfig` + `huggingface_api_key` env-var wiring: 0.5 day
+- Wiring existing `CircuitBreaker` into `UnifiedLLMClient` per-backend + tests: 0.5 day (lighter than "new circuit breaker" because code is reused)
+- User-facing guide (`docs/vllm-user-guide.md`) + manual-test doc: 1 day
+- Manual smoke test on real NVIDIA hardware + bug fixes from it: 1 day
+- Buffer / polish / PR cycle / spec-reviewer loops: 1 day
+
+**Total: ~10 working days = 2 calendar weeks** if everything lines up. Best-case 1.5 weeks if the SSE and Flutter widget work goes smoothly. Revised upward from the original 1-week estimate because of (a) SSE non-triviality on both ends, (b) user-docs budgeted explicitly, (c) real-hardware smoke test typically surfaces 1-2 bugs worth a day.
 
 ---
 
 ## Open Questions Deferred to Plan
 
-- Exact default for `request_timeout_seconds` — needs one benchmark on Qwen3.6-27B first turn
-- HF-token handling for gated models: environment variable `HF_TOKEN` fallback chain vs. dedicated config field — both listed above, final precedence decided at plan time
+- Exact default for `request_timeout_seconds` — needs one benchmark run on Qwen2.5-VL-7B first turn with a modest prompt + image on the target hardware
 - Whether to ship a Dart-side constant mirror of `model_registry.json` or fetch at runtime from the backend — affects `test_vllm_registry_sync.py` but not user-visible behavior
+- When Qwen3.6 architecture support lands in vLLM: do we bump the default `docker_image` pin, default the `model` to `Qwen/Qwen3.6-27B-FP8`, and retire Qwen2.5-VL-7B from the curated default? Probably yes, but needs one more release cycle to evaluate stability
+
+## Resolved During Research (2026-04-22)
+
+- ~~vLLM Docker image tag to pin~~ → `vllm/vllm-openai:v0.19.1` at brainstorm time, user-overridable via `VLLMConfig.docker_image`
+- ~~HF-token storage~~ → reuse existing top-level `config.huggingface_api_key` (already keyring-backed via `SecretStore._SECRET_FIELDS`), no new nested secret field
+- ~~Circuit breaker implementation~~ → reuse existing `cognithor.utils.circuit_breaker.CircuitBreaker`, per-backend instance, do not reinvent
+- ~~Model-registry VRAM math~~ → original draft used bf16 sizes which fail on consumer hardware; curated list now uses FP8/AWQ quantized variants with realistic per-model VRAM minima
+- ~~Qwen3.6 vLLM support status~~ → vLLM v0.19.1 does **not** yet support the Qwen3.6 architecture (Qwen3.6 released 3 days after v0.19.1). Curated Qwen3.6 entries ship with `tested: false` and `min_vllm_version: "pending"`. Default curated model is Qwen2.5-VL-7B until vLLM ships Qwen3.6 support
