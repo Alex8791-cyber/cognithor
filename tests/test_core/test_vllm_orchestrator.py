@@ -173,3 +173,50 @@ class TestCheckDocker:
         with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout=mock_stdout)):
             orch.check_docker()
         assert orch.state.docker_ok is True
+
+
+class TestPullImage:
+    def test_pull_emits_progress_events(self):
+        json_lines = [
+            '{"status":"Pulling from vllm/vllm-openai","id":"latest"}\n',
+            '{"status":"Downloading","progressDetail":{"current":1000000,"total":10000000},"id":"abc123"}\n',
+            '{"status":"Download complete","id":"abc123"}\n',
+            '{"status":"Status: Downloaded newer image for vllm/vllm-openai:v0.19.1"}\n',
+        ]
+        mock_proc = MagicMock()
+        mock_proc.stdout = iter(json_lines)
+        mock_proc.wait.return_value = 0
+        mock_proc.returncode = 0
+
+        events: list[dict] = []
+
+        def cb(ev):
+            events.append(ev)
+
+        with patch("subprocess.Popen", return_value=mock_proc):
+            VLLMOrchestrator().pull_image("vllm/vllm-openai:v0.19.1", progress_callback=cb)
+
+        assert any(e.get("status") == "Downloading" for e in events)
+        assert any("current" in (e.get("progressDetail") or {}) for e in events)
+
+    def test_pull_failure_raises(self):
+        from cognithor.core.llm_backend import VLLMDockerError
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = iter(['{"status":"error"}\n'])
+        mock_proc.wait.return_value = 1
+        mock_proc.returncode = 1
+
+        with patch("subprocess.Popen", return_value=mock_proc):
+            with pytest.raises(VLLMDockerError):
+                VLLMOrchestrator().pull_image("bad/image:tag", progress_callback=None)
+
+    def test_pull_sets_image_pulled_flag(self):
+        mock_proc = MagicMock()
+        mock_proc.stdout = iter(['{"status":"Pulling"}\n'])
+        mock_proc.wait.return_value = 0
+        mock_proc.returncode = 0
+        orch = VLLMOrchestrator()
+        with patch("subprocess.Popen", return_value=mock_proc):
+            orch.pull_image(orch.docker_image, progress_callback=None)
+        assert orch.state.image_pulled is True

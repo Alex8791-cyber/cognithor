@@ -12,13 +12,16 @@ from __future__ import annotations
 import collections
 import json as _json
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from cognithor.core.llm_backend import VLLMHardwareError
+from cognithor.core.llm_backend import VLLMDockerError, VLLMHardwareError
 from cognithor.utils.logging import get_logger
 
 log = get_logger(__name__)
+
+ProgressCallback = Callable[[dict[str, Any]], None] | None
 
 Priority = Literal["premium", "standard", "fallback"]
 Capability = Literal["vision", "text"]
@@ -131,6 +134,47 @@ class VLLMOrchestrator:
     def get_logs(self) -> list[str]:
         """Snapshot of the container-log ring buffer."""
         return list(self._log_ring)
+
+    def pull_image(
+        self,
+        tag: str,
+        *,
+        progress_callback: ProgressCallback = None,
+    ) -> None:
+        """Run ``docker pull`` streaming JSON progress to the callback.
+
+        Raises:
+            VLLMDockerError: if the pull exits non-zero.
+        """
+        cmd = ["docker", "pull", "--progress=auto", tag]
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        try:
+            for line in proc.stdout or []:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = _json.loads(line)
+                except _json.JSONDecodeError:
+                    event = {"status": line}
+                if progress_callback is not None:
+                    progress_callback(event)
+        finally:
+            proc.wait()
+
+        if proc.returncode != 0:
+            raise VLLMDockerError(
+                f"docker pull {tag} failed with exit {proc.returncode}",
+                recovery_hint="Check Docker Desktop is running and you have network access.",
+            )
+
+        self.state.image_pulled = True
 
     def check_hardware(self) -> HardwareInfo:
         """Detect NVIDIA GPU. Raises VLLMHardwareError on any failure."""
