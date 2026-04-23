@@ -5,6 +5,23 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Language change in Settings now actually changes the chat response
+  language** (closes #136). Reported by @PCAssistSoftware: switching
+  Administration → Configuration → Language from German to English still
+  produced German chat replies. Root cause: the config-save handler in
+  `config_routes.py` was calling `gateway.reload_components(config=True)`
+  only — which reloads the config itself but leaves the `Planner`'s cached
+  `_system_prompt_template` untouched. The planner had already built its
+  template from the German i18n preset (or the hardcoded German fallback
+  which literally contains `"Du sprichst Deutsch."`) and continued using
+  it for every subsequent LLM call. Now the handler additionally passes
+  `prompts=True` when the language field is part of the update, which
+  triggers `planner.reload_prompts()` and re-resolves the template from
+  the preset chain for the new language. No restart required.
+
 ## [0.92.5] -- 2026-04-22
 
 ### Added
