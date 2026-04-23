@@ -25,6 +25,45 @@ Features 5 (Trace-UI) and 6 (Flows) are explicitly out of plan scope — those a
 
 ---
 
+## PR Strategy (Four Sequential PRs)
+
+The 82 tasks ship as **four sequential PRs against `main`**, not one mega-PR. This keeps each review digestible and lets us ship incrementally while still gating v0.93.0 on the final feature.
+
+| PR | Feature | Tasks | Branch | Merge Target | Release? |
+|----|---------|-------|--------|--------------|----------|
+| **PR 1** | Feature 1 — Crew-Layer Core | 1-20 | `feat/cognithor-crew-v1-f1` | `main` | No |
+| **PR 2** | Feature 4 — Guardrails | 21-32 | `feat/cognithor-crew-v1-f4` | `main` | No |
+| **PR 3** | Feature 3 — CLI + Templates | 33-52 | `feat/cognithor-crew-v1-f3` | `main` | No |
+| **PR 4** | Features 2 + 7 — Quickstart + Integrations | 53-78 | `feat/cognithor-crew-v1-f2-f7` | `main` | **Yes — v0.93.0** |
+
+**Branch strategy:** Each PR is its own feature branch cut from `main`. After each PR merges:
+
+```bash
+git checkout main && git pull
+git checkout -b feat/cognithor-crew-v1-fN   # next feature's branch
+```
+
+No long-lived staging branch. If PR N's tasks depend on PR N-1 types, PR N-1 must be merged first — this is a hard dependency, not optional.
+
+**Per-PR closeout sequence (applies to PRs 1, 2, 3):**
+1. Full regression on the feature branch (`pytest tests/ -x -q --cov=src/cognithor`)
+2. Ruff + Ruff-format check clean
+3. Mypy --strict clean on new code
+4. CHANGELOG `[Unreleased]` section shows the feature's entries (no version bump yet)
+5. Open PR, wait all CI green, merge into `main`
+6. **Do NOT** chain merge + cleanup via `&&` (per feedback memory — this has caused two branch-closure incidents)
+
+**PR 4 closeout adds:**
+7. CHANGELOG `[Unreleased]` → `[0.93.0]` bump (all feature entries consolidated)
+8. Version bump across 5 locations (see Task 80)
+9. Merge PR 4 → tag `v0.93.0` → release pipeline runs → PyPI publish
+
+PR-specific merge-prep task groups are spelled out at the end of each feature block (see "Tasks 79-82 Restructured — Per-PR Merge-Prep" at the bottom of the plan).
+
+**Cross-repo dependency (Spec §7.2.1 / §12 AC 7):** The `cognithor.ai/integrations` site page lives in the `cognithor-site` Vercel repo and is **not** part of any PR in this plan. This plan produces `docs/integrations/catalog.json` + the generator; the separate site PR consumes them. Spec §12 AC 7 is satisfied by the site PR landing before the v0.93.0 PyPI release completes — that is tracked as Task 73's site-integration note and as an external checklist item in the final release checklist.
+
+---
+
 ## File Structure
 
 ### New package: `src/cognithor/crew/`
@@ -526,9 +565,16 @@ class TestCrewAgent:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+# Forward-compat stub (Spec §1.2): the spec allows `llm: str | LLMConfig`. For
+# v1.0 LLMConfig is an opaque dict — concrete schema (temperature, seed, …)
+# lands in a later minor release. Using a TypeAlias here keeps the public type
+# stable so adding a real BaseModel later is a pure type-widening (non-breaking).
+LLMConfig: TypeAlias = dict[str, Any]
 
 
 class CrewAgent(BaseModel):
@@ -543,13 +589,20 @@ class CrewAgent(BaseModel):
     goal: str = Field(..., min_length=1, description="What this agent is trying to accomplish")
     backstory: str = Field(default="", description="Context the Planner uses to shape the system prompt")
     tools: list[str] = Field(default_factory=list, description="Tool names resolved via MCP registry")
-    llm: str | None = Field(default=None, description="Model spec, e.g. 'ollama/qwen3:32b'")
+    # Spec §1.2 — widened to str | LLMConfig | None. LLMConfig is currently a
+    # dict alias; a future BaseModel swap-in is non-breaking.
+    llm: str | LLMConfig | None = Field(
+        default=None,
+        description="Model spec (e.g. 'ollama/qwen3:32b') or LLMConfig dict",
+    )
     allow_delegation: bool = Field(default=False)
     max_iter: int = Field(default=20, ge=1, le=200)
     memory: bool = Field(default=True, description="Enable 6-Tier Cognitive Memory for this agent")
     verbose: bool = Field(default=False)
     metadata: dict[str, Any] = Field(default_factory=dict)
 ```
+
+Add `LLMConfig` to `src/cognithor/crew/__init__.py` `__all__` alongside `CrewAgent`.
 
 - [ ] **Step 4: Run — expect all 6 tests pass**
 
@@ -816,39 +869,70 @@ git commit -m "feat(crew): Crew class construction + hierarchical-without-manage
 - Create: `src/cognithor/crew/tool_resolver.py`
 - Create: `tests/test_crew/test_tool_resolution.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Scout the real ToolRegistryDB**
+
+The real class lives at `src/cognithor/mcp/tool_registry_db.py:848`:
+```python
+class ToolRegistryDB:
+    def __init__(self, db_path: Path) -> None: ...
+    def get_tool(self, name: str) -> ToolInfo | None: ...
+    def get_tools_for_role(self, role: str, language: str = "de") -> list[ToolInfo]: ...
+    def upsert_tool(self, name: str, ...): ...
+```
+
+There is **no** `list_tool_names()` method and **no** `get_tool_registry()` factory. The tool resolver wraps the real registry with a thin adapter so we don't leak DB details into `cognithor.crew`.
+
+- [ ] **Step 2: Write the failing tests**
 
 ```python
 # tests/test_crew/test_tool_resolution.py
 from unittest.mock import MagicMock
 import pytest
 from cognithor.crew.errors import ToolNotFoundError
-from cognithor.crew.tool_resolver import resolve_tools, did_you_mean
+from cognithor.crew.tool_resolver import resolve_tools, did_you_mean, available_tool_names
+
+
+class TestAvailableToolNames:
+    def test_uses_get_tools_for_role_all(self):
+        """available_tool_names() pulls every tool regardless of role."""
+        registry = MagicMock()
+        tool_a = MagicMock(name="tool_a"); tool_a.name = "web_search"
+        tool_b = MagicMock(name="tool_b"); tool_b.name = "pdf_reader"
+        registry.get_tools_for_role.return_value = [tool_a, tool_b]
+        names = available_tool_names(registry)
+        registry.get_tools_for_role.assert_called_once_with("all")
+        assert names == ["web_search", "pdf_reader"]
 
 
 class TestResolveTools:
-    def test_resolves_known_tools(self):
+    def _registry_with(self, names: list[str]) -> MagicMock:
         registry = MagicMock()
-        registry.list_tool_names.return_value = ["web_search", "pdf_reader", "shell_run"]
+        tools = []
+        for n in names:
+            m = MagicMock()
+            m.name = n
+            tools.append(m)
+        registry.get_tools_for_role.return_value = tools
+        return registry
+
+    def test_resolves_known_tools(self):
+        registry = self._registry_with(["web_search", "pdf_reader", "shell_run"])
         resolved = resolve_tools(["web_search", "pdf_reader"], registry=registry)
         assert resolved == ["web_search", "pdf_reader"]
 
     def test_unknown_tool_raises_with_suggestion(self):
-        registry = MagicMock()
-        registry.list_tool_names.return_value = ["web_search", "pdf_reader"]
+        registry = self._registry_with(["web_search", "pdf_reader"])
         with pytest.raises(ToolNotFoundError) as exc:
             resolve_tools(["web_seach"], registry=registry)
         assert "web_seach" in str(exc.value)
         assert "web_search" in str(exc.value)
 
     def test_unknown_tool_no_close_match(self):
-        registry = MagicMock()
-        registry.list_tool_names.return_value = ["completely_other"]
+        registry = self._registry_with(["completely_other"])
         with pytest.raises(ToolNotFoundError) as exc:
             resolve_tools(["totally_foreign"], registry=registry)
         assert "totally_foreign" in str(exc.value)
-        # No spurious suggestion when nothing is close
-        assert "Meintest du" not in str(exc.value) or "completely_other" in str(exc.value)
+        assert "Meintest du" not in str(exc.value)
 
 
 class TestDidYouMean:
@@ -863,15 +947,18 @@ class TestDidYouMean:
         assert did_you_mean("web_search", ["web_search"]) is None
 ```
 
-- [ ] **Step 2: Run — expect failures**
+- [ ] **Step 3: Run — expect failures**
 
-- [ ] **Step 3: Implement `src/cognithor/crew/tool_resolver.py`**
+- [ ] **Step 4: Implement `src/cognithor/crew/tool_resolver.py`**
 
 ```python
 """Resolve CrewAgent / CrewTask tool names against the MCP registry.
 
-Provides friendly 'did you mean' suggestions for typos. Uses difflib from
-stdlib — no new dependencies.
+Wraps `cognithor.mcp.tool_registry_db.ToolRegistryDB` with the one helper
+the Crew-Layer needs: 'give me every tool name'. The real registry groups
+tools by role (planner/executor/browser/…) — we ask for role='all' to flatten.
+
+Provides friendly 'did you mean' suggestions via difflib (stdlib, no new deps).
 """
 
 from __future__ import annotations
@@ -880,6 +967,17 @@ import difflib
 from typing import Any
 
 from cognithor.crew.errors import ToolNotFoundError
+
+
+def available_tool_names(registry: Any) -> list[str]:
+    """Return every tool name known to the registry, flat.
+
+    `registry` must be a `ToolRegistryDB` (or any duck-compatible object that
+    exposes `get_tools_for_role(role: str) -> list[ToolInfo]` where each item
+    has a `.name` attribute).
+    """
+    tools = registry.get_tools_for_role("all")
+    return [t.name for t in tools]
 
 
 def did_you_mean(name: str, candidates: list[str], cutoff: float = 0.6) -> str | None:
@@ -898,7 +996,7 @@ def resolve_tools(tool_names: list[str], *, registry: Any) -> list[str]:
     Raises ToolNotFoundError on first unknown name, with a 'Meintest du ...?'
     suggestion when a close match exists.
     """
-    available = list(registry.list_tool_names())
+    available = available_tool_names(registry)
     for name in tool_names:
         if name in available:
             continue
@@ -923,6 +1021,7 @@ git commit -m "feat(crew): tool resolver with did-you-mean suggestions"
 
 **Files:**
 - Create: `src/cognithor/crew/compiler.py`
+- Create: `src/cognithor/crew/compiler_hierarchical.py` (stub only — real impl in Task 10)
 - Modify: `src/cognithor/crew/crew.py`
 - Create: `tests/test_crew/test_sequential_kickoff.py`
 
@@ -985,7 +1084,37 @@ class TestSequentialKickoff:
 
 - [ ] **Step 2: Run — expect NotImplementedError from Task 6 stub**
 
-- [ ] **Step 3: Implement `src/cognithor/crew/compiler.py`**
+- [ ] **Step 3: Create `src/cognithor/crew/compiler_hierarchical.py` as an import-resolvable stub**
+
+Task 8's compiler `else` branch imports `order_tasks_hierarchical` from this module. Task 10 replaces it with the real implementation, but to keep imports resolvable in the meantime we ship a deterministic declaration-order fallback here:
+
+```python
+"""Hierarchical compiler stub.
+
+Task 8-9 may route HIERARCHICAL-process Crews through this module's entry
+point before Task 10 lands the real manager-LLM integration. The stub
+returns declaration order so imports resolve and HIERARCHICAL Crews run
+deterministically without a manager. Task 10 replaces this wholesale.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from cognithor.crew.agent import CrewAgent
+from cognithor.crew.task import CrewTask
+
+
+def order_tasks_hierarchical(
+    tasks: list[CrewTask],
+    agents: list[CrewAgent],
+    **_: Any,
+) -> list[CrewTask]:
+    """Stub: declaration order. Real manager-LLM routing lands in Task 10."""
+    return list(tasks)
+```
+
+- [ ] **Step 4: Implement `src/cognithor/crew/compiler.py`**
 
 ```python
 """Compiler translates Crew definitions into ordered execution steps that
@@ -1056,32 +1185,76 @@ def compile_and_run_sync(
     return CrewOutput(raw=outputs[-1].raw, tasks_output=outputs, trace_id=trace_id)
 ```
 
-- [ ] **Step 4: Wire into `Crew.kickoff()`**
+- [ ] **Step 5: Wire into `Crew.kickoff()`**
 
-Replace the `kickoff` stub from Task 6 with:
+The real `ToolRegistryDB(db_path: Path)` requires a DB file; there is no module-level singleton. We therefore introduce a tiny factory helper `cognithor.crew.runtime.get_default_tool_registry()` that builds one from config (Task 11 expands this helper to also return a Planner). For Task 8 it's minimal:
+
+```python
+# src/cognithor/crew/runtime.py  (initial version — expanded in Task 11)
+"""Runtime helpers for Crew.kickoff() / kickoff_async()."""
+
+from __future__ import annotations
+
+import threading
+from typing import Any
+
+_registry_lock = threading.Lock()
+_registry_singleton: Any = None
+
+
+def get_default_tool_registry() -> Any:
+    """Return a process-wide default ToolRegistryDB instance.
+
+    Builds from `cognithor.config.load_config().cognithor_home / 'db' /
+    'tool_registry.db'`. Implementers: if config loading fails (e.g. standalone
+    test without ~/.cognithor/ present), fall back to a temp-dir DB and log a
+    warning — never silently return None.
+    """
+    global _registry_singleton
+    with _registry_lock:
+        if _registry_singleton is not None:
+            return _registry_singleton
+        from pathlib import Path
+        from cognithor.config import load_config
+        from cognithor.mcp.tool_registry_db import ToolRegistryDB
+
+        try:
+            cfg = load_config()
+            db_path = Path(cfg.cognithor_home) / "db" / "tool_registry.db"
+        except Exception:
+            import tempfile
+            db_path = Path(tempfile.gettempdir()) / "cognithor_crew_registry.db"
+        _registry_singleton = ToolRegistryDB(db_path=db_path)
+        return _registry_singleton
+```
+
+Then `Crew.kickoff()`:
 
 ```python
 def kickoff(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
-    from cognithor.crew.compiler import compile_and_run_sync
-    from cognithor.mcp.tool_registry_db import get_tool_registry  # adjust import to actual path
-    return compile_and_run_sync(
-        agents=self.agents,
-        tasks=self.tasks,
-        process=self.process,
-        inputs=inputs,
-        registry=get_tool_registry(),
+    import asyncio
+    # Sync kickoff is NOT safe from inside a running event loop (pytest-asyncio
+    # mode=auto, Gateway, etc). Detect and redirect to the explicit async entry.
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop — safe to asyncio.run().
+        return asyncio.run(self.kickoff_async(inputs))
+    raise RuntimeError(
+        "Crew.kickoff() called from within a running event loop. "
+        "Use `await crew.kickoff_async(inputs)` instead."
     )
 ```
 
-If `get_tool_registry` does not exist at that exact path, the implementer inspects `src/cognithor/mcp/tool_registry_db.py` and imports the right name. If tool-registry instantiation requires async setup, wrap in `asyncio.run(registry_factory())` or use a module-level singleton — decide at implementation time and document the choice in the commit body.
+(The async helper is wired in Task 9; for Task 8 alone, the sync wrapper can temporarily call a sync-only `compile_and_run_sync` — once Task 9 lands, the sync path becomes the `asyncio.run()` trampoline above. Document the interim behaviour in the Task 8 commit body.)
 
-- [ ] **Step 5: Run — expect 2 pass**
+- [ ] **Step 6: Run — expect 2 pass**
 
-- [ ] **Step 6: Ruff + commit**
+- [ ] **Step 7: Ruff + commit**
 
 ```bash
-git add src/cognithor/crew/compiler.py src/cognithor/crew/crew.py tests/test_crew/test_sequential_kickoff.py
-git commit -m "feat(crew): sequential compile-and-run happy path"
+git add src/cognithor/crew/compiler.py src/cognithor/crew/compiler_hierarchical.py src/cognithor/crew/crew.py src/cognithor/crew/runtime.py tests/test_crew/test_sequential_kickoff.py
+git commit -m "feat(crew): sequential compile-and-run happy path + hierarchical import stub"
 ```
 
 ---
@@ -1192,13 +1365,13 @@ async def compile_and_run_async(agents, tasks, process, inputs, registry):
 ```python
 async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
     from cognithor.crew.compiler import compile_and_run_async
-    from cognithor.mcp.tool_registry_db import get_tool_registry
+    from cognithor.crew.runtime import get_default_tool_registry
     return await compile_and_run_async(
         agents=self.agents,
         tasks=self.tasks,
         process=self.process,
         inputs=inputs,
-        registry=get_tool_registry(),
+        registry=get_default_tool_registry(),
     )
 ```
 
@@ -1301,17 +1474,47 @@ git commit -m "feat(crew): hierarchical compiler scaffolding with deterministic 
 
 **Files:**
 - Modify: `src/cognithor/crew/compiler.py` (replace stubbed `execute_task` + `execute_task_async`)
-- Modify: `src/cognithor/crew/crew.py` (inject a Planner client instead of raw registry)
+- Modify: `src/cognithor/crew/crew.py` (accept an explicit Planner instance)
+- Modify: `src/cognithor/crew/runtime.py` (add `get_default_planner` factory)
 - Create: `tests/test_crew/test_pge_integration.py`
 
-- [ ] **Step 1: Scout the existing Planner**
+- [ ] **Step 1: Scouted Planner API (verified against `src/cognithor/core/planner.py`)**
 
-```bash
-cd "D:/Jarvis/jarvis complete v20"
-grep -n "^    async def formulate_response\|^class Planner" src/cognithor/core/planner.py
+**Constructor (planner.py:482):**
+```python
+def __init__(
+    self,
+    config: CognithorConfig,
+    ollama: Any,                    # OllamaClient or UnifiedLLMClient
+    model_router: ModelRouter,
+    audit_logger: AuditLogger | None = None,
+    causal_analyzer: Any = None,
+    task_profiler: Any = None,
+    cost_tracker: Any = None,
+    personality_engine: Any = None,
+    prompt_evolution: Any = None,
+) -> None: ...
 ```
 
-Read `formulate_response()` (around line 1031). Note its parameters — at minimum it needs `messages` (list of dicts) and `working_memory` (WorkingMemory instance), plus access to config + ollama client. The Crew compiler must construct these.
+All three of `config`, `ollama`, `model_router` are **required** positional arguments. The plan's earlier `Planner(config=cfg)` would raise `TypeError`.
+
+**`formulate_response` (planner.py:1031):**
+```python
+async def formulate_response(
+    self,
+    user_message: str,
+    results: list[ToolResult],
+    working_memory: WorkingMemory,
+) -> ResponseEnvelope: ...
+```
+
+Returns a `ResponseEnvelope` (from `cognithor.core.observer`) with fields `.content: str` and `.directive: PGEReloopDirective | None`. **There is no `.usage`.** Token counts come from the Ollama `chat` response dicts consumed internally (`prompt_eval_count` / `eval_count`) and are only exposed externally through `cost_tracker.record_llm_call()` — which the Planner invokes itself. The Crew-Layer reads token usage from a `CostTracker` passed into the Planner (if present), not from the envelope.
+
+**`WorkingMemory` (models.py:478)** is a Pydantic model with `session_id`, `chat_history`, `tool_results`, etc. Minimum viable construction: `WorkingMemory()` — all fields have defaults.
+
+**`ToolResult` (models.py:257)** is a frozen Pydantic model with `tool_name`, `content`, `is_error`, etc. To thread Crew-context as "prior tool results" we can synthesize `ToolResult` entries with `tool_name="crew_context"` and `content=prior_task_output`.
+
+**There is no `get_running_gateway()` function** in `gateway.py`. The Crew-Layer avoids auto-discovery entirely: callers pass an explicit Planner instance (either from a live Gateway's `gateway._planner` attribute or constructed via the factory below).
 
 - [ ] **Step 2: Write the failing integration test**
 
@@ -1321,24 +1524,28 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from cognithor.crew import Crew, CrewAgent, CrewTask
 from cognithor.crew.compiler import execute_task_async
+from cognithor.core.observer import ResponseEnvelope
 
 
 @pytest.mark.asyncio
 async def test_execute_task_routes_through_planner():
-    """The real execute_task_async must: (a) construct a messages list from
-    the task + context, (b) call Planner.formulate_response, (c) return a
-    TaskOutput with the planner's content + token usage."""
+    """The real execute_task_async must: (a) construct a user_message + WorkingMemory,
+    (b) call Planner.formulate_response(user_message, results, working_memory),
+    (c) return a TaskOutput with the planner's content."""
     agent = CrewAgent(role="writer", goal="write", llm="ollama/qwen3:8b")
     task = CrewTask(description="Write a haiku", expected_output="three lines", agent=agent)
 
     mock_planner = MagicMock()
-    mock_response = MagicMock()
-    mock_response.content = "First line / Second line / Third line"
-    mock_response.usage = {"prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49}
-    mock_planner.formulate_response = AsyncMock(return_value=mock_response)
+    mock_planner.formulate_response = AsyncMock(
+        return_value=ResponseEnvelope(
+            content="First line / Second line / Third line",
+            directive=None,
+        )
+    )
 
+    # Registry adapter returning a stable tool list via get_tools_for_role("all")
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
 
     out = await execute_task_async(
         task, context=[], inputs=None, registry=mock_registry, planner=mock_planner,
@@ -1346,34 +1553,70 @@ async def test_execute_task_routes_through_planner():
     assert out.task_id == task.task_id
     assert out.agent_role == "writer"
     assert out.raw == "First line / Second line / Third line"
-    assert out.token_usage == {"prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49}
-    # Planner was called once with the task description in the user message
+
+    # Planner was called with (user_message, results, working_memory) — positional
     call = mock_planner.formulate_response.call_args
-    assert "Write a haiku" in str(call)
+    args = call.args if call.args else (call.kwargs.get("user_message"),
+                                         call.kwargs.get("results"),
+                                         call.kwargs.get("working_memory"))
+    assert "Write a haiku" in args[0]
+    assert isinstance(args[1], list)  # results list
 
 
 @pytest.mark.asyncio
-async def test_execute_task_passes_context_as_prior_messages():
+async def test_execute_task_passes_context_as_prior_tool_results():
+    """Prior TaskOutputs become synthetic ToolResult entries."""
     agent = CrewAgent(role="writer", goal="write")
     t1 = CrewTask(description="research", expected_output="facts", agent=agent)
     t2 = CrewTask(description="write report", expected_output="text", agent=agent, context=[t1])
 
     from cognithor.crew.output import TaskOutput
-    prior = [TaskOutput(task_id=t1.task_id, agent_role="writer", raw="FACTS")]
+    prior = [TaskOutput(task_id=t1.task_id, agent_role="writer", raw="FACTS_HERE")]
 
     mock_planner = MagicMock()
-    mock_response = MagicMock(content="REPORT", usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
-    mock_planner.formulate_response = AsyncMock(return_value=mock_response)
-
+    mock_planner.formulate_response = AsyncMock(
+        return_value=ResponseEnvelope(content="REPORT", directive=None),
+    )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
 
     await execute_task_async(
         t2, context=prior, inputs=None, registry=mock_registry, planner=mock_planner,
     )
-    # The prior output must appear somewhere in the planner's input messages
-    call_args = mock_planner.formulate_response.call_args
-    assert "FACTS" in str(call_args), "Prior context must be threaded into the planner call"
+
+    call = mock_planner.formulate_response.call_args
+    args = call.args if call.args else (
+        call.kwargs["user_message"], call.kwargs["results"], call.kwargs["working_memory"],
+    )
+    # Prior output appears as a ToolResult
+    results = args[1]
+    assert any("FACTS_HERE" in r.content for r in results)
+
+
+@pytest.mark.asyncio
+async def test_execute_task_token_usage_from_cost_tracker():
+    """Token usage is read from an optional CostTracker sidecar, not from the envelope."""
+    agent = CrewAgent(role="writer", goal="write")
+    task = CrewTask(description="x", expected_output="y", agent=agent)
+
+    mock_planner = MagicMock()
+    mock_planner.formulate_response = AsyncMock(
+        return_value=ResponseEnvelope(content="ok", directive=None),
+    )
+    # Planner has a _cost_tracker attribute; we stub a "last call" helper the
+    # Crew-Layer probes. See cognithor.core.planner._record_cost.
+    tracker = MagicMock()
+    tracker.last_call.return_value = {
+        "prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49,
+    }
+    mock_planner._cost_tracker = tracker
+    mock_registry = MagicMock()
+    mock_registry.get_tools_for_role.return_value = []
+
+    out = await execute_task_async(
+        task, context=[], inputs=None, registry=mock_registry, planner=mock_planner,
+    )
+    assert out.token_usage == {"prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49}
 ```
 
 - [ ] **Step 3: Implement real `execute_task_async` in `compiler.py`**
@@ -1382,6 +1625,7 @@ Replace the stub with:
 
 ```python
 from cognithor.crew.tool_resolver import resolve_tools
+from cognithor.models import ToolResult, WorkingMemory
 
 
 async def execute_task_async(
@@ -1392,34 +1636,52 @@ async def execute_task_async(
     registry: Any,
     planner: Any,
 ) -> TaskOutput:
-    """Route one task through the Planner (which in turn goes through
-    Gatekeeper + Executor internally)."""
+    """Route one task through the Planner (which internally goes through
+    Gatekeeper + Executor).
+
+    Spec §1.6: the Crew-Layer must NOT bypass the Planner. Every task builds
+    a proper WorkingMemory + ToolResult-list and calls
+    Planner.formulate_response(user_message, results, working_memory).
+    """
     import time
 
     # Resolve tools up-front so the error is raised before any LLM call
     agent_tools = resolve_tools(task.agent.tools, registry=registry)
     task_tools = resolve_tools(task.tools, registry=registry)
-    all_tools = list({*agent_tools, *task_tools})
+    all_tools = list({*agent_tools, *task_tools})  # currently informational only
 
-    # Build the message list for the Planner
-    system_prompt = _build_system_prompt(task.agent)
-    user_prompt = _build_user_prompt(task, context, inputs)
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
+    # Build the final user-message (description + inputs + expected_output)
+    user_message = _build_user_message(task, inputs)
+
+    # Synthesize prior-task outputs as ToolResult entries. Planner.formulate_response
+    # treats `results` as the evidence it summarizes; this is exactly the channel
+    # we need for cross-task context.
+    prior_results: list[ToolResult] = [
+        ToolResult(
+            tool_name=f"crew_context__{prior.agent_role}",
+            content=prior.raw,
+            is_error=False,
+        )
+        for prior in context
     ]
 
+    working_memory = WorkingMemory()  # defaults — session-scoped usage is transient
+
     t0 = time.perf_counter()
-    response = await planner.formulate_response(
-        messages=messages,
-        tools=all_tools,
-        model=task.agent.llm,
-        max_iter=task.agent.max_iter,
+    envelope = await planner.formulate_response(
+        user_message,
+        prior_results,
+        working_memory,
     )
     duration_ms = (time.perf_counter() - t0) * 1000.0
 
-    raw = getattr(response, "content", "") or ""
-    usage = getattr(response, "usage", None) or {
+    raw = getattr(envelope, "content", "") or ""
+    # Token usage via the Planner's cost tracker (if available). The tracker is
+    # optional — fall back to zeros if not wired. Integration with the real
+    # `cognithor.observability.cost_tracker.CostTracker` lands in Step 5 if the
+    # existing tracker does not expose `.last_call()`; in that case the Crew-Layer
+    # ships its own tiny helper that intercepts the Ollama response dict.
+    usage = _read_token_usage(planner) or {
         "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
     }
 
@@ -1430,6 +1692,27 @@ async def execute_task_async(
         duration_ms=duration_ms,
         token_usage=usage,  # type: ignore[arg-type]
     )
+
+
+def _read_token_usage(planner: Any) -> dict | None:
+    """Pull the last-call token count from the planner's cost tracker.
+
+    The real `cognithor.core.planner.Planner` records costs via its
+    `_cost_tracker.record_llm_call(...)` in `_record_cost()`. We probe the
+    tracker through a duck-typed `last_call()` method. If the project's real
+    `CostTracker` class does not expose `.last_call()`, Step 5 of this task
+    adds it as a tiny read-only helper (non-breaking).
+    """
+    tracker = getattr(planner, "_cost_tracker", None)
+    if tracker is None:
+        return None
+    last = getattr(tracker, "last_call", None)
+    if not callable(last):
+        return None
+    try:
+        return last()  # type: ignore[no-any-return]
+    except Exception:
+        return None
 
 
 def execute_task(
@@ -1446,25 +1729,23 @@ def execute_task(
     ))
 
 
-def _build_system_prompt(agent: CrewAgent) -> str:
-    parts = [f"You are a {agent.role}."]
-    parts.append(f"Your goal: {agent.goal}")
-    if agent.backstory:
-        parts.append(f"Background: {agent.backstory}")
-    return "\n".join(parts)
-
-
-def _build_user_prompt(
+def _build_user_message(
     task: CrewTask,
-    context: list[TaskOutput],
     inputs: dict[str, Any] | None,
 ) -> str:
-    parts = []
-    if context:
-        parts.append("Context from previous tasks:")
-        for c in context:
-            parts.append(f"[{c.agent_role}] {c.raw}")
-        parts.append("")
+    """Render the Crew task as a single user message.
+
+    System-level framing (role, goal, backstory) is owned by the Planner via
+    its own SYSTEM_PROMPT — the Crew-Layer intentionally does NOT inject its
+    own system prompt, to avoid duplicating Cognithor's identity framing.
+    Agent role + backstory are included in the user-message as task framing.
+    """
+    parts: list[str] = []
+    # Agent framing (lightweight — the Planner has its own system prompt)
+    parts.append(f"[Crew role: {task.agent.role}] goal: {task.agent.goal}")
+    if task.agent.backstory:
+        parts.append(f"Background: {task.agent.backstory}")
+    parts.append("")
     desc = task.description
     if inputs:
         for k, v in inputs.items():
@@ -1474,43 +1755,54 @@ def _build_user_prompt(
     return "\n".join(parts)
 ```
 
-Update `compile_and_run_sync` + `compile_and_run_async` to accept and thread a `planner` argument. Update `Crew.kickoff()` / `kickoff_async()` to instantiate a Planner from gateway state (see Step 4).
+Update `compile_and_run_sync` + `compile_and_run_async` to accept and thread a `planner` argument. Update `Crew.kickoff_async()` to pull a Planner (explicit instance or factory — see Step 4).
 
-- [ ] **Step 4: Wire Planner into `Crew.kickoff()` / `kickoff_async()`**
+- [ ] **Step 4: Wire Planner into `Crew.kickoff_async()`**
+
+The Crew class gains a `planner` constructor kwarg for explicit injection (test / embedded callers) and falls back to `runtime.get_default_planner()` otherwise:
 
 ```python
-# In crew.py
-def kickoff(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
-    import asyncio
-    return asyncio.run(self.kickoff_async(inputs))
+# In crew.py — extend the Crew Pydantic model with a private planner field
+class Crew(BaseModel):
+    # ... existing fields ...
+    # Note: planner is NOT a Pydantic field — it's assigned via __init__ override
+    # because it's a live object, not a declarative config.
+    _planner: Any = None
 
-async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
-    from cognithor.crew.compiler import compile_and_run_async
-    from cognithor.crew.runtime import get_default_planner, get_default_tool_registry
-    return await compile_and_run_async(
-        agents=self.agents,
-        tasks=self.tasks,
-        process=self.process,
-        inputs=inputs,
-        registry=get_default_tool_registry(),
-        planner=get_default_planner(),
-    )
+    def __init__(self, *, planner: Any = None, **kwargs) -> None:
+        super().__init__(**kwargs)
+        object.__setattr__(self, "_planner", planner)
+
+    async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
+        from cognithor.crew.compiler import compile_and_run_async
+        from cognithor.crew.runtime import get_default_planner, get_default_tool_registry
+
+        planner = self._planner or get_default_planner()
+        return await compile_and_run_async(
+            agents=self.agents,
+            tasks=self.tasks,
+            process=self.process,
+            inputs=inputs,
+            registry=get_default_tool_registry(),
+            planner=planner,
+        )
+
+    def kickoff(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
+        import asyncio
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.kickoff_async(inputs))
+        raise RuntimeError(
+            "Crew.kickoff() called from within a running event loop. "
+            "Use `await crew.kickoff_async(inputs)` instead."
+        )
 ```
 
-Create `src/cognithor/crew/runtime.py` with two helpers that return singleton-ish instances:
+Extend `src/cognithor/crew/runtime.py` from Task 8 with the Planner factory:
 
 ```python
-"""Factory helpers for PGE runtime objects used by Crew.kickoff().
-
-These wrap the existing `Gateway` lazy singleton or provide a standalone
-Planner when Gateway is absent (scripting / test / standalone CLI).
-"""
-
-from __future__ import annotations
-
-import threading
-from typing import Any
-
+# Appended to runtime.py
 _planner_lock = threading.Lock()
 _planner_singleton: Any = None
 
@@ -1518,51 +1810,45 @@ _planner_singleton: Any = None
 def get_default_planner() -> Any:
     """Return a process-wide default Planner instance.
 
-    In a live Cognithor process, Gateway has already constructed one — we
-    reuse it via `cognithor.gateway.gateway.get_running_gateway()`. Outside
-    a Gateway (standalone `python -m cognithor.crew.run`), build a minimal
-    one from config defaults.
+    No auto-discovery: we always build a fresh Planner from config for
+    standalone Crew scripts. Embedded callers (Gateway, tests) pass a live
+    Planner to `Crew(planner=...)` instead of relying on this factory.
     """
     global _planner_singleton
     with _planner_lock:
         if _planner_singleton is not None:
             return _planner_singleton
-        try:
-            from cognithor.gateway.gateway import get_running_gateway  # type: ignore[attr-defined]
-            gw = get_running_gateway()
-            _planner_singleton = gw._planner
-        except (ImportError, RuntimeError, AttributeError):
-            from cognithor.config import load_config
-            from cognithor.core.planner import Planner
-            cfg = load_config()
-            _planner_singleton = Planner(config=cfg)
+
+        from cognithor.config import load_config
+        from cognithor.core.model_router import ModelRouter, OllamaClient
+        from cognithor.core.planner import Planner
+
+        cfg = load_config()
+        ollama = OllamaClient(cfg)
+        router = ModelRouter(cfg, ollama)
+        _planner_singleton = Planner(cfg, ollama, router)
         return _planner_singleton
-
-
-def get_default_tool_registry() -> Any:
-    """Return the process-wide MCP tool registry."""
-    from cognithor.mcp import tool_registry_db
-    if hasattr(tool_registry_db, "get_tool_registry"):
-        return tool_registry_db.get_tool_registry()
-    # Fallback: some installs expose a module-level singleton named `registry`
-    return getattr(tool_registry_db, "registry", tool_registry_db)
 ```
 
-**NOTE:** If the actual `Planner.formulate_response()` signature does not match the `messages=..., tools=..., model=..., max_iter=...` args above, the implementer adjusts both `execute_task_async` and the test to reflect the real signature. The plan's goal is behavioural: "route through Planner, get a content+usage back" — the exact kwarg names come from reading `planner.py`. Document the actual signature in the commit body.
+- [ ] **Step 5: If `CostTracker` lacks `.last_call()`, add it**
 
-- [ ] **Step 5: Run the integration test + full test_crew**
+Scout `src/cognithor/observability/cost_tracker.py` (or wherever `CostTracker` lives — grep for `class CostTracker` / `record_llm_call`). Add a tiny read-only method that returns the token counts from the most recent `record_llm_call()` invocation. This is additive — no caller uses it, no tests break.
+
+If the scout shows the tracker cannot be extended (e.g. it's in a frozen module), the Crew-Layer instead wraps the planner's `ollama` client with a probe that records the last response's `prompt_eval_count` / `eval_count` into a module-level dict. Document the chosen approach in the commit body.
+
+- [ ] **Step 6: Run the integration test + full test_crew**
 
 ```bash
 python -m pytest tests/test_crew/test_pge_integration.py tests/test_crew/test_sequential_kickoff.py tests/test_crew/test_async_kickoff.py -v
 ```
 
-Existing tests may need the `planner=` kwarg threaded through — update their `patch` targets accordingly.
+Existing tests from Tasks 8-9 need to be updated to use `get_tools_for_role` on their registry mocks (not `list_tool_names`) and to supply an explicit `planner=` either via `Crew(planner=mock_planner)` or by patching `cognithor.crew.runtime.get_default_planner`.
 
-- [ ] **Step 6: Ruff + commit**
+- [ ] **Step 7: Ruff + commit**
 
 ```bash
 git add src/cognithor/crew/compiler.py src/cognithor/crew/crew.py src/cognithor/crew/runtime.py tests/test_crew/test_pge_integration.py
-git commit -m "feat(crew): real PGE-Trinity integration — execute_task routes through Planner"
+git commit -m "feat(crew): real PGE-Trinity integration — execute_task routes through Planner.formulate_response"
 ```
 
 ---
@@ -1599,7 +1885,8 @@ async def test_gatekeeper_red_tool_blocks_execution():
         side_effect=CrewError("Gatekeeper RED: 'delete_all' blocked")
     )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = ["delete_all"]
+    fake_tool = MagicMock(); fake_tool.name = "delete_all"
+    mock_registry.get_tools_for_role.return_value = [fake_tool]
 
     from cognithor.crew.compiler import compile_and_run_async
     from cognithor.crew.process import CrewProcess
@@ -1640,6 +1927,7 @@ The `context=[...]` field on CrewTask is already set in Task 5. The real behavio
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 from cognithor.crew import Crew, CrewAgent, CrewTask
+from cognithor.core.observer import ResponseEnvelope
 
 
 @pytest.mark.asyncio
@@ -1647,39 +1935,37 @@ async def test_task2_receives_task1_output():
     agent = CrewAgent(role="x", goal="y")
     t1 = CrewTask(description="phase 1", expected_output="res1", agent=agent)
     t2 = CrewTask(description="phase 2", expected_output="res2", agent=agent, context=[t1])
-    crew = Crew(agents=[agent], tasks=[t1, t2])
 
-    seen_prompts: list[str] = []
+    captured_results: list = []
+    captured_user_msgs: list = []
 
-    async def capture(*args, **kwargs):
-        messages = kwargs.get("messages") or args[0] if args else []
-        for m in messages:
-            seen_prompts.append(m.get("content", ""))
-        resp = MagicMock()
-        if len(seen_prompts) <= 2:
-            resp.content = "PHASE1_RESULT"
-        else:
-            resp.content = "PHASE2_RESULT"
-        resp.usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-        return resp
+    async def capture(user_message, results, working_memory):
+        captured_user_msgs.append(user_message)
+        captured_results.append(list(results))
+        n = len(captured_user_msgs)
+        return ResponseEnvelope(
+            content="PHASE1_RESULT" if n == 1 else "PHASE2_RESULT",
+            directive=None,
+        )
 
     mock_planner = MagicMock()
     mock_planner.formulate_response = AsyncMock(side_effect=capture)
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[t1, t2], planner=mock_planner)
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
         result = await crew.kickoff_async()
 
     assert result.tasks_output[1].raw == "PHASE2_RESULT"
-    # The user-message for t2 must contain PHASE1_RESULT (from context)
-    user_prompts = [p for p in seen_prompts if "phase 2" in p.lower()]
-    assert any("PHASE1_RESULT" in p for p in user_prompts)
+    # The 2nd call (for t2) must carry t1's output in `results`
+    t2_results = captured_results[1]
+    assert any("PHASE1_RESULT" in r.content for r in t2_results)
 ```
 
-- [ ] **Step 2: Run — expect PASS** (the `_build_user_prompt` in Task 11 already threads context). If it fails, investigate `_build_user_prompt` and adjust.
+- [ ] **Step 2: Run — expect PASS** (the `execute_task_async` in Task 11 already threads prior outputs as `ToolResult` entries). If it fails, investigate the synthesis loop in `execute_task_async` and adjust.
 
 - [ ] **Step 3: Commit**
 
@@ -1696,13 +1982,24 @@ git commit -m "test(crew): context array threads prior task outputs into prompt"
 - Modify: `src/cognithor/crew/compiler.py` (emit audit events)
 - Create: `tests/test_crew/test_audit_chain.py`
 
-- [ ] **Step 1: Scout existing audit-chain**
+- [ ] **Step 1: Scouted audit API (`src/cognithor/security/audit.py`)**
 
-```bash
-grep -n "class HashlineGuard\|hashline\|audit_chain" src/cognithor/core/safe_call.py src/cognithor/gateway/phases/advanced.py 2>&1 | head -20
+The real audit helper is `cognithor.security.audit.AuditTrail`:
+
+```python
+class AuditTrail:
+    def __init__(self, log_dir: Path | None = None, *, log_path: Path | str | None = None,
+                 hmac_key: bytes | None = None, ed25519_key: bytes | None = None) -> None: ...
+
+    def record(self, entry: AuditEntry, *, mask: bool = True) -> str: ...
+    def record_event(self, session_id: str, event_type: str,
+                     details: dict[str, Any] | None = None) -> str: ...
+    def verify_chain(self) -> tuple[bool, int, int]: ...
 ```
 
-Identify the module + helper used elsewhere in the codebase to append an audit entry (likely something like `from cognithor.core.audit import append_audit` or a `HashlineGuard.log_event()` method). Use the SAME helper — don't invent a new channel.
+`record_event(session_id, event_type, details)` is the right entry point for free-form crew events — it writes JSONL with SHA-256 chain + optional HMAC.
+
+There is **no** `cognithor.core.safe_call.append_audit` function. The Crew-Layer wraps `AuditTrail.record_event` in a thin module-local helper so tests can monkey-patch a single callable.
 
 - [ ] **Step 2: Test**
 
@@ -1711,29 +2008,30 @@ Identify the module + helper used elsewhere in the codebase to append an audit e
 from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 from cognithor.crew import Crew, CrewAgent, CrewTask
+from cognithor.core.observer import ResponseEnvelope
 
 
 @pytest.mark.asyncio
 async def test_kickoff_emits_audit_event_with_trace_id():
     agent = CrewAgent(role="x", goal="y")
     task = CrewTask(description="a", expected_output="b", agent=agent)
-    crew = Crew(agents=[agent], tasks=[task])
 
-    events = []
+    events: list = []
 
     def spy(event_name, **fields):
         events.append((event_name, fields))
 
     mock_planner = MagicMock()
     mock_planner.formulate_response = AsyncMock(
-        return_value=MagicMock(content="OK", usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+        return_value=ResponseEnvelope(content="OK", directive=None),
     )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
 
     with patch("cognithor.crew.compiler.append_audit", side_effect=spy):
         with pytest.MonkeyPatch().context() as mp:
-            mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
             mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
             result = await crew.kickoff_async()
 
@@ -1745,15 +2043,48 @@ async def test_kickoff_emits_audit_event_with_trace_id():
 
 - [ ] **Step 3: Emit audit events from the compiler**
 
-Add to the top of `compiler.py`:
+Add near the top of `compiler.py`:
 
 ```python
-try:
-    from cognithor.core.safe_call import append_audit  # adjust to the real helper
-except ImportError:
-    def append_audit(event: str, **fields: Any) -> None:
-        """Noop fallback when Hashline Guard is unavailable (standalone test)."""
-        return None
+# Audit helper — wraps cognithor.security.audit.AuditTrail.record_event()
+# as a single module-local callable so tests can patch it cleanly.
+_audit_trail: Any = None
+_audit_lock = threading.Lock()
+
+
+def _get_audit_trail() -> Any:
+    """Lazy-build a process-wide AuditTrail under the Cognithor audit log path."""
+    global _audit_trail
+    with _audit_lock:
+        if _audit_trail is not None:
+            return _audit_trail
+        try:
+            from cognithor.config import load_config
+            from cognithor.security.audit import AuditTrail
+            cfg = load_config()
+            log_dir = Path(cfg.cognithor_home) / "logs"
+            _audit_trail = AuditTrail(log_dir=log_dir)
+        except Exception:
+            _audit_trail = None  # remains None — append_audit becomes a no-op
+        return _audit_trail
+
+
+def append_audit(event: str, **fields: Any) -> None:
+    """Emit a Crew-Layer audit event via the Hashline-Guard chain.
+
+    Falls back to a no-op when AuditTrail cannot be built (e.g. standalone
+    test without ~/.cognithor/ present). Test code monkey-patches this
+    callable directly rather than the AuditTrail inside it.
+    """
+    trail = _get_audit_trail()
+    if trail is None:
+        return
+    session_id = fields.pop("trace_id", "crew")
+    try:
+        trail.record_event(session_id=session_id, event_type=event, details=fields)
+    except Exception:
+        # Audit must never break a kickoff. Log and continue.
+        log.debug("crew_audit_record_failed", event=event, exc_info=True)
 ```
 
 Emit events at key lifecycle points inside `compile_and_run_async`:
@@ -1764,7 +2095,7 @@ append_audit("crew_kickoff_started", trace_id=trace_id, n_tasks=len(ordered), pr
 append_audit("crew_task_started", trace_id=trace_id, task_id=t.task_id, agent_role=t.agent.role)
 # ... after completion ...
 append_audit("crew_task_completed", trace_id=trace_id, task_id=t.task_id,
-             duration_ms=out.duration_ms, tokens=out.token_usage["total_tokens"])
+             duration_ms=out.duration_ms, tokens=out.token_usage.get("total_tokens", 0))
 # ... at the end ...
 append_audit("crew_kickoff_completed", trace_id=trace_id, n_tasks=len(outputs))
 ```
@@ -1787,13 +2118,19 @@ git commit -m "feat(crew): emit Hashline-Guard audit events for crew lifecycle"
 
 Spec §1.6: "`kickoff()` ist idempotent re-aufrufbar (nutzt bestehende Distributed-Lock-Logik)". Wire it.
 
-- [ ] **Step 1: Scout the distributed lock API**
+- [ ] **Step 1: Scouted DistributedLock API (`src/cognithor/core/distributed_lock.py`)**
 
-```bash
-head -100 src/cognithor/core/distributed_lock.py
+The real API has a zero-arg constructor for concrete backends (`LocalLockBackend()`, `FileLockBackend(lock_dir=...)`, `RedisLockBackend(...)`), plus a `create_lock(config)` factory. Lock acquisition uses the `__call__(name, timeout)` pattern as an async context manager:
+
+```python
+# Real usage (from module docstring, lines 51-56):
+lock = create_lock(config)
+async with lock("session_123"):      # lock(name, timeout=10.0) returns _LockContext
+    # critical section
+    ...
 ```
 
-Identify the lock context manager or decorator (likely `DistributedLock(key, timeout).__aenter__()` or similar).
+The plan's earlier `DistributedLock(key, timeout_s=300)` is wrong on two counts: `DistributedLock` is an abstract base (never directly instantiated) and its `__init__` takes no args.
 
 - [ ] **Step 2: Test**
 
@@ -1802,6 +2139,7 @@ Identify the lock context manager or decorator (likely `DistributedLock(key, tim
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 from cognithor.crew import Crew, CrewAgent, CrewTask
+from cognithor.core.observer import ResponseEnvelope
 
 
 @pytest.mark.asyncio
@@ -1811,75 +2149,106 @@ async def test_same_kickoff_id_returns_cached_output():
     """
     agent = CrewAgent(role="x", goal="y")
     task = CrewTask(description="a", expected_output="b", agent=agent)
-    crew = Crew(agents=[agent], tasks=[task])
 
     mock_planner = MagicMock()
     call_count = {"n": 0}
-    async def fake_resp(**kwargs):
+    async def fake_resp(user_message, results, working_memory):
         call_count["n"] += 1
-        return MagicMock(content=f"RUN-{call_count['n']}", usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+        return ResponseEnvelope(content=f"RUN-{call_count['n']}", directive=None)
     mock_planner.formulate_response = AsyncMock(side_effect=fake_resp)
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
         out1 = await crew.kickoff_async(inputs={"_kickoff_id": "fixed-id-123"})
         out2 = await crew.kickoff_async(inputs={"_kickoff_id": "fixed-id-123"})
 
     assert out1.raw == out2.raw, "Same kickoff_id must return identical output"
     assert call_count["n"] == 1, "Planner must be called only once for same kickoff_id"
+
+
+@pytest.mark.asyncio
+async def test_kickoff_id_removed_non_destructively():
+    """Caller's inputs dict must not be mutated by the kickoff-id strip."""
+    agent = CrewAgent(role="x", goal="y")
+    task = CrewTask(description="a", expected_output="b", agent=agent)
+
+    mock_planner = MagicMock()
+    mock_planner.formulate_response = AsyncMock(
+        return_value=ResponseEnvelope(content="ok", directive=None),
+    )
+    mock_registry = MagicMock()
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
+
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
+        inputs = {"_kickoff_id": "keep-me", "topic": "PKV"}
+        await crew.kickoff_async(inputs=inputs)
+
+    # The caller still sees their original dict intact
+    assert inputs == {"_kickoff_id": "keep-me", "topic": "PKV"}
 ```
 
 - [ ] **Step 3: Implement kickoff-caching in `crew.py`**
+
+Uses the real `create_lock(config)` factory; splits `_kickoff_id` from the rest of `inputs` non-destructively:
 
 ```python
 # Module-level cache keyed by kickoff_id (best-effort, per-process).
 _KICKOFF_CACHE: dict[str, CrewOutput] = {}
 
+
 async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
-    kickoff_id = (inputs or {}).pop("_kickoff_id", None)
+    # Non-destructive strip: dict-comprehension copy, leaving the caller's dict intact.
+    kickoff_id: str | None = None
+    if inputs:
+        kickoff_id = inputs.get("_kickoff_id")
+        inputs = {k: v for k, v in inputs.items() if k != "_kickoff_id"}
+
     if kickoff_id and kickoff_id in _KICKOFF_CACHE:
         return _KICKOFF_CACHE[kickoff_id]
 
     from cognithor.crew.compiler import compile_and_run_async
     from cognithor.crew.runtime import get_default_planner, get_default_tool_registry
 
-    # Optional: wrap in distributed lock when kickoff_id is set, so two
-    # processes don't both execute the same Crew with the same id.
-    lock_cm = None
-    if kickoff_id:
-        try:
-            from cognithor.core.distributed_lock import DistributedLock
-            lock_cm = DistributedLock(f"crew:kickoff:{kickoff_id}", timeout_s=300)
-        except ImportError:
-            lock_cm = None
+    planner = self._planner or get_default_planner()
+    registry = get_default_tool_registry()
 
-    if lock_cm is not None:
-        async with lock_cm:
-            # Double-check cache inside lock to handle the race
-            if kickoff_id in _KICKOFF_CACHE:
-                return _KICKOFF_CACHE[kickoff_id]
-            result = await compile_and_run_async(
-                agents=self.agents, tasks=self.tasks, process=self.process,
-                inputs=inputs, registry=get_default_tool_registry(),
-                planner=get_default_planner(),
-            )
-            _KICKOFF_CACHE[kickoff_id] = result
-            return result
+    if kickoff_id:
+        # Acquire cross-process lock so two processes don't both execute the
+        # same Crew with the same id. Real API:
+        #   lock = create_lock(cfg); async with lock(name, timeout): ...
+        try:
+            from cognithor.config import load_config
+            from cognithor.core.distributed_lock import create_lock
+            lock = create_lock(load_config())
+            async with lock(f"crew:kickoff:{kickoff_id}", 300.0):
+                # Double-check cache inside the lock to handle the race
+                if kickoff_id in _KICKOFF_CACHE:
+                    return _KICKOFF_CACHE[kickoff_id]
+                result = await compile_and_run_async(
+                    agents=self.agents, tasks=self.tasks, process=self.process,
+                    inputs=inputs, registry=registry, planner=planner,
+                )
+                _KICKOFF_CACHE[kickoff_id] = result
+                return result
+        except ImportError:
+            # create_lock unavailable — fall through to unlocked path
+            pass
 
     result = await compile_and_run_async(
         agents=self.agents, tasks=self.tasks, process=self.process,
-        inputs=inputs, registry=get_default_tool_registry(),
-        planner=get_default_planner(),
+        inputs=inputs, registry=registry, planner=planner,
     )
     if kickoff_id:
         _KICKOFF_CACHE[kickoff_id] = result
     return result
 ```
-
-The `DistributedLock` import path / API may differ — adjust based on Step 1's scout.
 
 - [ ] **Step 4: Run + commit**
 
@@ -2019,8 +2388,13 @@ def load_crew_from_yaml(
             agent=agent_by_alias[agent_alias], context=[], **kwargs
         )
 
-    # Pass 2: resolve context references — Pydantic models are frozen, so
-    # rebuild each affected task with its context list.
+    # Pass 2: resolve context references — Pydantic models are frozen, so use
+    # `.model_copy(update=...)` for an immutable update.
+    #
+    # Why model_copy and not model_dump + rebuild: `model_dump()` cannot serialize
+    # Callables. The `guardrail` field holds a Python callable (or StringGuardrail
+    # instance); a round-trip through dump-then-init would silently drop it back
+    # to None. `model_copy(update={...})` preserves every field by identity.
     for alias, refs in context_map.items():
         if not refs:
             continue
@@ -2029,13 +2403,8 @@ def load_crew_from_yaml(
             if ref not in task_by_alias:
                 raise ValueError(f"Task '{alias}' references unknown task '{ref}'")
             ctx.append(task_by_alias[ref])
-        # Rebuild immutable task with ctx
         existing = task_by_alias[alias]
-        data = existing.model_dump()
-        data["context"] = ctx
-        # We need the real agent object too (not its dump)
-        data["agent"] = existing.agent
-        task_by_alias[alias] = CrewTask(**data)
+        task_by_alias[alias] = existing.model_copy(update={"context": ctx})
 
     return Crew(
         agents=list(agent_by_alias.values()),
@@ -2210,11 +2579,19 @@ from cognithor.crew.errors import ToolNotFoundError, CrewError
 
 
 class TestErrorMessaging:
-    def test_tool_not_found_mentions_name_and_did_you_mean(self):
+    def _registry_with(self, names):
         from unittest.mock import MagicMock
-        from cognithor.crew.tool_resolver import resolve_tools
         registry = MagicMock()
-        registry.list_tool_names.return_value = ["web_search", "pdf_reader"]
+        tools = []
+        for n in names:
+            m = MagicMock(); m.name = n
+            tools.append(m)
+        registry.get_tools_for_role.return_value = tools
+        return registry
+
+    def test_tool_not_found_mentions_name_and_did_you_mean(self):
+        from cognithor.crew.tool_resolver import resolve_tools
+        registry = self._registry_with(["web_search", "pdf_reader"])
         with pytest.raises(ToolNotFoundError) as exc:
             resolve_tools(["web_seach"], registry=registry)
         msg = str(exc.value)
@@ -2222,10 +2599,8 @@ class TestErrorMessaging:
         assert "Meintest du 'web_search'?" in msg
 
     def test_tool_not_found_mentions_name_only_when_no_close_match(self):
-        from unittest.mock import MagicMock
         from cognithor.crew.tool_resolver import resolve_tools
-        registry = MagicMock()
-        registry.list_tool_names.return_value = ["completely_different"]
+        registry = self._registry_with(["completely_different"])
         with pytest.raises(ToolNotFoundError) as exc:
             resolve_tools(["totally_foreign"], registry=registry)
         assert "totally_foreign" in str(exc.value)
@@ -2259,6 +2634,7 @@ git commit -m "test(crew): error-message quality contracts"
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 from cognithor.crew import Crew, CrewAgent, CrewProcess, CrewTask
+from cognithor.core.observer import ResponseEnvelope
 
 
 @pytest.mark.asyncio
@@ -2288,23 +2664,38 @@ async def test_pkv_example_runs_end_to_end():
         agent=writer,
         context=[research],
     )
+
+    # CostTracker shim — returns different usage per call to mimic two-task run
+    tracker = MagicMock()
+    tracker.last_call = MagicMock(side_effect=[
+        {"prompt_tokens": 500, "completion_tokens": 100, "total_tokens": 600},
+        {"prompt_tokens": 800, "completion_tokens": 600, "total_tokens": 1400},
+    ])
+
+    mock_planner = MagicMock()
+    mock_planner._cost_tracker = tracker
+    mock_planner.formulate_response = AsyncMock(side_effect=[
+        ResponseEnvelope(
+            content="| Tarif | Beitrag | Leistungen |\n|---|---|---|\n| A | 450€ | Stationär |",
+            directive=None,
+        ),
+        ResponseEnvelope(
+            content="# PKV-Empfehlung\nBasierend auf der Analyse empfehlen wir...",
+            directive=None,
+        ),
+    ])
+    mock_registry = MagicMock()
+    mock_registry.get_tools_for_role.return_value = []
+
     crew = Crew(
         agents=[analyst, writer],
         tasks=[research, report],
         process=CrewProcess.SEQUENTIAL,
         verbose=True,
+        planner=mock_planner,
     )
 
-    mock_planner = MagicMock()
-    mock_planner.formulate_response = AsyncMock(side_effect=[
-        MagicMock(content="| Tarif | Beitrag | Leistungen |\n|---|---|---|\n| A | 450€ | Stationär |", usage={"prompt_tokens": 500, "completion_tokens": 100, "total_tokens": 600}),
-        MagicMock(content="# PKV-Empfehlung\nBasierend auf der Analyse empfehlen wir...", usage={"prompt_tokens": 800, "completion_tokens": 600, "total_tokens": 1400}),
-    ])
-    mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
-
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
         result = await crew.kickoff_async()
 
@@ -2350,6 +2741,7 @@ def test_frozen_public_surface():
     required = {
         "Crew", "CrewAgent", "CrewTask", "CrewProcess",
         "CrewOutput", "TaskOutput", "TokenUsageDict",
+        "LLMConfig",
         "GuardrailFailure", "ToolNotFoundError",
         "CrewError", "CrewCompilationError",
     }
@@ -2369,6 +2761,7 @@ from cognithor.crew import (  # noqa: E402
     CrewOutput,
     CrewProcess,
     CrewTask,
+    LLMConfig,
     TaskOutput,
 )
 ```
@@ -2391,6 +2784,9 @@ Add an `[Unreleased]` section at the top (the video-input PR's entries are under
   pipeline — no new LLM entry point, no bypass. Audit events emit via the
   Hashline-Guard chain. Spec at
   `docs/superpowers/specs/2026-04-23-cognithor-crew-v1-adoption.md`.
+
+### Breaking Changes
+None. The Crew-Layer is strictly additive — no existing public API changes.
 ```
 
 - [ ] **Step 4: NOTICE attribution**
@@ -2627,49 +3023,102 @@ git commit -m "feat(crew): FunctionGuardrail adapter for user callables"
 - Create: `src/cognithor/crew/guardrails/string_guardrail.py`
 - Create: `tests/test_crew/test_guardrails/test_string.py`
 
-- [ ] **Step 1: Failing test**
+- [ ] **Step 1: Scouted LLM-call path for validator calls**
+
+`Planner` does **not** expose a generic `.chat()` method — the only public async entry point is `formulate_response(user_message, results, working_memory)`. That's too heavy for a binary pass/fail validator.
+
+The right primitive is `cognithor.core.model_router.OllamaClient.chat(model, messages, ...)` which returns a dict-shaped Ollama response:
+
+```python
+async def chat(
+    self,
+    model: str,
+    messages: list[dict[str, Any]],
+    *,
+    tools: list[dict[str, Any]] | None = None,
+    temperature: float = 0.7,
+    top_p: float = 0.9,
+    stream: bool = False,
+    format_json: bool = False,
+    options: dict[str, Any] | None = None,
+    images: list[str] | None = None,
+) -> dict[str, Any]: ...
+```
+
+Response shape: `{"message": {"content": "..."}, "prompt_eval_count": N, "eval_count": M, ...}`.
+
+Spec §4.2 says the string guardrail "runs via the Gatekeeper" — architecturally the Gatekeeper already has access to the OllamaClient via the gateway. The Crew compiler already holds a Planner reference; the Planner internally has an `_ollama` attribute (`OllamaClient` or `UnifiedLLMClient`) that satisfies the `.chat(model, messages)` contract. So `StringGuardrail` accepts an LLM client duck-typed on `async def chat(model, messages)` — passing `planner._ollama` is how the compiler wires it.
+
+- [ ] **Step 2: Failing test**
 
 ```python
 # tests/test_crew/test_guardrails/test_string.py
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 from cognithor.crew.guardrails.string_guardrail import StringGuardrail
 from cognithor.crew.output import TaskOutput
 
 
-def test_string_guardrail_passes_when_llm_says_yes():
+@pytest.mark.asyncio
+async def test_string_guardrail_passes_when_llm_says_yes():
     llm = MagicMock()
-    llm.chat = MagicMock(return_value=MagicMock(content='{"passed": true, "feedback": null}'))
-    g = StringGuardrail("Output must be one sentence", llm_client=llm)
-    r = g(TaskOutput(task_id="t", agent_role="w", raw="Hello."))
+    # OllamaClient.chat returns a dict with nested message.content
+    llm.chat = AsyncMock(return_value={
+        "message": {"content": '{"passed": true, "feedback": null}'}
+    })
+    g = StringGuardrail("Output must be one sentence", llm_client=llm,
+                       model="ollama/qwen3:8b")
+    r = await g(TaskOutput(task_id="t", agent_role="w", raw="Hello."))
     assert r.passed
 
 
-def test_string_guardrail_fails_when_llm_says_no():
+@pytest.mark.asyncio
+async def test_string_guardrail_fails_when_llm_says_no():
     llm = MagicMock()
-    llm.chat = MagicMock(return_value=MagicMock(content='{"passed": false, "feedback": "more than one sentence"}'))
-    g = StringGuardrail("one sentence", llm_client=llm)
-    r = g(TaskOutput(task_id="t", agent_role="w", raw="A. B."))
+    llm.chat = AsyncMock(return_value={
+        "message": {"content": '{"passed": false, "feedback": "more than one sentence"}'}
+    })
+    g = StringGuardrail("one sentence", llm_client=llm, model="ollama/qwen3:8b")
+    r = await g(TaskOutput(task_id="t", agent_role="w", raw="A. B."))
     assert not r.passed
     assert "more than one sentence" in (r.feedback or "")
 
 
-def test_string_guardrail_unparseable_llm_response_fails_safe():
+@pytest.mark.asyncio
+async def test_string_guardrail_unparseable_llm_response_fails_safe():
     llm = MagicMock()
-    llm.chat = MagicMock(return_value=MagicMock(content="not json"))
-    g = StringGuardrail("x", llm_client=llm)
-    r = g(TaskOutput(task_id="t", agent_role="w", raw="y"))
+    llm.chat = AsyncMock(return_value={"message": {"content": "not json"}})
+    g = StringGuardrail("x", llm_client=llm, model="ollama/qwen3:8b")
+    r = await g(TaskOutput(task_id="t", agent_role="w", raw="y"))
     assert not r.passed
     assert "parse" in (r.feedback or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_string_guardrail_llm_unavailable_fails_safe():
+    llm = MagicMock()
+    llm.chat = AsyncMock(side_effect=ConnectionError("ollama down"))
+    g = StringGuardrail("x", llm_client=llm, model="ollama/qwen3:8b")
+    r = await g(TaskOutput(task_id="t", agent_role="w", raw="y"))
+    assert not r.passed  # fail-safe: production can't silently skip validation
 ```
 
-- [ ] **Step 2: Implement**
+- [ ] **Step 3: Implement**
 
 ```python
-"""String-based guardrail — LLM validates output against a natural-language rule."""
+"""String-based guardrail — LLM validates output against a natural-language rule.
+
+The guardrail is **async** — it runs an LLM call via an OllamaClient-shaped
+duck type (async `.chat(model, messages)` returning a dict with nested
+`message.content`). The compiler awaits it inside `execute_task_async`.
+
+Function-based guardrails (FunctionGuardrail) remain sync. The compiler
+awaits only if the guardrail's `__call__` returns a coroutine.
+"""
 
 from __future__ import annotations
 
+import inspect
 import json
 from typing import Any
 
@@ -2689,6 +3138,11 @@ class StringGuardrail:
     """LLM-validated guardrail. Offline-safe fallback: if the LLM is unavailable
     the result is `passed=False` with a clear feedback, so production can't
     skip validation silently.
+
+    `llm_client` must expose an async `.chat(model, messages, ...)` method that
+    returns an Ollama-shaped dict (`{"message": {"content": "..."}}`).
+    `cognithor.core.model_router.OllamaClient` satisfies this contract directly;
+    the compiler passes `planner._ollama` into this guardrail.
     """
 
     def __init__(
@@ -2696,30 +3150,39 @@ class StringGuardrail:
         rule: str,
         *,
         llm_client: Any,
-        model: str | None = None,
+        model: str,
     ) -> None:
         self._rule = rule
         self._llm = llm_client
         self._model = model
 
-    def __call__(self, output: TaskOutput) -> GuardrailResult:
+    async def __call__(self, output: TaskOutput) -> GuardrailResult:
         user_prompt = f"RULE: {self._rule}\n\nOUTPUT:\n{output.raw}"
         messages = [
             {"role": "system", "content": _VALIDATOR_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ]
+        raw = ""
         try:
-            resp = self._llm.chat(model=self._model, messages=messages)
-            raw = getattr(resp, "content", "") or ""
+            resp = await self._llm.chat(
+                model=self._model,
+                messages=messages,
+                format_json=True,
+                temperature=0.0,
+            )
+            raw = (resp.get("message", {}) or {}).get("content", "") or ""
+        except Exception as exc:
+            return GuardrailResult(
+                passed=False,
+                feedback=f"Validator-LLM nicht verfuegbar: {exc}",
+            )
+
+        try:
             data = json.loads(raw)
         except json.JSONDecodeError:
             return GuardrailResult(
                 passed=False,
                 feedback=f"Validator konnte LLM-Antwort nicht parsen: {raw[:100]}",
-            )
-        except Exception as exc:
-            return GuardrailResult(
-                passed=False, feedback=f"Validator-LLM nicht verfügbar: {exc}",
             )
         passed = bool(data.get("passed"))
         feedback = data.get("feedback") if not passed else None
@@ -3200,6 +3663,7 @@ def chain(*guards):
 Update `__init__.py`:
 
 ```python
+from cognithor.crew.errors import GuardrailFailure
 from cognithor.crew.guardrails.base import Guardrail, GuardrailResult
 from cognithor.crew.guardrails.builtin import (
     chain, hallucination_check, no_pii, schema, word_count,
@@ -3210,6 +3674,8 @@ from cognithor.crew.guardrails.string_guardrail import StringGuardrail
 __all__ = [
     "FunctionGuardrail",
     "Guardrail",
+    "GuardrailFailure",  # re-exported from cognithor.crew.errors so users
+                         # have one obvious import location
     "GuardrailResult",
     "StringGuardrail",
     "chain",
@@ -3248,6 +3714,7 @@ from cognithor.crew import Crew, CrewAgent, CrewTask
 from cognithor.crew.errors import GuardrailFailure
 from cognithor.crew.guardrails.base import GuardrailResult
 from cognithor.crew.output import TaskOutput
+from cognithor.core.observer import ResponseEnvelope
 
 
 @pytest.mark.asyncio
@@ -3257,20 +3724,19 @@ async def test_guardrail_failure_retries_then_raises():
         return GuardrailResult(passed=False, feedback="zu kurz")
     task = CrewTask(description="write", expected_output="long text",
                    agent=agent, guardrail=fail_twice, max_retries=2)
-    crew = Crew(agents=[agent], tasks=[task])
 
     call_count = {"n": 0}
-    async def fake(**kwargs):
+    async def fake(user_message, results, working_memory):
         call_count["n"] += 1
-        return MagicMock(content=f"attempt-{call_count['n']}",
-                         usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+        return ResponseEnvelope(content=f"attempt-{call_count['n']}", directive=None)
     mock_planner = MagicMock()
     mock_planner.formulate_response = AsyncMock(side_effect=fake)
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
         with pytest.raises(GuardrailFailure, match="zu kurz"):
             await crew.kickoff_async()
@@ -3289,17 +3755,17 @@ async def test_guardrail_passes_after_retry():
 
     task = CrewTask(description="x", expected_output="y",
                    agent=agent, guardrail=pass_on_second, max_retries=2)
-    crew = Crew(agents=[agent], tasks=[task])
 
     mock_planner = MagicMock()
     mock_planner.formulate_response = AsyncMock(
-        return_value=MagicMock(content="text", usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+        return_value=ResponseEnvelope(content="text", directive=None),
     )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
         result = await crew.kickoff_async()
 
@@ -3311,34 +3777,60 @@ async def test_guardrail_passes_after_retry():
 Inside `execute_task_async` (from Task 11), after the Planner returns a response, add:
 
 ```python
+import inspect
 from cognithor.crew.errors import GuardrailFailure
 from cognithor.crew.guardrails.base import GuardrailResult
 from cognithor.crew.guardrails.function_guardrail import FunctionGuardrail
 from cognithor.crew.guardrails.string_guardrail import StringGuardrail
 
 
-def _normalize_guardrail(g: Any, llm_client: Any = None) -> Any:
+def _normalize_guardrail(g: Any, *, ollama_client: Any, model: str) -> Any:
+    """Normalize whatever the user stuck into `CrewTask.guardrail` into a callable.
+
+    - None                -> None
+    - str (rule text)     -> StringGuardrail(rule, llm_client=ollama_client, model=model)
+    - already a Guardrail (has __call__ returning GuardrailResult) -> returned as-is
+    - any other callable  -> wrapped in FunctionGuardrail for exception safety
+    """
     if g is None:
         return None
-    if callable(g):
-        # Could be FunctionGuardrail-compatible or user callable
-        if hasattr(g, "__call__") and not isinstance(g, str):
-            return FunctionGuardrail(g) if not _is_already_guardrail(g) else g
     if isinstance(g, str):
-        return StringGuardrail(g, llm_client=llm_client)
+        return StringGuardrail(g, llm_client=ollama_client, model=model)
+    if _is_already_guardrail(g):
+        return g
+    if callable(g):
+        return FunctionGuardrail(g)
     return g
 
 
 def _is_already_guardrail(g: Any) -> bool:
-    # Duck-type: returns a GuardrailResult directly
-    return hasattr(g, "__call__") and not hasattr(g, "_fn")
+    """Duck-type check: Guardrails (FunctionGuardrail, StringGuardrail, chain-wrapper)
+    have a `__call__` AND either a `_rule` attribute (StringGuardrail) or
+    a `_fn` attribute (FunctionGuardrail) or are builtin closures. Anything else
+    the user passes is treated as a raw callable and wrapped.
+    """
+    return hasattr(g, "_rule") or hasattr(g, "_fn") or getattr(g, "_is_guardrail", False)
 
 
-# Inside execute_task_async, after `response = await planner.formulate_response(...)`:
-guardrail = _normalize_guardrail(task.guardrail, llm_client=planner)
+async def _call_guardrail(guardrail: Any, out: TaskOutput) -> GuardrailResult:
+    """Invoke a guardrail — may be sync or async. Awaits if coroutine-returning."""
+    result = guardrail(out)
+    if inspect.iscoroutine(result):
+        result = await result
+    return result
+
+
+# Inside execute_task_async, after the first `envelope = await planner.formulate_response(...)`:
+# The string-guardrail path needs an OllamaClient. We pull it off the Planner;
+# both `Planner` and `UnifiedLLMClient` expose a `.chat()` compatible shim via the
+# `_ollama` attribute (see planner.py:509).
+ollama_client = getattr(planner, "_ollama", None)
+guardrail_model = task.agent.llm or "ollama/qwen3:8b"
+guardrail = _normalize_guardrail(task.guardrail, ollama_client=ollama_client, model=guardrail_model)
 
 attempts = 0
 verdict = "skipped"
+result: GuardrailResult | None = None
 while True:
     out = TaskOutput(
         task_id=task.task_id, agent_role=task.agent.role, raw=raw,
@@ -3347,7 +3839,7 @@ while True:
     if guardrail is None:
         verdict = "skipped"
         break
-    result: GuardrailResult = guardrail(out)
+    result = await _call_guardrail(guardrail, out)
     if result.passed:
         verdict = "pass"
         break
@@ -3357,22 +3849,25 @@ while True:
             f"Guardrail failed after {task.max_retries} retries for task "
             f"'{task.task_id}': {result.feedback}"
         )
-    # Retry: re-run planner with feedback appended to user message
-    messages.append({
-        "role": "user",
-        "content": f"Feedback: {result.feedback}\n\nBitte versuche es erneut.",
-    })
+    # Retry: re-invoke Planner with a retry-nudge synthesized as an extra
+    # ToolResult carrying the feedback. This keeps the Planner API stable.
+    retry_context = prior_results + [
+        ToolResult(
+            tool_name="guardrail_feedback",
+            content=f"Vorheriger Versuch wurde abgelehnt. Feedback: {result.feedback}. "
+                    f"Bitte erneut versuchen und die Kritik einarbeiten.",
+            is_error=False,
+        )
+    ]
     t0 = time.perf_counter()
-    response = await planner.formulate_response(
-        messages=messages, tools=all_tools, model=task.agent.llm, max_iter=task.agent.max_iter,
-    )
+    envelope = await planner.formulate_response(user_message, retry_context, working_memory)
     duration_ms = (time.perf_counter() - t0) * 1000.0
-    raw = getattr(response, "content", "") or ""
-    usage = getattr(response, "usage", None) or {
+    raw = getattr(envelope, "content", "") or ""
+    usage = _read_token_usage(planner) or {
         "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
     }
 
-# Attach verdict to the final output
+# Attach verdict to the final output (Pydantic frozen; use model_copy)
 return out.model_copy(update={"guardrail_verdict": verdict})
 ```
 
@@ -3409,21 +3904,22 @@ async def test_guardrail_pass_audited():
     agent = CrewAgent(role="writer", goal="write")
     task = CrewTask(description="x", expected_output="y", agent=agent,
                    guardrail=lambda o: GuardrailResult(passed=True, feedback=None))
-    crew = Crew(agents=[agent], tasks=[task])
 
     events: list = []
     def spy(name, **fields): events.append((name, fields))
 
+    from cognithor.core.observer import ResponseEnvelope
     mock_planner = MagicMock()
     mock_planner.formulate_response = AsyncMock(
-        return_value=MagicMock(content="ok", usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+        return_value=ResponseEnvelope(content="ok", directive=None),
     )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
 
     with patch("cognithor.crew.compiler.append_audit", side_effect=spy), \
          pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
         await crew.kickoff_async()
 
@@ -3457,52 +3953,115 @@ git commit -m "feat(crew): guardrail verdicts recorded in Hashline-Guard audit c
 
 ---
 
-### Task 31: Feature-4 integration test (versicherungs-vergleich with no_pii + custom)
+### Task 31: Feature-4 integration test (versicherungs-vergleich with no_pii + custom string guardrail)
 
 **Files:**
 - Create: `tests/test_crew/test_guardrails/test_versicherungs_integration.py`
 
-Spec §4.5: "Das `versicherungs-vergleich`-Template nutzt `no_pii()` und einen custom String-Guardrail ('keine Tarif-Empfehlung, nur Vergleich')."
+Spec §4.5 AC 5: "Das `versicherungs-vergleich`-Template nutzt `no_pii()` UND einen custom String-Guardrail ('keine Tarif-Empfehlung, nur Vergleich')." **Both** guardrails must be wired — the integration test asserts chain(no_pii, StringGuardrail) is present and functional.
 
-- [ ] **Step 1: Test**
+- [ ] **Step 1: Test — PII path + string-guardrail path**
 
 ```python
 # tests/test_crew/test_guardrails/test_versicherungs_integration.py
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 from cognithor.crew import Crew, CrewAgent, CrewTask
-from cognithor.crew.guardrails import chain, no_pii
+from cognithor.crew.guardrails import StringGuardrail, chain, no_pii
+from cognithor.crew.errors import GuardrailFailure
+from cognithor.core.observer import ResponseEnvelope
+
+
+def _mock_ollama_client(validator_verdict: dict) -> MagicMock:
+    """Build an OllamaClient-shaped mock returning a JSON-wrapped verdict."""
+    import json
+    client = MagicMock()
+    client.chat = AsyncMock(return_value={
+        "message": {"content": json.dumps(validator_verdict)},
+    })
+    return client
 
 
 @pytest.mark.asyncio
 async def test_versicherungs_crew_blocks_pii_output():
-    agent = CrewAgent(role="analyst", goal="compare PKV tariffs")
-    # Custom string guardrail (we mock the LLM that validates it)
+    agent = CrewAgent(role="analyst", goal="compare PKV tariffs",
+                     llm="ollama/qwen3:8b")
+    # Validator LLM (OllamaClient stand-in) passes every check — but no_pii runs first
+    ollama = _mock_ollama_client({"passed": True, "feedback": None})
+
+    neutral_rule = StringGuardrail(
+        "Output darf keine Tarif-Empfehlung enthalten, nur neutralen Vergleich",
+        llm_client=ollama,
+        model="ollama/qwen3:8b",
+    )
     task = CrewTask(
         description="Compare",
         expected_output="Tabular comparison",
         agent=agent,
-        guardrail=chain(no_pii()),
+        guardrail=chain(no_pii(), neutral_rule),
         max_retries=0,
     )
-    crew = Crew(agents=[agent], tasks=[task])
 
-    # Planner returns text with PII — guardrail must catch
     mock_planner = MagicMock()
+    mock_planner._ollama = ollama
     mock_planner.formulate_response = AsyncMock(
-        return_value=MagicMock(
+        return_value=ResponseEnvelope(
             content="Kontakt: sachbearbeiter@versicherer.de zur Beratung.",
-            usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            directive=None,
         )
     )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
 
-    from cognithor.crew.errors import GuardrailFailure
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
+
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
         with pytest.raises(GuardrailFailure, match="PII erkannt"):
+            await crew.kickoff_async()
+
+
+@pytest.mark.asyncio
+async def test_versicherungs_crew_blocks_tarif_recommendation():
+    """The string guardrail catches outputs that make recommendations (not just compare)."""
+    agent = CrewAgent(role="analyst", goal="compare PKV tariffs",
+                     llm="ollama/qwen3:8b")
+    # Validator LLM says "no, this is a recommendation, not a comparison"
+    ollama = _mock_ollama_client({
+        "passed": False,
+        "feedback": "Output enthält eine Empfehlung ('empfehle Tarif A'); nur Vergleich erlaubt.",
+    })
+
+    neutral_rule = StringGuardrail(
+        "Output darf keine Tarif-Empfehlung enthalten, nur neutralen Vergleich",
+        llm_client=ollama,
+        model="ollama/qwen3:8b",
+    )
+    task = CrewTask(
+        description="Compare",
+        expected_output="Tabular comparison",
+        agent=agent,
+        guardrail=chain(no_pii(), neutral_rule),
+        max_retries=0,
+    )
+
+    mock_planner = MagicMock()
+    mock_planner._ollama = ollama
+    # Clean output (no PII) that recommends a tariff — no_pii passes, string-guard fails
+    mock_planner.formulate_response = AsyncMock(
+        return_value=ResponseEnvelope(
+            content="Ich empfehle Tarif A fuer Ihre Situation.",
+            directive=None,
+        )
+    )
+    mock_registry = MagicMock()
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
+
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
+        with pytest.raises(GuardrailFailure, match="Empfehlung"):
             await crew.kickoff_async()
 ```
 
@@ -3534,6 +4093,8 @@ Inside the `[Unreleased]` section added in Task 20, append to the `### Added`:
   `GuardrailFailure`. Every verdict is recorded in the Hashline-Guard audit chain
   with PII-detection flag.
 ```
+
+The `### Breaking Changes\nNone.` block from Task 20 stays unchanged — Feature 4 is strictly additive.
 
 - [ ] **Step 2: Guardrails `__init__.py` docstring with usage example**
 
@@ -4027,22 +4588,38 @@ def test_cognithor_init_from_cli(tmp_path: Path):
 
 - [ ] **Step 3: Add subcommand dispatch (pattern depends on existing CLI)**
 
+Spec §3.2 requires the invocation shape `cognithor init --list-templates` (flag ON the `init` subcommand, not a separate subcommand). The `name` and `--template` args must be optional when `--list-templates` is set, and the list path short-circuits BEFORE validating the other args.
+
 If existing `__main__` uses argparse subparsers:
 
 ```python
 # Inside the existing argparse setup
 init_parser = subparsers.add_parser("init", help="Scaffold a new Crew project")
-init_parser.add_argument("name", help="Project name")
-init_parser.add_argument("--template", required=True, help="Template name")
+init_parser.add_argument("name", nargs="?", help="Project name (required unless --list-templates)")
+init_parser.add_argument("--template", help="Template name (required unless --list-templates)")
 init_parser.add_argument("--dir", dest="directory", type=Path, default=None)
 init_parser.add_argument("--lang", default="de", choices=["de", "en"])
-
-list_parser = subparsers.add_parser("init-list-templates",
-    help="List available templates")
+init_parser.add_argument(
+    "--list-templates",
+    action="store_true",
+    help="List available templates and exit",
+)
 
 # In the dispatch:
 if args.command == "init":
     from cognithor.crew.cli.init_cmd import run_init
+    from cognithor.crew.cli.list_templates_cmd import print_templates
+
+    # Short-circuit: --list-templates runs before any other arg validation
+    if args.list_templates:
+        return print_templates(lang=args.lang)
+
+    # Validate required args for the scaffold path
+    if not args.name or not args.template:
+        init_parser.error(
+            "`init <name> --template <tmpl>` is required unless `--list-templates` is set"
+        )
+
     try:
         return run_init(name=args.name, template=args.template,
                         directory=args.directory, lang=args.lang)
@@ -4051,7 +4628,7 @@ if args.command == "init":
         return 1
 ```
 
-Adapt to actual existing style. If `__main__` is click-based, use `@cli.command()` decorators.
+Adapt to actual existing style. If `__main__` is click-based, use a `@click.option("--list-templates", is_flag=True)` on the `init` command that short-circuits similarly.
 
 - [ ] **Step 4: Create `run_cmd.py` (used INSIDE scaffolded projects, not on the main CLI yet)**
 
@@ -4326,20 +4903,18 @@ from {{ project_name }}.crew import ResearchCrew
 
 @pytest.mark.asyncio
 async def test_crew_kickoff_with_mock_planner(monkeypatch):
-    crew = ResearchCrew().assemble()
+    from cognithor.core.observer import ResponseEnvelope
     mock_planner = MagicMock()
     mock_planner.formulate_response = AsyncMock(
-        return_value=MagicMock(
-            content="MOCK_OUTPUT",
-            usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-        )
+        return_value=ResponseEnvelope(content="MOCK_OUTPUT", directive=None),
     )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
 
-    monkeypatch.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
     monkeypatch.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
 
+    # The scaffolded ResearchCrew assembles with injected planner for testability
+    crew = ResearchCrew(planner=mock_planner).assemble()
     result = await crew.kickoff_async(inputs={"topic": "test"})
     assert result.raw == "MOCK_OUTPUT"
     assert len(result.tasks_output) == 2
@@ -4465,9 +5040,15 @@ Same structure as Task 39. Three agents: `intake`, `classifier`, `response_write
   - Tasks: `parse`, `classify`, `draft_reply` — each feeds context to the next
   - `tests/test_crew.py.jinja`: kickoff with mock planner returning 3 mock responses
 
-- [ ] **Step 11: Integration test**
+  **Ship all 8 files** (spec §3.4): `template.yaml`, `README.md.jinja.de` + `.en`, `pyproject.toml.jinja`, `.env.example`, `main.py.jinja`, `src/{{ project_name }}/__init__.py`, `src/{{ project_name }}/crew.py.jinja`, `config/agents.yaml.jinja`, `config/tasks.yaml.jinja`, `tests/test_crew.py.jinja`.
+
+- [ ] **Step 11: Integration test — three agents + all 8 files**
 
 ```python
+from pathlib import Path
+from cognithor.crew.cli.init_cmd import run_init
+
+
 def test_customer_support_template_renders(tmp_path: Path):
     project = tmp_path / "cs"
     run_init(name="cs", template="customer-support", directory=project, lang="de")
@@ -4482,6 +5063,25 @@ def test_customer_support_template_renders(tmp_path: Path):
         )
     ]
     assert len(agent_methods) == 3
+
+
+def test_customer_support_ships_all_required_files(tmp_path: Path):
+    """Spec §3.4: every template ships all 8 file groups."""
+    project = tmp_path / "cs"
+    run_init(name="cs", template="customer-support", directory=project, lang="de")
+    expected = [
+        project / "pyproject.toml",
+        project / ".env.example",
+        project / "main.py",
+        project / "src" / "cs" / "__init__.py",
+        project / "src" / "cs" / "crew.py",
+        project / "config" / "agents.yaml",
+        project / "config" / "tasks.yaml",
+        project / "tests" / "test_crew.py",
+        project / "README.md",
+    ]
+    for f in expected:
+        assert f.exists(), f"Missing: {f.relative_to(project)}"
 ```
 
 - [ ] **Step 12: Commit**
@@ -4501,13 +5101,39 @@ git commit -m "feat(crew): customer-support template (3-agent, sequential)"
 
 Spec §3.3.3: Code-Interpreter-Agent (with `allow_code_execution=True` in sandboxed mode) + Visualization-Agent. Uses the existing sandbox module.
 
-- [ ] **Step 1-10: Mirror Task 39/40 pattern**
+- [ ] **Step 1-10: Mirror Task 39/40 pattern, shipping all 8 files per spec §3.4**
   - `analyst`: role="Analyst", runs data-summarization via code-exec tool
   - `visualizer`: role="Visualizer", produces matplotlib chart spec
   - Tasks: `analyze` (consumes CSV path from inputs), `visualize` (consumes analyst output)
   - **Critical:** the `analyst` agent's `tools` list includes the existing sandbox code-exec tool (e.g. `python_sandbox`). Scaffolded tests mock the registry.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 11: Integration test — assert all 8 files + analyst has code-exec tool**
+
+```python
+from pathlib import Path
+from cognithor.crew.cli.init_cmd import run_init
+
+
+def test_data_analyst_ships_all_required_files(tmp_path: Path):
+    """Spec §3.4: every template ships all 8 file groups."""
+    project = tmp_path / "da"
+    run_init(name="da", template="data-analyst", directory=project, lang="de")
+    expected = [
+        project / "pyproject.toml",
+        project / ".env.example",
+        project / "main.py",
+        project / "src" / "da" / "__init__.py",
+        project / "src" / "da" / "crew.py",
+        project / "config" / "agents.yaml",
+        project / "config" / "tasks.yaml",
+        project / "tests" / "test_crew.py",
+        project / "README.md",
+    ]
+    for f in expected:
+        assert f.exists(), f"Missing: {f.relative_to(project)}"
+```
+
+- [ ] **Step 12: Commit**
 
 ```bash
 git add src/cognithor/crew/templates/data-analyst tests/test_crew/test_templates/test_data_analyst.py
@@ -4524,13 +5150,41 @@ git commit -m "feat(crew): data-analyst template (code-interpreter + viz)"
 
 Spec §3.3.4: Outline-Agent + Draft-Agent + Editor, hierarchical with `manager_llm="ollama/qwen3:32b"`.
 
-- [ ] **Step 1-10: Mirror pattern**
+- [ ] **Step 1-10: Mirror pattern, shipping all 8 files per spec §3.4**
   - `Crew(process=CrewProcess.HIERARCHICAL, manager_llm="ollama/qwen3:32b", ...)`
   - Three agents: `outliner`, `drafter`, `editor`
   - Tasks: `outline`, `draft`, `edit` — hierarchical process chooses order dynamically
   - Smoke test verifies `crew.process == HIERARCHICAL` and `manager_llm` is set
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 11: Integration test — all 8 files + hierarchical config**
+
+```python
+from pathlib import Path
+from cognithor.crew.cli.init_cmd import run_init
+
+
+def test_content_template_is_hierarchical_and_complete(tmp_path: Path):
+    project = tmp_path / "content"
+    run_init(name="content", template="content", directory=project, lang="de")
+    expected = [
+        project / "pyproject.toml",
+        project / ".env.example",
+        project / "main.py",
+        project / "src" / "content" / "__init__.py",
+        project / "src" / "content" / "crew.py",
+        project / "config" / "agents.yaml",
+        project / "config" / "tasks.yaml",
+        project / "tests" / "test_crew.py",
+        project / "README.md",
+    ]
+    for f in expected:
+        assert f.exists(), f"Missing: {f.relative_to(project)}"
+    crew_src = (project / "src" / "content" / "crew.py").read_text()
+    assert "HIERARCHICAL" in crew_src
+    assert "manager_llm" in crew_src
+```
+
+- [ ] **Step 12: Commit**
 
 ```bash
 git add src/cognithor/crew/templates/content tests/test_crew/test_templates/test_content.py
@@ -4542,34 +5196,98 @@ git commit -m "feat(crew): content template (3-agent, hierarchical)"
 ### Task 43: `versicherungs-vergleich` template (DACH-differentiator)
 
 **Files:**
-- Create: `src/cognithor/crew/templates/versicherungs-vergleich/*`
+- Create: `src/cognithor/crew/templates/versicherungs-vergleich/*` (all 8 files per spec §3.4, see below)
 - Create: `tests/test_crew/test_templates/test_versicherungs_vergleich.py`
 
 Spec §3.3.5: PKV/BU-Tarif-Vergleich. THREE agents: `Tarif-Researcher`, `Kunden-Profiler`, `Empfehlungs-Writer`. DSGVO-konform, **vollständig offline-fähig** (no external APIs). Includes explicit §34d-neutral guardrails.
 
+**Per spec §3.4 every template ships exactly these 8 files** (same contract as `research` in Task 39):
+1. `template.yaml`
+2. `README.md.jinja.de` and `README.md.jinja.en`
+3. `pyproject.toml.jinja`
+4. `.env.example`
+5. `main.py.jinja`
+6. `src/{{ project_name }}/__init__.py`
+7. `src/{{ project_name }}/crew.py.jinja`
+8. `config/agents.yaml.jinja` and `config/tasks.yaml.jinja`
+9. `tests/test_crew.py.jinja`
+
 - [ ] **Step 1-10: Mirror pattern, with extra care for the spec's DSGVO requirements**
   - `tools=[]` for all agents — NO external HTTP tools in default (spec §3.6)
-  - Writer task has guardrail: `chain(no_pii(), string_guardrail_neutral_language)` — the LLM-validated string guardrail ensures §34d-neutral wording ("Information, nicht Beratung")
+  - Writer task has guardrail: **`chain(no_pii(), StringGuardrail(...))`** — spec §4.5 AC 5 requires BOTH guardrails. The rule text: `"Output darf keine Tarif-Empfehlung enthalten, nur neutralen Vergleich"`.
   - `required_models` in `template.yaml`: only Ollama — the template REFUSES to run against cloud models
 
-- [ ] **Step 11: Integration test**
+**Crew.py.jinja snippet (shows both guardrails wired):**
 
 ```python
+# In the scaffolded versicherungs-vergleich crew.py:
+from cognithor.crew import Crew, CrewAgent, CrewTask
+from cognithor.crew.guardrails import StringGuardrail, chain, no_pii
+
+def build_crew(ollama_client):
+    writer = CrewAgent(role="Empfehlungs-Writer", goal="...", tools=[], llm="ollama/qwen3:8b")
+    # ... other agents ...
+
+    neutral_rule = StringGuardrail(
+        "Output darf keine Tarif-Empfehlung enthalten, nur neutralen Vergleich. "
+        "§34d-konform: Information, nicht Beratung.",
+        llm_client=ollama_client,
+        model="ollama/qwen3:8b",
+    )
+
+    write_task = CrewTask(
+        description="...",
+        expected_output="...",
+        agent=writer,
+        guardrail=chain(no_pii(), neutral_rule),
+        max_retries=2,
+    )
+    return Crew(agents=[...], tasks=[..., write_task])
+```
+
+- [ ] **Step 11: Integration tests — assert BOTH guardrails + all 8 files**
+
+```python
+from pathlib import Path
+from cognithor.crew.cli.init_cmd import run_init
+
+
 def test_versicherungs_template_is_offline_capable(tmp_path: Path):
     project = tmp_path / "pkv"
     run_init(name="pkv", template="versicherungs-vergleich", directory=project, lang="de")
     crew_file = (project / "src" / "pkv" / "crew.py").read_text()
     # No tools should be listed (offline-capable)
-    assert "tools=[]" in crew_file or "tools=[\"\"]" not in crew_file
-    # Guardrail reference must be present (either chain(no_pii...) or no_pii directly)
+    assert 'tools=[]' in crew_file
+    # Both guardrails wired (spec §4.5 AC 5)
     assert "no_pii" in crew_file
+    assert "StringGuardrail" in crew_file or "string_guardrail" in crew_file
+    assert "chain(" in crew_file
+
+
+def test_versicherungs_template_ships_all_required_files(tmp_path: Path):
+    """Spec §3.4: every template ships exactly 8 file groups."""
+    project = tmp_path / "pkv"
+    run_init(name="pkv", template="versicherungs-vergleich", directory=project, lang="de")
+    expected = [
+        project / "pyproject.toml",
+        project / ".env.example",
+        project / "main.py",
+        project / "src" / "pkv" / "__init__.py",
+        project / "src" / "pkv" / "crew.py",
+        project / "config" / "agents.yaml",
+        project / "config" / "tasks.yaml",
+        project / "tests" / "test_crew.py",
+        project / "README.md",
+    ]
+    for f in expected:
+        assert f.exists(), f"Missing: {f.relative_to(project)}"
 ```
 
 - [ ] **Step 12: Commit**
 
 ```bash
 git add src/cognithor/crew/templates/versicherungs-vergleich tests/test_crew/test_templates/test_versicherungs_vergleich.py
-git commit -m "feat(crew): versicherungs-vergleich template (DACH, offline-capable, PII-blocked)"
+git commit -m "feat(crew): versicherungs-vergleich template (DACH, offline-capable, no_pii + StringGuardrail)"
 ```
 
 ---
@@ -4582,7 +5300,7 @@ git commit -m "feat(crew): versicherungs-vergleich template (DACH, offline-capab
 - [ ] **Step 1: After Tasks 39-43, all 5 templates exist. Run:**
 
 ```bash
-python -m cognithor init-list-templates
+python -m cognithor init --list-templates
 ```
 
 Expected output:
@@ -4603,6 +5321,17 @@ def test_list_templates_cli_lists_all_five():
     from cognithor.crew.cli.list_templates_cmd import list_templates
     names = {t.name for t in list_templates()}
     assert names == {"research", "customer-support", "data-analyst", "content", "versicherungs-vergleich"}
+
+
+def test_list_templates_via_cli_subprocess():
+    """Full CLI invocation — must match spec §3.2 flag syntax."""
+    import subprocess, sys
+    result = subprocess.run(
+        [sys.executable, "-m", "cognithor", "init", "--list-templates"],
+        capture_output=True, text=True, check=True,
+    )
+    for name in ("research", "customer-support", "data-analyst", "content", "versicherungs-vergleich"):
+        assert name in result.stdout, f"Template '{name}' missing from CLI output"
 ```
 
 - [ ] **Step 3: Commit**
@@ -4676,9 +5405,11 @@ git commit -m "ci: scaffold every template + run its smoke tests"
   generates a runnable Crew project from Jinja2 templates. Templates: `research`,
   `customer-support`, `data-analyst`, `content`, `versicherungs-vergleich`
   (DACH-differentiator, fully offline-capable, §34d-neutral guardrails).
-  `cognithor init-list-templates` prints the catalog with DE/EN descriptions.
+  `cognithor init --list-templates` prints the catalog with DE/EN descriptions.
   CI scaffolds every template on every PR.
 ```
+
+`### Breaking Changes` stays `None.` — Feature 3 adds a new subcommand only.
 
 - [ ] **Step 2: Commit**
 
@@ -4694,7 +5425,81 @@ git commit -m "docs(crew): Feature-3 CHANGELOG entry"
 - **Task 47:** Run full `tests/test_crew/` suite, fix any flakes, enforce ≥ 89% coverage on `cognithor.crew` module. Add missing edge-case tests. Commit as `test(crew): coverage polish pass`.
 - **Task 48:** Ruff sweep across all new files. Commit as `style(crew): ruff + format sweep`.
 - **Task 49:** Mypy --strict sweep across `src/cognithor/crew`. Fix any new errors. Commit as `type(crew): mypy --strict clean`.
-- **Task 50:** Performance benchmark: `Crew.kickoff()` overhead vs direct Planner call per spec §8.5 (< 5% extra latency). Script: `scripts/bench_crew_overhead.py`. Record baseline in commit message.
+- **Task 50:** Performance benchmark — CI-enforced per spec §8.5 (< 5% overhead vs direct Planner call).
+
+  **Files:**
+  - Create: `tests/test_crew/test_performance.py` — `@pytest.mark.benchmark`-decorated test
+  - Modify: `.github/workflows/ci.yml` (or equivalent) — add a `pytest -m benchmark` step
+  - (Optional) Create: `scripts/bench_crew_overhead.py` — one-shot local benchmark that reuses the same harness
+
+  ```python
+  # tests/test_crew/test_performance.py
+  import asyncio
+  import time
+  from unittest.mock import AsyncMock, MagicMock
+  import pytest
+  from cognithor.crew import Crew, CrewAgent, CrewTask
+  from cognithor.core.observer import ResponseEnvelope
+
+
+  BUDGET_PERCENT = 5.0  # Spec §8.5 — Crew-Layer overhead must stay under 5%
+
+
+  @pytest.mark.benchmark
+  @pytest.mark.asyncio
+  async def test_crew_kickoff_overhead_under_5_percent():
+      """Measure Crew.kickoff_async() overhead vs a direct Planner.formulate_response()
+      call with identical payload. Both should take ~the same time because the Crew
+      compiler is a thin translation layer — spec §8.5 allows up to 5% overhead."""
+      # Fixed-latency fake Planner so the measurement is deterministic
+      async def fake_formulate(user_message, results, working_memory):
+          await asyncio.sleep(0.020)  # 20 ms — simulated LLM
+          return ResponseEnvelope(content="x", directive=None)
+
+      mock_planner = MagicMock()
+      mock_planner.formulate_response = AsyncMock(side_effect=fake_formulate)
+      mock_registry = MagicMock()
+      mock_registry.get_tools_for_role.return_value = []
+
+      agent = CrewAgent(role="x", goal="y")
+      task = CrewTask(description="z", expected_output="w", agent=agent)
+      crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
+
+      N = 50
+
+      # Baseline: direct planner calls
+      t0 = time.perf_counter()
+      for _ in range(N):
+          await mock_planner.formulate_response("z", [], None)
+      baseline_ms = (time.perf_counter() - t0) * 1000 / N
+
+      # Crew path
+      with pytest.MonkeyPatch().context() as mp:
+          mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
+          t0 = time.perf_counter()
+          for _ in range(N):
+              await crew.kickoff_async()
+          crew_ms = (time.perf_counter() - t0) * 1000 / N
+
+      overhead_percent = (crew_ms - baseline_ms) / baseline_ms * 100.0
+      print(f"baseline={baseline_ms:.3f}ms crew={crew_ms:.3f}ms overhead={overhead_percent:.2f}%")
+      assert overhead_percent < BUDGET_PERCENT, (
+          f"Crew-Layer overhead {overhead_percent:.2f}% exceeds spec §8.5 budget "
+          f"of {BUDGET_PERCENT}%"
+      )
+  ```
+
+  Register the `benchmark` marker in `pyproject.toml`:
+  ```toml
+  [tool.pytest.ini_options]
+  markers = ["benchmark: performance budget tests (spec §8.5)"]
+  ```
+
+  CI step:
+  ```yaml
+  - name: Performance benchmark (Crew-Layer overhead <5%)
+    run: python -m pytest tests/test_crew/test_performance.py -m benchmark -v
+  ```
 - **Task 51:** `docs/superpowers/specs/...` — update spec status to "implemented" at the top.
 - **Task 52:** Create README.md Highlights bullet for Crew-Layer + link to Feature-2 quickstart.
 
@@ -4854,12 +5659,13 @@ async def test_pkv_example_runs_with_mock_planner(monkeypatch):
     sys.path.insert(0, str(Path(__file__).parent))
     from main import build_crew  # the example exports build_crew()
 
+    from cognithor.core.observer import ResponseEnvelope
     mock_planner = MagicMock()
     mock_planner.formulate_response = AsyncMock(
-        return_value=MagicMock(content="MOCK", usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+        return_value=ResponseEnvelope(content="MOCK", directive=None),
     )
     mock_registry = MagicMock()
-    mock_registry.list_tool_names.return_value = []
+    mock_registry.get_tools_for_role.return_value = []
 
     monkeypatch.setattr("cognithor.crew.runtime.get_default_planner", lambda: mock_planner)
     monkeypatch.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
@@ -4997,18 +5803,56 @@ git commit -m "ci: exercise every quickstart example against mock Ollama"
 
 ---
 
-### Task 62: External-reader usability test — write a one-page checklist
+### Task 62: External-reader usability test — checklist + actual external run
 
 **Files:**
 - Create: `docs/quickstart/EXTERNAL_REVIEW_CHECKLIST.md`
+- Create: `docs/quickstart/EXTERNAL_REVIEW_RESULTS.md` (filled by the external reader)
 
-Spec §2.4 requires: "Ein externer Testleser ... schafft 00 → 01 in unter 15 Minuten ohne Rückfragen." Provide a checklist the project lead uses to record their own external-reader test:
+Spec §2.4 AND §12 AC 4 require that an **external testreader** (not the author) completes the checklist successfully — this is a real usability gate, not just a template. The PR opening step (Task 81) is blocked until `EXTERNAL_REVIEW_RESULTS.md` exists with a passing entry.
 
-- [ ] Timer from landing on `README.md` to first successful `crew.kickoff()`
-- [ ] Count of questions the reader asked
-- [ ] List of typos / confusions found
+- [ ] **Step 1: Create the checklist template**
 
-- [ ] **Step 1: Commit**
+```markdown
+# External-Reader Usability Checklist
+
+**Testreader requirements:**
+- Must NOT be the plan author
+- Must NOT have prior Cognithor Crew-Layer exposure
+- Starts from a fresh clone + no prior `~/.cognithor/` state
+
+## Timed milestones (start timer at `README.md`):
+- [ ] Reach `docs/quickstart/00-installation.md` landing page
+- [ ] Successfully install (`pip install cognithor==0.93.0.dev0` or `-e .`)
+- [ ] Scaffold the first template (`cognithor init my_first_crew --template research`)
+- [ ] Run the scaffolded crew successfully (`cognithor run`)
+- [ ] First `crew.kickoff()` returns a CrewOutput
+
+**Budget:** all five milestones complete within 15 minutes total, zero questions asked back to author.
+
+## Record
+- Total elapsed time: ___ minutes
+- Number of questions asked: ___
+- Typos / confusions found: (bulleted list)
+- Verdict: PASS / FAIL
+```
+
+- [ ] **Step 2: Obtain a real external run**
+
+The project lead identifies a non-author tester (e.g. a colleague, community member, or another developer), has them follow the checklist, and pastes their filled-in record into `EXTERNAL_REVIEW_RESULTS.md`. This is NOT optional — spec §12 AC 4 requires an actual passing entry.
+
+If no external reader is available before the PR 4 opens, the plan-lead must find one or defer the v0.93.0 release until the test completes.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/quickstart/EXTERNAL_REVIEW_CHECKLIST.md docs/quickstart/EXTERNAL_REVIEW_RESULTS.md
+git commit -m "docs(quickstart): external-reader usability checklist + results"
+```
+
+- [ ] **Step 4 (cross-reference — enforced at Task 81):**
+
+Task 81 (PR 4 open) has an explicit acceptance step: verify `EXTERNAL_REVIEW_RESULTS.md` contains a line `Verdict: PASS` before running `gh pr create`. Without a PASS entry, the PR open is blocked.
 
 ---
 
@@ -5058,6 +5902,8 @@ Spec §2.4 requires: "Ein externer Testleser ... schafft 00 → 01 in unter 15 M
   deployment, and next-steps. Every example runs in CI via
   `.github/workflows/quickstart-examples.yml`.
 ```
+
+`### Breaking Changes` stays `None.` — Feature 2 is docs + examples only.
 
 - [ ] **Step 2: Commit**
 
@@ -5485,93 +6331,169 @@ git commit -m "docs(integrations): site-integration spec for cognithor-site repo
   a new DACH-specific sevDesk REST connector (v1.0 Launch).
 ```
 
+`### Breaking Changes` stays `None.` — sevDesk is a brand-new additive connector.
+
 - **Task 76:** Full ruff sweep across Feature-7 files.
 - **Task 77:** Add `Tool-of-the-month` idea to `docs/integrations/BACKLOG.md` for post-v1.0.
 - **Task 78:** Commit final.
 
 ---
 
-# MERGE-PREP — Closeout Tasks (79-82)
+# MERGE-PREP — Per-PR Closeout Tasks (Restructured — 4-PR Split)
+
+Tasks 79-82 below are restructured: each PR has its own mini-closeout (regression + push + open + CI + merge), and only PR 4 carries the version bump + release.
 
 ---
 
-### Task 79: Full test suite + coverage + lint regression
+## Per-PR Closeout Template (applies to PRs 1, 2, 3)
 
-- [ ] **Step 1: Full regression**
+After each Feature block completes, run this mini-closeout BEFORE opening the PR. The merge is the final step; the version bump is **not** in scope for PRs 1-3.
 
 ```bash
-cd "D:/Jarvis/jarvis complete v20"
+# Step A: Full regression on the feature branch
 python -m pytest tests/ -x -q --cov=src/cognithor --cov-report=term-missing 2>&1 | tail -30
-```
+# Expected: all pass, cognithor.crew coverage ≥ 85%, total ≥ 89%
 
-Expected: ALL pass, `cognithor.crew` coverage ≥ 85%, total coverage ≥ 89%.
-
-- [ ] **Step 2: Ruff**
-
-```bash
+# Step B: Ruff (both check and format-check — see feedback memory)
 python -m ruff check .
 python -m ruff format --check .
-```
 
-Both clean.
-
-- [ ] **Step 3: Mypy strict on new code**
-
-```bash
+# Step C: Mypy --strict on new code
 python -m mypy --strict src/cognithor/crew
-```
 
-- [ ] **Step 4: Commit any fixes**
+# Step D: Push + open PR (DO NOT chain with merge via &&)
+git push -u origin <feature-branch-name>
+gh pr create --title "<PR title>" --body "..."
 
----
-
-### Task 80: CHANGELOG `[Unreleased]` → `[0.93.0]` bump
-
-**Files:**
-- Modify: `CHANGELOG.md`
-- Modify: `pyproject.toml` (version 0.92.7 → 0.93.0)
-- Modify: `src/cognithor/__init__.py` (`__version__`)
-- Modify: `flutter_app/pubspec.yaml` (version)
-- Modify: `flutter_app/lib/providers/connection_provider.dart` (`kFrontendVersion`)
-
-The Crew-Layer is a MINOR bump (additive, no breaking changes). Date the `[0.93.0]` section with today's date.
-
-- [ ] **Step 1: Version updates across all 5 locations**
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add CHANGELOG.md pyproject.toml src/cognithor/__init__.py flutter_app/pubspec.yaml flutter_app/lib/providers/connection_provider.dart
-git commit -m "chore(release): bump to 0.93.0 — Crew-Layer v1.0"
+# Step E: Wait CI green, then merge. NEVER chain merge + cleanup via &&
+#        (per feedback memory — two branch-closure incidents this session).
+gh pr merge <PR-number> --squash
+# Cleanup runs in a SEPARATE command only after merge is confirmed.
 ```
 
 ---
 
-### Task 81: Push branch + open PR
+### Task 79: PR 1 — Feature 1 (Crew-Layer Core) merge-prep
 
-- [ ] **Step 1: Push**
+**Branch:** `feat/cognithor-crew-v1-f1`
 
-```bash
-git push -u origin feat/cognithor-crew-v1
-```
+- [ ] **Step 1:** Run per-PR closeout template Steps A-C on tasks 1-20.
+- [ ] **Step 2:** Push:
+  ```bash
+  git push -u origin feat/cognithor-crew-v1-f1
+  ```
+- [ ] **Step 3:** Open PR:
+  ```bash
+  gh pr create \
+    --title "feat(crew): Crew-Layer core (v1.0 adoption — Feature 1)" \
+    --body "$(cat <<'EOF'
+## Summary
+- New `cognithor.crew` package: `CrewAgent`, `CrewTask`, `Crew`, `CrewProcess`, YAML loader, decorators
+- Routes through existing PGE-Trinity (`Planner.formulate_response`) — no bypass
+- Audit events via `cognithor.security.audit.AuditTrail.record_event`
+- Idempotent kickoff via `create_lock()` from `cognithor.core.distributed_lock`
+- CHANGELOG `[Unreleased]` block present; no version bump in this PR
 
-- [ ] **Step 2: Open PR via GitHub API**
+Spec: `docs/superpowers/specs/2026-04-23-cognithor-crew-v1-adoption.md` §1
 
-Use the same pattern as the video-input PR (PR #140). Title:
+## Test plan
+- [ ] `pytest tests/test_crew/ -v` all pass
+- [ ] Coverage on `src/cognithor/crew/` ≥ 85%
+- [ ] No public-API exports from existing modules changed
+EOF
+)"
+  ```
+- [ ] **Step 4:** Wait all CI jobs green (CI + existing pipelines). Merge. Run cleanup as a **separate** command.
 
-```
-feat(crew): Cognithor Crew-Layer v1.0 adoption — Features 1, 4, 3, 2, 7
-```
+---
 
-Body: summary of scope, spec reference, sign-off checklist from spec §12.
+### Task 79b: PR 2 — Feature 4 (Guardrails) merge-prep
 
-- [ ] **Step 3: Wait for all CI jobs green** (CI + scaffold-templates + quickstart-examples + integrations-catalog + Windows Installer + Mobile + Linux .deb + Flutter Web + Release Build)
+**Branch:** `feat/cognithor-crew-v1-f4` (cut from `main` after PR 1 merges).
+
+- [ ] **Step 1:** Create branch from updated `main`:
+  ```bash
+  git checkout main && git pull
+  git checkout -b feat/cognithor-crew-v1-f4
+  # Cherry-pick / rebase the 12 commits from tasks 21-32 onto this branch
+  ```
+- [ ] **Step 2:** Run per-PR closeout Steps A-C.
+- [ ] **Step 3:** Push + open PR. Title: `feat(crew): Task-Level Guardrails (v1.0 — Feature 4)`.
+- [ ] **Step 4:** Wait CI green. Merge. Cleanup separately.
+
+---
+
+### Task 79c: PR 3 — Feature 3 (CLI + Templates) merge-prep
+
+**Branch:** `feat/cognithor-crew-v1-f3` (cut from `main` after PR 2 merges).
+
+- [ ] **Step 1:** Branch from updated `main`, port the 20 commits from tasks 33-52.
+- [ ] **Step 2:** Run per-PR closeout Steps A-C. **Additionally** run the scaffold-templates CI check locally:
+  ```bash
+  # Simulate .github/workflows/scaffold-templates.yml
+  for t in research customer-support data-analyst content versicherungs-vergleich; do
+      mkdir -p /tmp/t_"$t" && cd /tmp/t_"$t"
+      python -m cognithor init test --template "$t" --lang de && \
+      cd test && pip install -e ".[dev]" && python -m pytest tests/
+  done
+  ```
+- [ ] **Step 3:** Push + open PR. Title: `feat(crew): init CLI + 5 first-party templates (v1.0 — Feature 3)`.
+- [ ] **Step 4:** Wait CI green. Merge. Cleanup separately.
+
+---
+
+### Task 80: PR 4 — Features 2 + 7 + version bump + release prep
+
+**Branch:** `feat/cognithor-crew-v1-f2-f7` (cut from `main` after PR 3 merges). This is the ONLY PR that bumps the version.
+
+**Files to modify in this PR (on top of tasks 53-78 commits):**
+- `CHANGELOG.md`: `[Unreleased]` → `[0.93.0]` — consolidate all feature entries under the dated 0.93.0 section
+- `pyproject.toml`: `0.92.7` → `0.93.0`
+- `src/cognithor/__init__.py`: `__version__ = "0.93.0"`
+- `flutter_app/pubspec.yaml`: version
+- `flutter_app/lib/providers/connection_provider.dart`: `kFrontendVersion`
+
+The Crew-Layer is a MINOR bump (additive, no breaking changes — each feature's CHANGELOG already carries `### Breaking Changes: None.`). Date the `[0.93.0]` section with the merge day.
+
+- [ ] **Step 1:** Branch from updated `main`, port tasks 53-78 commits.
+- [ ] **Step 2:** Run per-PR closeout Steps A-C.
+- [ ] **Step 3:** **Verify external-reader gate (Task 62):**
+  ```bash
+  grep -q "Verdict: PASS" docs/quickstart/EXTERNAL_REVIEW_RESULTS.md || {
+    echo "BLOCKED: EXTERNAL_REVIEW_RESULTS.md has no PASS verdict — spec §12 AC 4"
+    exit 1
+  }
+  ```
+  This MUST pass before continuing. If no external reader has completed the checklist, find one.
+- [ ] **Step 4:** Apply the 5-file version bump. Commit:
+  ```bash
+  git add CHANGELOG.md pyproject.toml src/cognithor/__init__.py \
+          flutter_app/pubspec.yaml flutter_app/lib/providers/connection_provider.dart
+  git commit -m "chore(release): bump to 0.93.0 — Crew-Layer v1.0"
+  ```
+- [ ] **Step 5:** Push + open PR. Title: `feat(crew): Quickstart + Integrations + v0.93.0 release (v1.0 — Features 2, 7)`. The PR body references the three earlier merged PRs and the spec §12 sign-off checklist.
+- [ ] **Step 6:** Wait ALL CI jobs green (CI + scaffold-templates + quickstart-examples + integrations-catalog + Windows Installer + Mobile + Linux .deb + Flutter Web + Release Build + performance-benchmark).
+
+---
+
+### Task 81: PR 4 — PR open gate (external-reader pass required)
+
+Before `gh pr create` runs in Task 80 Step 5, the PR-open gate (spec §12 AC 4) is enforced via the grep in Task 80 Step 3. If that grep fails, Task 80 aborts and we do not open the PR.
+
+This task exists as an explicit acceptance step to make the external-reader dependency first-class rather than a footnote.
+
+- [ ] `docs/quickstart/EXTERNAL_REVIEW_RESULTS.md` contains `Verdict: PASS`
+- [ ] At least one named external tester
+- [ ] Total elapsed time ≤ 15 minutes recorded in the results file
+- [ ] Zero questions asked back to the author recorded in the results file
+
+If any of these fail, the PR is NOT opened and the plan lead finds another external reader.
 
 ---
 
 ### Task 82: Post-merge release `v0.93.0`
 
-(This task runs in a SEPARATE session/turn after the PR is green and merged — per the feedback memory "never chain merge + cleanup via &&".)
+(This task runs in a SEPARATE session/turn after PR 4 is green and merged — per the feedback memory "never chain merge + cleanup via &&". Cleanup runs after merge confirmation.)
 
 - [ ] **Step 1: Tag + push**
 
@@ -5586,6 +6508,16 @@ git push origin v0.93.0
 - [ ] **Step 3: Manually trigger `publish.yml` for PyPI**
 
 - [ ] **Step 4: Verify PyPI: `pip install cognithor==0.93.0`**
+
+- [ ] **Step 5: Cross-repo site deployment (Spec §7.2.1 / §12 AC 7)**
+
+The `cognithor.ai/integrations` page lives in the separate `cognithor-site` (Vercel) repo. Open a site-repo PR that:
+
+1. Fetches `docs/integrations/catalog.json` from `main` at build time (Octokit, same pattern as the pack fetch).
+2. Renders a category-grouped integration grid with a dedicated DACH section for `dach_specific: true` entries.
+3. Deploys to Vercel.
+
+This site PR is **not** in the Cognithor repo's scope but is a **hard gate** on spec §12 AC 7. Log its PR number + merge timestamp in the release notes.
 
 ---
 
