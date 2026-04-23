@@ -409,6 +409,31 @@ class TestConfigRoutes:
         assert result["results"][0]["status"] == "skipped"
 
     @pytest.mark.asyncio
+    async def test_language_change_triggers_prompt_reload(
+        self, registered_app: FakeApp, gateway: MagicMock
+    ) -> None:
+        """Issue #136: changing language must reload the planner prompts too —
+        otherwise the planner keeps its cached German system prompt and the LLM
+        keeps answering in German even after the user switches to English."""
+        handler = registered_app.routes["PATCH /api/v1/config"]
+        await handler(updates={"language": "en"})
+        gateway.reload_components.assert_called_once()
+        kwargs = gateway.reload_components.call_args.kwargs
+        assert kwargs.get("config") is True
+        assert kwargs.get("prompts") is True
+
+    @pytest.mark.asyncio
+    async def test_non_language_update_does_not_reload_prompts(
+        self, registered_app: FakeApp, gateway: MagicMock
+    ) -> None:
+        """Updates that don't touch `language` must NOT pay the reload_prompts cost."""
+        handler = registered_app.routes["PATCH /api/v1/config"]
+        await handler(updates={"owner_name": "Tester"})
+        gateway.reload_components.assert_called_once()
+        kwargs = gateway.reload_components.call_args.kwargs
+        assert kwargs.get("prompts") is not True
+
+    @pytest.mark.asyncio
     async def test_config_reload(self, registered_app: FakeApp, gateway: MagicMock) -> None:
         handler = registered_app.routes["POST /api/v1/config/reload"]
         result = await handler()

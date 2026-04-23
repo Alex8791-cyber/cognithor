@@ -742,9 +742,15 @@ def _register_config_routes(
                 log.error("config_update_key_failed", key=key, error=str(exc))
                 results.append({"key": key, "status": "error", "error": "Ungueltige Konfiguration"})
         config_manager.save()
-        # Trigger live-reload of runtime components
+        # Trigger live-reload of runtime components.
+        # Language changes must also reload the planner's cached system prompts
+        # (issue #136) — otherwise the planner keeps the German preset it
+        # loaded at startup and the LLM keeps answering in German.
         if gateway is not None and hasattr(gateway, "reload_components"):
-            gateway.reload_components(config=True)
+            gateway.reload_components(
+                config=True,
+                prompts="language" in updates,
+            )
         # Sync backend i18n locale when language changes (#33)
         if "language" in updates:
             try:
