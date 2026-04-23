@@ -17,24 +17,25 @@ Per spec §9:
 1. **Feature 1 (Tasks 1-20)** — Crew-Layer core (foundation for everything)
 2. **Feature 4 (Tasks 21-32)** — Guardrails (builds on Feature 1)
 3. **Feature 3 (Tasks 33-52)** — `cognithor init` + Templates (uses Features 1 + 4)
-4. **Feature 2 (Tasks 53-66)** — Quickstart docs (documents 1 + 3 + 4)
-5. **Feature 7 (Tasks 67-78)** — Integrations catalog (parallel-safe)
-6. **Final integration + PR prep (Tasks 79-82)**
+4. **Feature 7 (Tasks 67-78)** — Integrations catalog (parallel-safe with Feature 2; code-only so it ships BEFORE docs)
+5. **Feature 2 (Tasks 53-66)** — Quickstart docs (documents 1 + 3 + 4 + 7)
+6. **Final integration + PR prep (Tasks 79-82)** — split: 79 / 79b / 79c / 80a / 80b / 81 / 82
 
 Features 5 (Trace-UI) and 6 (Flows) are explicitly out of plan scope — those are v1.x per spec §5.6 and §6.6.
 
 ---
 
-## PR Strategy (Four Sequential PRs)
+## PR Strategy (Five Sequential PRs)
 
-The 82 tasks ship as **four sequential PRs against `main`**, not one mega-PR. This keeps each review digestible and lets us ship incrementally while still gating v0.93.0 on the final feature.
+The 82 tasks ship as **five sequential PRs against `main`**, not one mega-PR. This keeps each review digestible and lets us ship incrementally while still gating v0.93.0 on the final PR. The final docs-only PR is split from the integrations-catalog PR because (a) doc review has different reviewers than code review, (b) docs benefit from preview builds, and (c) keeping the integrations/sevDesk-connector PR small and shippable lets it land before the release-blocking docs review finishes.
 
 | PR | Feature | Tasks | Branch | Merge Target | Release? |
 |----|---------|-------|--------|--------------|----------|
 | **PR 1** | Feature 1 — Crew-Layer Core | 1-20 | `feat/cognithor-crew-v1-f1` | `main` | No |
 | **PR 2** | Feature 4 — Guardrails | 21-32 | `feat/cognithor-crew-v1-f4` | `main` | No |
 | **PR 3** | Feature 3 — CLI + Templates | 33-52 | `feat/cognithor-crew-v1-f3` | `main` | No |
-| **PR 4** | Features 2 + 7 — Quickstart + Integrations | 53-78 | `feat/cognithor-crew-v1-f2-f7` | `main` | **Yes — v0.93.0** |
+| **PR 4a** | Feature 7 — Integrations Catalog + sevDesk connector (code + tests) | 67-78 | `feat/cognithor-crew-v1-f7` | `main` | No |
+| **PR 4b** | Feature 2 — 7-page Quickstart Docs + version bump | 53-66 | `feat/cognithor-crew-v1-f2` | `main` | **Yes — v0.93.0** |
 
 **Branch strategy:** Each PR is its own feature branch cut from `main`. After each PR merges:
 
@@ -45,7 +46,7 @@ git checkout -b feat/cognithor-crew-v1-fN   # next feature's branch
 
 No long-lived staging branch. If PR N's tasks depend on PR N-1 types, PR N-1 must be merged first — this is a hard dependency, not optional.
 
-**Per-PR closeout sequence (applies to PRs 1, 2, 3):**
+**Per-PR closeout sequence (applies to PRs 1, 2, 3, 4a):**
 1. Full regression on the feature branch (`pytest tests/ -x -q --cov=src/cognithor`)
 2. Ruff + Ruff-format check clean
 3. Mypy --strict clean on new code
@@ -53,10 +54,11 @@ No long-lived staging branch. If PR N's tasks depend on PR N-1 types, PR N-1 mus
 5. Open PR, wait all CI green, merge into `main`
 6. **Do NOT** chain merge + cleanup via `&&` (per feedback memory — this has caused two branch-closure incidents)
 
-**PR 4 closeout adds:**
-7. CHANGELOG `[Unreleased]` → `[0.93.0]` bump (all feature entries consolidated)
+**PR 4b (docs + release) closeout adds:**
+7. CHANGELOG `[Unreleased]` → `[0.93.0]` bump (all feature entries consolidated from PRs 1-4a)
 8. Version bump across 5 locations (see Task 80)
-9. Merge PR 4 → tag `v0.93.0` → release pipeline runs → PyPI publish
+9. External-reader usability pass verified (spec §12 AC 4 — Task 62)
+10. Merge PR 4b → open cognithor-site PR → site-PR merges → tag `v0.93.0` → release pipeline runs → PyPI publish
 
 PR-specific merge-prep task groups are spelled out at the end of each feature block (see "Tasks 79-82 Restructured — Per-PR Merge-Prep" at the bottom of the plan).
 
@@ -248,10 +250,46 @@ Add minimal placeholders that the tests will replace:
 
 ```python
 # src/cognithor/crew/errors.py
-class CrewError(Exception): ...
-class CrewCompilationError(CrewError): ...
-class ToolNotFoundError(CrewError): ...
-class GuardrailFailure(CrewError): ...
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+class CrewError(Exception):
+    """Base class for every Crew-Layer error."""
+
+
+class CrewCompilationError(CrewError):
+    """Raised when the Compiler cannot translate a Crew into PGE inputs."""
+
+
+class ToolNotFoundError(CrewError):
+    """Raised when an agent references a tool the registry does not expose."""
+
+
+@dataclass
+class GuardrailFailure(CrewError):
+    """Raised when a guardrail rejects output after exhausting retries.
+
+    The message says "after N attempt(s)" where N is the actual number of
+    attempts made (initial try + retries). Avoids the "max_retries" off-by-one
+    surprise where max_retries=2 meant 3 attempts.
+    """
+
+    task_id: str
+    guardrail_name: str
+    attempts: int
+    reason: str
+
+    def __str__(self) -> str:
+        return (
+            f"Guardrail '{self.guardrail_name}' rejected output from task "
+            f"'{self.task_id}' after {self.attempts} attempt(s): {self.reason}"
+        )
+
+    def __post_init__(self) -> None:
+        # Keep Exception.args in sync so stack traces show a useful repr.
+        super().__init__(str(self))
 ```
 
 ```python
@@ -1160,6 +1198,33 @@ def execute_task(
     )
 
 
+# Guardrails land in Feature 4 (PR 2). Between PR 1 (this file) shipping and
+# PR 2 landing on the user's install, a CrewTask with `guardrail=<anything>`
+# would silently do nothing — the user gets no safety they expected. Guard
+# against that foot-gun by probing the guardrails module at import time and
+# emitting a UserWarning if a task declares a guardrail on a version that
+# can't execute it. Removed in Task 21 when the real apply path lands.
+try:
+    from cognithor.crew.guardrails import base as _guardrails_base  # noqa: F401
+    _guardrails_available = True
+except ImportError:
+    _guardrails_available = False
+
+
+def _warn_if_guardrail_silently_ignored(task: CrewTask) -> None:
+    """PR 1 → PR 2 bridge guard. Removed in Task 21."""
+    import warnings
+    if task.guardrail is not None and not _guardrails_available:
+        warnings.warn(
+            f"CrewTask '{task.task_id}' has a guardrail but "
+            "cognithor.crew.guardrails is not available in this release. "
+            "The guardrail will be IGNORED. Upgrade to cognithor>=0.93.1 "
+            "(or install via `pip install cognithor[all]`) to enable guardrails.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
 def compile_and_run_sync(
     agents: list[CrewAgent],
     tasks: list[CrewTask],
@@ -1180,6 +1245,7 @@ def compile_and_run_sync(
     trace_id = _uuid.uuid4().hex
     outputs: list[TaskOutput] = []
     for t in ordered:
+        _warn_if_guardrail_silently_ignored(t)  # PR 1 → PR 2 bridge guard
         out = execute_task(t, context=outputs, inputs=inputs, registry=registry)
         outputs.append(out)
     return CrewOutput(raw=outputs[-1].raw, tasks_output=outputs, trace_id=trace_id)
@@ -1334,6 +1400,10 @@ async def compile_and_run_async(agents, tasks, process, inputs, registry):
 
     trace_id = _uuid.uuid4().hex
     outputs: list[TaskOutput] = []
+    # PR 1 → PR 2 bridge: warn on any silently-ignored guardrail before entering
+    # the fan-out loop (single pass; warnings filter dedupes by call site).
+    for t in ordered:
+        _warn_if_guardrail_silently_ignored(t)
     i = 0
     while i < len(ordered):
         # Collect a fan-out group: consecutive tasks with async_execution=True
@@ -1595,7 +1665,12 @@ async def test_execute_task_passes_context_as_prior_tool_results():
 
 @pytest.mark.asyncio
 async def test_execute_task_token_usage_from_cost_tracker():
-    """Token usage is read from an optional CostTracker sidecar, not from the envelope."""
+    """Token usage is read from the Planner's CostTracker sidecar, not from the envelope.
+
+    The real CostTracker.last_call() returns a CostRecord with
+    `input_tokens`/`output_tokens` attributes; the Crew-Layer maps those to
+    prompt_tokens/completion_tokens/total_tokens for TokenUsageDict.
+    """
     agent = CrewAgent(role="writer", goal="write")
     task = CrewTask(description="x", expected_output="y", agent=agent)
 
@@ -1603,12 +1678,12 @@ async def test_execute_task_token_usage_from_cost_tracker():
     mock_planner.formulate_response = AsyncMock(
         return_value=ResponseEnvelope(content="ok", directive=None),
     )
-    # Planner has a _cost_tracker attribute; we stub a "last call" helper the
-    # Crew-Layer probes. See cognithor.core.planner._record_cost.
+    # CostRecord-shaped sidecar — matches the real
+    # cognithor.models.CostRecord fields (input_tokens, output_tokens).
+    from types import SimpleNamespace
+    record = SimpleNamespace(input_tokens=42, output_tokens=7)
     tracker = MagicMock()
-    tracker.last_call.return_value = {
-        "prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49,
-    }
+    tracker.last_call.return_value = record
     mock_planner._cost_tracker = tracker
     mock_registry = MagicMock()
     mock_registry.get_tools_for_role.return_value = []
@@ -1616,7 +1691,9 @@ async def test_execute_task_token_usage_from_cost_tracker():
     out = await execute_task_async(
         task, context=[], inputs=None, registry=mock_registry, planner=mock_planner,
     )
-    assert out.token_usage == {"prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49}
+    assert out.token_usage == {
+        "prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49,
+    }
 ```
 
 - [ ] **Step 3: Implement real `execute_task_async` in `compiler.py`**
@@ -1677,31 +1754,46 @@ async def execute_task_async(
 
     raw = getattr(envelope, "content", "") or ""
     # Token usage via the Planner's cost tracker (if available). The tracker is
-    # optional — fall back to zeros if not wired. Integration with the real
-    # `cognithor.observability.cost_tracker.CostTracker` lands in Step 5 if the
-    # existing tracker does not expose `.last_call()`; in that case the Crew-Layer
-    # ships its own tiny helper that intercepts the Ollama response dict.
-    usage = _read_token_usage(planner) or {
-        "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
-    }
+    # optional — fall back to zeros if not wired. Real CostTracker API scout
+    # (confirmed 2026-04-24 against `src/cognithor/telemetry/cost_tracker.py`):
+    #
+    #   class CostTracker:
+    #       def record_llm_call(self, model, input_tokens, output_tokens,
+    #                           session_id="", agent_name="") -> CostRecord
+    #       def get_session_cost(self, session_id: str) -> float
+    #       def get_agent_costs(self, days=1) -> dict[str, float]
+    #       # NO `last_call()` method exists today.
+    #
+    # Planner calls `self._cost_tracker.record_llm_call(...)` inside
+    # `_record_cost()` at `planner.py:615` — the CostRecord is returned but
+    # the Planner discards it. To expose the last call's token counts to the
+    # Crew-Layer without plumbing the CostRecord through ResponseEnvelope, we
+    # add a tiny additive helper (`last_call()`) to CostTracker in Step 5 —
+    # a non-breaking read-only accessor backed by a single `self._last_record`
+    # attribute set inside `record_llm_call()`. The duck-typed probe below
+    # works correctly both with and without that helper: if absent, we return
+    # None and upstream defaults to zeros.
+    usage = _read_token_usage(planner) or TokenUsageDict(
+        prompt_tokens=0, completion_tokens=0, total_tokens=0,
+    )
 
     return TaskOutput(
         task_id=task.task_id,
         agent_role=task.agent.role,
         raw=raw,
         duration_ms=duration_ms,
-        token_usage=usage,  # type: ignore[arg-type]
+        token_usage=usage,
     )
 
 
-def _read_token_usage(planner: Any) -> dict | None:
+def _read_token_usage(planner: Any) -> TokenUsageDict | None:
     """Pull the last-call token count from the planner's cost tracker.
 
-    The real `cognithor.core.planner.Planner` records costs via its
-    `_cost_tracker.record_llm_call(...)` in `_record_cost()`. We probe the
-    tracker through a duck-typed `last_call()` method. If the project's real
-    `CostTracker` class does not expose `.last_call()`, Step 5 of this task
-    adds it as a tiny read-only helper (non-breaking).
+    Step 5 of this task adds a `last_call() -> CostRecord | None` method to
+    `cognithor.telemetry.cost_tracker.CostTracker` (additive, non-breaking).
+    This probe gracefully degrades when that method is missing:
+    returns None and upstream defaults to zeros, so the Crew-Layer still
+    functions against an older CostTracker build.
     """
     tracker = getattr(planner, "_cost_tracker", None)
     if tracker is None:
@@ -1710,9 +1802,20 @@ def _read_token_usage(planner: Any) -> dict | None:
     if not callable(last):
         return None
     try:
-        return last()  # type: ignore[no-any-return]
+        record = last()
     except Exception:
         return None
+    if record is None:
+        return None
+    # CostRecord is a Pydantic model with input_tokens / output_tokens fields.
+    # Duck-type read to stay compatible with any future record-shape changes.
+    input_tokens = int(getattr(record, "input_tokens", 0))
+    output_tokens = int(getattr(record, "output_tokens", 0))
+    return TokenUsageDict(
+        prompt_tokens=input_tokens,
+        completion_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
+    )
 
 
 def execute_task(
@@ -1799,7 +1902,9 @@ class Crew(BaseModel):
         )
 ```
 
-Extend `src/cognithor/crew/runtime.py` from Task 8 with the Planner factory:
+Extend `src/cognithor/crew/runtime.py` from Task 8 with the Planner factory.
+
+**Async-safety:** Planner construction reads config, opens an Ollama HTTP client, and initializes the model router — all of which can take tens of milliseconds. Holding a `threading.Lock()` across that work blocks the asyncio event loop when `kickoff_async` is the first call. Build the candidate OUTSIDE the lock; the lock only guards the swap-in sentinel. This is the standard "double-checked-lock with pre-built candidate" pattern — safe because `Planner.__init__` is pure setup (no mutation of shared state) so two parallel builds are harmless, and only one survives the lock.
 
 ```python
 # Appended to runtime.py
@@ -1813,28 +1918,85 @@ def get_default_planner() -> Any:
     No auto-discovery: we always build a fresh Planner from config for
     standalone Crew scripts. Embedded callers (Gateway, tests) pass a live
     Planner to `Crew(planner=...)` instead of relying on this factory.
+
+    Async-safe: the expensive construction happens OUTSIDE the threading.Lock,
+    so this function never blocks an async event loop for meaningful time.
+    The lock guards only the final sentinel swap.
     """
     global _planner_singleton
+    # Fast path — no lock needed once the singleton exists. Plain attribute
+    # read is atomic in CPython.
+    if _planner_singleton is not None:
+        return _planner_singleton
+
+    # Build the candidate OUTSIDE the lock. If two threads / two coroutines
+    # race here, both build a Planner — fine, they're pure constructors — and
+    # the second one is GC'd after the sentinel check below.
+    from cognithor.config import load_config
+    from cognithor.core.model_router import ModelRouter, OllamaClient
+    from cognithor.core.planner import Planner
+
+    cfg = load_config()
+    ollama = OllamaClient(cfg)
+    router = ModelRouter(cfg, ollama)
+    candidate = Planner(cfg, ollama, router)
+
+    # Swap-in under lock; discard the candidate if another thread beat us.
     with _planner_lock:
-        if _planner_singleton is not None:
-            return _planner_singleton
-
-        from cognithor.config import load_config
-        from cognithor.core.model_router import ModelRouter, OllamaClient
-        from cognithor.core.planner import Planner
-
-        cfg = load_config()
-        ollama = OllamaClient(cfg)
-        router = ModelRouter(cfg, ollama)
-        _planner_singleton = Planner(cfg, ollama, router)
+        if _planner_singleton is None:
+            _planner_singleton = candidate
         return _planner_singleton
 ```
 
-- [ ] **Step 5: If `CostTracker` lacks `.last_call()`, add it**
+- [ ] **Step 5: Add additive `last_call()` helper to the real CostTracker**
 
-Scout `src/cognithor/observability/cost_tracker.py` (or wherever `CostTracker` lives — grep for `class CostTracker` / `record_llm_call`). Add a tiny read-only method that returns the token counts from the most recent `record_llm_call()` invocation. This is additive — no caller uses it, no tests break.
+**Scouted (2026-04-24):** `class CostTracker` lives at `src/cognithor/telemetry/cost_tracker.py`. Exposed methods: `record_llm_call() -> CostRecord`, `get_session_cost()`, `get_daily_cost()`, `get_monthly_cost()`, `get_agent_costs()`, `check_budget()`, `check_agent_budget()`, `get_cost_report()`, `get_budget_info()`, `close()`. **No `last_call()` method.** `record_llm_call` returns the `CostRecord` but the Planner's `_record_cost()` discards the return value.
 
-If the scout shows the tracker cannot be extended (e.g. it's in a frozen module), the Crew-Layer instead wraps the planner's `ollama` client with a probe that records the last response's `prompt_eval_count` / `eval_count` into a module-level dict. Document the chosen approach in the commit body.
+Apply a small additive patch — zero behavior change for existing callers, new accessor for the Crew-Layer:
+
+```python
+# src/cognithor/telemetry/cost_tracker.py
+class CostTracker:
+    def __init__(self, db_path: str, daily_budget: float = 0.0, monthly_budget: float = 0.0) -> None:
+        # ... existing init ...
+        self._last_record: CostRecord | None = None  # NEW: most recent record_llm_call
+
+    def record_llm_call(self, model, input_tokens, output_tokens, session_id="", agent_name=""):
+        # ... existing body builds `record` and inserts into SQLite ...
+        self._last_record = record  # NEW: remember the last record returned
+        return record
+
+    def last_call(self) -> CostRecord | None:  # NEW
+        """Return the most recent CostRecord from record_llm_call(), or None.
+
+        Read-only accessor used by cognithor.crew to surface token usage per
+        Crew-Task without plumbing the record through ResponseEnvelope.
+        Not persisted — only the in-memory last-record is returned.
+        """
+        return self._last_record
+```
+
+**Test (add to `tests/test_telemetry/test_cost_tracker.py` — create if absent):**
+
+```python
+def test_last_call_returns_last_record(tmp_path):
+    from cognithor.telemetry.cost_tracker import CostTracker
+    tracker = CostTracker(db_path=str(tmp_path / "cost.db"))
+    assert tracker.last_call() is None
+    r1 = tracker.record_llm_call("ollama/qwen3:8b", 10, 20, session_id="s1")
+    assert tracker.last_call() is r1
+    r2 = tracker.record_llm_call("ollama/qwen3:8b", 30, 40, session_id="s2")
+    assert tracker.last_call() is r2
+```
+
+**Commit:**
+
+```bash
+git add src/cognithor/telemetry/cost_tracker.py tests/test_telemetry/test_cost_tracker.py
+git commit -m "feat(telemetry): CostTracker.last_call() accessor for Crew-Layer token usage"
+```
+
+Document in the PR 1 body: "Additive CostTracker change — adds a read-only `last_call()` accessor. Zero behavior change for existing callers; Planner's `_record_cost()` path untouched."
 
 - [ ] **Step 6: Run the integration test + full test_crew**
 
@@ -2196,11 +2358,29 @@ async def test_kickoff_id_removed_non_destructively():
 
 - [ ] **Step 3: Implement kickoff-caching in `crew.py`**
 
-Uses the real `create_lock(config)` factory; splits `_kickoff_id` from the rest of `inputs` non-destructively:
+Uses the real `create_lock(config)` factory; splits `_kickoff_id` from the rest of `inputs` non-destructively. If the distributed-lock module is unavailable (e.g. stripped-down install, import error during dev), we still serialize concurrent same-id kickoffs in-process via an `asyncio.Lock()` fallback — NEVER silently bypass locking entirely.
 
 ```python
+import asyncio
+import logging
+
+log = logging.getLogger(__name__)
+
 # Module-level cache keyed by kickoff_id (best-effort, per-process).
 _KICKOFF_CACHE: dict[str, CrewOutput] = {}
+
+# In-process fallback lock, lazily constructed. Used only when the
+# distributed_lock module is unavailable. Cannot be created at import time
+# because asyncio.Lock() binds to the current running loop.
+_fallback_lock: asyncio.Lock | None = None
+
+
+async def _get_fallback_lock() -> asyncio.Lock:
+    """Lazily construct a module-level asyncio.Lock bound to the running loop."""
+    global _fallback_lock
+    if _fallback_lock is None:
+        _fallback_lock = asyncio.Lock()
+    return _fallback_lock
 
 
 async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
@@ -2219,34 +2399,47 @@ async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutpu
     planner = self._planner or get_default_planner()
     registry = get_default_tool_registry()
 
+    async def _run_guarded() -> CrewOutput:
+        """Run the compiler under whichever lock is available and cache."""
+        # Double-check cache inside the lock to handle the race
+        if kickoff_id and kickoff_id in _KICKOFF_CACHE:
+            return _KICKOFF_CACHE[kickoff_id]
+        result = await compile_and_run_async(
+            agents=self.agents, tasks=self.tasks, process=self.process,
+            inputs=inputs, registry=registry, planner=planner,
+        )
+        if kickoff_id:
+            _KICKOFF_CACHE[kickoff_id] = result
+        return result
+
     if kickoff_id:
-        # Acquire cross-process lock so two processes don't both execute the
-        # same Crew with the same id. Real API:
+        # Preferred path: cross-process distributed lock.
         #   lock = create_lock(cfg); async with lock(name, timeout): ...
         try:
             from cognithor.config import load_config
             from cognithor.core.distributed_lock import create_lock
-            lock = create_lock(load_config())
-            async with lock(f"crew:kickoff:{kickoff_id}", 300.0):
-                # Double-check cache inside the lock to handle the race
-                if kickoff_id in _KICKOFF_CACHE:
-                    return _KICKOFF_CACHE[kickoff_id]
-                result = await compile_and_run_async(
-                    agents=self.agents, tasks=self.tasks, process=self.process,
-                    inputs=inputs, registry=registry, planner=planner,
-                )
-                _KICKOFF_CACHE[kickoff_id] = result
-                return result
         except ImportError:
-            # create_lock unavailable — fall through to unlocked path
-            pass
+            # Distributed-lock module missing (minimal install / dev setup).
+            # Fall back to an in-process asyncio.Lock so concurrent kickoffs
+            # within THIS process still serialize. Cross-process safety is
+            # degraded but never silently dropped.
+            log.warning(
+                "cognithor.core.distributed_lock unavailable — falling back "
+                "to in-process asyncio.Lock for crew kickoff serialization. "
+                "Cross-process idempotency is NOT guaranteed in this config."
+            )
+            async with (await _get_fallback_lock()):
+                return await _run_guarded()
 
+        lock = create_lock(load_config())
+        async with lock(f"crew:kickoff:{kickoff_id}", 300.0):
+            return await _run_guarded()
+
+    # No kickoff_id — plain unlocked execution.
     result = await compile_and_run_async(
         agents=self.agents, tasks=self.tasks, process=self.process,
         inputs=inputs, registry=registry, planner=planner,
     )
-    if kickoff_id:
-        _KICKOFF_CACHE[kickoff_id] = result
     return result
 ```
 
@@ -2379,9 +2572,13 @@ def load_crew_from_yaml(
     for alias, kwargs in tasks_data.items():
         agent_alias = kwargs.pop("agent")
         if agent_alias not in agent_by_alias:
+            # Bilingual error (resolves via cognithor.i18n.t with config.language).
+            # Locale keys: crew.errors.unknown_agent
+            from cognithor.i18n import t
             raise ValueError(
-                f"Task '{alias}' references unknown agent '{agent_alias}'. "
-                f"Known agents: {list(agent_by_alias)}"
+                t("crew.errors.unknown_agent",
+                  task=alias, agent=agent_alias,
+                  known=", ".join(agent_by_alias) or "(none)")
             )
         context_map[alias] = kwargs.pop("context", []) or []
         task_by_alias[alias] = CrewTask(
@@ -2564,11 +2761,53 @@ git commit -m "feat(crew): @agent/@task/@crew class-based decorators"
 
 ---
 
-### Task 18: Error-message quality pass (missing tools, missing agents, invalid inputs)
+### Task 18: Error-message quality pass (missing tools, missing agents, invalid inputs) + bilingual localization
 
 **Files:**
 - Modify: `src/cognithor/crew/tool_resolver.py`, `src/cognithor/crew/yaml_loader.py`, `src/cognithor/crew/errors.py` (refine messages)
+- Modify: `src/cognithor/i18n/locales/en.json`, `src/cognithor/i18n/locales/de.json` (add Crew-Layer keys)
 - Create: `tests/test_crew/test_error_messages.py`
+
+**Spec §8 (i18n):** Crew-Layer error paths must emit bilingual messages via `cognithor.i18n.t()` with the active `config.language` (defaults to "de"). This covers the three most-user-facing failure scenarios from spec §12:
+
+1. Scenario 2 — YAML parse error (agents.yaml / tasks.yaml)
+2. Scenario 3 — Ollama not running when kickoff starts
+3. Scenario 4 — Guardrail failure after retries exhausted
+
+**Locale keys to add** (both `en.json` and `de.json`):
+
+```json
+{
+  "crew.errors.yaml_parse": "Failed to parse {file}: {error}",
+  "crew.errors.ollama_offline": "Ollama server is not reachable at {url}. Start Ollama or set COGNITHOR_OLLAMA_BASE_URL.",
+  "crew.errors.guardrail_failed": "Guardrail '{name}' rejected output from task '{task}' after {attempts} attempt(s): {reason}",
+  "crew.errors.unknown_agent": "Task '{task}' references unknown agent '{agent}'. Known agents: {known}",
+  "crew.errors.unknown_tool": "Agent references unknown tool '{tool}'. Known tools: {known}",
+  "crew.errors.tool_suggestion": "Agent references unknown tool '{tool}'. Did you mean '{suggestion}'?"
+}
+```
+
+German equivalents in `de.json` (shortened for brevity; implementer ships all six):
+
+```json
+{
+  "crew.errors.yaml_parse": "Konnte {file} nicht parsen: {error}",
+  "crew.errors.ollama_offline": "Ollama-Server nicht erreichbar unter {url}. Starte Ollama oder setze COGNITHOR_OLLAMA_BASE_URL.",
+  "crew.errors.guardrail_failed": "Guardrail '{name}' hat Output von Task '{task}' nach {attempts} Versuch(en) abgelehnt: {reason}",
+  "crew.errors.unknown_agent": "Task '{task}' referenziert unbekannten Agent '{agent}'. Bekannte Agents: {known}",
+  "crew.errors.unknown_tool": "Agent referenziert unbekanntes Tool '{tool}'. Bekannte Tools: {known}",
+  "crew.errors.tool_suggestion": "Agent referenziert unbekanntes Tool '{tool}'. Meintest du '{suggestion}'?"
+}
+```
+
+**Wire-in:**
+
+1. `yaml_loader.load_crew_from_yaml()` — wrap `yaml.safe_load(...)` in try/except that raises `CrewCompilationError(t("crew.errors.yaml_parse", ...))`.
+2. `compiler.execute_task_async` — when `planner.formulate_response` raises a connection error to Ollama, re-raise as `CrewError(t("crew.errors.ollama_offline", ...))` with the base URL from config.
+3. `GuardrailFailure.__str__` — emits the bilingual message via `t()`; falls back to English if the i18n module is not importable (dev-edit, standalone test).
+4. `tool_resolver.resolve_tools()` — the existing `"Meintest du"` message becomes `t("crew.errors.tool_suggestion", ...)`.
+
+**init_cmd respects `--lang`:** `cognithor init ... --lang=de|en` already forwards to `run_init(lang=...)`. When `lang` is set, set the i18n language for the duration of the command via `cognithor.i18n.set_language(lang)` before rendering any error. If `--lang` is omitted, default to the global `config.language`.
 
 - [ ] **Step 1: Test messaging contract**
 
@@ -2665,11 +2904,13 @@ async def test_pkv_example_runs_end_to_end():
         context=[research],
     )
 
-    # CostTracker shim — returns different usage per call to mimic two-task run
+    # CostTracker shim — returns different CostRecord per call to mimic two-task run.
+    # Real CostTracker.last_call() returns a CostRecord with input_tokens + output_tokens.
+    from types import SimpleNamespace
     tracker = MagicMock()
     tracker.last_call = MagicMock(side_effect=[
-        {"prompt_tokens": 500, "completion_tokens": 100, "total_tokens": 600},
-        {"prompt_tokens": 800, "completion_tokens": 600, "total_tokens": 1400},
+        SimpleNamespace(input_tokens=500, output_tokens=100),
+        SimpleNamespace(input_tokens=800, output_tokens=600),
     ])
 
     mock_planner = MagicMock()
@@ -2789,35 +3030,64 @@ Add an `[Unreleased]` section at the top (the video-input PR's entries are under
 None. The Crew-Layer is strictly additive — no existing public API changes.
 ```
 
-- [ ] **Step 4: NOTICE attribution**
+- [ ] **Step 4: Create `NOTICE` at repo root**
 
-If `NOTICE` does not exist, create it:
+Short-form attribution file that `pyproject.toml` declares in `license-files`. Create at the repo root (not inside the package):
 
 ```
-Cognithor
-Copyright (C) 2025-2026 Alexander Söllner
+Cognithor Crew-Layer
+Copyright 2026 Alexander Söllner
 
-This product includes software developed by the Cognithor project,
-licensed under the Apache License, Version 2.0.
-
----
-
-Third-party attributions:
-
-- The `cognithor.crew` API shape is conceptually inspired by CrewAI
-  (crewAIInc/crewAI, MIT license, https://github.com/crewAIInc/crewAI).
-  The Cognithor implementation is an independent re-implementation in
-  Apache 2.0; no source-level code was copied.
+This product includes software concepts inspired by CrewAI (https://github.com/crewAIInc/crewAI),
+licensed under the MIT License. No CrewAI source code is included verbatim.
 ```
 
-- [ ] **Step 5: Run full test_crew/ + ruff + commit**
+This is the short canonical form. If a longer attribution file already exists, keep the existing longer form but ensure it also carries this line under a "Third-party attributions" heading.
+
+- [ ] **Step 5: Update `pyproject.toml` `[project]` to declare NOTICE**
+
+Modify the `[project]` table so wheel + sdist distributions ship both `LICENSE` and `NOTICE`:
+
+```toml
+[project]
+# ... existing keys ...
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+```
+
+This is the PEP 639 canonical form (hatchling ≥ 1.26 supports it). Without `license-files`, `NOTICE` never makes it into the wheel — breaking the MIT→Apache 2.0 attribution bridge required by spec §8.
+
+- [ ] **Step 6: Coverage floor in `pyproject.toml`**
+
+Add to `pyproject.toml` (PR 1 is the first place we touch it; subsequent PRs reuse the config):
+
+```toml
+[tool.coverage.report]
+fail_under = 89
+# Per-module gate for cognithor.crew uses --cov-fail-under=85 on pytest
+# invocations in CI / per-PR closeout (Step A2).
+show_missing = true
+```
+
+This makes the total-coverage floor explicit in config; per-module (85% on `cognithor.crew`) stays as a CLI flag because `coverage.report.fail_under` is a single global number.
+
+- [ ] **Step 7: Verify NOTICE ships in the wheel**
+
+```bash
+python -m build
+python -m zipfile -l dist/cognithor-*.whl | grep -E "(LICENSE|NOTICE)"
+# Expected: both files appear under cognithor-0.93.0.dist-info/licenses/
+```
+
+- [ ] **Step 8: Run full test_crew/ + ruff + commit**
 
 ```bash
 python -m pytest tests/test_crew/ -v 2>&1 | tail -10
+python -m pytest --cov=cognithor.crew --cov-fail-under=85 tests/test_crew/
 python -m ruff check src/cognithor/crew tests/test_crew
 python -m ruff format --check src/cognithor/crew tests/test_crew
-git add src/cognithor/__init__.py CHANGELOG.md NOTICE tests/test_crew/test_public_api_stability.py
-git commit -m "feat(crew): top-level re-exports + CHANGELOG + NOTICE attribution"
+git add src/cognithor/__init__.py CHANGELOG.md NOTICE pyproject.toml tests/test_crew/test_public_api_stability.py
+git commit -m "feat(crew): top-level re-exports + CHANGELOG + NOTICE (license-files) + coverage floor"
 ```
 
 ---
@@ -2919,13 +3189,46 @@ from cognithor.crew.guardrails.base import Guardrail, GuardrailResult
 __all__ = ["Guardrail", "GuardrailResult"]
 ```
 
-- [ ] **Step 3: Run + commit**
+- [ ] **Step 3: Remove the PR 1 → PR 2 bridge-guard from `compiler.py`**
+
+PR 1 (Task 8) added `_warn_if_guardrail_silently_ignored()` + its call sites as a foot-gun guard. Now that the guardrails module is available in the same release, that warning is noise — remove it cleanly. The real apply path lands in Task 29.
+
+Delete from `src/cognithor/crew/compiler.py`:
+
+```python
+# DELETE: the _guardrails_available probe at module top
+try:
+    from cognithor.crew.guardrails import base as _guardrails_base  # noqa: F401
+    _guardrails_available = True
+except ImportError:
+    _guardrails_available = False
+
+
+# DELETE: the bridge-guard function
+def _warn_if_guardrail_silently_ignored(task: CrewTask) -> None:
+    ...
+```
+
+Delete the two `_warn_if_guardrail_silently_ignored(t)` call sites (one in `compile_and_run_sync`, one before the fan-out loop in `compile_and_run_async`). The real `_normalize_guardrail` path in Task 29 replaces them.
+
+Add a regression test to lock in removal:
+
+```python
+# tests/test_crew/test_guardrails/test_no_silent_bridge.py
+def test_no_bridge_guard_in_compiler():
+    """Task 21: the PR 1 → PR 2 bridge guard is gone; real apply path used."""
+    from cognithor.crew import compiler as m
+    assert not hasattr(m, "_warn_if_guardrail_silently_ignored")
+    assert not hasattr(m, "_guardrails_available")
+```
+
+- [ ] **Step 4: Run + commit**
 
 ```bash
 touch tests/test_crew/test_guardrails/__init__.py
-python -m pytest tests/test_crew/test_guardrails/test_base.py -v
-git add src/cognithor/crew/guardrails tests/test_crew/test_guardrails
-git commit -m "feat(crew): Guardrail protocol + GuardrailResult dataclass"
+python -m pytest tests/test_crew/test_guardrails/test_base.py tests/test_crew/test_guardrails/test_no_silent_bridge.py -v
+git add src/cognithor/crew/guardrails tests/test_crew/test_guardrails src/cognithor/crew/compiler.py
+git commit -m "feat(crew): Guardrail protocol + GuardrailResult dataclass (+remove PR 1 bridge)"
 ```
 
 ---
@@ -3738,11 +4041,15 @@ async def test_guardrail_failure_retries_then_raises():
 
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
-        with pytest.raises(GuardrailFailure, match="zu kurz"):
+        with pytest.raises(GuardrailFailure) as exc_info:
             await crew.kickoff_async()
 
+    # GuardrailFailure carries the real attempt count, not max_retries
     # Initial try + max_retries == 3 attempts total
     assert call_count["n"] == 3
+    assert exc_info.value.attempts == 3
+    assert "zu kurz" in exc_info.value.reason
+    assert "after 3 attempt(s)" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -3834,7 +4141,7 @@ result: GuardrailResult | None = None
 while True:
     out = TaskOutput(
         task_id=task.task_id, agent_role=task.agent.role, raw=raw,
-        duration_ms=duration_ms, token_usage=usage,  # type: ignore[arg-type]
+        duration_ms=duration_ms, token_usage=usage,
     )
     if guardrail is None:
         verdict = "skipped"
@@ -3846,8 +4153,10 @@ while True:
     attempts += 1
     if attempts > task.max_retries:
         raise GuardrailFailure(
-            f"Guardrail failed after {task.max_retries} retries for task "
-            f"'{task.task_id}': {result.feedback}"
+            task_id=task.task_id,
+            guardrail_name=type(guardrail).__name__,
+            attempts=attempts,
+            reason=result.feedback or "(no feedback)",
         )
     # Retry: re-invoke Planner with a retry-nudge synthesized as an extra
     # ToolResult carrying the feedback. This keeps the Planner API stable.
@@ -3863,9 +4172,9 @@ while True:
     envelope = await planner.formulate_response(user_message, retry_context, working_memory)
     duration_ms = (time.perf_counter() - t0) * 1000.0
     raw = getattr(envelope, "content", "") or ""
-    usage = _read_token_usage(planner) or {
-        "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
-    }
+    usage = _read_token_usage(planner) or TokenUsageDict(
+        prompt_tokens=0, completion_tokens=0, total_tokens=0,
+    )
 
 # Attach verdict to the final output (Pydantic frozen; use model_copy)
 return out.model_copy(update={"guardrail_verdict": verdict})
@@ -3928,20 +4237,70 @@ async def test_guardrail_pass_audited():
     assert any(fields.get("verdict") == "pass" for _name, fields in guardrail_events)
 ```
 
-- [ ] **Step 2: Emit events inside the guardrail retry loop**
+- [ ] **Step 2: Emit events inside the guardrail retry loop — plumb parent trace_id**
 
-Inside `execute_task_async`, after evaluating `result`:
+The compiler's `compile_and_run_async` already mints a single `trace_id = _uuid.uuid4().hex` per kickoff. That trace id must be plumbed DOWN into `execute_task_async` so guardrail audit events carry parent correlation — otherwise they orphan as `trace_id=None` and the audit-chain viewer cannot link guardrail verdicts back to their owning kickoff.
+
+Add `trace_id` as a keyword arg to `execute_task_async`:
+
+```python
+async def execute_task_async(
+    task: CrewTask,
+    *,
+    context: list[TaskOutput],
+    inputs: dict[str, Any] | None,
+    registry: Any,
+    planner: Any,
+    trace_id: str | None = None,  # NEW — plumbed down from compile_and_run_async
+) -> TaskOutput:
+    ...
+```
+
+Update both fan-out call sites in `compile_and_run_async` to forward `trace_id`:
+
+```python
+# Single task path
+out = await execute_task_async(
+    group[0], context=outputs, inputs=inputs,
+    registry=registry, planner=planner, trace_id=trace_id,
+)
+
+# Parallel gather path
+parallel_outs = await asyncio.gather(*[
+    execute_task_async(
+        t, context=outputs, inputs=inputs, registry=registry,
+        planner=planner, trace_id=trace_id,
+    )
+    for t in group
+])
+```
+
+Inside `execute_task_async`, after evaluating `result`, emit with the parent trace_id:
 
 ```python
 append_audit(
     "crew_guardrail_check",
-    trace_id=None,  # aggregated at compiler level
+    trace_id=trace_id,  # parent correlation — links verdict back to the kickoff
     task_id=task.task_id,
     verdict="pass" if result.passed else "fail",
     retry_count=attempts,
     pii_detected=result.pii_detected,
     feedback=result.feedback,
 )
+```
+
+Update the existing test `test_guardrail_pass_audited` to assert the guardrail audit entry carries the parent trace_id:
+
+```python
+# In tests/test_crew/test_guardrails/test_audit.py
+result = await crew.kickoff_async()
+guardrail_events = [e for e in events if "guardrail" in e[0]]
+assert guardrail_events
+for name, fields in guardrail_events:
+    assert fields.get("trace_id") == result.trace_id, (
+        f"Guardrail event '{name}' lost parent trace_id — "
+        f"expected {result.trace_id}, got {fields.get('trace_id')}"
+    )
 ```
 
 - [ ] **Step 3: Commit**
@@ -4388,10 +4747,17 @@ class TemplateMeta(BaseModel):
     description_en: str = ""
     required_models: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    # Explicit listing order for `cognithor init --list-templates`.
+    # Without this, the list sorts alphabetically and the beginner-friendly
+    # `research` template ends up BELOW `content` / `customer-support`. Lower
+    # order numbers surface first; ties break on name (alphabetical).
+    # Defaults to a large sentinel so legacy templates without `order` fall
+    # to the bottom rather than competing with ordered ones.
+    order: int = 999
 
 
 def list_templates() -> list[TemplateMeta]:
-    """Return metadata for every discoverable template."""
+    """Return metadata for every discoverable template, sorted by (order, name)."""
     if not TEMPLATES_ROOT.exists():
         return []
     out: list[TemplateMeta] = []
@@ -4401,6 +4767,8 @@ def list_templates() -> list[TemplateMeta]:
             continue
         data = yaml.safe_load(meta_file.read_text(encoding="utf-8"))
         out.append(TemplateMeta(**data))
+    # Explicit UX order: `order` ascending, ties break on name.
+    out.sort(key=lambda t: (t.order, t.name))
     return out
 
 
@@ -4512,9 +4880,27 @@ class InitCommandError(Exception):
 
 
 def run_init(
-    *, name: str, template: str, directory: Path | None = None, lang: str = "de",
+    *, name: str, template: str, directory: Path | None = None, lang: str | None = None,
 ) -> int:
-    """Execute `cognithor init`. Returns shell exit code (0 on success)."""
+    """Execute `cognithor init`. Returns shell exit code (0 on success).
+
+    `lang` — if set (via `--lang=de|en`), overrides the i18n language for the
+    duration of this command. When None, falls back to the global
+    `config.language` (default "de").
+    """
+    # Respect explicit --lang; otherwise keep the global config language.
+    if lang is not None:
+        try:
+            from cognithor.i18n import set_language
+            set_language(lang)
+        except ImportError:
+            # i18n module unavailable in this build — proceed with English-only
+            # error strings (acceptable degradation for a standalone test env).
+            pass
+    else:
+        from cognithor.config import load_config
+        lang = load_config().language
+
     project_name = sanitize_project_name(name)
 
     template_dir = TEMPLATES_ROOT / template
@@ -4760,6 +5146,7 @@ git commit -m "build: include crew templates in wheel distribution"
 name: research
 description_de: Researcher + Reporter Zwei-Agenten-Crew mit sequenziellem Ablauf.
 description_en: Two-agent researcher + reporter crew, sequential process.
+order: 1  # beginner-friendly — surface first
 required_models:
   - ollama/qwen3:8b
 tags:
@@ -5004,13 +5391,18 @@ def test_research_template_renders_and_smoke_tests_pass(tmp_path: Path):
     rc = run_init(name="rc", template="research", directory=project, lang="de")
     assert rc == 0
 
-    # Required artifacts exist
+    # Required artifacts exist — 8 user-editable files from the template tree
     assert (project / "pyproject.toml").exists()
     assert (project / "src" / "rc" / "crew.py").exists()
     assert (project / "src" / "rc" / "main.py").exists()
     assert (project / "tests" / "test_crew.py").exists()
     assert (project / "README.md").exists()
     assert (project / ".env.example").exists()
+
+    # Plus the auto-injected .gitignore (scaffolder writes this regardless of
+    # which template was picked; not part of the template tree itself).
+    assert (project / ".gitignore").exists(), \
+        "Scaffolder must auto-inject .gitignore to prevent accidental secret commits"
 ```
 
 - [ ] **Step 11: Commit**
@@ -5034,15 +5426,15 @@ git commit -m "feat(crew): research template (researcher + reporter, sequential)
 Same structure as Task 39. Three agents: `intake`, `classifier`, `response_writer`. Task 2 (classifier) uses memory=True to access "prior customer interactions"-mocked tool. See spec §3.3.2.
 
 - [ ] **Step 1-10: Mirror Task 39 structure, replacing content with the three-agent customer-support crew.** Save 200 lines here by reference — the IMPLEMENTER follows the pattern from Task 39 exactly, adjusting:
-  - `template.yaml`: name: customer-support, 3 agents, sequential
+  - `template.yaml`: name: customer-support, 3 agents, sequential, **`order: 2`**
   - `crew.py.jinja`: IntakeCrew class with 3 @agent + 3 @task methods
   - Agents: `intake` (parses customer message), `classifier` (categorizes), `response_writer` (drafts reply)
   - Tasks: `parse`, `classify`, `draft_reply` — each feeds context to the next
   - `tests/test_crew.py.jinja`: kickoff with mock planner returning 3 mock responses
 
-  **Ship all 8 files** (spec §3.4): `template.yaml`, `README.md.jinja.de` + `.en`, `pyproject.toml.jinja`, `.env.example`, `main.py.jinja`, `src/{{ project_name }}/__init__.py`, `src/{{ project_name }}/crew.py.jinja`, `config/agents.yaml.jinja`, `config/tasks.yaml.jinja`, `tests/test_crew.py.jinja`.
+  **Ship all required template artifacts** (spec §3.4): scaffolding renders 8 user-editable files — `template.yaml` (metadata, not rendered), `README.md.jinja.de` + `.en`, `pyproject.toml.jinja`, `.env.example`, `main.py.jinja`, `src/{{ project_name }}/__init__.py`, `src/{{ project_name }}/crew.py.jinja`, `config/agents.yaml.jinja`, `config/tasks.yaml.jinja`, `tests/test_crew.py.jinja` — **plus 1 `.gitignore`** that every scaffolded project gets (auto-injected by the scaffolder, not part of the template tree). Test assertions count the 8 user-editable files; `.gitignore` is verified separately in Task 39.
 
-- [ ] **Step 11: Integration test — three agents + all 8 files**
+- [ ] **Step 11: Integration test — three agents + all 8 user-editable files + .gitignore**
 
 ```python
 from pathlib import Path
@@ -5066,7 +5458,7 @@ def test_customer_support_template_renders(tmp_path: Path):
 
 
 def test_customer_support_ships_all_required_files(tmp_path: Path):
-    """Spec §3.4: every template ships all 8 file groups."""
+    """Spec §3.4: every template ships 8 user-editable file groups + 1 .gitignore."""
     project = tmp_path / "cs"
     run_init(name="cs", template="customer-support", directory=project, lang="de")
     expected = [
@@ -5101,13 +5493,14 @@ git commit -m "feat(crew): customer-support template (3-agent, sequential)"
 
 Spec §3.3.3: Code-Interpreter-Agent (with `allow_code_execution=True` in sandboxed mode) + Visualization-Agent. Uses the existing sandbox module.
 
-- [ ] **Step 1-10: Mirror Task 39/40 pattern, shipping all 8 files per spec §3.4**
+- [ ] **Step 1-10: Mirror Task 39/40 pattern, shipping 8 user-editable files + 1 auto-injected `.gitignore` per spec §3.4**
+  - `template.yaml`: add **`order: 3`**
   - `analyst`: role="Analyst", runs data-summarization via code-exec tool
   - `visualizer`: role="Visualizer", produces matplotlib chart spec
   - Tasks: `analyze` (consumes CSV path from inputs), `visualize` (consumes analyst output)
   - **Critical:** the `analyst` agent's `tools` list includes the existing sandbox code-exec tool (e.g. `python_sandbox`). Scaffolded tests mock the registry.
 
-- [ ] **Step 11: Integration test — assert all 8 files + analyst has code-exec tool**
+- [ ] **Step 11: Integration test — assert all 8 user-editable files + .gitignore + analyst has code-exec tool**
 
 ```python
 from pathlib import Path
@@ -5115,7 +5508,7 @@ from cognithor.crew.cli.init_cmd import run_init
 
 
 def test_data_analyst_ships_all_required_files(tmp_path: Path):
-    """Spec §3.4: every template ships all 8 file groups."""
+    """Spec §3.4: every template ships 8 user-editable file groups + 1 .gitignore."""
     project = tmp_path / "da"
     run_init(name="da", template="data-analyst", directory=project, lang="de")
     expected = [
@@ -5150,13 +5543,14 @@ git commit -m "feat(crew): data-analyst template (code-interpreter + viz)"
 
 Spec §3.3.4: Outline-Agent + Draft-Agent + Editor, hierarchical with `manager_llm="ollama/qwen3:32b"`.
 
-- [ ] **Step 1-10: Mirror pattern, shipping all 8 files per spec §3.4**
+- [ ] **Step 1-10: Mirror pattern, shipping 8 user-editable files + 1 auto-injected `.gitignore` per spec §3.4**
+  - `template.yaml`: add **`order: 4`**
   - `Crew(process=CrewProcess.HIERARCHICAL, manager_llm="ollama/qwen3:32b", ...)`
   - Three agents: `outliner`, `drafter`, `editor`
   - Tasks: `outline`, `draft`, `edit` — hierarchical process chooses order dynamically
   - Smoke test verifies `crew.process == HIERARCHICAL` and `manager_llm` is set
 
-- [ ] **Step 11: Integration test — all 8 files + hierarchical config**
+- [ ] **Step 11: Integration test — all 8 user-editable files + .gitignore + hierarchical config**
 
 ```python
 from pathlib import Path
@@ -5196,12 +5590,12 @@ git commit -m "feat(crew): content template (3-agent, hierarchical)"
 ### Task 43: `versicherungs-vergleich` template (DACH-differentiator)
 
 **Files:**
-- Create: `src/cognithor/crew/templates/versicherungs-vergleich/*` (all 8 files per spec §3.4, see below)
+- Create: `src/cognithor/crew/templates/versicherungs-vergleich/*` (8 user-editable files + 1 .gitignore per spec §3.4, see below)
 - Create: `tests/test_crew/test_templates/test_versicherungs_vergleich.py`
 
 Spec §3.3.5: PKV/BU-Tarif-Vergleich. THREE agents: `Tarif-Researcher`, `Kunden-Profiler`, `Empfehlungs-Writer`. DSGVO-konform, **vollständig offline-fähig** (no external APIs). Includes explicit §34d-neutral guardrails.
 
-**Per spec §3.4 every template ships exactly these 8 files** (same contract as `research` in Task 39):
+**Per spec §3.4 every template ships exactly 8 user-editable files + 1 auto-injected `.gitignore`** (same contract as `research` in Task 39):
 1. `template.yaml`
 2. `README.md.jinja.de` and `README.md.jinja.en`
 3. `pyproject.toml.jinja`
@@ -5213,6 +5607,7 @@ Spec §3.3.5: PKV/BU-Tarif-Vergleich. THREE agents: `Tarif-Researcher`, `Kunden-
 9. `tests/test_crew.py.jinja`
 
 - [ ] **Step 1-10: Mirror pattern, with extra care for the spec's DSGVO requirements**
+  - `template.yaml`: add **`order: 5`** (DACH-differentiator surfaces last in the quickstart listing since it targets a specialized domain)
   - `tools=[]` for all agents — NO external HTTP tools in default (spec §3.6)
   - Writer task has guardrail: **`chain(no_pii(), StringGuardrail(...))`** — spec §4.5 AC 5 requires BOTH guardrails. The rule text: `"Output darf keine Tarif-Empfehlung enthalten, nur neutralen Vergleich"`.
   - `required_models` in `template.yaml`: only Ollama — the template REFUSES to run against cloud models
@@ -5245,7 +5640,7 @@ def build_crew(ollama_client):
     return Crew(agents=[...], tasks=[..., write_task])
 ```
 
-- [ ] **Step 11: Integration tests — assert BOTH guardrails + all 8 files**
+- [ ] **Step 11: Integration tests — assert BOTH guardrails + all 8 user-editable files + .gitignore**
 
 ```python
 from pathlib import Path
@@ -5265,7 +5660,7 @@ def test_versicherungs_template_is_offline_capable(tmp_path: Path):
 
 
 def test_versicherungs_template_ships_all_required_files(tmp_path: Path):
-    """Spec §3.4: every template ships exactly 8 file groups."""
+    """Spec §3.4: every template ships exactly 8 user-editable file groups + 1 .gitignore."""
     project = tmp_path / "pkv"
     run_init(name="pkv", template="versicherungs-vergleich", directory=project, lang="de")
     expected = [
@@ -5303,7 +5698,7 @@ git commit -m "feat(crew): versicherungs-vergleich template (DACH, offline-capab
 python -m cognithor init --list-templates
 ```
 
-Expected output:
+Expected output (ordered by each template's `order` field, set in Tasks 39-43 to 1-5):
 
 ```
 Verfügbare Templates:
@@ -5323,6 +5718,20 @@ def test_list_templates_cli_lists_all_five():
     assert names == {"research", "customer-support", "data-analyst", "content", "versicherungs-vergleich"}
 
 
+def test_list_templates_respects_order_field():
+    """Templates sort by `order` ascending, ties break on name. Tasks 39-43
+    assign 1-5 in this specific sequence."""
+    from cognithor.crew.cli.list_templates_cmd import list_templates
+    names = [t.name for t in list_templates()]
+    assert names == [
+        "research",
+        "customer-support",
+        "data-analyst",
+        "content",
+        "versicherungs-vergleich",
+    ]
+
+
 def test_list_templates_via_cli_subprocess():
     """Full CLI invocation — must match spec §3.2 flag syntax."""
     import subprocess, sys
@@ -5330,8 +5739,11 @@ def test_list_templates_via_cli_subprocess():
         [sys.executable, "-m", "cognithor", "init", "--list-templates"],
         capture_output=True, text=True, check=True,
     )
-    for name in ("research", "customer-support", "data-analyst", "content", "versicherungs-vergleich"):
-        assert name in result.stdout, f"Template '{name}' missing from CLI output"
+    # Order must be preserved in the subprocess output (ordered listing).
+    expected = ["research", "customer-support", "data-analyst", "content", "versicherungs-vergleich"]
+    positions = [result.stdout.find(n) for n in expected]
+    assert all(p >= 0 for p in positions), f"Template missing from CLI output: {result.stdout}"
+    assert positions == sorted(positions), f"Templates listed out of order: {result.stdout}"
 ```
 
 - [ ] **Step 3: Commit**
@@ -5356,7 +5768,15 @@ name: Scaffold Templates
 on:
   push:
     branches: [main, "feat/**"]
+    paths:
+      - "src/cognithor/crew/templates/**"
+      - "src/cognithor/crew/cli/**"
+      - ".github/workflows/scaffold-templates.yml"
   pull_request:
+    paths:
+      - "src/cognithor/crew/templates/**"
+      - "src/cognithor/crew/cli/**"
+      - ".github/workflows/scaffold-templates.yml"
 
 jobs:
   scaffold:
@@ -5562,6 +5982,8 @@ git commit -m "docs(quickstart): scaffold index (DE + EN)"
 ```markdown
 # 00 · Installation
 
+> **Voraussetzungen:** Python 3.12+, Ollama 0.4.0+, cognithor>=0.93.0 (`pip install --upgrade cognithor`)
+
 **Voraussetzung:** Python 3.12+, internet für die Erstinstallation, optional Docker.
 
 ## Option A — Windows One-Click-Installer
@@ -5614,7 +6036,15 @@ curl http://localhost:8741/health
 [01 · Erste Crew](01-first-crew.md)
 ```
 
-- [ ] **Step 2: EN version** — direct translation.
+- [ ] **Step 2: EN version** — direct translation. Must include the same prerequisites block at the top:
+
+```markdown
+# 00 · Installation
+
+> **Prerequisites:** Python 3.12+, Ollama 0.4.0+, cognithor>=0.93.0 (`pip install --upgrade cognithor`)
+
+...rest of the EN translation...
+```
 
 - [ ] **Step 3: Commit**
 
@@ -6350,9 +6780,14 @@ Tasks 79-82 below are restructured: each PR has its own mini-closeout (regressio
 After each Feature block completes, run this mini-closeout BEFORE opening the PR. The merge is the final step; the version bump is **not** in scope for PRs 1-3.
 
 ```bash
-# Step A: Full regression on the feature branch
+# Step A1: Full regression on the feature branch (total coverage floor)
 python -m pytest tests/ -x -q --cov=src/cognithor --cov-report=term-missing 2>&1 | tail -30
-# Expected: all pass, cognithor.crew coverage ≥ 85%, total ≥ 89%
+# Expected: all pass; total ≥ 89% enforced by pyproject.toml [tool.coverage.report]
+
+# Step A2: Per-module coverage gate — cognithor.crew must meet 85%
+python -m pytest --cov=cognithor.crew --cov-report=term-missing \
+                  --cov-fail-under=85 tests/test_crew/
+# Non-zero exit here BLOCKS the PR — CI enforces the same invocation.
 
 # Step B: Ruff (both check and format-check — see feedback memory)
 python -m ruff check .
@@ -6369,6 +6804,22 @@ gh pr create --title "<PR title>" --body "..."
 #        (per feedback memory — two branch-closure incidents this session).
 gh pr merge <PR-number> --squash
 # Cleanup runs in a SEPARATE command only after merge is confirmed.
+
+# Step F: Verify main CI green BEFORE branching the next PR
+#        If any workflow fails on main after merge, STOP — investigate and fix
+#        before cutting the next feature branch off a broken main.
+gh run list --branch main --limit 3 --json conclusion,workflowName
+# Expected: every recent workflow shows "conclusion": "success".
+```
+
+**PR 1 (the first PR touching the Crew layer) owns the coverage-floor config.** Add to `pyproject.toml` in Task 20's Step-3 commit:
+
+```toml
+[tool.coverage.report]
+fail_under = 89
+# Individual per-module gates enforced via --cov-fail-under=85 on
+# pytest --cov=cognithor.crew invocations in CI / per-PR closeout.
+show_missing = true
 ```
 
 ---
@@ -6404,6 +6855,15 @@ EOF
 )"
   ```
 - [ ] **Step 4:** Wait all CI jobs green (CI + existing pipelines). Merge. Run cleanup as a **separate** command.
+- [ ] **Step 5: Verify `main` CI green BEFORE starting PR 2 branch**
+
+  Wait for GitHub Actions `main`-branch CI to complete. If any workflow fails on main after PR 1 merge, STOP — investigate and fix before branching PR 2 off a broken main.
+
+  ```bash
+  gh run list --branch main --limit 3 --json conclusion,workflowName
+  ```
+
+  Expected: all recent workflows show `"conclusion": "success"`. If any show `"failure"`, open a hotfix PR, get it merged, and re-check before cutting `feat/cognithor-crew-v1-f4`.
 
 ---
 
@@ -6420,6 +6880,13 @@ EOF
 - [ ] **Step 2:** Run per-PR closeout Steps A-C.
 - [ ] **Step 3:** Push + open PR. Title: `feat(crew): Task-Level Guardrails (v1.0 — Feature 4)`.
 - [ ] **Step 4:** Wait CI green. Merge. Cleanup separately.
+- [ ] **Step 5: Verify `main` CI green BEFORE starting PR 3 branch**
+
+  ```bash
+  gh run list --branch main --limit 3 --json conclusion,workflowName
+  ```
+
+  Expected: all recent workflows show `"conclusion": "success"`. Halt here if any failure — never branch the next PR off a broken main.
 
 ---
 
@@ -6439,15 +6906,44 @@ EOF
   ```
 - [ ] **Step 3:** Push + open PR. Title: `feat(crew): init CLI + 5 first-party templates (v1.0 — Feature 3)`.
 - [ ] **Step 4:** Wait CI green. Merge. Cleanup separately.
+- [ ] **Step 5: Verify `main` CI green BEFORE starting PR 4 branch**
+
+  ```bash
+  gh run list --branch main --limit 3 --json conclusion,workflowName
+  ```
+
+  Expected: all recent workflows show `"conclusion": "success"`. Halt if any failure — PR 4 is the release PR, so a broken main here means v0.93.0 launches broken.
 
 ---
 
-### Task 80: PR 4 — Features 2 + 7 + version bump + release prep
+### Task 80a: PR 4a — Feature 7 (Integrations Catalog + sevDesk) merge-prep
 
-**Branch:** `feat/cognithor-crew-v1-f2-f7` (cut from `main` after PR 3 merges). This is the ONLY PR that bumps the version.
+**Branch:** `feat/cognithor-crew-v1-f7` (cut from `main` after PR 3 merges). Code-only PR — no version bump, no docs.
 
-**Files to modify in this PR (on top of tasks 53-78 commits):**
-- `CHANGELOG.md`: `[Unreleased]` → `[0.93.0]` — consolidate all feature entries under the dated 0.93.0 section
+**Scope:** Tasks 67-78 only. The catalog generator, CI workflow, sevDesk connector, DACH category overview (`docs/integrations/README.md` + `catalog.json` — these are reference docs for the catalog itself, not user-facing quickstart).
+
+- [ ] **Step 1:** Branch from updated `main`, port tasks 67-78 commits.
+- [ ] **Step 2:** Run per-PR closeout Steps A-C.
+- [ ] **Step 3:** Push + open PR. Title: `feat(crew): Integrations catalog + sevDesk connector (v1.0 — Feature 7)`. The PR body calls out that Feature 2 (docs + release) lands in the follow-up PR 4b.
+- [ ] **Step 4:** Wait CI green. Merge. Cleanup separately.
+- [ ] **Step 5: Verify `main` CI green BEFORE starting PR 4b branch**
+
+  ```bash
+  gh run list --branch main --limit 3 --json conclusion,workflowName
+  ```
+
+  Expected: all recent workflows show `"conclusion": "success"`.
+
+---
+
+### Task 80b: PR 4b — Feature 2 (Quickstart Docs) + version bump + release prep
+
+**Branch:** `feat/cognithor-crew-v1-f2` (cut from `main` after PR 4a merges). This is the ONLY PR that bumps the version and triggers the release pipeline.
+
+**Rationale for the split:** PR 4a is code; PR 4b is docs + release ceremony. Reviewer pools differ — docs benefit from preview builds + external-reader usability pass (spec §12 AC 4), code benefits from tight diff review. Keeping them separate reduces PR 4b's diff to docs + 5 version-bump lines.
+
+**Files to modify in this PR (on top of tasks 53-66 commits):**
+- `CHANGELOG.md`: `[Unreleased]` → `[0.93.0]` — consolidate all feature entries from PRs 1-4a under the dated 0.93.0 section
 - `pyproject.toml`: `0.92.7` → `0.93.0`
 - `src/cognithor/__init__.py`: `__version__ = "0.93.0"`
 - `flutter_app/pubspec.yaml`: version
@@ -6455,7 +6951,7 @@ EOF
 
 The Crew-Layer is a MINOR bump (additive, no breaking changes — each feature's CHANGELOG already carries `### Breaking Changes: None.`). Date the `[0.93.0]` section with the merge day.
 
-- [ ] **Step 1:** Branch from updated `main`, port tasks 53-78 commits.
+- [ ] **Step 1:** Branch from updated `main`, port tasks 53-66 commits.
 - [ ] **Step 2:** Run per-PR closeout Steps A-C.
 - [ ] **Step 3:** **Verify external-reader gate (Task 62):**
   ```bash
@@ -6471,14 +6967,14 @@ The Crew-Layer is a MINOR bump (additive, no breaking changes — each feature's
           flutter_app/pubspec.yaml flutter_app/lib/providers/connection_provider.dart
   git commit -m "chore(release): bump to 0.93.0 — Crew-Layer v1.0"
   ```
-- [ ] **Step 5:** Push + open PR. Title: `feat(crew): Quickstart + Integrations + v0.93.0 release (v1.0 — Features 2, 7)`. The PR body references the three earlier merged PRs and the spec §12 sign-off checklist.
+- [ ] **Step 5:** Push + open PR. Title: `docs(crew): Quickstart + v0.93.0 release (v1.0 — Feature 2)`. The PR body references the four earlier merged PRs and the spec §12 sign-off checklist.
 - [ ] **Step 6:** Wait ALL CI jobs green (CI + scaffold-templates + quickstart-examples + integrations-catalog + Windows Installer + Mobile + Linux .deb + Flutter Web + Release Build + performance-benchmark).
 
 ---
 
-### Task 81: PR 4 — PR open gate (external-reader pass required)
+### Task 81: PR 4b — PR open gate (external-reader pass required)
 
-Before `gh pr create` runs in Task 80 Step 5, the PR-open gate (spec §12 AC 4) is enforced via the grep in Task 80 Step 3. If that grep fails, Task 80 aborts and we do not open the PR.
+Before `gh pr create` runs in Task 80b Step 5, the PR-open gate (spec §12 AC 4) is enforced via the grep in Task 80b Step 3. If that grep fails, Task 80b aborts and we do not open the PR.
 
 This task exists as an explicit acceptance step to make the external-reader dependency first-class rather than a footnote.
 
@@ -6493,31 +6989,65 @@ If any of these fail, the PR is NOT opened and the plan lead finds another exter
 
 ### Task 82: Post-merge release `v0.93.0`
 
-(This task runs in a SEPARATE session/turn after PR 4 is green and merged — per the feedback memory "never chain merge + cleanup via &&". Cleanup runs after merge confirmation.)
+(This task runs in a SEPARATE session/turn after PR 4b is green and merged — per the feedback memory "never chain merge + cleanup via &&". Cleanup runs after merge confirmation.)
 
-- [ ] **Step 1: Tag + push**
+**Ordering rationale:** The site-PR is a HARD GATE on tag creation. Published release notes link to `cognithor.ai/integrations` — if that page doesn't exist when `v0.93.0` ships to PyPI, every release-page visitor hits a 404. Therefore the site-PR is merged BEFORE we tag, not after. `publish.yml` fires on tag push, so once tag exists the train has left the station.
+
+- [ ] **Step 1: Version metadata already bumped in PR 4b**
+
+Verify the 5-file version bump from Task 80b is present on `main`:
 
 ```bash
 git checkout main && git pull
-git tag -a v0.93.0 -m "Cognithor v0.93.0 — Crew-Layer v1.0 (Features 1, 4, 3, 2, 7)"
-git push origin v0.93.0
+grep -q 'version = "0.93.0"' pyproject.toml
+grep -q '__version__ = "0.93.0"' src/cognithor/__init__.py
+grep -q '## \[0.93.0\]' CHANGELOG.md
 ```
 
-- [ ] **Step 2: Wait for auto-triggered build workflows**
+Expected: all three greps exit 0. If any fails, STOP — the version bump was missed in PR 4b and needs a hotfix PR before release.
 
-- [ ] **Step 3: Manually trigger `publish.yml` for PyPI**
-
-- [ ] **Step 4: Verify PyPI: `pip install cognithor==0.93.0`**
-
-- [ ] **Step 5: Cross-repo site deployment (Spec §7.2.1 / §12 AC 7)**
+- [ ] **Step 2: Open cognithor-site PR with v0.93.0 release notes — BLOCKS Step 3**
 
 The `cognithor.ai/integrations` page lives in the separate `cognithor-site` (Vercel) repo. Open a site-repo PR that:
 
 1. Fetches `docs/integrations/catalog.json` from `main` at build time (Octokit, same pattern as the pack fetch).
 2. Renders a category-grouped integration grid with a dedicated DACH section for `dach_specific: true` entries.
-3. Deploys to Vercel.
+3. Adds the `v0.93.0` release notes page linking back to the GitHub release.
+4. Deploys to Vercel.
 
-This site PR is **not** in the Cognithor repo's scope but is a **hard gate** on spec §12 AC 7. Log its PR number + merge timestamp in the release notes.
+**Wait until this site-PR is MERGED and the Vercel deployment is live before proceeding.** Verify:
+
+```bash
+curl -fsSL https://cognithor.ai/integrations >/dev/null && echo "live"
+```
+
+Expected: `live`. Log the site-PR number + merge timestamp in the release notes draft (kept local until Step 5).
+
+**If site-PR is not yet merged, STOP — do not tag. Rationale: published release must link to live docs, not 404.**
+
+This is a **hard gate** on spec §12 AC 7. Cross-repo coordination is unavoidable here; publish.yml fires on tag push and there is no undo.
+
+- [ ] **Step 3: Tag + push (only after Step 2 confirmed live)**
+
+```bash
+git checkout main && git pull  # pick up any last-minute fixes
+git tag -a v0.93.0 -m "Cognithor v0.93.0 — Crew-Layer v1.0 (Features 1, 4, 3, 2, 7)"
+git push origin v0.93.0
+```
+
+- [ ] **Step 4: `publish.yml` fires on tag push — wait for it to complete**
+
+Monitor `gh run list --workflow=publish.yml --limit 1` until `"conclusion": "success"`. This uploads the sdist + wheel to PyPI and attaches binaries to the GitHub Release.
+
+- [ ] **Step 5: Verify PyPI + GitHub release artifacts**
+
+```bash
+pip install --upgrade cognithor==0.93.0
+cognithor --version        # must print 0.93.0
+gh release view v0.93.0    # confirm 6 artifacts attached
+```
+
+Expected artifacts: Windows Installer, Launcher, Linux .deb, Android APK, iOS IPA, Flutter Web bundle.
 
 ---
 
@@ -6593,11 +7123,14 @@ After each task:
 3. Mark task complete on checkboxes
 4. Move to next task
 
-After every Feature (1, 4, 3, 2, 7) is fully implemented + self-reviewed:
-- Task 79 — full regression
-- Task 80 — version bump
-- Task 81 — push + PR
-- Task 82 — post-merge release (separate turn)
+After every Feature (1, 4, 3, 7, 2) is fully implemented + self-reviewed:
+- Task 79 — PR 1 (Feature 1)
+- Task 79b — PR 2 (Feature 4)
+- Task 79c — PR 3 (Feature 3)
+- Task 80a — PR 4a (Feature 7 — code only)
+- Task 80b — PR 4b (Feature 2 — docs + version bump)
+- Task 81 — PR 4b open gate (external-reader PASS required)
+- Task 82 — post-merge release (site-PR gates tag push)
 
 Target: v0.93.0 released to PyPI + GitHub. All 6 release artifacts (Windows Installer, Launcher, Linux .deb, Android APK, iOS IPA, Flutter Web) auto-built + attached to the release.
 
