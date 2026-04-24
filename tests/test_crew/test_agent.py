@@ -51,3 +51,11 @@ class TestCrewAgent:
         a = CrewAgent(role="x", goal="y")
         with pytest.raises(ValidationError):
             a.role = "z"  # type: ignore[misc]
+
+    def test_metadata_preserves_arbitrary_keys(self):
+        a = CrewAgent(
+            role="x",
+            goal="y",
+            metadata={"pack_id": "cognithor.packs.research", "owner": "alice"},
+        )
+        assert a.metadata == {"pack_id": "cognithor.packs.research", "owner": "alice"}

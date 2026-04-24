@@ -24,7 +24,16 @@ class TestCrewTask:
         t1 = CrewTask(description="research", expected_output="facts", agent=agent)
         t2 = CrewTask(description="write", expected_output="text", agent=agent, context=[t1])
         assert len(t2.context) == 1
-        assert t2.context[0] is t1
+        # Value equality — Pydantic v2 doesn't guarantee object identity for
+        # nested models in list fields; use __eq__ (frozen → hashable) not `is`.
+        assert t2.context[0] == t1
+        assert t2.context[0].task_id == t1.task_id
+
+    def test_max_retries_bounds(self, agent: CrewAgent):
+        with pytest.raises(ValidationError):
+            CrewTask(description="x", expected_output="y", agent=agent, max_retries=-1)
+        with pytest.raises(ValidationError):
+            CrewTask(description="x", expected_output="y", agent=agent, max_retries=11)
 
     def test_guardrail_callable_accepted(self, agent: CrewAgent):
         t = CrewTask(
