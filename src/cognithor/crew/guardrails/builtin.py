@@ -153,4 +153,10 @@ def chain(*guards):
                 return r
         return GuardrailResult(passed=True, feedback=None)
 
+    # Mark the closure as a Guardrail so the compiler's ``_normalize_guardrail``
+    # doesn't re-wrap it in a ``FunctionGuardrail`` (which would tuple-unpack
+    # our coroutine return and blow up with "cannot unpack non-iterable
+    # coroutine object"). Any object with ``_is_guardrail`` set is considered
+    # already-normalized by ``_is_already_guardrail``.
+    _combined._is_guardrail = True  # type: ignore[attr-defined]
     return _combined
