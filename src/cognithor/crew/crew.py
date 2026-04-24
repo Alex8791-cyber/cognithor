@@ -28,6 +28,19 @@ class Crew(BaseModel):
     # Spec §1.2 — matches CrewAgent.llm: str | LLMConfig | None.
     manager_llm: str | LLMConfig | None = None
 
+    def __init__(self, *, planner: Any = None, **kwargs: Any) -> None:
+        """Custom init so callers can inject a live Planner.
+
+        ``planner`` is NOT a Pydantic field (it wraps non-serializable state
+        — Ollama client, model router, cost tracker, etc.), so we stash it
+        on the instance via ``object.__setattr__`` after ``super().__init__``
+        has finished validating the declared fields. Gateway + tests pass a
+        live Planner; standalone scripts omit the kwarg and ``kickoff_async``
+        falls back to :func:`get_default_planner`.
+        """
+        super().__init__(**kwargs)
+        object.__setattr__(self, "_planner", planner)
+
     @model_validator(mode="after")
     def _warn_on_hierarchical_without_manager(self) -> Crew:
         if self.process is CrewProcess.HIERARCHICAL and self.manager_llm is None:
@@ -40,31 +53,39 @@ class Crew(BaseModel):
         return self
 
     def kickoff(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
-        """Synchronous kickoff. Calls the sync compiler directly; Task 9 rewires
-        this through asyncio.run(self.kickoff_async(inputs)).
-        """
-        from cognithor.crew.compiler import compile_and_run_sync
-        from cognithor.crew.runtime import get_default_tool_registry
+        """Synchronous kickoff — trampoline through ``asyncio.run`` so both
+        paths share the same compiler + planner wiring.
 
-        return compile_and_run_sync(
-            agents=self.agents,
-            tasks=self.tasks,
-            process=self.process,
-            inputs=inputs,
-            registry=get_default_tool_registry(),
-            manager_llm=self.manager_llm if isinstance(self.manager_llm, str) else None,
+        Refuses to run from inside a running event loop: ``asyncio.run``
+        cannot be called when one is already active. Callers inside async
+        contexts must use :meth:`kickoff_async` directly.
+        """
+        import asyncio
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.kickoff_async(inputs))
+        raise RuntimeError(
+            "Crew.kickoff() called from within a running event loop. "
+            "Use `await crew.kickoff_async(inputs)` instead."
         )
 
     async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
         """Async kickoff with parallel fan-out for tasks marked async_execution=True."""
         from cognithor.crew.compiler import compile_and_run_async
-        from cognithor.crew.runtime import get_default_tool_registry
+        from cognithor.crew.runtime import (
+            get_default_planner,
+            get_default_tool_registry,
+        )
 
+        planner = getattr(self, "_planner", None) or get_default_planner()
         return await compile_and_run_async(
             agents=self.agents,
             tasks=self.tasks,
             process=self.process,
             inputs=inputs,
             registry=get_default_tool_registry(),
+            planner=planner,
             manager_llm=self.manager_llm if isinstance(self.manager_llm, str) else None,
         )

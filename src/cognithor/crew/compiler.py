@@ -2,8 +2,9 @@
 route through the existing Planner/Gatekeeper pipeline.
 
 The compiler itself is a pure function; the `execute_task` helper is where
-the actual PGE integration happens (Task 11). For the happy path in Task 8
-we only need ordered traversal.
+the actual PGE integration happens (Task 11 — now LIVE). Every task runs
+through :meth:`cognithor.core.planner.Planner.formulate_response`, which in
+turn drives the Gatekeeper + Executor — the Crew-Layer never bypasses PGE.
 """
 
 from __future__ import annotations
@@ -13,14 +14,71 @@ import uuid as _uuid
 from typing import Any
 
 from cognithor.crew.agent import CrewAgent
-from cognithor.crew.output import CrewOutput, TaskOutput
+from cognithor.crew.output import CrewOutput, TaskOutput, TokenUsageDict
 from cognithor.crew.process import CrewProcess
 from cognithor.crew.task import CrewTask
+from cognithor.crew.tool_resolver import resolve_tools
+from cognithor.models import ToolResult, WorkingMemory
 
 
 def order_tasks_sequential(tasks: list[CrewTask]) -> list[CrewTask]:
     """Sequential process: keep the declaration order."""
     return list(tasks)
+
+
+def _build_user_message(
+    task: CrewTask,
+    inputs: dict[str, Any] | None,
+) -> str:
+    """Render the Crew task as a single user message.
+
+    System-level framing (role, goal, backstory) is owned by the Planner via
+    its own SYSTEM_PROMPT — the Crew-Layer intentionally does NOT inject its
+    own system prompt, to avoid duplicating Cognithor's identity framing.
+    We fold role/goal/backstory into the user message so the Planner still
+    sees who it's acting as, but with a single source of truth for identity.
+    """
+    parts: list[str] = []
+    parts.append(f"[Crew role: {task.agent.role}] goal: {task.agent.goal}")
+    if task.agent.backstory:
+        parts.append(f"Background: {task.agent.backstory}")
+    parts.append("")
+    desc = task.description
+    if inputs:
+        for k, v in inputs.items():
+            desc = desc.replace("{" + str(k) + "}", str(v))
+    parts.append(desc)
+    parts.append(f"\nExpected output: {task.expected_output}")
+    return "\n".join(parts)
+
+
+def _read_token_usage(planner: Any) -> TokenUsageDict | None:
+    """Pull the last-call token count from the planner's cost tracker.
+
+    Uses the additive ``last_call()`` helper on CostTracker (Step 5). Probe
+    is duck-typed so we gracefully degrade against older CostTracker builds,
+    embedded Planners that disabled cost tracking, or test doubles that
+    haven't configured a tracker.
+    """
+    tracker = getattr(planner, "_cost_tracker", None)
+    if tracker is None:
+        return None
+    last = getattr(tracker, "last_call", None)
+    if not callable(last):
+        return None
+    try:
+        record = last()
+    except Exception:
+        return None
+    if record is None:
+        return None
+    input_tokens = int(getattr(record, "input_tokens", 0))
+    output_tokens = int(getattr(record, "output_tokens", 0))
+    return TokenUsageDict(
+        prompt_tokens=input_tokens,
+        completion_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
+    )
 
 
 def execute_task(
@@ -31,15 +89,29 @@ def execute_task(
     registry: Any,
     planner: Any | None = None,
 ) -> TaskOutput:
-    """Route one task through the PGE pipeline.
+    """Synchronous wrapper around :func:`execute_task_async`.
 
-    Stub for Task 8 — the real PGE wiring lands in Task 11. The stub raises
-    NotImplementedError so that the unit test at Task 8 is forced to patch
-    this function (the test does). Integration happens in Task 11 where the
-    patch target becomes a real call site."""
-    raise NotImplementedError(
-        "execute_task is stubbed in Task 8; real PGE wiring arrives in Task 11. "
-        "Tests must patch 'cognithor.crew.compiler.execute_task' until then."
+    Refuses to run from inside a running event loop — same guard as
+    :meth:`cognithor.crew.crew.Crew.kickoff` — because ``asyncio.run`` cannot
+    be called from an already-running loop. (See NI2 in the Round 3 review.)
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass  # no running loop — safe to use asyncio.run
+    else:
+        raise RuntimeError(
+            "execute_task() cannot be called from a running event loop. "
+            "Use `await execute_task_async(...)` instead."
+        )
+    return asyncio.run(
+        execute_task_async(
+            task,
+            context=context,
+            inputs=inputs,
+            registry=registry,
+            planner=planner,
+        )
     )
 
 
@@ -129,6 +201,11 @@ def compile_and_run_sync(
     outputs: list[TaskOutput] = []
     for t in ordered:
         _warn_if_guardrail_silently_ignored(t)  # PR 1 → PR 2 bridge guard
+        # Note: ``execute_task`` is the sync trampoline — it asyncio.run()s
+        # execute_task_async which re-derives its own trace_id if omitted.
+        # Passing the kickoff-level trace_id isn't plumbed through the sync
+        # wrapper because the crew always reaches here via kickoff_async now;
+        # this function is kept purely for backward compat.
         out = execute_task(
             t,
             context=outputs,
@@ -146,11 +223,61 @@ async def execute_task_async(
     context: list[TaskOutput],
     inputs: dict[str, Any] | None,
     registry: Any,
-    planner: Any | None = None,
+    planner: Any,
+    trace_id: str | None = None,
 ) -> TaskOutput:
-    """Async counterpart of execute_task. Real PGE wiring in Task 11."""
-    raise NotImplementedError(
-        "execute_task_async is stubbed in Task 9; real PGE wiring arrives in Task 11."
+    """Route one task through the Planner (which internally drives
+    Gatekeeper + Executor).
+
+    Spec §1.6: the Crew-Layer must NOT bypass the Planner. Every task builds
+    a proper ``WorkingMemory`` + ``ToolResult`` list and calls
+    ``Planner.formulate_response(user_message, results, working_memory)``.
+
+    ``trace_id`` is plumbed from the kickoff so every in-kickoff tool result /
+    chat turn / audit event buckets under one audit session and concurrent
+    kickoffs stay isolated. If omitted (standalone call sites), a fresh UUID
+    is minted.
+    """
+    import time
+
+    # Resolve tools up-front so the error is raised before any LLM call —
+    # cheap local-DB check, saves a Planner round-trip on bad configs.
+    resolve_tools(task.agent.tools, registry=registry)
+    resolve_tools(task.tools, registry=registry)
+
+    user_message = _build_user_message(task, inputs)
+
+    prior_results: list[ToolResult] = [
+        ToolResult(
+            tool_name=f"crew_context__{prior.agent_role}",
+            content=prior.raw,
+            is_error=False,
+        )
+        for prior in context
+    ]
+
+    session_id = trace_id or _uuid.uuid4().hex
+    working_memory = WorkingMemory(session_id=session_id)
+
+    t0 = time.perf_counter()
+    envelope = await planner.formulate_response(
+        user_message,
+        prior_results,
+        working_memory,
+    )
+    duration_ms = (time.perf_counter() - t0) * 1000.0
+
+    raw = getattr(envelope, "content", "") or ""
+    usage = _read_token_usage(planner) or TokenUsageDict(
+        prompt_tokens=0, completion_tokens=0, total_tokens=0
+    )
+
+    return TaskOutput(
+        task_id=task.task_id,
+        agent_role=task.agent.role,
+        raw=raw,
+        duration_ms=duration_ms,
+        token_usage=usage,
     )
 
 
@@ -214,6 +341,7 @@ async def compile_and_run_async(
                 inputs=inputs,
                 registry=registry,
                 planner=planner,
+                trace_id=trace_id,
             )
             outputs.append(out)
         else:
@@ -225,6 +353,7 @@ async def compile_and_run_async(
                         inputs=inputs,
                         registry=registry,
                         planner=planner,
+                        trace_id=trace_id,
                     )
                     for t in group
                 ]

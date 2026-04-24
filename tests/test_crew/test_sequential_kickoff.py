@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -29,7 +29,13 @@ class TestSequentialKickoff:
             TaskOutput(task_id=t2.task_id, agent_role="writer", raw="REPORT DRAFT"),
         ]
 
-        with patch("cognithor.crew.compiler.execute_task", side_effect=fake_outputs) as mocked:
+        # Task 11: Crew.kickoff now trampolines through asyncio.run(kickoff_async),
+        # so the actual per-task call site is execute_task_async. Patch that path
+        # rather than the sync wrapper (which is no longer reached via kickoff).
+        with patch(
+            "cognithor.crew.compiler.execute_task_async",
+            new=AsyncMock(side_effect=fake_outputs),
+        ) as mocked:
             result = crew.kickoff()
 
         assert result.raw == "REPORT DRAFT"
@@ -45,11 +51,11 @@ class TestSequentialKickoff:
 
         captured: list = []
 
-        def spy(task, *, context, inputs, registry, planner=None):
+        async def spy(task, *, context, inputs, registry, planner=None, trace_id=None):
             captured.append(inputs)
             return TaskOutput(task_id=task.task_id, agent_role=task.agent.role, raw="OK")
 
-        with patch("cognithor.crew.compiler.execute_task", side_effect=spy):
+        with patch("cognithor.crew.compiler.execute_task_async", side_effect=spy):
             crew.kickoff(inputs={"topic": "PKV tariffs"})
 
         assert captured[0] == {"topic": "PKV tariffs"}

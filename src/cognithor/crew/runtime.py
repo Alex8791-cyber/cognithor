@@ -43,3 +43,38 @@ def get_default_tool_registry() -> Any:
             db_path = Path(tempfile.gettempdir()) / "cognithor_crew_registry.db"
         _registry_singleton = ToolRegistryDB(db_path=db_path)
         return _registry_singleton
+
+
+_planner_lock = threading.Lock()
+_planner_singleton: Any = None
+
+
+def get_default_planner() -> Any:
+    """Return a process-wide default ``Planner`` instance.
+
+    No auto-discovery: always built from config for standalone Crew scripts.
+    Embedded callers (Gateway, tests) pass a live Planner to
+    ``Crew(planner=...)`` so this factory is never invoked for them.
+
+    Async-safe: construction happens OUTSIDE the ``threading.Lock`` so async
+    event loops aren't blocked for tens of milliseconds while the Planner
+    wires up Ollama + router. The lock guards only the final sentinel swap,
+    and the fast-path early-return keeps hot calls lock-free.
+    """
+    global _planner_singleton
+    if _planner_singleton is not None:
+        return _planner_singleton
+
+    from cognithor.config import load_config
+    from cognithor.core.model_router import ModelRouter, OllamaClient
+    from cognithor.core.planner import Planner
+
+    cfg = load_config()
+    ollama = OllamaClient(cfg)
+    router = ModelRouter(cfg, ollama)
+    candidate = Planner(cfg, ollama, router)
+
+    with _planner_lock:
+        if _planner_singleton is None:
+            _planner_singleton = candidate
+        return _planner_singleton

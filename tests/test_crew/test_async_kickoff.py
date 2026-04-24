@@ -28,7 +28,7 @@ async def test_async_tasks_run_concurrently_when_no_dependency():
 
     call_times: list[float] = []
 
-    async def timed(task, context, inputs, registry, planner=None):
+    async def timed(task, context, inputs, registry, planner=None, trace_id=None):
         call_times.append(asyncio.get_running_loop().time())
         await asyncio.sleep(0.05)
         return TaskOutput(task_id=task.task_id, agent_role="x", raw="OK")
