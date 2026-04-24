@@ -80,9 +80,5 @@ def test_list_templates_via_cli_subprocess():
         "versicherungs-vergleich",
     ]
     positions = [result.stdout.find(n) for n in expected]
-    assert all(p >= 0 for p in positions), (
-        f"Template missing from CLI output: {result.stdout}"
-    )
-    assert positions == sorted(positions), (
-        f"Templates listed out of order: {result.stdout}"
-    )
+    assert all(p >= 0 for p in positions), f"Template missing from CLI output: {result.stdout}"
+    assert positions == sorted(positions), f"Templates listed out of order: {result.stdout}"

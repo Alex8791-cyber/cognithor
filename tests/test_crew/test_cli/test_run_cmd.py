@@ -7,11 +7,14 @@ generated-project scripts fail loudly instead of silently.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from cognithor.crew.cli.run_cmd import run_project_crew
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_run_project_crew_errors_when_no_src_dir(tmp_path: Path, capsys) -> None:

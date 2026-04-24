@@ -7,7 +7,6 @@ import pytest
 
 from cognithor.crew.cli.init_cmd import run_init
 
-
 _ALL_TEMPLATES = [
     "research",
     "customer-support",
