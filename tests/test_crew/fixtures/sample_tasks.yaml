@@ -1,0 +1,10 @@
+research:
+  description: Compare the top three PKV tariffs for a {age}-year-old
+  expected_output: Tabular comparison with price, coverage, exclusions
+  agent: analyst
+
+report:
+  description: Turn the analysis into a customer report
+  expected_output: Markdown text
+  agent: writer
+  context: [research]

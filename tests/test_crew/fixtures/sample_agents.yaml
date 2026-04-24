@@ -1,0 +1,11 @@
+analyst:
+  role: analyst
+  goal: analyze PKV tariffs
+  backstory: veteran broker with §34d certification
+  tools: [web_search, pdf_reader]
+  llm: ollama/qwen3:8b
+
+writer:
+  role: writer
+  goal: write customer reports
+  llm: ollama/qwen3:8b
