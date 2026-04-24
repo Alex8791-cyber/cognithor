@@ -51,15 +51,23 @@ def _scrub_audit_fields(fields: dict[str, Any]) -> dict[str, Any]:
 
 # Audit helper - wraps cognithor.security.audit.AuditTrail.record_event()
 # as a single module-local callable so tests can patch it cleanly.
-_audit_trail: Any = None
+_AUDIT_TRAIL_UNINITIALIZED = object()  # distinct from None = "init ran, permanently disabled"
+_audit_trail: Any = _AUDIT_TRAIL_UNINITIALIZED
 _audit_lock = threading.Lock()
 
 
 def _get_audit_trail() -> Any:
-    """Lazy-build a process-wide AuditTrail under the Cognithor audit log path."""
+    """Lazy-build a process-wide AuditTrail under the Cognithor audit log path.
+
+    Uses a dedicated sentinel so a transient init failure doesn't retry on
+    every audit event: once ``_audit_trail`` is set (to an AuditTrail OR to
+    ``None``), future calls short-circuit. ``None`` means "init ran, failed,
+    don't try again" — without the sentinel the ``is not None`` guard would
+    let every audit event re-run ``load_config()`` + ``AuditTrail()``.
+    """
     global _audit_trail
     with _audit_lock:
-        if _audit_trail is not None:
+        if _audit_trail is not _AUDIT_TRAIL_UNINITIALIZED:
             return _audit_trail
         try:
             from cognithor.config import load_config
@@ -68,8 +76,12 @@ def _get_audit_trail() -> Any:
             cfg = load_config()
             log_dir = Path(cfg.cognithor_home) / "logs"
             _audit_trail = AuditTrail(log_dir=log_dir)
-        except Exception:
-            _audit_trail = None  # remains None - append_audit becomes a no-op
+        except Exception as exc:
+            log.warning(
+                "AuditTrail init failed; crew audit events will be no-ops for this process",
+                exc_info=exc,
+            )
+            _audit_trail = None  # cached permanent no-op (NOT the uninitialized sentinel)
         return _audit_trail
 
 
@@ -303,13 +315,27 @@ def compile_and_run_sync(
             task_id=t.task_id,
             agent_role=t.agent.role,
         )
-        out = execute_task(
-            t,
-            context=outputs,
-            inputs=inputs,
-            registry=registry,
-            planner=planner,
-        )
+        try:
+            out = execute_task(
+                t,
+                context=outputs,
+                inputs=inputs,
+                registry=registry,
+                planner=planner,
+            )
+        except Exception as exc:
+            append_audit(
+                "crew_task_failed",
+                trace_id=trace_id,
+                task_id=t.task_id,
+                reason=type(exc).__name__,
+            )
+            append_audit(
+                "crew_kickoff_failed",
+                trace_id=trace_id,
+                reason=type(exc).__name__,
+            )
+            raise
         append_audit(
             "crew_task_completed",
             trace_id=trace_id,
@@ -456,14 +482,30 @@ async def compile_and_run_async(
                 task_id=group[0].task_id,
                 agent_role=group[0].agent.role,
             )
-            out = await execute_task_async(
-                group[0],
-                context=outputs,
-                inputs=inputs,
-                registry=registry,
-                planner=planner,
-                trace_id=trace_id,
-            )
+            try:
+                out = await execute_task_async(
+                    group[0],
+                    context=outputs,
+                    inputs=inputs,
+                    registry=registry,
+                    planner=planner,
+                    trace_id=trace_id,
+                )
+            except Exception as exc:
+                # Audit-chain integrity: emit failure events so every
+                # crew_task_started has a matching terminal event.
+                append_audit(
+                    "crew_task_failed",
+                    trace_id=trace_id,
+                    task_id=group[0].task_id,
+                    reason=type(exc).__name__,
+                )
+                append_audit(
+                    "crew_kickoff_failed",
+                    trace_id=trace_id,
+                    reason=type(exc).__name__,
+                )
+                raise
             append_audit(
                 "crew_task_completed",
                 trace_id=trace_id,
@@ -480,19 +522,38 @@ async def compile_and_run_async(
                     task_id=t.task_id,
                     agent_role=t.agent.role,
                 )
-            parallel_outs = await asyncio.gather(
-                *[
-                    execute_task_async(
-                        t,
-                        context=outputs,
-                        inputs=inputs,
-                        registry=registry,
-                        planner=planner,
+            try:
+                parallel_outs = await asyncio.gather(
+                    *[
+                        execute_task_async(
+                            t,
+                            context=outputs,
+                            inputs=inputs,
+                            registry=registry,
+                            planner=planner,
+                            trace_id=trace_id,
+                        )
+                        for t in group
+                    ]
+                )
+            except Exception as exc:
+                # Any failure in the fan-out cancels the gather. We don't
+                # know which individual task(s) failed from here, so emit a
+                # terminal event for every started task + the kickoff to keep
+                # the Hashline-Guard chain balanced.
+                for t in group:
+                    append_audit(
+                        "crew_task_failed",
                         trace_id=trace_id,
+                        task_id=t.task_id,
+                        reason=type(exc).__name__,
                     )
-                    for t in group
-                ]
-            )
+                append_audit(
+                    "crew_kickoff_failed",
+                    trace_id=trace_id,
+                    reason=type(exc).__name__,
+                )
+                raise
             for t, out in zip(group, parallel_outs, strict=True):
                 append_audit(
                     "crew_task_completed",
