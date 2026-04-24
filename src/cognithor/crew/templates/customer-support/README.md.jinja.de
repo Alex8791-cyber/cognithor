@@ -1,0 +1,61 @@
+# {{ project_name }}
+
+Drei-Agenten-Kundenservice-Crew (Intake + Klassifizierung + Antwort-Verfasser),
+sequenziell ausgeführt — erzeugt mit `cognithor init --template customer-support`.
+
+## Quickstart
+
+```bash
+# 1. Dev-Installation
+pip install -e .[dev]
+
+# 2. Ollama-Modell sicherstellen
+ollama pull qwen3:8b
+
+# 3. Crew starten
+{{ project_name }} "Meine Bestellung kam beschädigt an."
+```
+
+Alternativ direkt per Python:
+
+```python
+import asyncio
+from {{ project_name }}.crew import CustomerSupportCrew
+
+result = asyncio.run(
+    CustomerSupportCrew().assemble().kickoff_async(
+        inputs={"message": "Meine Bestellung kam beschaedigt an."}
+    )
+)
+print(result.raw)
+```
+
+## Struktur
+
+```
+{{ project_name }}/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── config/
+│   ├── agents.yaml       # YAML-Spiegel der Agenten
+│   └── tasks.yaml        # YAML-Spiegel der Tasks
+├── src/{{ project_name }}/
+│   ├── __init__.py
+│   ├── crew.py           # CustomerSupportCrew mit @agent/@task/@crew
+│   └── main.py           # CLI Entry-Point
+└── tests/
+    └── test_crew.py      # Smoke-Test mit Mock-Planner
+```
+
+## Anpassung
+
+- `src/{{ project_name }}/crew.py` — Agenten, Tasks und Reihenfolge ändern.
+- `config/agents.yaml` + `config/tasks.yaml` — optionale YAML-Konfiguration.
+- `.env` (aus `.env.example` kopieren) — Ollama-Host, Cognithor-Home.
+
+## Tests
+
+```bash
+pytest -q
+```

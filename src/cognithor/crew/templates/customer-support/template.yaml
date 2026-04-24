@@ -1,0 +1,10 @@
+name: customer-support
+description_de: Drei-Agenten-Kundenservice-Crew — Intake, Klassifizierung, Antwort-Entwurf.
+description_en: Three-agent customer-support crew — intake, classification, reply drafting.
+order: 2
+required_models:
+  - ollama/qwen3:8b
+tags:
+  - sequential
+  - support
+  - memory

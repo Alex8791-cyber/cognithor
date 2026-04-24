@@ -1,0 +1,43 @@
+"""Entry point for the {{ project_name }} crew.
+
+Run via::
+
+    {{ project_name }}                    # via project.scripts
+    python -m {{ project_name }}.main     # module form
+
+Or embed in Python code::
+
+    from {{ project_name }}.crew import CustomerSupportCrew
+
+    result = CustomerSupportCrew().assemble().kickoff(
+        inputs={"message": "My order is damaged."}
+    )
+    print(result.raw)
+"""
+
+from __future__ import annotations
+
+import asyncio
+import sys
+
+from {{ project_name }}.crew import CustomerSupportCrew
+
+
+def main() -> int:
+    """CLI entry — accept the customer ``message`` as the first arg or prompt for it."""
+    if len(sys.argv) > 1:
+        message = " ".join(sys.argv[1:])
+    else:
+        message = input("Customer message: ").strip()
+    if not message:
+        print("error: no message given", file=sys.stderr)
+        return 2
+
+    crew = CustomerSupportCrew().assemble()
+    result = asyncio.run(crew.kickoff_async(inputs={"message": message}))
+    print(result.raw)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

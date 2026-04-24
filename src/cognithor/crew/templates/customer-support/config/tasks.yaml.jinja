@@ -1,0 +1,16 @@
+parse:
+  description: "Parse die Kundennachricht: {message}"
+  expected_output: Strukturierte Zusammenfassung als Bullet-Liste.
+  agent: intake
+
+classify:
+  description: Klassifiziere das Ticket nach Kategorie + Priorität.
+  expected_output: Kategorie (billing/technical/other) + Priorität (low/med/high).
+  agent: classifier
+  context: [parse]
+
+draft_reply:
+  description: Schreibe eine Antwort an den Kunden.
+  expected_output: Antwort-Text, 100-300 Wörter, freundlich, lösungsorientiert.
+  agent: response_writer
+  context: [classify]
