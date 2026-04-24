@@ -1235,15 +1235,17 @@ class TestCronJobs:
     def test_governance_analysis(self):
         from cognithor.cron.jobs import governance_analysis
 
-        # No governance agent
+        # No governance agent — use asyncio.run() not asyncio.get_event_loop();
+        # the latter raises RuntimeError on Python 3.12+ when no loop exists
+        # and is deprecated anyway.
         gateway = MagicMock()
         gateway._governance_agent = None
-        asyncio.get_event_loop().run_until_complete(governance_analysis(gateway))
+        asyncio.run(governance_analysis(gateway))
         # With governance agent
         gov = MagicMock()
         gov.analyze.return_value = ["proposal1"]
         gateway._governance_agent = gov
-        asyncio.get_event_loop().run_until_complete(governance_analysis(gateway))
+        asyncio.run(governance_analysis(gateway))
 
     def test_add_job_with_agent(self, tmp_path):
         from cognithor.cron.jobs import JobStore
