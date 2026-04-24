@@ -54,5 +54,14 @@ class Crew(BaseModel):
         )
 
     async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
-        """Async kickoff. Implemented in Task 9."""
-        raise NotImplementedError("Crew.kickoff_async landing in Task 9")
+        """Async kickoff with parallel fan-out for tasks marked async_execution=True."""
+        from cognithor.crew.compiler import compile_and_run_async
+        from cognithor.crew.runtime import get_default_tool_registry
+
+        return await compile_and_run_async(
+            agents=self.agents,
+            tasks=self.tasks,
+            process=self.process,
+            inputs=inputs,
+            registry=get_default_tool_registry(),
+        )

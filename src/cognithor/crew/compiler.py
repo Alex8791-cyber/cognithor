@@ -8,6 +8,7 @@ we only need ordered traversal.
 
 from __future__ import annotations
 
+import asyncio
 import uuid as _uuid
 from typing import Any
 
@@ -96,4 +97,74 @@ def compile_and_run_sync(
         _warn_if_guardrail_silently_ignored(t)  # PR 1 → PR 2 bridge guard
         out = execute_task(t, context=outputs, inputs=inputs, registry=registry)
         outputs.append(out)
+    return CrewOutput(raw=outputs[-1].raw, tasks_output=outputs, trace_id=trace_id)
+
+
+async def execute_task_async(
+    task: CrewTask,
+    *,
+    context: list[TaskOutput],
+    inputs: dict[str, Any] | None,
+    registry: Any,
+) -> TaskOutput:
+    """Async counterpart of execute_task. Real PGE wiring in Task 11."""
+    raise NotImplementedError(
+        "execute_task_async is stubbed in Task 9; real PGE wiring arrives in Task 11."
+    )
+
+
+async def compile_and_run_async(
+    agents: list[CrewAgent],
+    tasks: list[CrewTask],
+    process: CrewProcess,
+    inputs: dict[str, Any] | None,
+    registry: Any,
+) -> CrewOutput:
+    """Async compiler + runner with parallel fan-out for async_execution=True tasks.
+
+    Consecutive tasks marked `async_execution=True` that don't depend on each
+    other are gathered and run concurrently via `asyncio.gather`. Everything
+    else falls back to sequential await.
+    """
+    if process is CrewProcess.SEQUENTIAL:
+        ordered = order_tasks_sequential(tasks)
+    else:
+        from cognithor.crew.compiler_hierarchical import order_tasks_hierarchical
+
+        ordered = order_tasks_hierarchical(tasks, agents)
+
+    trace_id = _uuid.uuid4().hex
+    outputs: list[TaskOutput] = []
+    # PR 1 → PR 2 bridge: warn on any silently-ignored guardrail before entering
+    # the fan-out loop (single pass; warnings filter dedupes by call site).
+    for t in ordered:
+        _warn_if_guardrail_silently_ignored(t)
+    i = 0
+    while i < len(ordered):
+        # Collect a fan-out group: consecutive tasks with async_execution=True
+        # and no dependency on each other.
+        group = [ordered[i]]
+        j = i + 1
+        while j < len(ordered) and ordered[j].async_execution:
+            # Only group if the later task doesn't depend on earlier group members
+            deps = {t.task_id for t in ordered[j].context}
+            if deps.isdisjoint({t.task_id for t in group}):
+                group.append(ordered[j])
+                j += 1
+            else:
+                break
+        if len(group) == 1:
+            out = await execute_task_async(
+                group[0], context=outputs, inputs=inputs, registry=registry
+            )
+            outputs.append(out)
+        else:
+            parallel_outs = await asyncio.gather(
+                *[
+                    execute_task_async(t, context=outputs, inputs=inputs, registry=registry)
+                    for t in group
+                ]
+            )
+            outputs.extend(parallel_outs)
+        i = j if len(group) > 1 else i + 1
     return CrewOutput(raw=outputs[-1].raw, tasks_output=outputs, trace_id=trace_id)
