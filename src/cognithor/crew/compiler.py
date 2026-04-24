@@ -212,37 +212,6 @@ def execute_task(
     )
 
 
-# Guardrails land in Feature 4 (PR 2). Between PR 1 (this file) shipping and
-# PR 2 landing on the user's install, a CrewTask with `guardrail=<anything>`
-# would silently do nothing — the user gets no safety they expected. Guard
-# against that foot-gun by probing the guardrails module at import time and
-# emitting a UserWarning if a task declares a guardrail on a version that
-# can't execute it. Removed in Task 21 when the real apply path lands.
-try:
-    from cognithor.crew.guardrails import base as _guardrails_base  # noqa: F401
-
-    _guardrails_available = True
-except ImportError:
-    _guardrails_available = False
-
-
-def _warn_if_guardrail_silently_ignored(task: CrewTask) -> None:
-    """PR 1 → PR 2 bridge guard. Removed in Task 21."""
-    import warnings
-
-    if task.guardrail is not None and not _guardrails_available:
-        warnings.warn(
-            f"CrewTask '{task.task_id}' has a guardrail but "
-            "cognithor.crew.guardrails is not available in this release. "
-            "The guardrail will be IGNORED. Upgrade to cognithor>=0.93.0 "
-            "(or install via `pip install cognithor[all]`) to enable guardrails.",
-            UserWarning,
-            # Chain: warn -> _warn_if_guardrail_silently_ignored ->
-            #        compile_and_run_sync -> Crew.kickoff -> USER
-            stacklevel=4,
-        )
-
-
 def _warn_if_hierarchical_is_stubbed(process: CrewProcess) -> None:
     """PR 1 → Task 10 bridge guard.
 
@@ -303,7 +272,6 @@ def compile_and_run_sync(
         process=process.value,
     )
     for t in ordered:
-        _warn_if_guardrail_silently_ignored(t)  # PR 1 → PR 2 bridge guard
         # Note: ``execute_task`` is the sync trampoline — it asyncio.run()s
         # execute_task_async which re-derives its own trace_id if omitted.
         # Passing the kickoff-level trace_id isn't plumbed through the sync
@@ -448,10 +416,6 @@ async def compile_and_run_async(
 
     trace_id = _uuid.uuid4().hex
     outputs: list[TaskOutput] = []
-    # PR 1 → PR 2 bridge: warn on any silently-ignored guardrail before entering
-    # the fan-out loop (single pass; warnings filter dedupes by call site).
-    for t in ordered:
-        _warn_if_guardrail_silently_ignored(t)
     append_audit(
         "crew_kickoff_started",
         trace_id=trace_id,
