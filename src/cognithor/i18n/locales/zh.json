@@ -823,5 +823,16 @@
     "file_not_found": "错误：文件 '{file_path}' 未找到。",
     "only_python": "错误：仅支持 Python 文件（.py）。",
     "file_read_error": "读取文件时出错：{exc}"
+  },
+  "crew": {
+    "errors": {
+      "yaml_parse": "无法解析 {file}：{error}",
+      "ollama_offline": "无法连接到 Ollama 服务器 {url}。请启动 Ollama 或设置 COGNITHOR_OLLAMA_BASE_URL。",
+      "guardrail_failed": "Guardrail '{name}' 在 {attempts} 次尝试后拒绝了任务 '{task}' 的输出：{reason}",
+      "unknown_agent": "任务 '{task}' 引用了未知的 Agent '{agent}'。已知 Agents:{known}",
+      "unknown_tool": "Agent 引用了未知的工具 '{tool}'。已知工具:{known}",
+      "tool_suggestion": "Agent 引用了未知的工具 '{tool}'。您是否想使用 '{suggestion}'?",
+      "unknown_task": "任务 '{task}' 引用了未知的任务 '{ref}'"
+    }
   }
 }

@@ -823,5 +823,16 @@
     "file_not_found": "Error: File '{file_path}' not found.",
     "only_python": "Error: Only Python files (.py) are supported.",
     "file_read_error": "Error reading file: {exc}"
+  },
+  "crew": {
+    "errors": {
+      "yaml_parse": "Failed to parse {file}: {error}",
+      "ollama_offline": "Ollama server is not reachable at {url}. Start Ollama or set COGNITHOR_OLLAMA_BASE_URL.",
+      "guardrail_failed": "Guardrail '{name}' rejected output from task '{task}' after {attempts} attempt(s): {reason}",
+      "unknown_agent": "Task '{task}' references unknown agent '{agent}'. Known agents: {known}",
+      "unknown_tool": "Agent references unknown tool '{tool}'. Known tools: {known}",
+      "tool_suggestion": "Agent references unknown tool '{tool}'. Did you mean '{suggestion}'?",
+      "unknown_task": "Task '{task}' references unknown task '{ref}'"
+    }
   }
 }

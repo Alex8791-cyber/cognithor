@@ -18,6 +18,7 @@ import difflib
 from typing import Any
 
 from cognithor.crew.errors import ToolNotFoundError
+from cognithor.i18n import t
 
 
 def available_tool_names(registry: Any) -> list[str]:
@@ -44,14 +45,23 @@ def did_you_mean(name: str, candidates: list[str], cutoff: float = 0.6) -> str |
 def resolve_tools(tool_names: list[str], *, registry: Any) -> list[str]:
     """Verify every tool name exists in the registry.
 
-    Raises ToolNotFoundError on first unknown name, with a 'Meintest du ...?'
-    suggestion when a close match exists.
+    Raises ToolNotFoundError on first unknown name. When a close match is
+    found, the error uses ``crew.errors.tool_suggestion`` (which includes
+    the "did you mean" hint in the active locale). Otherwise it uses
+    ``crew.errors.unknown_tool`` with the list of known tools.
     """
     available = available_tool_names(registry)
     for name in tool_names:
         if name in available:
             continue
         suggestion = did_you_mean(name, available)
-        hint = f" Meintest du '{suggestion}'?" if suggestion else ""
-        raise ToolNotFoundError(f"Tool '{name}' nicht in der Registry.{hint}")
+        if suggestion is not None:
+            msg = t("crew.errors.tool_suggestion", tool=name, suggestion=suggestion)
+        else:
+            msg = t(
+                "crew.errors.unknown_tool",
+                tool=name,
+                known=", ".join(available) or "(none)",
+            )
+        raise ToolNotFoundError(msg)
     return tool_names
