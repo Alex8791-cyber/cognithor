@@ -132,3 +132,24 @@ async def test_execute_task_token_usage_from_cost_tracker():
         "completion_tokens": 7,
         "total_tokens": 49,
     }
+
+
+def test_crew_model_copy_preserves_injected_planner():
+    """Task 11 quality-review fix: ``Crew.model_copy`` must re-attach the
+    ``_planner`` set by ``Crew(planner=...)``. Pydantic v2's default
+    implementation only forwards declared fields, silently dropping the
+    private ``_planner`` state and forcing the copy to fall back to
+    :func:`get_default_planner` at kickoff time — a subtle production
+    footgun.
+    """
+    from cognithor.crew import Crew
+
+    live_planner = MagicMock(name="LivePlanner")
+    agent = CrewAgent(role="writer", goal="write")
+    task = CrewTask(description="x", expected_output="y", agent=agent)
+    crew = Crew(agents=[agent], tasks=[task], planner=live_planner)
+
+    copied = crew.model_copy(update={"verbose": True})
+
+    assert copied.verbose is True  # update applied
+    assert getattr(copied, "_planner", None) is live_planner  # planner preserved

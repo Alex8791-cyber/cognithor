@@ -41,6 +41,21 @@ class Crew(BaseModel):
         super().__init__(**kwargs)
         object.__setattr__(self, "_planner", planner)
 
+    def model_copy(self, *, update: dict[str, Any] | None = None, deep: bool = False) -> Crew:
+        """Preserve the injected ``_planner`` across ``model_copy()``.
+
+        Pydantic v2's default ``model_copy`` walks only declared fields, so
+        an injected Planner would silently disappear on any copy, forcing
+        the copy to fall back to :func:`get_default_planner` at kickoff
+        time — a subtle production footgun. We re-attach the original
+        planner reference (shared — a copy should route through the same
+        live client by default). Callers who want a different planner can
+        ``object.__setattr__`` after the copy.
+        """
+        copied = super().model_copy(update=update, deep=deep)
+        object.__setattr__(copied, "_planner", getattr(self, "_planner", None))
+        return copied
+
     @model_validator(mode="after")
     def _warn_on_hierarchical_without_manager(self) -> Crew:
         if self.process is CrewProcess.HIERARCHICAL and self.manager_llm is None:
