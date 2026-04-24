@@ -217,7 +217,70 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    # `cognithor init …` — scaffold a new Crew project from a template.
+    init_parser = sub.add_parser(
+        "init",
+        help="Scaffold a new Cognithor Crew project from a template",
+    )
+    init_parser.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="Project name (will be sanitized to a valid Python package identifier)",
+    )
+    init_parser.add_argument(
+        "--template",
+        default="research",
+        help="Template name (see --list-templates). Default: research",
+    )
+    init_parser.add_argument(
+        "--dir",
+        dest="init_dir",
+        default=None,
+        help="Target directory (default: ./<project_name>)",
+    )
+    init_parser.add_argument(
+        "--lang",
+        default=None,
+        help="Language for localized output (de, en, zh). Defaults to config language.",
+    )
+    init_parser.add_argument(
+        "--list-templates",
+        dest="list_templates",
+        action="store_true",
+        help="List available templates and exit",
+    )
+    init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing non-empty target directory",
+    )
+
+    # `cognithor run` — runs the Crew defined in the current scaffolded project.
+    sub.add_parser(
+        "run",
+        help="Run the Crew defined in the current scaffolded project directory",
+    )
+
     return parser.parse_args()
+
+
+def _validate_lang(lang: str | None, default: str = "en") -> str:
+    """Validate a locale against the installed language packs.
+
+    Falls back to ``default`` if ``lang`` is None, empty, or unknown.
+    Uses :func:`cognithor.i18n.get_available_locales` so we match whatever
+    packs are actually shipped.
+    """
+    if not lang:
+        return default
+    try:
+        from cognithor.i18n import get_available_locales
+
+        available = set(get_available_locales())
+    except Exception:
+        available = {"en", "de", "zh"}
+    return lang if lang in available else default
 
 
 def _check_python_version() -> None:
@@ -410,6 +473,48 @@ def main() -> None:
         else:
             config_tui.launch(config_path=config_path)
             sys.exit(0)
+
+    if getattr(args, "command", None) == "init":
+        from cognithor.crew.cli.init_cmd import InitCommandError, run_init
+        from cognithor.crew.cli.list_templates_cmd import print_templates
+
+        lang = _validate_lang(getattr(args, "lang", None), default="de")
+
+        if getattr(args, "list_templates", False):
+            sys.exit(print_templates(lang=lang))
+
+        name = getattr(args, "name", None)
+        if not name:
+            print(
+                "Usage: cognithor init <name> [--template NAME] [--dir PATH] "
+                "[--lang de|en|zh] [--force]",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
+        target_dir = (
+            Path(args.init_dir)
+            if getattr(args, "init_dir", None)
+            else Path.cwd() / name
+        )
+        try:
+            sys.exit(
+                run_init(
+                    name=name,
+                    template=args.template,
+                    directory=target_dir,
+                    lang=lang,
+                    force=getattr(args, "force", False),
+                )
+            )
+        except InitCommandError as exc:
+            print(f"cognithor init: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if getattr(args, "command", None) == "run":
+        from cognithor.crew.cli.run_cmd import run_project_crew
+
+        sys.exit(run_project_crew())
 
     # 0a. Auto-migrate data from ~/.jarvis/ to ~/.cognithor/ (one-time, on upgrade)
     _migrate_jarvis_home()
