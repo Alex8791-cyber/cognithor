@@ -443,6 +443,15 @@ async def execute_task_async(
             verdict = "skipped"
             break
         result = await _call_guardrail(guardrail, out)
+        append_audit(
+            "crew_guardrail_check",
+            trace_id=trace_id,  # parent correlation - links verdict to kickoff
+            task_id=task.task_id,
+            verdict="pass" if result.passed else "fail",
+            retry_count=attempts,
+            pii_detected=result.pii_detected,
+            feedback=result.feedback,
+        )
         if result.passed:
             verdict = "pass"
             break
