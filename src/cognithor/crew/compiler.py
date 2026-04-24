@@ -10,7 +10,10 @@ turn drives the Gatekeeper + Executor — the Crew-Layer never bypasses PGE.
 from __future__ import annotations
 
 import asyncio
+import logging
+import threading
 import uuid as _uuid
+from pathlib import Path
 from typing import Any
 
 from cognithor.crew.agent import CrewAgent
@@ -19,6 +22,63 @@ from cognithor.crew.process import CrewProcess
 from cognithor.crew.task import CrewTask
 from cognithor.crew.tool_resolver import resolve_tools
 from cognithor.models import ToolResult, WorkingMemory
+
+log = logging.getLogger(__name__)
+
+# Audit helper - wraps cognithor.security.audit.AuditTrail.record_event()
+# as a single module-local callable so tests can patch it cleanly.
+_audit_trail: Any = None
+_audit_lock = threading.Lock()
+
+
+def _get_audit_trail() -> Any:
+    """Lazy-build a process-wide AuditTrail under the Cognithor audit log path."""
+    global _audit_trail
+    with _audit_lock:
+        if _audit_trail is not None:
+            return _audit_trail
+        try:
+            from cognithor.config import load_config
+            from cognithor.security.audit import AuditTrail
+
+            cfg = load_config()
+            log_dir = Path(cfg.cognithor_home) / "logs"
+            _audit_trail = AuditTrail(log_dir=log_dir)
+        except Exception:
+            _audit_trail = None  # remains None - append_audit becomes a no-op
+        return _audit_trail
+
+
+def append_audit(event: str, **fields: Any) -> None:
+    """Emit a Crew-Layer audit event via the Hashline-Guard chain.
+
+    Falls back to a no-op when AuditTrail cannot be built (e.g. standalone
+    test without ~/.cognithor/ present). Test code monkey-patches this
+    callable directly rather than the AuditTrail inside it.
+    """
+    trail = _get_audit_trail()
+    if trail is None:
+        return
+    session_id = fields.pop("trace_id", "crew")
+    try:
+        trail.record_event(session_id=session_id, event_type=event, details=fields)
+    except Exception as exc:
+        # Spec 11.5: audit failures must be SURFACED, not silently swallowed.
+        log.warning(
+            "crew_audit_record_failed - Hashline-Guard chain may be incomplete",
+            extra={"event": event, "session_id": session_id},
+            exc_info=exc,
+        )
+        try:
+            from cognithor.telemetry.metrics import MetricsProvider
+
+            MetricsProvider.get_instance().counter(
+                "cognithor_crew_audit_record_failures_total",
+                1,
+                labels={"reason": type(exc).__name__},
+            )
+        except (ImportError, AttributeError):
+            pass
 
 
 def order_tasks_sequential(tasks: list[CrewTask]) -> list[CrewTask]:
@@ -199,6 +259,12 @@ def compile_and_run_sync(
 
     trace_id = _uuid.uuid4().hex
     outputs: list[TaskOutput] = []
+    append_audit(
+        "crew_kickoff_started",
+        trace_id=trace_id,
+        n_tasks=len(ordered),
+        process=process.value,
+    )
     for t in ordered:
         _warn_if_guardrail_silently_ignored(t)  # PR 1 → PR 2 bridge guard
         # Note: ``execute_task`` is the sync trampoline — it asyncio.run()s
@@ -206,6 +272,12 @@ def compile_and_run_sync(
         # Passing the kickoff-level trace_id isn't plumbed through the sync
         # wrapper because the crew always reaches here via kickoff_async now;
         # this function is kept purely for backward compat.
+        append_audit(
+            "crew_task_started",
+            trace_id=trace_id,
+            task_id=t.task_id,
+            agent_role=t.agent.role,
+        )
         out = execute_task(
             t,
             context=outputs,
@@ -213,7 +285,19 @@ def compile_and_run_sync(
             registry=registry,
             planner=planner,
         )
+        append_audit(
+            "crew_task_completed",
+            trace_id=trace_id,
+            task_id=t.task_id,
+            duration_ms=out.duration_ms,
+            tokens=out.token_usage.get("total_tokens", 0),
+        )
         outputs.append(out)
+    append_audit(
+        "crew_kickoff_completed",
+        trace_id=trace_id,
+        n_tasks=len(outputs),
+    )
     return CrewOutput(raw=outputs[-1].raw, tasks_output=outputs, trace_id=trace_id)
 
 
@@ -317,6 +401,12 @@ async def compile_and_run_async(
     # the fan-out loop (single pass; warnings filter dedupes by call site).
     for t in ordered:
         _warn_if_guardrail_silently_ignored(t)
+    append_audit(
+        "crew_kickoff_started",
+        trace_id=trace_id,
+        n_tasks=len(ordered),
+        process=process.value,
+    )
     i = 0
     while i < len(ordered):
         # Collect a fan-out group: consecutive tasks with async_execution=True
@@ -335,6 +425,12 @@ async def compile_and_run_async(
                 else:
                     break
         if len(group) == 1:
+            append_audit(
+                "crew_task_started",
+                trace_id=trace_id,
+                task_id=group[0].task_id,
+                agent_role=group[0].agent.role,
+            )
             out = await execute_task_async(
                 group[0],
                 context=outputs,
@@ -343,8 +439,22 @@ async def compile_and_run_async(
                 planner=planner,
                 trace_id=trace_id,
             )
+            append_audit(
+                "crew_task_completed",
+                trace_id=trace_id,
+                task_id=group[0].task_id,
+                duration_ms=out.duration_ms,
+                tokens=out.token_usage.get("total_tokens", 0),
+            )
             outputs.append(out)
         else:
+            for t in group:
+                append_audit(
+                    "crew_task_started",
+                    trace_id=trace_id,
+                    task_id=t.task_id,
+                    agent_role=t.agent.role,
+                )
             parallel_outs = await asyncio.gather(
                 *[
                     execute_task_async(
@@ -358,6 +468,19 @@ async def compile_and_run_async(
                     for t in group
                 ]
             )
+            for t, out in zip(group, parallel_outs, strict=True):
+                append_audit(
+                    "crew_task_completed",
+                    trace_id=trace_id,
+                    task_id=t.task_id,
+                    duration_ms=out.duration_ms,
+                    tokens=out.token_usage.get("total_tokens", 0),
+                )
             outputs.extend(parallel_outs)
         i = j if len(group) > 1 else i + 1
+    append_audit(
+        "crew_kickoff_completed",
+        trace_id=trace_id,
+        n_tasks=len(outputs),
+    )
     return CrewOutput(raw=outputs[-1].raw, tasks_output=outputs, trace_id=trace_id)
