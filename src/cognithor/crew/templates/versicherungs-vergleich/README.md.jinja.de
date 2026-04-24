@@ -1,0 +1,80 @@
+# {{ project_name }}
+
+DACH-spezialisierte Versicherungs-Vergleichs-Crew — offline-fähig, DSGVO-konform,
+§34d-neutral. Erzeugt mit `cognithor init --template versicherungs-vergleich`.
+
+Drei Agenten (Tarif-Researcher + Kunden-Profiler + Empfehlungs-Writer) liefern
+einen neutralen Vergleich — **keine Beratung** (§34d GewO). Zwei Guardrails
+stellen Compliance sicher:
+
+- `no_pii()` — blockt E-Mails, IBANs, Telefonnummern, Steuer-IDs im Output.
+- `StringGuardrail(...)` — LLM-geprüfte Regel: keine Empfehlung, nur Vergleich.
+
+## Quickstart
+
+```bash
+# 1. Dev-Installation
+pip install -e .[dev]
+
+# 2. Ollama-Modell sicherstellen
+ollama pull qwen3:8b
+
+# 3. Crew starten
+{{ project_name }} "Private Krankenversicherung fuer Freelancer, 35 Jahre"
+```
+
+Alternativ direkt per Python:
+
+```python
+import asyncio
+from {{ project_name }}.crew import VersicherungsCrew
+
+result = asyncio.run(
+    VersicherungsCrew().assemble().kickoff_async(
+        inputs={
+            "topic": "Private Krankenversicherung",
+            "customer_info": "Freelancer, 35, ledig",
+        }
+    )
+)
+print(result.raw)
+```
+
+## Struktur
+
+```
+{{ project_name }}/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── config/
+│   ├── agents.yaml       # YAML-Spiegel der Agenten
+│   └── tasks.yaml        # YAML-Spiegel der Tasks
+├── src/{{ project_name }}/
+│   ├── __init__.py
+│   ├── crew.py           # VersicherungsCrew mit @agent/@task/@crew
+│   └── main.py           # CLI Entry-Point
+└── tests/
+    └── test_crew.py      # Smoke-Test mit Mock-Planner
+```
+
+## Anpassung
+
+- `src/{{ project_name }}/crew.py` — Agenten, Tasks und Guardrails anpassen.
+- `config/agents.yaml` + `config/tasks.yaml` — optionale YAML-Konfiguration.
+- `.env` (aus `.env.example` kopieren) — Ollama-Host, Cognithor-Home.
+
+## Compliance-Hinweise
+
+- **§34d GewO**: Output ist ein neutraler Vergleich, **keine** Empfehlung. Der
+  `StringGuardrail` prüft das bei jedem Lauf.
+- **DSGVO**: `no_pii()` blockt Leaks von E-Mails, IBANs, Telefonnummern und
+  Steuer-IDs.
+- **Offline-fähig**: `tools=[]` — kein externer Netzwerkzugriff. Alle Modelle
+  laufen lokal über Ollama.
+
+## Tests
+
+```bash
+pytest -q
+```

@@ -1,0 +1,10 @@
+name: versicherungs-vergleich
+description_de: DACH-Versicherungs-Vergleich — offline-fähig, DSGVO-konform, §34d-neutral.
+description_en: DACH insurance comparison crew — offline-capable, GDPR-compliant, non-advisory.
+order: 5
+required_models:
+  - ollama/qwen3:8b
+tags:
+  - dach
+  - offline
+  - guardrails

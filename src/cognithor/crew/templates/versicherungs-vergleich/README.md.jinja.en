@@ -1,0 +1,80 @@
+# {{ project_name }}
+
+DACH-specialized insurance comparison crew — offline-capable, GDPR-compliant,
+non-advisory (§34d GewO neutral). Generated with
+`cognithor init --template versicherungs-vergleich`.
+
+Three agents (Tarif-Researcher + Kunden-Profiler + Empfehlungs-Writer) produce a
+neutral comparison — **never advice** (German §34d GewO). Two guardrails enforce
+compliance:
+
+- `no_pii()` — blocks emails, IBANs, phone numbers, tax IDs in the output.
+- `StringGuardrail(...)` — LLM-checked rule: no recommendations, comparison only.
+
+## Quickstart
+
+```bash
+# 1. Dev install
+pip install -e .[dev]
+
+# 2. Make sure the Ollama model is pulled
+ollama pull qwen3:8b
+
+# 3. Run the crew
+{{ project_name }} "Private health insurance for freelancer, 35 years old"
+```
+
+Or directly from Python:
+
+```python
+import asyncio
+from {{ project_name }}.crew import VersicherungsCrew
+
+result = asyncio.run(
+    VersicherungsCrew().assemble().kickoff_async(
+        inputs={
+            "topic": "Private health insurance",
+            "customer_info": "Freelancer, 35, single",
+        }
+    )
+)
+print(result.raw)
+```
+
+## Layout
+
+```
+{{ project_name }}/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── config/
+│   ├── agents.yaml       # YAML mirror of the agents
+│   └── tasks.yaml        # YAML mirror of the tasks
+├── src/{{ project_name }}/
+│   ├── __init__.py
+│   ├── crew.py           # VersicherungsCrew with @agent/@task/@crew
+│   └── main.py           # CLI entry point
+└── tests/
+    └── test_crew.py      # Smoke test with a mock Planner
+```
+
+## Customize
+
+- `src/{{ project_name }}/crew.py` — change agents, tasks, and guardrails.
+- `config/agents.yaml` + `config/tasks.yaml` — optional YAML config.
+- `.env` (copy from `.env.example`) — Ollama host, Cognithor home.
+
+## Compliance notes
+
+- **§34d GewO (DE)**: Output is a neutral comparison, **not** a recommendation.
+  The `StringGuardrail` verifies this on every run.
+- **GDPR**: `no_pii()` blocks leaks of emails, IBANs, phone numbers, and tax IDs.
+- **Offline-capable**: `tools=[]` — no external network access. All models run
+  locally via Ollama.
+
+## Tests
+
+```bash
+pytest -q
+```

@@ -1,0 +1,15 @@
+research:
+  description: "Recherchiere Top-3-Tarife für: {topic}"
+  expected_output: Tabellarische Gegenüberstellung mit Beitrag, Leistungen.
+  agent: tarif_researcher
+
+profile:
+  description: "Extrahiere Kundenprofil aus: {customer_info}"
+  expected_output: Strukturierte Profildaten als Bullet-Liste.
+  agent: kunden_profiler
+
+write:
+  description: Erstelle einen §34d-neutralen Vergleich für den Kunden.
+  expected_output: Markdown-Text, 500-800 Wörter, neutral, keine Empfehlung.
+  agent: empfehlungs_writer
+  context: [research, profile]
