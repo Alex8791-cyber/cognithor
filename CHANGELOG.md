@@ -23,6 +23,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   trigger retry-with-feedback up to `task.max_retries`, then raise
   `GuardrailFailure`. Every verdict is recorded in the Hashline-Guard audit chain
   with PII-detection flag.
+- **`cognithor init` scaffolder + 5 first-party templates (Feature 3)** —
+  `cognithor init <name> --template <name> [--dir PATH] [--lang de|en]`
+  generates a runnable Crew project from Jinja2 templates. Templates: `research`,
+  `customer-support`, `data-analyst`, `content`, `versicherungs-vergleich`
+  (DACH-differentiator, fully offline-capable, §34d-neutral guardrails).
+  `cognithor init --list-templates` prints the catalog with DE/EN descriptions.
+  CI scaffolds every template on every PR.
 
 ### Breaking Changes
 None. The Crew-Layer is strictly additive — no existing public API changes.
