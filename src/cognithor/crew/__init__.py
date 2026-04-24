@@ -8,7 +8,7 @@ See docs/superpowers/specs/2026-04-23-cognithor-crew-v1-adoption.md.
 
 from __future__ import annotations
 
-from cognithor.crew.agent import CrewAgent
+from cognithor.crew.agent import CrewAgent, LLMConfig
 from cognithor.crew.crew import Crew
 from cognithor.crew.errors import (
     CrewCompilationError,
@@ -29,6 +29,7 @@ __all__ = [
     "CrewProcess",
     "CrewTask",
     "GuardrailFailure",
+    "LLMConfig",
     "TaskOutput",
     "TokenUsageDict",
     "ToolNotFoundError",
