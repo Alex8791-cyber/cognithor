@@ -23,8 +23,16 @@ class FunctionGuardrail:
 
     def __call__(self, output: TaskOutput) -> GuardrailResult:
         try:
-            ok, payload = self._fn(output)
+            raw = self._fn(output)
         except Exception as exc:
+            return GuardrailResult(passed=False, feedback=f"Guardrail raised: {exc}")
+        # Pass-through: callables may return a GuardrailResult directly
+        # (Protocol-style). Skip tuple unpacking in that case.
+        if isinstance(raw, GuardrailResult):
+            return raw
+        try:
+            ok, payload = raw
+        except (TypeError, ValueError) as exc:
             return GuardrailResult(passed=False, feedback=f"Guardrail raised: {exc}")
         if ok:
             return GuardrailResult(passed=True, feedback=None)

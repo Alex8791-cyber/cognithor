@@ -10,6 +10,7 @@ turn drives the Gatekeeper + Executor — the Crew-Layer never bypasses PGE.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import threading
 import uuid as _uuid
@@ -17,6 +18,10 @@ from pathlib import Path
 from typing import Any
 
 from cognithor.crew.agent import CrewAgent
+from cognithor.crew.errors import GuardrailFailure
+from cognithor.crew.guardrails.base import GuardrailResult
+from cognithor.crew.guardrails.function_guardrail import FunctionGuardrail
+from cognithor.crew.guardrails.string_guardrail import StringGuardrail
 from cognithor.crew.output import CrewOutput, TaskOutput, TokenUsageDict
 from cognithor.crew.process import CrewProcess
 from cognithor.crew.task import CrewTask
@@ -178,6 +183,43 @@ def _read_token_usage(planner: Any) -> TokenUsageDict | None:
     )
 
 
+def _is_already_guardrail(g: Any) -> bool:
+    """Duck-type check: Guardrails (FunctionGuardrail, StringGuardrail, chain-wrapper)
+    have a ``__call__`` AND either a ``_rule`` attribute (StringGuardrail), a
+    ``_fn`` attribute (FunctionGuardrail), or are builtin closures. Anything
+    else the user passes is treated as a raw callable and wrapped.
+    """
+    return hasattr(g, "_rule") or hasattr(g, "_fn") or getattr(g, "_is_guardrail", False)
+
+
+def _normalize_guardrail(g: Any, *, ollama_client: Any, model: str) -> Any:
+    """Normalize whatever the user stuck into ``CrewTask.guardrail`` into a
+    callable.
+
+    - ``None`` -> None
+    - ``str`` -> :class:`StringGuardrail`
+    - already a Guardrail -> returned as-is
+    - any other callable -> wrapped in :class:`FunctionGuardrail` for exception safety
+    """
+    if g is None:
+        return None
+    if isinstance(g, str):
+        return StringGuardrail(g, llm_client=ollama_client, model=model)
+    if _is_already_guardrail(g):
+        return g
+    if callable(g):
+        return FunctionGuardrail(g)
+    return g
+
+
+async def _call_guardrail(guardrail: Any, out: TaskOutput) -> GuardrailResult:
+    """Invoke a guardrail - may be sync or async. Awaits coroutine returns."""
+    result = guardrail(out)
+    if inspect.iscoroutine(result):
+        result = await result
+    return result
+
+
 def execute_task(
     task: CrewTask,
     *,
@@ -330,7 +372,9 @@ async def execute_task_async(
     trace_id: str | None = None,
 ) -> TaskOutput:
     """Route one task through the Planner (which internally drives
-    Gatekeeper + Executor).
+    Gatekeeper + Executor), then run any attached guardrail with
+    retry-with-feedback. Raises :class:`GuardrailFailure` after
+    ``task.max_retries`` retries.
 
     Spec §1.6: the Crew-Layer must NOT bypass the Planner. Every task builds
     a proper ``WorkingMemory`` + ``ToolResult`` list and calls
@@ -375,13 +419,66 @@ async def execute_task_async(
         prompt_tokens=0, completion_tokens=0, total_tokens=0
     )
 
-    return TaskOutput(
-        task_id=task.task_id,
-        agent_role=task.agent.role,
-        raw=raw,
-        duration_ms=duration_ms,
-        token_usage=usage,
+    # Guardrail evaluation with retry-with-feedback.
+    ollama_client = getattr(planner, "_ollama", None)
+    guardrail_model = task.agent.llm or "ollama/qwen3:8b"
+    # Only coerce str llm into guardrail_model; dict LLMConfig falls back to default.
+    if not isinstance(guardrail_model, str):
+        guardrail_model = "ollama/qwen3:8b"
+    guardrail = _normalize_guardrail(
+        task.guardrail, ollama_client=ollama_client, model=guardrail_model
     )
+
+    attempts = 0
+    verdict = "skipped"
+    while True:
+        out = TaskOutput(
+            task_id=task.task_id,
+            agent_role=task.agent.role,
+            raw=raw,
+            duration_ms=duration_ms,
+            token_usage=usage,
+        )
+        if guardrail is None:
+            verdict = "skipped"
+            break
+        result = await _call_guardrail(guardrail, out)
+        if result.passed:
+            verdict = "pass"
+            break
+        attempts += 1
+        if attempts > task.max_retries:
+            raise GuardrailFailure(
+                task_id=task.task_id,
+                guardrail_name=type(guardrail).__name__,
+                attempts=attempts,
+                reason=result.feedback or "(no feedback)",
+            )
+        # Retry: re-invoke Planner with a retry-nudge synthesized as an extra
+        # ToolResult carrying the feedback. ``crew:retry_feedback`` prefix
+        # prevents Gatekeeper / audit scanners from mistaking it for a real
+        # tool call. (R4-I3)
+        retry_context = [
+            *prior_results,
+            ToolResult(
+                tool_name="crew:retry_feedback",
+                content=(
+                    f"Vorheriger Versuch wurde abgelehnt. "
+                    f"Feedback: {result.feedback}. "
+                    "Bitte erneut versuchen und die Kritik einarbeiten."
+                ),
+                is_error=False,
+            ),
+        ]
+        t0 = time.perf_counter()
+        envelope = await planner.formulate_response(user_message, retry_context, working_memory)
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        raw = getattr(envelope, "content", "") or ""
+        usage = _read_token_usage(planner) or TokenUsageDict(
+            prompt_tokens=0, completion_tokens=0, total_tokens=0
+        )
+
+    return out.model_copy(update={"guardrail_verdict": verdict})
 
 
 async def compile_and_run_async(
