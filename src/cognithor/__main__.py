@@ -492,11 +492,7 @@ def main() -> None:
             )
             sys.exit(2)
 
-        target_dir = (
-            Path(args.init_dir)
-            if getattr(args, "init_dir", None)
-            else Path.cwd() / name
-        )
+        target_dir = Path(args.init_dir) if getattr(args, "init_dir", None) else Path.cwd() / name
         try:
             sys.exit(
                 run_init(
