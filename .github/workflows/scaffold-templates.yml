@@ -1,0 +1,42 @@
+name: Scaffold Templates
+
+on:
+  push:
+    branches: [main, "feat/**"]
+    paths:
+      - "src/cognithor/crew/templates/**"
+      - "src/cognithor/crew/cli/**"
+      - ".github/workflows/scaffold-templates.yml"
+  pull_request:
+    paths:
+      - "src/cognithor/crew/templates/**"
+      - "src/cognithor/crew/cli/**"
+      - ".github/workflows/scaffold-templates.yml"
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        template:
+          - research
+          - customer-support
+          - data-analyst
+          - content
+          - versicherungs-vergleich
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install cognithor (editable)
+        run: pip install -e ".[dev,mcp]"
+      - name: Scaffold + smoke-test ${{ matrix.template }}
+        run: |
+          mkdir -p /tmp/scaffold_test
+          cd /tmp/scaffold_test
+          python -m cognithor init test_${{ matrix.template }} --template ${{ matrix.template }} --lang de
+          cd test_${{ matrix.template }}
+          pip install -e ".[dev]"
+          pip install pytest pytest-asyncio
+          python -m pytest tests/ -v
