@@ -34,7 +34,7 @@ class Crew(BaseModel):
                 "CrewProcess.HIERARCHICAL without manager_llm falls back to the "
                 "first agent's llm for routing decisions. For production, set "
                 "manager_llm explicitly.",
-                stacklevel=2,
+                stacklevel=3,
             )
         return self
 
