@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json as _json
 import re
 from typing import TYPE_CHECKING
@@ -126,3 +127,30 @@ def hallucination_check(*, reference: str, min_overlap: float = 0.5):
         return GuardrailResult(passed=True, feedback=None)
 
     return _guard
+
+
+def chain(*guards):
+    """Run guardrails in order; first failure short-circuits.
+
+    R4-C4: this combinator MUST be async so ``StringGuardrail`` (whose
+    ``__call__`` is ``async def``) actually runs. The previous synchronous
+    version invoked ``g(output)`` and got a coroutine back — which is always
+    truthy — so ``if not r.passed`` was evaluated against an un-awaited
+    coroutine, and the second guardrail never ran. The
+    ``versicherungs-vergleich`` template's ``chain(no_pii(), StringGuardrail(...))``
+    required this fix.
+
+    Returned ``GuardrailResult`` preserves the ``pii_detected`` flag from
+    whichever guard signaled it, so the audit-chain record is complete.
+    """
+
+    async def _combined(output: TaskOutput) -> GuardrailResult:
+        for g in guards:
+            r = g(output)
+            if inspect.iscoroutine(r):
+                r = await r
+            if not r.passed:
+                return r
+        return GuardrailResult(passed=True, feedback=None)
+
+    return _combined
