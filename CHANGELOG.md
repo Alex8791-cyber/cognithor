@@ -30,6 +30,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   (DACH-differentiator, fully offline-capable, §34d-neutral guardrails).
   `cognithor init --list-templates` prints the catalog with DE/EN descriptions.
   CI scaffolds every template on every PR.
+- **Integrations Catalog (Feature 7)** — `docs/integrations/catalog.json`
+  auto-generated from MCP tool definitions by
+  `scripts/generate_integrations_catalog.py`. CI fails on drift. Includes
+  a new DACH-specific sevDesk REST connector (v1.0 Launch).
 
 ### Breaking Changes
 None. The Crew-Layer is strictly additive — no existing public API changes.
