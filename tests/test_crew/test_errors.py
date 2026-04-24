@@ -19,6 +19,7 @@ def test_guardrail_failure_pickle_roundtrip():
     )
     roundtripped = pickle.loads(pickle.dumps(original))
 
+    assert isinstance(roundtripped, GuardrailFailure)
     assert roundtripped.task_id == "t42"
     assert roundtripped.guardrail_name == "no_pii"
     assert roundtripped.attempts == 3
