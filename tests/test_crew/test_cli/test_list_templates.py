@@ -31,3 +31,58 @@ def test_skips_dirs_without_template_yaml(tmp_path: Path):
     with patch("cognithor.crew.cli.list_templates_cmd.TEMPLATES_ROOT", tmp_path):
         templates = list_templates()
     assert templates == []
+
+
+def test_list_templates_cli_lists_all_five():
+    """After Tasks 39-43, all 5 first-party templates are discoverable."""
+    from cognithor.crew.cli.list_templates_cmd import list_templates
+
+    names = {t.name for t in list_templates()}
+    assert names == {
+        "research",
+        "customer-support",
+        "data-analyst",
+        "content",
+        "versicherungs-vergleich",
+    }
+
+
+def test_list_templates_respects_order_field():
+    """Templates sort by `order` ascending. Tasks 39-43 assign 1-5 in this order."""
+    from cognithor.crew.cli.list_templates_cmd import list_templates
+
+    names = [t.name for t in list_templates()]
+    assert names == [
+        "research",
+        "customer-support",
+        "data-analyst",
+        "content",
+        "versicherungs-vergleich",
+    ]
+
+
+def test_list_templates_via_cli_subprocess():
+    """Full CLI invocation — verifies spec §3.2 flag syntax works end-to-end."""
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-m", "cognithor", "init", "--list-templates"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    expected = [
+        "research",
+        "customer-support",
+        "data-analyst",
+        "content",
+        "versicherungs-vergleich",
+    ]
+    positions = [result.stdout.find(n) for n in expected]
+    assert all(p >= 0 for p in positions), (
+        f"Template missing from CLI output: {result.stdout}"
+    )
+    assert positions == sorted(positions), (
+        f"Templates listed out of order: {result.stdout}"
+    )
