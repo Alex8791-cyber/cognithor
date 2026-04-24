@@ -112,7 +112,7 @@ PR-specific merge-prep task groups are spelled out at the end of each feature bl
 
 ### New documentation: `docs/quickstart/`
 
-Seven pages each in German (default) and English (`.en.md` suffix):
+Eight pages each in German (default) and English (`.en.md` suffix):
 
 - `00-installation.md` / `.en.md`
 - `01-first-crew.md` / `.en.md`
@@ -121,6 +121,7 @@ Seven pages each in German (default) and English (`.en.md` suffix):
 - `04-guardrails.md` / `.en.md`
 - `05-deployment.md` / `.en.md`
 - `06-next-steps.md` / `.en.md`
+- `07-troubleshooting.md` / `.en.md`  (R3-NI9 / R4: FAQ page; see Task 60b)
 - `README.md` — quickstart index
 
 ### New examples: `examples/quickstart/`
@@ -398,6 +399,13 @@ git commit -m "feat(crew): package skeleton + public API exports"
 **Files:**
 - Modify: `src/cognithor/crew/process.py`
 - Create: `tests/test_crew/test_process.py`
+
+> **pytest-asyncio convention (R4-I2):** the repository root `pyproject.toml`
+> sets `asyncio_mode = "auto"` — any `async def test_*` is automatically
+> detected as an async test. **Do NOT add `@pytest.mark.asyncio` decorators to
+> tests in this plan.** They are redundant under auto-mode and can mask
+> config-drift if the mode is ever disabled. All `async def test_*` functions
+> throughout Tasks 1-83 follow this convention.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1398,7 +1406,6 @@ from cognithor.crew import Crew, CrewAgent, CrewTask
 from cognithor.crew.output import TaskOutput
 
 
-@pytest.mark.asyncio
 async def test_kickoff_async_returns_same_as_sync():
     agent = CrewAgent(role="x", goal="y")
     task = CrewTask(description="a", expected_output="b", agent=agent)
@@ -1413,7 +1420,6 @@ async def test_kickoff_async_returns_same_as_sync():
     assert len(result.tasks_output) == 1
 
 
-@pytest.mark.asyncio
 async def test_async_tasks_run_concurrently_when_no_dependency():
     agent = CrewAgent(role="x", goal="y")
     t1 = CrewTask(description="a", expected_output="b", agent=agent, async_execution=True)
@@ -1656,7 +1662,6 @@ from cognithor.crew.compiler import execute_task_async
 from cognithor.core.observer import ResponseEnvelope
 
 
-@pytest.mark.asyncio
 async def test_execute_task_routes_through_planner():
     """The real execute_task_async must: (a) construct a user_message + WorkingMemory,
     (b) call Planner.formulate_response(user_message, results, working_memory),
@@ -1692,7 +1697,6 @@ async def test_execute_task_routes_through_planner():
     assert isinstance(args[1], list)  # results list
 
 
-@pytest.mark.asyncio
 async def test_execute_task_passes_context_as_prior_tool_results():
     """Prior TaskOutputs become synthetic ToolResult entries."""
     agent = CrewAgent(role="writer", goal="write")
@@ -1722,7 +1726,6 @@ async def test_execute_task_passes_context_as_prior_tool_results():
     assert any("FACTS_HERE" in r.content for r in results)
 
 
-@pytest.mark.asyncio
 async def test_execute_task_token_usage_from_cost_tracker():
     """Token usage is read from the Planner's CostTracker sidecar, not from the envelope.
 
@@ -1771,6 +1774,7 @@ async def execute_task_async(
     inputs: dict[str, Any] | None,
     registry: Any,
     planner: Any,
+    trace_id: str | None = None,  # R3-NI3-partial / R4: kickoff-level correlation id
 ) -> TaskOutput:
     """Route one task through the Planner (which internally goes through
     Gatekeeper + Executor).
@@ -1778,8 +1782,14 @@ async def execute_task_async(
     Spec §1.6: the Crew-Layer must NOT bypass the Planner. Every task builds
     a proper WorkingMemory + ToolResult-list and calls
     Planner.formulate_response(user_message, results, working_memory).
+
+    ``trace_id`` is plumbed from the kickoff (see Task 30) so every in-kickoff
+    tool result / chat turn / audit event bucket under one audit session and
+    concurrent kickoffs stay isolated. If omitted (pre-Task-30 call sites),
+    a fresh UUID is minted.
     """
     import time
+    import uuid
 
     # Resolve tools up-front so the error is raised before any LLM call
     agent_tools = resolve_tools(task.agent.tools, registry=registry)
@@ -1801,17 +1811,15 @@ async def execute_task_async(
         for prior in context
     ]
 
-    # WorkingMemory MUST carry a session_id — passing the kickoff's trace_id
-    # (added as a kwarg to this function in Task 30) keeps every in-kickoff
-    # tool result / chat turn bucketed under one audit session. Without it,
-    # the default `session_id=""` collapses all concurrent kickoffs into the
-    # same audit bucket and taints cross-request isolation. See NI3.
-    # Fall back to a fresh UUID when trace_id hasn't been threaded yet (pre
-    # Task 30 call sites).
-    import uuid
-    working_memory = WorkingMemory(
-        session_id=locals().get("trace_id") or uuid.uuid4().hex,
-    )
+    # WorkingMemory MUST carry a session_id — using the kickoff's trace_id
+    # keeps every in-kickoff tool result / chat turn bucketed under one audit
+    # session. Without it, the default `session_id=""` collapses all concurrent
+    # kickoffs into the same audit bucket and taints cross-request isolation.
+    # See NI3 (Round 3) and R3-NI3-partial (Round 4 — ``locals().get("trace_id")``
+    # was always ``None`` because ``trace_id`` was never a local; now it's a
+    # real kwarg).
+    session_id = trace_id or uuid.uuid4().hex
+    working_memory = WorkingMemory(session_id=session_id)
 
     t0 = time.perf_counter()
     envelope = await planner.formulate_response(
@@ -2118,7 +2126,6 @@ import pytest
 from cognithor.crew import Crew, CrewAgent, CrewTask
 
 
-@pytest.mark.asyncio
 async def test_gatekeeper_red_tool_blocks_execution():
     """When an agent lists a tool that Gatekeeper classifies as RED, the
     task must fail-closed unless explicit approval is configured."""
@@ -2178,7 +2185,6 @@ from cognithor.crew import Crew, CrewAgent, CrewTask
 from cognithor.core.observer import ResponseEnvelope
 
 
-@pytest.mark.asyncio
 async def test_task2_receives_task1_output():
     agent = CrewAgent(role="x", goal="y")
     t1 = CrewTask(description="phase 1", expected_output="res1", agent=agent)
@@ -2259,7 +2265,6 @@ from cognithor.crew import Crew, CrewAgent, CrewTask
 from cognithor.core.observer import ResponseEnvelope
 
 
-@pytest.mark.asyncio
 async def test_kickoff_emits_audit_event_with_trace_id():
     agent = CrewAgent(role="x", goal="y")
     task = CrewTask(description="a", expected_output="b", agent=agent)
@@ -2372,6 +2377,96 @@ git add src/cognithor/crew/compiler.py tests/test_crew/test_audit_chain.py
 git commit -m "feat(crew): emit Hashline-Guard audit events for crew lifecycle"
 ```
 
+- [ ] **Step 5: Crew-Layer log/audit PII redaction (Spec §8.2, R4-I8)**
+
+**Scouted (2026-04-24):** `src/cognithor/security/pii_redactor.py` exposes
+`class PIIRedactor` with `.redact(text) -> (sanitized, matches)`. Patterns
+cover emails, phone numbers, API keys, credit cards, SSNs, IBANs, and PEM
+private-key blocks. Default-off (opt-in via `security.pii_redactor.enabled`).
+
+Spec §8.2 requires Crew-Layer log/audit output to be routed through the same
+PII-sanitization chain as the main runtime. Wire the redactor into
+`append_audit` so no raw PII lands in the Hashline-Guard chain regardless of
+whether the user enabled the outbound redactor for LLM calls (audit trails
+are security-sensitive — we redact unconditionally for them):
+
+```python
+# Inside src/cognithor/crew/compiler.py, above append_audit:
+from cognithor.security.pii_redactor import PIIRedactor
+
+# Module-level singleton — the redactor is stateless, instantiating per-call
+# would re-compile regex for every audit event.
+_CREW_PII_REDACTOR = PIIRedactor()
+
+
+def _scrub_audit_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``fields`` with string values passed through the
+    PII redactor. Non-string values (ints, floats, bools, dicts) pass through
+    untouched. Lists of strings are element-wise redacted; deeper nesting
+    falls through as-is (audit-chain fields are flat by convention).
+    """
+    cleaned: dict[str, Any] = {}
+    for key, value in fields.items():
+        if isinstance(value, str):
+            sanitized, _matches = _CREW_PII_REDACTOR.redact(value)
+            cleaned[key] = sanitized
+        elif isinstance(value, list) and value and all(isinstance(v, str) for v in value):
+            cleaned[key] = [_CREW_PII_REDACTOR.redact(v)[0] for v in value]
+        else:
+            cleaned[key] = value
+    return cleaned
+```
+
+Update `append_audit` to scrub before handing off to `record_event`:
+
+```python
+def append_audit(event: str, **fields: Any) -> None:
+    trail = _get_audit_trail()
+    if trail is None:
+        return
+    session_id = fields.pop("trace_id", "crew")
+    scrubbed = _scrub_audit_fields(fields)  # R4-I8: PII redaction before persist
+    try:
+        trail.record_event(session_id=session_id, event_type=event, details=scrubbed)
+    except Exception as exc:
+        log.warning(
+            "crew_audit_record_failed — Hashline-Guard chain may be incomplete",
+            extra={"event": event, "session_id": session_id},
+            exc_info=exc,
+        )
+        try:
+            from cognithor.telemetry.metrics import audit_failure_counter
+            audit_failure_counter.inc()
+        except ImportError:
+            pass
+```
+
+Regression test:
+
+```python
+# tests/test_crew/test_audit_chain.py — append this test
+def test_audit_events_are_pii_scrubbed(tmp_path):
+    """R4-I8: audit fields containing PII must be redacted before persisting."""
+    from cognithor.crew.compiler import _scrub_audit_fields
+
+    cleaned = _scrub_audit_fields({
+        "task_id": "t1",
+        "feedback": "Email user at test@example.com after the call",
+        "duration_ms": 123.4,
+    })
+    assert "test@example.com" not in cleaned["feedback"]
+    assert "[REDACTED:email]" in cleaned["feedback"]
+    assert cleaned["task_id"] == "t1"       # non-PII strings pass through
+    assert cleaned["duration_ms"] == 123.4  # non-string values pass through
+```
+
+Commit:
+
+```bash
+git add src/cognithor/crew/compiler.py tests/test_crew/test_audit_chain.py
+git commit -m "feat(crew): route audit-chain fields through PII redactor (spec §8.2)"
+```
+
 ---
 
 ### Task 15: Idempotent kickoff with Distributed-Lock
@@ -2406,7 +2501,6 @@ from cognithor.crew import Crew, CrewAgent, CrewTask
 from cognithor.core.observer import ResponseEnvelope
 
 
-@pytest.mark.asyncio
 async def test_same_kickoff_id_returns_cached_output():
     """If the same kickoff_id is provided twice, the second call returns
     the cached CrewOutput without re-running tasks (deterministic replay).
@@ -2434,7 +2528,6 @@ async def test_same_kickoff_id_returns_cached_output():
     assert call_count["n"] == 1, "Planner must be called only once for same kickoff_id"
 
 
-@pytest.mark.asyncio
 async def test_kickoff_id_removed_non_destructively():
     """Caller's inputs dict must not be mutated by the kickoff-id strip."""
     agent = CrewAgent(role="x", goal="y")
@@ -2604,7 +2697,6 @@ async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutpu
 **Concurrency regression test — add to `tests/test_crew/test_idempotent_kickoff.py`:**
 
 ```python
-@pytest.mark.asyncio
 async def test_concurrent_same_id_serializes_under_local_backend():
     """Two concurrent kickoffs with same _kickoff_id must serialize.
 
@@ -2804,7 +2896,14 @@ def load_crew_from_yaml(
         ctx: list[CrewTask] = []
         for ref in refs:
             if ref not in task_by_alias:
-                raise ValueError(f"Task '{alias}' references unknown task '{ref}'")
+                # R4-I1: localized error message via the i18n fallback chain.
+                # Uses CrewCompilationError (not bare ValueError) so callers
+                # can pattern-match on a crew-specific exception type.
+                from cognithor.crew.errors import CrewCompilationError
+                from cognithor.i18n import t
+                raise CrewCompilationError(
+                    t("crew.errors.unknown_task", task=alias, ref=ref)
+                )
             ctx.append(task_by_alias[ref])
         existing = task_by_alias[alias]
         task_by_alias[alias] = existing.model_copy(update={"context": ctx})
@@ -2967,12 +3066,19 @@ git commit -m "feat(crew): @agent/@task/@crew class-based decorators"
 
 ---
 
-### Task 18: Error-message quality pass (missing tools, missing agents, invalid inputs) + bilingual localization
+### Task 18: Error-message quality pass (missing tools, missing agents, invalid inputs) + trilingual localization
 
 **Files:**
 - Modify: `src/cognithor/crew/tool_resolver.py`, `src/cognithor/crew/yaml_loader.py`, `src/cognithor/crew/errors.py` (refine messages)
-- Modify: `src/cognithor/i18n/locales/en.json`, `src/cognithor/i18n/locales/de.json` (add Crew-Layer keys)
+- Modify: `src/cognithor/i18n/locales/en.json`, `src/cognithor/i18n/locales/de.json`, `src/cognithor/i18n/locales/zh.json` (add Crew-Layer keys)
 - Create: `tests/test_crew/test_error_messages.py`
+
+> **R4-I9 / locale coverage:** scouting `src/cognithor/i18n/locales/` on
+> 2026-04-24 found three installed packs: `en.json`, `de.json`, `zh.json`.
+> No `ar.json`. Crew-Layer keys are added to all three; users on any other
+> locale fall back to English via the `t()` fallback chain defined in
+> `src/cognithor/i18n/__init__.py` (requested → English → raw key). This is
+> acceptable degradation — documented in the Feature 1 CHANGELOG.
 
 **Spec §8 (i18n):** Crew-Layer error paths must emit bilingual messages via `cognithor.i18n.t()` with the active `config.language` (defaults to "de"). This covers the three most-user-facing failure scenarios from spec §12:
 
@@ -2989,11 +3095,12 @@ git commit -m "feat(crew): @agent/@task/@crew class-based decorators"
   "crew.errors.guardrail_failed": "Guardrail '{name}' rejected output from task '{task}' after {attempts} attempt(s): {reason}",
   "crew.errors.unknown_agent": "Task '{task}' references unknown agent '{agent}'. Known agents: {known}",
   "crew.errors.unknown_tool": "Agent references unknown tool '{tool}'. Known tools: {known}",
-  "crew.errors.tool_suggestion": "Agent references unknown tool '{tool}'. Did you mean '{suggestion}'?"
+  "crew.errors.tool_suggestion": "Agent references unknown tool '{tool}'. Did you mean '{suggestion}'?",
+  "crew.errors.unknown_task": "Task '{task}' references unknown task '{ref}'"
 }
 ```
 
-German equivalents in `de.json` (shortened for brevity; implementer ships all six):
+German equivalents in `de.json` (shortened for brevity; implementer ships all seven):
 
 ```json
 {
@@ -3002,18 +3109,36 @@ German equivalents in `de.json` (shortened for brevity; implementer ships all si
   "crew.errors.guardrail_failed": "Guardrail '{name}' hat Output von Task '{task}' nach {attempts} Versuch(en) abgelehnt: {reason}",
   "crew.errors.unknown_agent": "Task '{task}' referenziert unbekannten Agent '{agent}'. Bekannte Agents: {known}",
   "crew.errors.unknown_tool": "Agent referenziert unbekanntes Tool '{tool}'. Bekannte Tools: {known}",
-  "crew.errors.tool_suggestion": "Agent referenziert unbekanntes Tool '{tool}'. Meintest du '{suggestion}'?"
+  "crew.errors.tool_suggestion": "Agent referenziert unbekanntes Tool '{tool}'. Meintest du '{suggestion}'?",
+  "crew.errors.unknown_task": "Task '{task}' referenziert unbekannten Task '{ref}'"
+}
+```
+
+Chinese equivalents in `zh.json` (R4-I9 — the repo ships a `zh` locale pack; add
+Crew-Layer keys so zh users don't fall straight to English for the Crew-Layer's
+user-facing errors):
+
+```json
+{
+  "crew.errors.yaml_parse": "无法解析 {file}:{error}",
+  "crew.errors.ollama_offline": "无法连接到 Ollama 服务器 {url}。请启动 Ollama 或设置 COGNITHOR_OLLAMA_BASE_URL。",
+  "crew.errors.guardrail_failed": "Guardrail '{name}' 在 {attempts} 次尝试后拒绝了任务 '{task}' 的输出:{reason}",
+  "crew.errors.unknown_agent": "任务 '{task}' 引用了未知的 Agent '{agent}'。已知 Agents:{known}",
+  "crew.errors.unknown_tool": "Agent 引用了未知的工具 '{tool}'。已知工具:{known}",
+  "crew.errors.tool_suggestion": "Agent 引用了未知的工具 '{tool}'。您是否想使用 '{suggestion}'?",
+  "crew.errors.unknown_task": "任务 '{task}' 引用了未知的任务 '{ref}'"
 }
 ```
 
 **Wire-in:**
 
 1. `yaml_loader.load_crew_from_yaml()` — wrap `yaml.safe_load(...)` in try/except that raises `CrewCompilationError(t("crew.errors.yaml_parse", ...))`.
-2. `compiler.execute_task_async` — when `planner.formulate_response` raises a connection error to Ollama, re-raise as `CrewError(t("crew.errors.ollama_offline", ...))` with the base URL from config.
-3. `GuardrailFailure.__str__` — emits the bilingual message via `t()`; falls back to English if the i18n module is not importable (dev-edit, standalone test).
-4. `tool_resolver.resolve_tools()` — the existing `"Meintest du"` message becomes `t("crew.errors.tool_suggestion", ...)`.
+2. `yaml_loader.load_crew_from_yaml()` — unknown-task-reference check (Pass 2 context resolution) raises `CrewCompilationError(t("crew.errors.unknown_task", task=alias, ref=ref))`. See R4-I1.
+3. `compiler.execute_task_async` — when `planner.formulate_response` raises a connection error to Ollama, re-raise as `CrewError(t("crew.errors.ollama_offline", ...))` with the base URL from config.
+4. `GuardrailFailure.__str__` — emits the bilingual message via `t()`; falls back to English if the i18n module is not importable (dev-edit, standalone test).
+5. `tool_resolver.resolve_tools()` — the existing `"Meintest du"` message becomes `t("crew.errors.tool_suggestion", ...)`.
 
-**init_cmd respects `--lang`:** `cognithor init ... --lang=de|en` already forwards to `run_init(lang=...)`. When `lang` is set, set the i18n language for the duration of the command via `cognithor.i18n.set_language(lang)` before rendering any error. If `--lang` is omitted, default to the global `config.language`.
+**init_cmd respects `--lang`:** `cognithor init ... --lang=de|en` already forwards to `run_init(lang=...)`. When `lang` is set, set the i18n language for the duration of the command via `cognithor.i18n.set_locale(lang)` before rendering any error. If `--lang` is omitted, default to the global `config.language`. (R4-C3: the real public API is `set_locale` / `get_locale` / `get_available_locales` as defined in `src/cognithor/i18n/__init__.py`; the alternate names ``set_language`` / ``available_languages`` do not exist.)
 
 - [ ] **Step 1: Test messaging contract**
 
@@ -3053,6 +3178,35 @@ class TestErrorMessaging:
 
     def test_crew_error_is_base_class(self):
         assert issubclass(ToolNotFoundError, CrewError)
+
+
+class TestYamlLoaderLocalizedErrors:
+    """R4-I1: `unknown_task` YAML-load errors use the i18n pipeline."""
+
+    def test_yaml_loader_unknown_task_raises_localized(self, tmp_path):
+        from cognithor.crew.errors import CrewCompilationError
+        from cognithor.crew.yaml_loader import load_crew_from_yaml
+
+        agents_yaml = tmp_path / "agents.yaml"
+        tasks_yaml = tmp_path / "tasks.yaml"
+        agents_yaml.write_text(
+            "a:\n  role: writer\n  goal: write\n",
+            encoding="utf-8",
+        )
+        # Task `two` references non-existent task `missing`.
+        tasks_yaml.write_text(
+            "one:\n  description: first\n  expected_output: x\n  agent: a\n"
+            "two:\n  description: second\n  expected_output: y\n  agent: a\n"
+            "  context: [missing]\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(CrewCompilationError) as exc:
+            load_crew_from_yaml(agents_yaml=agents_yaml, tasks_yaml=tasks_yaml)
+        # Message text comes from i18n pack (default: EN). Both the referring
+        # task alias and the missing ref must appear.
+        assert "two" in str(exc.value)
+        assert "missing" in str(exc.value)
 ```
 
 - [ ] **Step 2: Run — expect pass from Task 7 already**
@@ -3082,7 +3236,6 @@ from cognithor.crew import Crew, CrewAgent, CrewProcess, CrewTask
 from cognithor.core.observer import ResponseEnvelope
 
 
-@pytest.mark.asyncio
 async def test_pkv_example_runs_end_to_end():
     analyst = CrewAgent(
         role="PKV-Tarif-Analyst",
@@ -3568,7 +3721,6 @@ from cognithor.crew.guardrails.string_guardrail import StringGuardrail
 from cognithor.crew.output import TaskOutput
 
 
-@pytest.mark.asyncio
 async def test_string_guardrail_passes_when_llm_says_yes():
     llm = MagicMock()
     # OllamaClient.chat returns a dict with nested message.content
@@ -3581,7 +3733,6 @@ async def test_string_guardrail_passes_when_llm_says_yes():
     assert r.passed
 
 
-@pytest.mark.asyncio
 async def test_string_guardrail_fails_when_llm_says_no():
     llm = MagicMock()
     llm.chat = AsyncMock(return_value={
@@ -3593,7 +3744,6 @@ async def test_string_guardrail_fails_when_llm_says_no():
     assert "more than one sentence" in (r.feedback or "")
 
 
-@pytest.mark.asyncio
 async def test_string_guardrail_unparseable_llm_response_fails_safe():
     llm = MagicMock()
     llm.chat = AsyncMock(return_value={"message": {"content": "not json"}})
@@ -3603,7 +3753,6 @@ async def test_string_guardrail_unparseable_llm_response_fails_safe():
     assert "parse" in (r.feedback or "").lower()
 
 
-@pytest.mark.asyncio
 async def test_string_guardrail_llm_unavailable_fails_safe():
     llm = MagicMock()
     llm.chat = AsyncMock(side_effect=ConnectionError("ollama down"))
@@ -4114,6 +4263,9 @@ git commit -m "feat(crew): hallucination_check built-in guardrail (reference-ove
 
 ```python
 # tests/test_crew/test_guardrails/test_chain.py
+#
+# R4-C4: `chain()` returns an ASYNC callable (needed so StringGuardrail, whose
+# __call__ is async, actually runs). All tests here await the chained result.
 import pytest
 from cognithor.crew.guardrails.builtin import chain, word_count, no_pii
 from cognithor.crew.output import TaskOutput
@@ -4123,12 +4275,13 @@ def _out(raw: str) -> TaskOutput:
     return TaskOutput(task_id="t", agent_role="w", raw=raw)
 
 
-def test_chain_all_pass():
+async def test_chain_all_pass():
     g = chain(word_count(min_words=1), no_pii())
-    assert g(_out("Hallo Welt")).passed
+    result = await g(_out("Hallo Welt"))
+    assert result.passed
 
 
-def test_chain_stops_on_first_failure():
+async def test_chain_stops_on_first_failure():
     calls = []
     def tracker(label):
         def _g(out):
@@ -4138,36 +4291,97 @@ def test_chain_stops_on_first_failure():
         return _g
 
     g = chain(tracker("A"), tracker("B"), tracker("C"))
-    r = g(_out("x"))
+    r = await g(_out("x"))
     assert not r.passed
     assert r.feedback == "from-B"
     assert calls == ["A", "B"]  # C never runs
 
 
-def test_chain_pii_in_first_fails_even_if_second_would_pass():
+async def test_chain_pii_in_first_fails_even_if_second_would_pass():
     g = chain(no_pii(), word_count(min_words=1))
-    r = g(_out("Kontakt: x@example.com"))
+    r = await g(_out("Kontakt: x@example.com"))
     assert not r.passed
     assert r.pii_detected is True
+
+
+async def test_chain_awaits_async_guardrails():
+    """R4-C4 regression: async guards inside chain() MUST actually run.
+
+    Previously chain() was synchronous — a coroutine returned from the first
+    async guard was truthy, its `.passed` attribute-access failed silently,
+    and the second guard never executed. This test forces an async guard to
+    run and verifies the sync guard downstream is reached.
+    """
+    from cognithor.crew.guardrails.base import GuardrailResult
+
+    call_count = {"async_g": 0, "sync_g": 0}
+
+    async def async_g(_out):
+        call_count["async_g"] += 1
+        return GuardrailResult(passed=True, feedback=None)
+
+    def sync_g(_out):
+        call_count["sync_g"] += 1
+        return GuardrailResult(passed=True, feedback=None)
+
+    g = chain(async_g, sync_g)
+    r = await g(_out("anything"))
+    assert r.passed
+    assert call_count == {"async_g": 1, "sync_g": 1}
+
+
+async def test_chain_short_circuits_on_first_async_failure():
+    """First (async) guard fails → second guard never called."""
+    from cognithor.crew.guardrails.base import GuardrailResult
+
+    second_calls = []
+
+    async def failing_async(_out):
+        return GuardrailResult(passed=False, feedback="blocked-async")
+
+    def never_called(_out):
+        second_calls.append(1)
+        return GuardrailResult(passed=True, feedback=None)
+
+    g = chain(failing_async, never_called)
+    r = await g(_out("irrelevant"))
+    assert not r.passed
+    assert r.feedback == "blocked-async"
+    assert second_calls == []  # short-circuit honored
 ```
 
 - [ ] **Step 2: Implement `chain()` and wire all exports**
 
 ```python
+import inspect
+
 def chain(*guards):
     """Run guardrails in order; first failure short-circuits.
 
-    Returned GuardrailResult preserves the pii_detected flag from whichever
-    guard signaled it, so the audit-chain record is complete.
+    R4-C4: this combinator MUST be async so ``StringGuardrail`` (whose
+    ``__call__`` is ``async def``) actually runs. The previous synchronous
+    version invoked ``g(output)`` and got a coroutine back — which is always
+    truthy — so ``if not r.passed`` was evaluated against an un-awaited
+    coroutine, and the second guardrail never ran. The ``versicherungs-vergleich``
+    template's ``chain(no_pii(), StringGuardrail(...))`` required this fix.
+
+    Returned ``GuardrailResult`` preserves the pii_detected flag from
+    whichever guard signaled it, so the audit-chain record is complete.
     """
-    def _combined(output: TaskOutput) -> GuardrailResult:
+    async def _combined(output: TaskOutput) -> GuardrailResult:
         for g in guards:
             r = g(output)
+            if inspect.iscoroutine(r):
+                r = await r
             if not r.passed:
                 return r
         return GuardrailResult(passed=True, feedback=None)
     return _combined
 ```
+
+`chain()` now returns an async callable. The compiler's `_call_guardrail`
+retry loop (Task 29) already detects coroutines via ``inspect.iscoroutine``,
+so the async return path Just Works without further plumbing.
 
 Update `__init__.py`:
 
@@ -4226,7 +4440,6 @@ from cognithor.crew.output import TaskOutput
 from cognithor.core.observer import ResponseEnvelope
 
 
-@pytest.mark.asyncio
 async def test_guardrail_failure_retries_then_raises():
     agent = CrewAgent(role="writer", goal="write")
     def fail_twice(_out):
@@ -4258,7 +4471,6 @@ async def test_guardrail_failure_retries_then_raises():
     assert "after 3 attempt(s)" in str(exc_info.value)
 
 
-@pytest.mark.asyncio
 async def test_guardrail_passes_after_retry():
     agent = CrewAgent(role="writer", goal="write")
     attempts = {"n": 0}
@@ -4366,9 +4578,16 @@ while True:
         )
     # Retry: re-invoke Planner with a retry-nudge synthesized as an extra
     # ToolResult carrying the feedback. This keeps the Planner API stable.
+    #
+    # R4-I3: ``tool_name`` uses a namespaced ``crew:`` prefix so audit-log
+    # scanners and the Gatekeeper's ``_classify_risk`` tool-name lookup never
+    # confuse this synthetic retry-feedback blob with a real tool invocation.
+    # (The Gatekeeper only inspects real ``PlannedAction`` objects — this
+    # ToolResult never reaches it — but the namespaced prefix is defensive
+    # hygiene for anyone grepping audit.jsonl by tool name.)
     retry_context = prior_results + [
         ToolResult(
-            tool_name="guardrail_feedback",
+            tool_name="crew:retry_feedback",
             content=f"Vorheriger Versuch wurde abgelehnt. Feedback: {result.feedback}. "
                     f"Bitte erneut versuchen und die Kritik einarbeiten.",
             is_error=False,
@@ -4414,7 +4633,6 @@ from cognithor.crew import Crew, CrewAgent, CrewTask
 from cognithor.crew.guardrails.base import GuardrailResult
 
 
-@pytest.mark.asyncio
 async def test_guardrail_pass_audited():
     agent = CrewAgent(role="writer", goal="write")
     task = CrewTask(description="x", expected_output="y", agent=agent,
@@ -4547,7 +4765,6 @@ def _mock_ollama_client(validator_verdict: dict) -> MagicMock:
     return client
 
 
-@pytest.mark.asyncio
 async def test_versicherungs_crew_blocks_pii_output():
     agent = CrewAgent(role="analyst", goal="compare PKV tariffs",
                      llm="ollama/qwen3:8b")
@@ -4586,7 +4803,6 @@ async def test_versicherungs_crew_blocks_pii_output():
             await crew.kickoff_async()
 
 
-@pytest.mark.asyncio
 async def test_versicherungs_crew_blocks_tarif_recommendation():
     """The string guardrail catches outputs that make recommendations (not just compare)."""
     agent = CrewAgent(role="analyst", goal="compare PKV tariffs",
@@ -4843,6 +5059,13 @@ _WIN_RESERVED = {
 # ``{{ '../../etc/passwd' }}`` in a template filename escaping dest_dir.
 _FORBIDDEN_SEGMENTS = {"", ".", ".."}
 
+# Language-specific template suffixes. ``README.md.jinja.de`` selects the DE
+# variant when ``context["lang"] == "de"``; ``README.md.jinja.en`` is skipped.
+# Without this handling, the plain ``.suffix == ".jinja"`` check would NOT match
+# (because the real suffix is ``.de`` / ``.en``), so the file would be copied
+# verbatim and both variants would ship side-by-side in the scaffold. See R4-C1.
+_LANG_SUFFIXES = {".de", ".en", ".zh", ".ar"}
+
 
 def sanitize_project_name(name: str) -> str:
     """Convert free-form name to a safe Python package identifier.
@@ -4902,6 +5125,45 @@ def _safe_join(dest_dir: Path, rendered_parts: list[str]) -> Path:
     return candidate
 
 
+def _resolve_language_variant(src_path: Path, lang: str) -> Path | None:
+    """Select the language-appropriate variant of a template file.
+
+    If ``src_path`` has one of ``_LANG_SUFFIXES`` (``.de``/``.en``/``.zh``/``.ar``)
+    as its outermost suffix, keep it only when it matches the requested ``lang``;
+    return ``None`` otherwise to signal "skip this wrong-language variant".
+    Files without a language suffix are passed through unchanged.
+    """
+    if src_path.suffix in _LANG_SUFFIXES:
+        file_lang = src_path.suffix.lstrip(".")
+        if file_lang != lang:
+            return None
+        return src_path
+    return src_path
+
+
+def _strip_template_suffixes(rel: Path, lang: str) -> Path:
+    """Strip language suffix (if any) + ``.jinja`` suffix from the OUTPUT path.
+
+    ``README.md.jinja.de`` (with ``lang='de'``) → ``README.md``.
+    ``main.py.jinja`` → ``main.py``. ``plain.txt`` → ``plain.txt``.
+    Only the trailing filename is rewritten; directory components are left alone.
+    """
+    parts = list(rel.parts)
+    if not parts:
+        return rel
+    last = parts[-1]
+    # Strip trailing language suffix first (.de/.en/.zh/.ar).
+    for lang_suf in _LANG_SUFFIXES:
+        if last.endswith(lang_suf):
+            last = last[: -len(lang_suf)]
+            break
+    # Then strip .jinja if still present.
+    if last.endswith(".jinja"):
+        last = last[: -len(".jinja")]
+    parts[-1] = last
+    return Path(*parts)
+
+
 def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> None:
     """Render every file under src_dir into dest_dir, applying Jinja2 to .jinja files.
 
@@ -4909,6 +5171,12 @@ def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> No
     Path segments with `{{...}}` tags are also rendered — and validated through
     :func:`_safe_join` so a malicious template cannot escape ``dest_dir``.
     Non-.jinja files are copied verbatim.
+
+    Language-variant handling (R4-C1): files ending in ``.de``/``.en``/``.zh``/
+    ``.ar`` as their outermost suffix are filtered by ``context['lang']`` — the
+    matching variant is kept, other variants are skipped. The output filename
+    has both the language suffix and the ``.jinja`` suffix stripped (so
+    ``README.md.jinja.de`` with ``lang='de'`` renders to ``README.md``).
     """
     src_dir = Path(src_dir)
     dest_dir = Path(dest_dir)
@@ -4916,11 +5184,24 @@ def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> No
         raise FileExistsError(f"dest exists and is not empty: {dest_dir}")
 
     env = _build_env(src_dir)
+    lang = context.get("lang", "en")
 
     for src_path in src_dir.rglob("*"):
         rel = src_path.relative_to(src_dir)
-        # Render path segments under the sandbox, then validate each one.
-        rendered_parts = [env.from_string(p).render(**context) for p in rel.parts]
+
+        # Filter out wrong-language variants BEFORE rendering anything.
+        if src_path.is_file() and _resolve_language_variant(src_path, lang) is None:
+            continue
+
+        # Compute the output relative path by stripping template suffixes,
+        # then render each remaining path segment through the sandbox and
+        # validate against traversal.
+        if src_path.is_file():
+            out_rel = _strip_template_suffixes(rel, lang)
+        else:
+            out_rel = rel
+
+        rendered_parts = [env.from_string(p).render(**context) for p in out_rel.parts]
         dest_path = _safe_join(dest_dir, rendered_parts)
 
         if src_path.is_dir():
@@ -4928,9 +5209,14 @@ def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> No
             continue
 
         dest_path.parent.mkdir(parents=True, exist_ok=True)
-        if src_path.suffix == ".jinja":
-            # Strip .jinja from filename + render contents through sandbox.
-            dest_path = dest_path.with_suffix("")
+
+        # Determine whether contents need Jinja rendering. We inspect the
+        # ORIGINAL filename: a file is a "template" if it contains ``.jinja``
+        # anywhere in its suffix chain (e.g. ``README.md.jinja.de``,
+        # ``main.py.jinja``). Pure ``.de``/``.en`` files without ``.jinja`` are
+        # language-selected but copied verbatim.
+        is_template = ".jinja" in src_path.name.split(".")[1:]
+        if is_template:
             template = env.get_template(str(rel).replace("\\", "/"))
             dest_path.write_text(template.render(**context), encoding="utf-8")
         else:
@@ -4988,6 +5274,46 @@ def test_sanitize_project_name_rejects_CON_on_all_platforms():
     for reserved in ("CON", "con", "nul", "COM1", "lpt9", "prn", "aux"):
         with pytest.raises(ValueError, match="reserved Windows device name"):
             sanitize_project_name(reserved)
+
+
+def test_scaffolder_renders_language_specific_readme_de(tmp_path):
+    """R4-C1: with ``lang='de'`` the scaffolder must render ``README.md.jinja.de``
+    to ``README.md`` and NOT emit the ``.en`` variant.
+
+    Before the R4-C1 fix, ``suffix == '.jinja'`` never matched for files whose
+    real suffix is ``.de``/``.en``, so both variants landed verbatim in the
+    scaffold and no ``README.md`` existed.
+    """
+    from cognithor.crew.cli.scaffolder import render_tree
+
+    src = tmp_path / "tmpl"
+    src.mkdir()
+    (src / "README.md.jinja.de").write_text("# {{ project_name }} (DE)")
+    (src / "README.md.jinja.en").write_text("# {{ project_name }} (EN)")
+    dest = tmp_path / "out"
+
+    render_tree(src, dest, context={"project_name": "demo", "lang": "de"})
+
+    assert (dest / "README.md").read_text() == "# demo (DE)"
+    assert not (dest / "README.md.jinja.en").exists()
+    assert not (dest / "README.md.jinja.de").exists()
+
+
+def test_scaffolder_renders_language_specific_readme_en(tmp_path):
+    """Same contract as the DE test but with ``lang='en'``."""
+    from cognithor.crew.cli.scaffolder import render_tree
+
+    src = tmp_path / "tmpl"
+    src.mkdir()
+    (src / "README.md.jinja.de").write_text("# {{ project_name }} (DE)")
+    (src / "README.md.jinja.en").write_text("# {{ project_name }} (EN)")
+    dest = tmp_path / "out"
+
+    render_tree(src, dest, context={"project_name": "demo", "lang": "en"})
+
+    assert (dest / "README.md").read_text() == "# demo (EN)"
+    assert not (dest / "README.md.jinja.en").exists()
+    assert not (dest / "README.md.jinja.de").exists()
 ```
 
 `src/cognithor/crew/cli/__init__.py` — keep empty for now.
@@ -5140,7 +5466,12 @@ from cognithor.crew.cli.init_cmd import run_init, InitCommandError
 
 @pytest.fixture
 def mock_templates(tmp_path: Path, monkeypatch):
-    """Plant a minimal mock template so the CLI has something to render."""
+    """Plant a minimal mock template so the CLI has something to render.
+
+    Mirrors the real first-party template layout (R4-C2): ``main.py.jinja``
+    lives under ``src/{{ project_name }}/`` so the rendered
+    ``src/<pkg>/main.py`` resolves the ``pyproject.toml`` script entry.
+    """
     tpl_root = tmp_path / "templates"
     research = tpl_root / "research"
     research.mkdir(parents=True)
@@ -5150,10 +5481,10 @@ def mock_templates(tmp_path: Path, monkeypatch):
         "description_en: Mock\n"
     )
     (research / "README.md.jinja").write_text("# {{ project_name }}")
-    (research / "main.py.jinja").write_text("PROJECT = '{{ project_name }}'")
     src_dir = research / "src" / "{{ project_name }}"
     src_dir.mkdir(parents=True)
     (src_dir / "__init__.py").write_text("")
+    (src_dir / "main.py.jinja").write_text("PROJECT = '{{ project_name }}'")
 
     monkeypatch.setattr("cognithor.crew.cli.list_templates_cmd.TEMPLATES_ROOT", tpl_root)
     monkeypatch.setattr("cognithor.crew.cli.init_cmd.TEMPLATES_ROOT", tpl_root)
@@ -5168,7 +5499,8 @@ def test_creates_project_from_template(tmp_path: Path, mock_templates):
     )
     assert rc == 0
     assert (project_dir / "README.md").read_text() == "# my_project"
-    assert (project_dir / "main.py").read_text() == "PROJECT = 'my_project'"
+    # R4-C2: main.py lives inside the package, not top-level.
+    assert (project_dir / "src" / "my_project" / "main.py").read_text() == "PROJECT = 'my_project'"
     assert (project_dir / "src" / "my_project" / "__init__.py").exists()
 
 
@@ -5183,6 +5515,27 @@ def test_refuses_nonempty_directory(tmp_path: Path, mock_templates):
 def test_unknown_template_raises(tmp_path: Path, mock_templates):
     with pytest.raises(InitCommandError, match="unknown"):
         run_init(name="x", template="does_not_exist", directory=tmp_path / "x", lang="en")
+
+
+def test_init_force_overwrites_existing_dir(tmp_path: Path, mock_templates, capsys):
+    """R4-I5: `--force` removes an existing non-empty target before scaffolding."""
+    project_dir = tmp_path / "my_project"
+    project_dir.mkdir()
+    (project_dir / "stale.txt").write_text("pre-existing junk")
+
+    rc = run_init(
+        name="My Project", template="research",
+        directory=project_dir, lang="en", force=True,
+    )
+    assert rc == 0
+    # Stale file is gone after the forced rebuild.
+    assert not (project_dir / "stale.txt").exists()
+    # Scaffolder output present.
+    assert (project_dir / "README.md").read_text() == "# my_project"
+    # Warning printed so the user sees what --force did.
+    captured = capsys.readouterr()
+    assert "--force" in captured.out
+    assert "removing existing" in captured.out
 ```
 
 - [ ] **Step 2: Implement**
@@ -5204,19 +5557,30 @@ class InitCommandError(Exception):
 
 
 def run_init(
-    *, name: str, template: str, directory: Path | None = None, lang: str | None = None,
+    *,
+    name: str,
+    template: str,
+    directory: Path | None = None,
+    lang: str | None = None,
+    force: bool = False,
 ) -> int:
     """Execute `cognithor init`. Returns shell exit code (0 on success).
 
     `lang` — if set (via `--lang=de|en`), overrides the i18n language for the
     duration of this command. When None, falls back to the global
     `config.language` (default "de").
+
+    `force` — if True (via `--force`), overwrite an existing non-empty target
+    directory by removing it first. Off by default; the scaffolder normally
+    refuses to write into a non-empty directory. See R4-I5.
     """
     # Respect explicit --lang; otherwise keep the global config language.
     if lang is not None:
         try:
-            from cognithor.i18n import set_language
-            set_language(lang)
+            # R4-C3: real public API is `set_locale`, not `set_language`
+            # (see src/cognithor/i18n/__init__.py __all__).
+            from cognithor.i18n import set_locale
+            set_locale(lang)
         except ImportError:
             # i18n module unavailable in this build — proceed with English-only
             # error strings (acceptable degradation for a standalone test env).
@@ -5237,9 +5601,17 @@ def run_init(
     dest = directory if directory is not None else Path.cwd() / project_name
     dest = Path(dest)
     if dest.exists() and any(dest.iterdir()):
-        raise InitCommandError(
-            f"target directory is not empty: {dest}"
-        )
+        if force:
+            # R4-I5: --force overwrites by removing the existing tree.
+            # Print a prominent warning so the user sees what just happened
+            # (stdout, because init_cmd's normal output is informational).
+            import shutil as _shutil
+            print(f"WARNING: --force: removing existing non-empty directory {dest}")
+            _shutil.rmtree(dest)
+        else:
+            raise InitCommandError(
+                f"target directory is not empty: {dest} (pass --force to overwrite)"
+            )
 
     context = {
         "project_name": project_name,
@@ -5368,12 +5740,17 @@ def _validate_lang(value: str) -> str:
     """argparse type hook: accept any locale that i18n has a pack for.
 
     Originally the flag hardcoded ``choices=["de", "en"]`` — which silently
-    broke ``--lang zh`` / ``--lang ar`` even though the i18n module ships
-    those locale packs. See NI5 in Round 3 review.
+    broke ``--lang zh`` even though the i18n module ships a ``zh`` locale pack.
+    See NI5 in Round 3 review. The available locales today are ``{en, de, zh}``
+    (enumerate via ``get_available_locales()``); ``ar`` is NOT shipped, so
+    passing ``--lang ar`` rightfully fails.
+
+    R4-C3: uses the real ``get_available_locales`` API, not the fictitious
+    ``available_languages``. See ``src/cognithor/i18n/__init__.py`` ``__all__``.
     """
     try:
-        from cognithor.i18n import available_languages
-        available = set(available_languages())  # e.g. {"en", "de", "zh", "ar"}
+        from cognithor.i18n import get_available_locales
+        available = set(get_available_locales())  # today: {"en", "de", "zh"}
     except ImportError:
         # Minimal install without i18n — fall back to the hardcoded EN/DE pair.
         available = {"en", "de"}
@@ -5393,12 +5770,17 @@ init_parser.add_argument(
     "--lang",
     type=_validate_lang,
     default=None,
-    help="UI language (default: config.language). Accepts any i18n locale present in src/cognithor/i18n/locales/.",
+    help="UI language (default: config.language). Accepts any i18n locale present in src/cognithor/i18n/locales/ (today: en, de, zh).",
 )
 init_parser.add_argument(
     "--list-templates",
     action="store_true",
     help="List available templates and exit",
+)
+init_parser.add_argument(
+    "--force",
+    action="store_true",
+    help="Overwrite an existing non-empty target directory (removes it first). Off by default.",
 )
 
 # In the dispatch:
@@ -5417,8 +5799,13 @@ if args.command == "init":
         )
 
     try:
-        return run_init(name=args.name, template=args.template,
-                        directory=args.directory, lang=args.lang)
+        return run_init(
+            name=args.name,
+            template=args.template,
+            directory=args.directory,
+            lang=args.lang,
+            force=args.force,
+        )
     except Exception as exc:
         print(f"init failed: {exc}", file=sys.stderr)
         return 1
@@ -5542,8 +5929,8 @@ git commit -m "build: include crew templates in wheel distribution"
 - Create: `src/cognithor/crew/templates/research/README.md.jinja.en`
 - Create: `src/cognithor/crew/templates/research/pyproject.toml.jinja`
 - Create: `src/cognithor/crew/templates/research/.env.example`
-- Create: `src/cognithor/crew/templates/research/main.py.jinja`
 - Create: `src/cognithor/crew/templates/research/src/{{ project_name }}/__init__.py`
+- Create: `src/cognithor/crew/templates/research/src/{{ project_name }}/main.py.jinja` (R4-C2: lives under `src/` so `pyproject.toml`'s `[project.scripts]` entry `{project_name}.main:main` resolves and `cognithor run` can `importlib.import_module(f"{pkg}.main")`)
 - Create: `src/cognithor/crew/templates/research/src/{{ project_name }}/crew.py.jinja`
 - Create: `src/cognithor/crew/templates/research/config/agents.yaml.jinja`
 - Create: `src/cognithor/crew/templates/research/config/tasks.yaml.jinja`
@@ -5565,40 +5952,13 @@ tags:
   - sequential
 ```
 
-- [ ] **Step 2: `main.py.jinja`**
+- [ ] **Step 2: `src/{{ project_name }}/main.py.jinja`**
 
-```python
-"""{{ project_name_display }} entry point."""
-
-from __future__ import annotations
-
-import asyncio
-
-from {{ project_name }}.crew import build_crew
-
-
-def main() -> None:
-    crew = build_crew()
-    result = asyncio.run(crew.kickoff_async(inputs={"topic": "Beispielthema"}))
-    print(result.raw)
-
-
-if __name__ == "__main__":
-    main()
-
-
-def build_crew():
-    """Exported for `cognithor run`."""
-    return build_crew_impl()
-
-
-def build_crew_impl():  # separate name so the import above works
-    return build_crew()
-```
-
-Actually simpler — expose `build_crew` directly from the package:
-
-Replace with:
+Lives at `src/{{ project_name }}/main.py.jinja` (NOT top-level). The
+`pyproject.toml.jinja` script entry `{{ project_name }} = "{{ project_name }}.main:main"`
+and `cognithor run`'s `importlib.import_module(f"{pkg}.main")` both resolve
+against the installed package (`src/{{ project_name }}/main.py`); placing it at
+the top-level would break both. See R4-C2.
 
 ```python
 """{{ project_name_display }} — entry point."""
@@ -5698,7 +6058,6 @@ import pytest
 from {{ project_name }}.crew import ResearchCrew
 
 
-@pytest.mark.asyncio
 async def test_crew_kickoff_with_mock_planner(monkeypatch):
     from cognithor.core.observer import ResponseEnvelope
     mock_planner = MagicMock()
@@ -5842,7 +6201,7 @@ Same structure as Task 39. Three agents: `intake`, `classifier`, `response_write
   - Tasks: `parse`, `classify`, `draft_reply` — each feeds context to the next
   - `tests/test_crew.py.jinja`: kickoff with mock planner returning 3 mock responses
 
-  **Ship all required template artifacts** (spec §3.4): scaffolding renders 8 user-editable files — `template.yaml` (metadata, not rendered), `README.md.jinja.de` + `.en`, `pyproject.toml.jinja`, `.env.example`, `main.py.jinja`, `src/{{ project_name }}/__init__.py`, `src/{{ project_name }}/crew.py.jinja`, `config/agents.yaml.jinja`, `config/tasks.yaml.jinja`, `tests/test_crew.py.jinja` — **plus 1 `.gitignore`** that every scaffolded project gets (auto-injected by the scaffolder, not part of the template tree). Test assertions count the 8 user-editable files; `.gitignore` is verified separately in Task 39.
+  **Ship all required template artifacts** (spec §3.4): scaffolding renders 8 user-editable files — `template.yaml` (metadata, not rendered), `README.md.jinja.de` + `.en`, `pyproject.toml.jinja`, `.env.example`, `src/{{ project_name }}/main.py.jinja` (see R4-C2 — must live inside the package so `pyproject.toml`'s `[project.scripts]` entry resolves), `src/{{ project_name }}/__init__.py`, `src/{{ project_name }}/crew.py.jinja`, `config/agents.yaml.jinja`, `config/tasks.yaml.jinja`, `tests/test_crew.py.jinja` — **plus 1 `.gitignore`** that every scaffolded project gets (auto-injected by the scaffolder, not part of the template tree). Test assertions count the 8 user-editable files; `.gitignore` is verified separately in Task 39.
 
 - [ ] **Step 11: Integration test — three agents + all 8 user-editable files + .gitignore**
 
@@ -5874,7 +6233,7 @@ def test_customer_support_ships_all_required_files(tmp_path: Path):
     expected = [
         project / "pyproject.toml",
         project / ".env.example",
-        project / "main.py",
+        project / "src" / "cs" / "main.py",  # R4-C2: main.py lives inside the package
         project / "src" / "cs" / "__init__.py",
         project / "src" / "cs" / "crew.py",
         project / "config" / "agents.yaml",
@@ -5924,7 +6283,7 @@ def test_data_analyst_ships_all_required_files(tmp_path: Path):
     expected = [
         project / "pyproject.toml",
         project / ".env.example",
-        project / "main.py",
+        project / "src" / "da" / "main.py",  # R4-C2: main.py lives inside the package
         project / "src" / "da" / "__init__.py",
         project / "src" / "da" / "crew.py",
         project / "config" / "agents.yaml",
@@ -5973,7 +6332,7 @@ def test_content_template_is_hierarchical_and_complete(tmp_path: Path):
     expected = [
         project / "pyproject.toml",
         project / ".env.example",
-        project / "main.py",
+        project / "src" / "content" / "main.py",  # R4-C2: main.py lives inside the package
         project / "src" / "content" / "__init__.py",
         project / "src" / "content" / "crew.py",
         project / "config" / "agents.yaml",
@@ -6010,7 +6369,7 @@ Spec §3.3.5: PKV/BU-Tarif-Vergleich. THREE agents: `Tarif-Researcher`, `Kunden-
 2. `README.md.jinja.de` and `README.md.jinja.en`
 3. `pyproject.toml.jinja`
 4. `.env.example`
-5. `main.py.jinja`
+5. `src/{{ project_name }}/main.py.jinja` (R4-C2: lives inside the package so `pyproject.toml` `[project.scripts]` entry resolves)
 6. `src/{{ project_name }}/__init__.py`
 7. `src/{{ project_name }}/crew.py.jinja`
 8. `config/agents.yaml.jinja` and `config/tasks.yaml.jinja`
@@ -6076,7 +6435,7 @@ def test_versicherungs_template_ships_all_required_files(tmp_path: Path):
     expected = [
         project / "pyproject.toml",
         project / ".env.example",
-        project / "main.py",
+        project / "src" / "pkv" / "main.py",  # R4-C2: main.py lives inside the package
         project / "src" / "pkv" / "__init__.py",
         project / "src" / "pkv" / "crew.py",
         project / "config" / "agents.yaml",
@@ -6219,6 +6578,59 @@ git add .github/workflows/scaffold-templates.yml
 git commit -m "ci: scaffold every template + run its smoke tests"
 ```
 
+- [ ] **Step 3: Perf budget test (Spec §8.5, R4-I7)**
+
+Spec §8.5 requires each template to scaffold in under 500ms. Add a parameterized
+perf test to the test matrix so CI enforces the budget on every PR:
+
+```python
+# tests/test_crew/test_templates/test_scaffold_perf.py
+"""Spec §8.5 / R4-I7: each template must scaffold in <500ms.
+
+Run-time perf budget, NOT a pytest-benchmark statistical measurement.
+Uses time.perf_counter() so the assertion is fast + deterministic enough
+for CI. Templates themselves are static filesystem trees; the only variable
+cost is Jinja rendering, which is dominated by the number of template files
+(all five templates ship with the same 8 user-editable files).
+"""
+
+from pathlib import Path
+import time
+
+import pytest
+
+from cognithor.crew.cli.init_cmd import run_init
+
+
+_ALL_TEMPLATES = [
+    "research",
+    "customer-support",
+    "data-analyst",
+    "content",
+    "versicherungs-vergleich",
+]
+
+
+@pytest.mark.parametrize("template_name", _ALL_TEMPLATES)
+def test_template_generation_under_500ms(template_name: str, tmp_path: Path) -> None:
+    """Spec §8.5: each template must scaffold in <500ms."""
+    project = tmp_path / f"perf_{template_name.replace('-', '_')}"
+    start = time.perf_counter()
+    run_init(name=project.name, template=template_name, directory=project, lang="de")
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    assert elapsed_ms < 500, (
+        f"{template_name} scaffolding took {elapsed_ms:.0f}ms (budget: 500ms). "
+        f"Spec §8.5 budget violated — investigate render_tree or template bloat."
+    )
+```
+
+Commit separately so the perf gate landing is visible in `git log`:
+
+```bash
+git add tests/test_crew/test_templates/test_scaffold_perf.py
+git commit -m "test(crew): spec §8.5 perf gate — each template scaffolds in <500ms"
+```
+
 ---
 
 ### Task 46: Feature-3 merge-prep — CHANGELOG + CLI help text
@@ -6276,7 +6688,6 @@ git commit -m "docs(crew): Feature-3 CHANGELOG entry"
 
 
   @pytest.mark.benchmark
-  @pytest.mark.asyncio
   async def test_crew_kickoff_overhead_under_5_percent():
       """Measure Crew.kickoff_async() overhead vs a direct Planner.formulate_response()
       call with identical payload. Both should take ~the same time because the Crew
@@ -6497,7 +6908,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 
-@pytest.mark.asyncio
 async def test_pkv_example_runs_with_mock_planner(monkeypatch):
     # Import the example AS IF a user just installed cognithor
     import sys
@@ -7470,7 +7880,7 @@ git checkout -b release/v0.93.0
 - [ ] **Step 2: Update integrations page**
 
 Fetch `catalog.json` at build time from
-`https://raw.githubusercontent.com/AlexanderSoellner/jarvis/v0.93.0/docs/integrations/catalog.json`
+`https://raw.githubusercontent.com/Alex8791-cyber/cognithor/v0.93.0/docs/integrations/catalog.json`
 (note: `v0.93.0` refers to the upcoming tag — at draft time, swap to a commit SHA on `main`, then bump to the tag once PR 4b merges). Render a category grid (5 categories: CRM, Productivity, Finance, DevOps, Messaging) with a dedicated DACH section for `dach_specific: true` entries.
 
 Fallback: if the fetch fails at build time (offline CI), fall back to a committed `content/integrations/catalog.snapshot.json` last-known-good copy.
@@ -7522,11 +7932,56 @@ The Crew-Layer is a MINOR bump (additive, no breaking changes — each feature's
   }
   ```
   This MUST pass before continuing. If no external reader has completed the checklist, find one.
+- [ ] **Step 3b: Flutter CLI-command catalog check (R4-I4)**
+
+  The Flutter Command Center may surface a CLI command catalog in-app. If it
+  hardcodes the list (e.g. `const availableCommands = [...]`), the new `init`
+  and `run` subcommands must be added; if it introspects `cognithor --help`
+  dynamically, nothing is needed. Run:
+
+  ```bash
+  # Look for hardcoded CLI command catalogs in the Flutter sources.
+  grep -rn -E "available_commands|availableCommands|cli_commands|cliCommands|command_list|commandList" flutter_app/lib/ || echo "no hardcoded catalog found"
+  ```
+
+  - If grep prints nothing: introspection path assumed — no action needed, but
+    spin up a local Flutter build with a 0.93.0-dev cognithor and sanity-check
+    that the help output flows through.
+  - If grep prints hits: extend the catalog to include `init` and `run`, then
+    commit the update together with the version bump below.
 - [ ] **Step 4:** Apply the 5-file version bump. Commit:
   ```bash
   git add CHANGELOG.md pyproject.toml src/cognithor/__init__.py \
           flutter_app/pubspec.yaml flutter_app/lib/providers/connection_provider.dart
   git commit -m "chore(release): bump to 0.93.0 — Crew-Layer v1.0"
+  ```
+- [ ] **Step 4b: Release-notes date + NOTICE year verification (R4-C5)**
+
+  Task 81b creates `docs/releases/v0.93.0.md` with a ``**Release date:** YYYY-MM-DD``
+  placeholder — this placeholder MUST be replaced with the actual release date
+  before PR 4b opens. The ``NOTICE`` file's copyright year should also match the
+  current release year. Run these checks and fix before pushing:
+
+  ```bash
+  # Date placeholder must be replaced with a concrete ISO date.
+  if grep -n "YYYY-MM-DD" docs/releases/v0.93.0.md ; then
+      echo "ERROR: date placeholder YYYY-MM-DD not replaced in docs/releases/v0.93.0.md"
+      echo "Fix: sed -i \"s/YYYY-MM-DD/$(date -u +%Y-%m-%d)/\" docs/releases/v0.93.0.md"
+      exit 1
+  fi
+
+  # NOTICE copyright-year sanity check. Not a hard failure — the file may
+  # legitimately span multiple years (e.g. 'Copyright 2025-2026') — but warn
+  # when the current year is missing so a release slipping into 2027 catches
+  # attention before it ships.
+  release_year=$(date -u +%Y)
+  if ! grep -qE "Copyright[^0-9]+${release_year}" NOTICE ; then
+      echo "WARNING: NOTICE does not mention copyright year ${release_year} — review before tagging"
+  fi
+
+  # If v0.93.0.md or NOTICE changed in Step 4b, amend the version-bump commit:
+  git add docs/releases/v0.93.0.md NOTICE 2>/dev/null || true
+  git diff --cached --quiet || git commit --amend --no-edit
   ```
 - [ ] **Step 5:** Push + open PR. Title: `docs(crew): Quickstart + v0.93.0 release (v1.0 — Feature 2)`. The PR body references the four earlier merged PRs and the spec §12 sign-off checklist.
 - [ ] **Step 6:** Wait ALL CI jobs green (CI + scaffold-templates + quickstart-examples + integrations-catalog + Windows Installer + Mobile + Linux .deb + Flutter Web + Release Build + performance-benchmark).
@@ -7580,7 +8035,12 @@ To avoid a last-minute scramble, recruitment starts in Week 4, not Week 6. Add a
 
 - [ ] **Step 1: Write GitHub release body in `docs/releases/v0.93.0.md`**
 
-Template (populate from the `[0.93.0]` CHANGELOG section — both Round 3 fixes and the feature list):
+Template (populate from the `[0.93.0]` CHANGELOG section — both Round 3 fixes and the feature list).
+
+**Date placeholder (R4-C5):** the `YYYY-MM-DD` literal below MUST be replaced
+with the concrete release date before PR 4b opens. Task 80b Step 4b runs a
+`grep "YYYY-MM-DD"` gate that blocks PR creation until the substitution is made.
+Use UTC date: `sed -i "s/YYYY-MM-DD/$(date -u +%Y-%m-%d)/" docs/releases/v0.93.0.md`.
 
 ```markdown
 # Cognithor 0.93.0 — Crew-Layer, Guardrails, Templates
@@ -7626,7 +8086,7 @@ No breaking changes. Every existing `@agent` / `@tool` / `@skill` keeps working.
 
 **Full changelog:** see [CHANGELOG.md](../CHANGELOG.md).
 
-**Credits:** Thanks to reviewers, testers, and external readers — [see contributors](https://github.com/AlexanderSoellner/jarvis/graphs/contributors).
+**Credits:** Thanks to reviewers, testers, and external readers — [see contributors](https://github.com/Alex8791-cyber/cognithor/graphs/contributors).
 ```
 
 - [ ] **Step 2: Write blog outline in `docs/releases/v0.93.0-announcement.md`**
@@ -7662,7 +8122,7 @@ No breaking changes. Every existing `@agent` / `@tool` / `@skill` keeps working.
 ### LinkedIn (600 chars)
 **EN:** "Shipped today: Cognithor 0.93.0. The big addition is the Crew-Layer — declarative multi-agent teams on top of our existing PGE-Trinity runtime. You write Python dataclasses for agents + tasks; Cognithor compiles them into governed PlanRequests with full Gatekeeper checks and Hashline-Guard audit trails. Five first-party templates ship with it, including a fully offline DACH PKV-Vergleich template (§34d-neutral). 8-page Quickstart gets you from empty terminal to first kickoff in under 10 minutes. No breaking changes. Docs: cognithor.ai/quickstart"
 
-**DE:** [hand-translated, equivalent structure and tone — 600 chars]
+**DE:** "Heute veröffentlicht: Cognithor 0.93.0. Das Hauptmerkmal ist der Crew-Layer — deklarative Multi-Agent-Teams auf unserer bestehenden PGE-Trinity-Runtime. Agents und Tasks werden als Python-Dataclasses beschrieben; Cognithor kompiliert daraus geprüfte PlanRequests mit vollem Gatekeeper-Check und Hashline-Guard-Audit-Trail. Fünf First-Party-Templates sind dabei, inklusive eines komplett offline-fähigen PKV-Vergleichs-Templates für den DACH-Raum (§34d-neutral). Der 8-teilige Quickstart führt dich in unter 10 Minuten vom leeren Terminal zum ersten Kickoff. Keine Breaking Changes. Doku: cognithor.ai/quickstart"
 
 ### Discord community (400 chars + code snippet)
 **EN:** "v0.93.0 is live — Crew-Layer, Guardrails, `cognithor init`. The one-liner you came here for:
@@ -7673,7 +8133,13 @@ Crew(agents=[analyst, writer], tasks=[research, report]).kickoff()
 
 Quickstart + migration notes in docs/quickstart/. Breaking changes: none. Feedback very welcome in #v0.93-feedback."
 
-**DE:** [hand-translated version]
+**DE:** "v0.93.0 ist live — Crew-Layer, Guardrails, `cognithor init`. Der Einzeiler, für den ihr gekommen seid:
+
+```python
+Crew(agents=[analyst, writer], tasks=[research, report]).kickoff()
+```
+
+Quickstart + Migrations-Notizen in docs/quickstart/. Breaking Changes: keine. Feedback gerne in #v0.93-feedback."
 ```
 
 - [ ] **Step 3: Commit**
