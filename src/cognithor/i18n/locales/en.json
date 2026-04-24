@@ -833,6 +833,9 @@
       "unknown_tool": "Agent references unknown tool '{tool}'. Known tools: {known}",
       "tool_suggestion": "Agent references unknown tool '{tool}'. Did you mean '{suggestion}'?",
       "unknown_task": "Task '{task}' references unknown task '{ref}'"
+    },
+    "init": {
+      "next_command": "Next: cd {dest} && pip install -e .[dev] && cognithor run"
     }
   }
 }

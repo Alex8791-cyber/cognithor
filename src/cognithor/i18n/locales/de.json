@@ -833,6 +833,9 @@
       "unknown_tool": "Agent referenziert unbekanntes Tool '{tool}'. Bekannte Tools: {known}",
       "tool_suggestion": "Agent referenziert unbekanntes Tool '{tool}'. Meintest du '{suggestion}'?",
       "unknown_task": "Task '{task}' referenziert unbekannten Task '{ref}'"
+    },
+    "init": {
+      "next_command": "Nächste Schritte: cd {dest} && pip install -e .[dev] && cognithor run"
     }
   }
 }
