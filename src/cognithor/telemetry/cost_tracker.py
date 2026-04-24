@@ -47,6 +47,9 @@ class CostTracker:
         self._conn = encrypted_connect(db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
+        # Crew-Layer (Task 11) reads the most recent record via ``last_call()``
+        # to surface per-task token usage without an extra DB roundtrip.
+        self._last_record: CostRecord | None = None
         self._ensure_schema()
 
     def _ensure_schema(self) -> None:
@@ -133,7 +136,17 @@ class CostTracker:
             ),
         )
         self._conn.commit()
+        self._last_record = record
         return record
+
+    def last_call(self) -> CostRecord | None:
+        """Return the most recently recorded ``CostRecord`` (or None).
+
+        Additive helper for the Crew-Layer (Task 11): once the Planner
+        completes ``formulate_response``, the Crew-Layer reads this to
+        populate ``TaskOutput.token_usage`` without an extra DB query.
+        """
+        return self._last_record
 
     def get_session_cost(self, session_id: str) -> float:
         """Total costs of a session."""

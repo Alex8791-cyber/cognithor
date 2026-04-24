@@ -256,3 +256,21 @@ class TestPerAgentCosts:
         report = tracker.get_cost_report()
         assert "scout" in report.cost_by_agent
         assert "skill_builder" in report.cost_by_agent
+
+
+class TestLastCall:
+    def test_last_call_returns_last_record(self, tmp_path):
+        """``last_call()`` mirrors the most recent ``record_llm_call`` result.
+
+        Task 11 (Crew-Layer PGE integration) uses this accessor to populate
+        per-task token usage without an extra DB round-trip.
+        """
+        ct = CostTracker(str(tmp_path / "cost.db"))
+        try:
+            assert ct.last_call() is None
+            r1 = ct.record_llm_call("ollama/qwen3:8b", 10, 20, session_id="s1")
+            assert ct.last_call() is r1
+            r2 = ct.record_llm_call("ollama/qwen3:8b", 30, 40, session_id="s2")
+            assert ct.last_call() is r2
+        finally:
+            ct.close()
