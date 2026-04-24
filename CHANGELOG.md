@@ -34,6 +34,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   auto-generated from MCP tool definitions by
   `scripts/generate_integrations_catalog.py`. CI fails on drift. Includes
   a new DACH-specific sevDesk REST connector (v1.0 Launch).
+- **Quickstart Documentation (Feature 2)** — `docs/quickstart/` — 8-page
+  bilingual (DE primary + EN) walkthrough from install to production. Includes
+  5 runnable examples under `examples/quickstart/` (first-crew, first-tool,
+  first-skill, guardrails, PKV report). CI smoke-tests every example on every
+  PR via `.github/workflows/quickstart-examples.yml`.
 
 ### Breaking Changes
 None. The Crew-Layer is strictly additive — no existing public API changes.
