@@ -1,0 +1,10 @@
+name: research
+description_de: Researcher + Reporter Zwei-Agenten-Crew mit sequenziellem Ablauf.
+description_en: Two-agent researcher + reporter crew, sequential process.
+order: 1
+required_models:
+  - ollama/qwen3:8b
+tags:
+  - quickstart
+  - beginner
+  - sequential

@@ -1,0 +1,59 @@
+# {{ project_name }}
+
+Research-Crew mit zwei Agenten (Researcher + Reporter), sequenziell
+ausgefuehrt — erzeugt mit `cognithor init --template research`.
+
+## Quickstart
+
+```bash
+# 1. Dev-Installation
+pip install -e .[dev]
+
+# 2. Ollama-Modell sicherstellen
+ollama pull qwen3:8b
+
+# 3. Crew starten
+{{ project_name }} "Quantum Machine Learning"
+```
+
+Alternativ direkt per Python:
+
+```python
+import asyncio
+from {{ project_name }}.crew import ResearchCrew
+
+result = asyncio.run(
+    ResearchCrew().assemble().kickoff_async(inputs={"topic": "Quantum ML"})
+)
+print(result.raw)
+```
+
+## Struktur
+
+```
+{{ project_name }}/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── config/
+│   ├── agents.yaml       # YAML-Spiegel der Agenten
+│   └── tasks.yaml        # YAML-Spiegel der Tasks
+├── src/{{ project_name }}/
+│   ├── __init__.py
+│   ├── crew.py           # ResearchCrew mit @agent/@task/@crew
+│   └── main.py           # CLI Entry-Point
+└── tests/
+    └── test_crew.py      # Smoke-Test mit Mock-Planner
+```
+
+## Anpassung
+
+- `src/{{ project_name }}/crew.py` — Agenten, Tasks und Reihenfolge aendern.
+- `config/agents.yaml` + `config/tasks.yaml` — optionale YAML-Konfiguration.
+- `.env` (aus `.env.example` kopieren) — Ollama-Host, Cognithor-Home.
+
+## Tests
+
+```bash
+pytest -q
+```

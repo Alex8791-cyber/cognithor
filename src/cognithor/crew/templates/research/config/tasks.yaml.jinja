@@ -1,0 +1,10 @@
+research:
+  description: "Recherchiere: {topic}"
+  expected_output: Bulletpoint-Liste der 5 wichtigsten Fakten.
+  agent: researcher
+
+report:
+  description: Schreibe basierend auf der Research einen Report.
+  expected_output: Markdown-Report, 300-500 Wörter.
+  agent: reporter
+  context: [research]

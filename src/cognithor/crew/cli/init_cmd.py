@@ -56,9 +56,7 @@ def _resolve_template_dir(template: str) -> Path:
     known = {t.name for t in list_templates()}
     if template not in known:
         available = ", ".join(sorted(known)) or "(none)"
-        raise InitCommandError(
-            f"unknown template '{template}'. Available: {available}"
-        )
+        raise InitCommandError(f"unknown template '{template}'. Available: {available}")
     return TEMPLATES_ROOT / template
 
 
@@ -123,13 +121,12 @@ def run_init(
 
     # Localized next-command hint. Falls back to raw key if i18n missing.
     try:
-        from cognithor.i18n import set_locale, t as _t
+        from cognithor.i18n import set_locale
+        from cognithor.i18n import t as _t
 
         set_locale(lang)
         hint = _t("crew.init.next_command", dest=str(directory))
     except Exception:
-        hint = (
-            f"Next: cd {directory} && pip install -e .[dev] && cognithor run"
-        )
+        hint = f"Next: cd {directory} && pip install -e .[dev] && cognithor run"
     print(hint)
     return 0

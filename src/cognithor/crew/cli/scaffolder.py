@@ -42,6 +42,59 @@ _FORBIDDEN_SEGMENTS = {"", ".", ".."}
 _LANG_SUFFIXES = {".de", ".en", ".zh", ".ar"}
 _LANG_FALLBACK = "en"
 
+# Standard Python .gitignore auto-injected when the template doesn't ship
+# one. Prevents new projects from accidentally committing secrets (.env),
+# local virtual-envs, compiled bytecode, or Cognithor state DBs on the
+# first ``git add .``.
+_DEFAULT_GITIGNORE = """\
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual envs
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env + secrets
+.env
+.env.local
+.env.*.local
+
+# Cognithor
+.cognithor/
+*.db
+*.db-journal
+"""
+
 
 def sanitize_project_name(name: str) -> str:
     """Convert free-form name to a safe Python package identifier.
@@ -201,3 +254,10 @@ def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> No
             dest_path.write_text(template.render(**context), encoding="utf-8")
         else:
             shutil.copy2(src_path, dest_path)
+
+    # Auto-inject a standard .gitignore if the template didn't ship one.
+    # Protects scaffolded projects from accidentally committing .env,
+    # __pycache__/, or local Cognithor state on the first `git add .`.
+    gitignore_dest = dest_dir / ".gitignore"
+    if not gitignore_dest.exists():
+        gitignore_dest.write_text(_DEFAULT_GITIGNORE, encoding="utf-8")

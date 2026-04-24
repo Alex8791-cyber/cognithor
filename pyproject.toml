@@ -215,6 +215,10 @@ filterwarnings = [
 target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
+# Crew scaffolder templates are Jinja2 source trees, not Python packages —
+# they use ``{{ project_name }}`` in directory/file names and ship ``.jinja``
+# templates that aren't valid Python until rendered.
+extend-exclude = ["src/cognithor/crew/templates"]
 
 [tool.ruff.lint]
 select = [

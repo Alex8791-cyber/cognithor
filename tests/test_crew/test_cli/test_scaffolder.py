@@ -131,3 +131,22 @@ def test_scaffolder_falls_back_to_first_sorted_when_no_en_variant(tmp_path):
     render_tree(src, dest, context={"project_name": "demo", "lang": "ar"})
 
     assert (dest / "README.md").read_text() == "# demo (DE)"
+
+
+def test_scaffolder_auto_injects_gitignore(tmp_path):
+    """Scaffolder must write a default .gitignore when the template doesn't
+    ship one — prevents accidental .env / __pycache__ commits."""
+    from cognithor.crew.cli.scaffolder import render_tree
+
+    src = tmp_path / "tmpl"
+    src.mkdir()
+    (src / "foo.txt").write_text("bar")
+    dest = tmp_path / "out"
+
+    render_tree(src, dest, context={})
+
+    gi = dest / ".gitignore"
+    assert gi.exists()
+    content = gi.read_text()
+    assert "__pycache__" in content
+    assert ".env" in content

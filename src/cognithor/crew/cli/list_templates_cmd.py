@@ -7,7 +7,6 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-
 TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates"
 
 
