@@ -201,6 +201,7 @@ markers = [
     "slow: marks tests as slow",
     "integration: marks tests requiring external services",
     "security_contract: marks security contract invariant tests",
+    "benchmark: performance budget tests (spec §8.5)",
 ]
 filterwarnings = [
     # starlette uses deprecated multipart import — third-party, can't fix
