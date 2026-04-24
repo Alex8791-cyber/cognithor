@@ -142,17 +142,20 @@ async def compile_and_run_async(
     i = 0
     while i < len(ordered):
         # Collect a fan-out group: consecutive tasks with async_execution=True
-        # and no dependency on each other.
+        # and no dependency on each other. The anchor itself must also be
+        # async_execution=True — otherwise a sync task would be swept into the
+        # gather pool and run in parallel with its neighbours.
         group = [ordered[i]]
         j = i + 1
-        while j < len(ordered) and ordered[j].async_execution:
-            # Only group if the later task doesn't depend on earlier group members
-            deps = {t.task_id for t in ordered[j].context}
-            if deps.isdisjoint({t.task_id for t in group}):
-                group.append(ordered[j])
-                j += 1
-            else:
-                break
+        if ordered[i].async_execution:
+            while j < len(ordered) and ordered[j].async_execution:
+                # Only group if the later task doesn't depend on earlier group members
+                deps = {t.task_id for t in ordered[j].context}
+                if deps.isdisjoint({t.task_id for t in group}):
+                    group.append(ordered[j])
+                    j += 1
+                else:
+                    break
         if len(group) == 1:
             out = await execute_task_async(
                 group[0], context=outputs, inputs=inputs, registry=registry

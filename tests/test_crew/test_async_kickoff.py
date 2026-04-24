@@ -36,5 +36,8 @@ async def test_async_tasks_run_concurrently_when_no_dependency():
     with patch("cognithor.crew.compiler.execute_task_async", side_effect=timed):
         await crew.kickoff_async()
 
-    # Two async-marked tasks with no dependency start within ~10 ms of each other
-    assert abs(call_times[0] - call_times[1]) < 0.01
+    # Two async-marked tasks with no dependency start within ~50 ms of each
+    # other. 50 ms is well under the 50 ms per-task sleep — a sequential
+    # execution would show a ≥50 ms gap — but it's above Windows' ~15 ms
+    # system-timer resolution, so CI isn't flaky on the Windows runner.
+    assert abs(call_times[0] - call_times[1]) < 0.05
