@@ -61,3 +61,20 @@ async def test_kickoff_emits_lifecycle_sequence(monkeypatch):
         "crew_task_completed",
         "crew_kickoff_completed",
     ]
+
+
+def test_audit_events_are_pii_scrubbed():
+    """R4-I8: audit fields containing PII must be redacted before persisting."""
+    from cognithor.crew.compiler import _scrub_audit_fields
+
+    cleaned = _scrub_audit_fields(
+        {
+            "task_id": "t1",
+            "feedback": "Email user at test@example.com after the call",
+            "duration_ms": 123.4,
+        }
+    )
+    assert "test@example.com" not in cleaned["feedback"]
+    assert "[REDACTED:email]" in cleaned["feedback"]
+    assert cleaned["task_id"] == "t1"  # non-PII strings pass through
+    assert cleaned["duration_ms"] == 123.4  # non-string values pass through

@@ -22,8 +22,32 @@ from cognithor.crew.process import CrewProcess
 from cognithor.crew.task import CrewTask
 from cognithor.crew.tool_resolver import resolve_tools
 from cognithor.models import ToolResult, WorkingMemory
+from cognithor.security.pii_redactor import PIIRedactor
 
 log = logging.getLogger(__name__)
+
+# Module-level singleton - redactor is stateless; instantiating per-call
+# would re-compile regex for every audit event.
+_CREW_PII_REDACTOR = PIIRedactor()
+
+
+def _scrub_audit_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``fields`` with string values passed through the
+    PII redactor. Non-string values (ints, floats, bools, dicts) pass through
+    untouched. Lists of strings are element-wise redacted; deeper nesting
+    falls through as-is (audit-chain fields are flat by convention).
+    """
+    cleaned: dict[str, Any] = {}
+    for key, value in fields.items():
+        if isinstance(value, str):
+            sanitized, _matches = _CREW_PII_REDACTOR.redact(value)
+            cleaned[key] = sanitized
+        elif isinstance(value, list) and value and all(isinstance(v, str) for v in value):
+            cleaned[key] = [_CREW_PII_REDACTOR.redact(v)[0] for v in value]
+        else:
+            cleaned[key] = value
+    return cleaned
+
 
 # Audit helper - wraps cognithor.security.audit.AuditTrail.record_event()
 # as a single module-local callable so tests can patch it cleanly.
@@ -60,8 +84,9 @@ def append_audit(event: str, **fields: Any) -> None:
     if trail is None:
         return
     session_id = fields.pop("trace_id", "crew")
+    scrubbed = _scrub_audit_fields(fields)  # spec 8.2 / R4-I8 - PII before persist
     try:
-        trail.record_event(session_id=session_id, event_type=event, details=fields)
+        trail.record_event(session_id=session_id, event_type=event, details=scrubbed)
     except Exception as exc:
         # Spec 11.5: audit failures must be SURFACED, not silently swallowed.
         log.warning(
