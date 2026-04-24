@@ -1,0 +1,16 @@
+outline:
+  description: "Erstelle eine Gliederung zum Thema: {topic}"
+  expected_output: Hierarchische Outline mit H2/H3-Ebenen.
+  agent: outliner
+
+draft:
+  description: Schreibe einen ersten Entwurf auf Basis der Outline.
+  expected_output: Vollständiger Rohtext, 800-1200 Wörter.
+  agent: drafter
+  context: [outline]
+
+edit:
+  description: Redigiere den Entwurf.
+  expected_output: Finaler Text, 800-1200 Wörter, poliert.
+  agent: editor
+  context: [draft]

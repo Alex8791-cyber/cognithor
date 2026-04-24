@@ -1,0 +1,39 @@
+"""Smoke test for {{ project_name }}.ContentCrew.
+
+Uses a mock Planner so the test never hits Ollama / a network — runs in
+< 1 s on any CI. Swap in a real Planner in integration tests.
+"""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from {{ project_name }}.crew import ContentCrew
+
+
+@pytest.mark.asyncio
+async def test_crew_kickoff_with_mock_planner(monkeypatch):
+    from cognithor.core.observer import ResponseEnvelope
+
+    mock_planner = MagicMock()
+    mock_planner.formulate_response = AsyncMock(
+        return_value=ResponseEnvelope(content="MOCK_OUTPUT", directive=None),
+    )
+    mock_registry = MagicMock()
+    mock_registry.get_tools_for_role.return_value = []
+
+    monkeypatch.setattr(
+        "cognithor.crew.runtime.get_default_tool_registry",
+        lambda: mock_registry,
+    )
+    monkeypatch.setattr(
+        "cognithor.crew.runtime.get_default_planner",
+        lambda: mock_planner,
+    )
+
+    crew = ContentCrew().assemble()
+    result = await crew.kickoff_async(inputs={"topic": "test"})
+    assert result.raw == "MOCK_OUTPUT"
+    assert len(result.tasks_output) == 3

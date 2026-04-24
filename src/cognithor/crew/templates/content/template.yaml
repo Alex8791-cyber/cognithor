@@ -1,0 +1,11 @@
+name: content
+description_de: Drei-Agenten-Content-Crew — Outliner, Drafter, Editor, hierarchisch.
+description_en: Three-agent content crew — outliner, drafter, editor, hierarchical.
+order: 4
+required_models:
+  - ollama/qwen3:8b
+  - ollama/qwen3:32b
+tags:
+  - hierarchical
+  - content
+  - manager

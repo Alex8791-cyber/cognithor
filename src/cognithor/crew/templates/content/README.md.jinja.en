@@ -1,0 +1,63 @@
+# {{ project_name }}
+
+Three-agent content crew (outliner + drafter + editor), executed with a
+hierarchical manager LLM — generated with `cognithor init --template content`.
+The manager (`qwen3:32b`) delegates work and reviews the final output.
+
+## Quickstart
+
+```bash
+# 1. Dev install
+pip install -e .[dev]
+
+# 2. Make sure the Ollama models are pulled
+ollama pull qwen3:8b
+ollama pull qwen3:32b
+
+# 3. Run the crew
+{{ project_name }} "Guide to Prompt Engineering"
+```
+
+Or directly from Python:
+
+```python
+import asyncio
+from {{ project_name }}.crew import ContentCrew
+
+result = asyncio.run(
+    ContentCrew().assemble().kickoff_async(
+        inputs={"topic": "Prompt Engineering"}
+    )
+)
+print(result.raw)
+```
+
+## Layout
+
+```
+{{ project_name }}/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── config/
+│   ├── agents.yaml       # YAML mirror of the agents
+│   └── tasks.yaml        # YAML mirror of the tasks
+├── src/{{ project_name }}/
+│   ├── __init__.py
+│   ├── crew.py           # ContentCrew with @agent/@task/@crew
+│   └── main.py           # CLI entry point
+└── tests/
+    └── test_crew.py      # Smoke test with a mock Planner
+```
+
+## Customize
+
+- `src/{{ project_name }}/crew.py` — change agents, tasks, and the manager LLM.
+- `config/agents.yaml` + `config/tasks.yaml` — optional YAML config.
+- `.env` (copy from `.env.example`) — Ollama host, Cognithor home.
+
+## Tests
+
+```bash
+pytest -q
+```
