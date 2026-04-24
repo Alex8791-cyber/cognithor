@@ -35,7 +35,10 @@ The 82 tasks ship as **five sequential PRs against `main`**, not one mega-PR. Th
 | **PR 2** | Feature 4 — Guardrails | 21-32 | `feat/cognithor-crew-v1-f4` | `main` | No |
 | **PR 3** | Feature 3 — CLI + Templates | 33-52 | `feat/cognithor-crew-v1-f3` | `main` | No |
 | **PR 4a** | Feature 7 — Integrations Catalog + sevDesk connector (code + tests) | 67-78 | `feat/cognithor-crew-v1-f7` | `main` | No |
-| **PR 4b** | Feature 2 — 7-page Quickstart Docs + version bump | 53-66 | `feat/cognithor-crew-v1-f2` | `main` | **Yes — v0.93.0** |
+| **PR 4b** | Feature 2 — 8-page Quickstart Docs + version bump | 53-66 + 60b | `feat/cognithor-crew-v1-f2` | `main` | **Yes — v0.93.0** |
+| **Site PR** | cognithor-site v0.93.0 integrations + changelog (Task 80c) | site-repo only | `release/v0.93.0` (cognithor-site) | cognithor-site/`main` | **Gates tag push** |
+
+**Parallelism:** Task 80c (the cognithor-site PR) is drafted and opened IN PARALLEL with PR 4b review. The site-PR must be merged before Task 82 Step 3 (`git tag v0.93.0`). This is a hard gate on spec §12 AC 7 — published release links to live docs, never 404s.
 
 **Branch strategy:** Each PR is its own feature branch cut from `main`. After each PR merges:
 
@@ -274,6 +277,12 @@ class GuardrailFailure(CrewError):
     The message says "after N attempt(s)" where N is the actual number of
     attempts made (initial try + retries). Avoids the "max_retries" off-by-one
     surprise where max_retries=2 meant 3 attempts.
+
+    Includes a custom ``__reduce__`` so the exception can be pickled and
+    unpickled correctly — a plain ``@dataclass`` subclass of Exception fails
+    under ``ProcessPoolExecutor`` / ``multiprocessing.Queue`` / Celery because
+    the dataclass-generated ``__init__`` signature does not match the
+    single-arg unpickle path ``Exception.__init__`` uses by default.
     """
 
     task_id: str
@@ -290,6 +299,53 @@ class GuardrailFailure(CrewError):
     def __post_init__(self) -> None:
         # Keep Exception.args in sync so stack traces show a useful repr.
         super().__init__(str(self))
+
+    def __reduce__(self) -> tuple:
+        """Support pickling across process boundaries.
+
+        Without this, ``pickle.dumps(GuardrailFailure(...))`` succeeds but
+        ``pickle.loads(...)`` raises a misleading
+        ``TypeError: __init__() missing 3 required positional arguments``
+        because Exception's default unpickle path calls ``__init__`` with a
+        single positional arg (``self.args[0]``) which doesn't match the
+        dataclass signature.
+        """
+        return (
+            self.__class__,
+            (self.task_id, self.guardrail_name, self.attempts, self.reason),
+        )
+```
+
+Also add a regression test `test_guardrail_failure_pickle_roundtrip` in `tests/test_crew/test_errors.py`:
+
+```python
+import pickle
+
+from cognithor.crew.errors import GuardrailFailure
+
+
+def test_guardrail_failure_pickle_roundtrip():
+    """GuardrailFailure must survive pickle.dumps -> pickle.loads intact.
+
+    Regression: a plain @dataclass Exception subclass breaks multiprocessing /
+    ProcessPoolExecutor / Celery because Exception's unpickle path passes a
+    single arg to __init__, which the dataclass __init__ rejects. The custom
+    __reduce__ fixes this by telling pickle to pass all 4 fields.
+    """
+    original = GuardrailFailure(
+        task_id="t42",
+        guardrail_name="no_pii",
+        attempts=3,
+        reason="email detected",
+    )
+    roundtripped = pickle.loads(pickle.dumps(original))
+
+    assert roundtripped.task_id == "t42"
+    assert roundtripped.guardrail_name == "no_pii"
+    assert roundtripped.attempts == 3
+    assert roundtripped.reason == "email detected"
+    # Exception message preserved too
+    assert str(roundtripped) == str(original)
 ```
 
 ```python
@@ -1368,7 +1424,10 @@ async def test_async_tasks_run_concurrently_when_no_dependency():
     call_times: list[float] = []
 
     async def timed(task, context, inputs, registry):
-        call_times.append(asyncio.get_event_loop().time())
+        # asyncio.get_event_loop() is deprecated on Python 3.12 when there's a
+        # running loop; inside an async fn we're guaranteed a running loop, so
+        # get_running_loop() is the safe call.
+        call_times.append(asyncio.get_running_loop().time())
         await asyncio.sleep(0.05)
         return TaskOutput(task_id=task.task_id, agent_role="x", raw="OK")
 
@@ -1742,7 +1801,17 @@ async def execute_task_async(
         for prior in context
     ]
 
-    working_memory = WorkingMemory()  # defaults — session-scoped usage is transient
+    # WorkingMemory MUST carry a session_id — passing the kickoff's trace_id
+    # (added as a kwarg to this function in Task 30) keeps every in-kickoff
+    # tool result / chat turn bucketed under one audit session. Without it,
+    # the default `session_id=""` collapses all concurrent kickoffs into the
+    # same audit bucket and taints cross-request isolation. See NI3.
+    # Fall back to a fresh UUID when trace_id hasn't been threaded yet (pre
+    # Task 30 call sites).
+    import uuid
+    working_memory = WorkingMemory(
+        session_id=locals().get("trace_id") or uuid.uuid4().hex,
+    )
 
     t0 = time.perf_counter()
     envelope = await planner.formulate_response(
@@ -1826,7 +1895,24 @@ def execute_task(
     registry: Any,
     planner: Any | None = None,
 ) -> TaskOutput:
+    """Synchronous wrapper around ``execute_task_async``.
+
+    Refuses to run from inside a running event loop — same guard as
+    ``Crew.kickoff()`` — because ``asyncio.run`` cannot be called from an
+    already-running loop and would otherwise raise a confusing
+    ``RuntimeError: asyncio.run() cannot be called from a running event loop``.
+    See NI2 in Round 3 review.
+    """
     import asyncio
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass  # no running loop — safe to use asyncio.run
+    else:
+        raise RuntimeError(
+            "execute_task() cannot be called from a running event loop. "
+            "Use `await execute_task_async(...)` instead."
+        )
     return asyncio.run(execute_task_async(
         task, context=context, inputs=inputs, registry=registry, planner=planner,
     ))
@@ -2244,9 +2330,25 @@ def append_audit(event: str, **fields: Any) -> None:
     session_id = fields.pop("trace_id", "crew")
     try:
         trail.record_event(session_id=session_id, event_type=event, details=fields)
-    except Exception:
-        # Audit must never break a kickoff. Log and continue.
-        log.debug("crew_audit_record_failed", event=event, exc_info=True)
+    except Exception as exc:
+        # Spec §11.5: audit failures must be SURFACED, not silently swallowed.
+        # A debug-level log hides a broken Hashline-Guard chain — tamper
+        # evidence becomes useless the moment writes start failing quietly.
+        # We escalate to WARNING (+ full exc_info) AND tick a dedicated metric
+        # so observability sees the break. We still don't re-raise: a broken
+        # audit trail must not tear down the user's kickoff. See NI6.
+        log.warning(
+            "crew_audit_record_failed — Hashline-Guard chain may be incomplete",
+            extra={"event": event, "session_id": session_id},
+            exc_info=exc,
+        )
+        try:
+            from cognithor.telemetry.metrics import audit_failure_counter
+            audit_failure_counter.inc()
+        except ImportError:
+            # Metrics module optional in minimal installs — the log entry is
+            # still present, so the failure isn't invisible.
+            pass
 ```
 
 Emit events at key lifecycle points inside `compile_and_run_async`:
@@ -2363,11 +2465,65 @@ Uses the real `create_lock(config)` factory; splits `_kickoff_id` from the rest 
 ```python
 import asyncio
 import logging
+import threading
+from collections import OrderedDict
 
 log = logging.getLogger(__name__)
 
-# Module-level cache keyed by kickoff_id (best-effort, per-process).
-_KICKOFF_CACHE: dict[str, CrewOutput] = {}
+# Module-level bounded cache keyed by kickoff_id (best-effort, per-process).
+# OrderedDict + LRU-style eviction caps memory growth in long-running
+# processes. See NI7 in Round 3 review.
+_KICKOFF_CACHE_MAX_SIZE = 128
+_KICKOFF_CACHE: OrderedDict[str, CrewOutput] = OrderedDict()
+
+
+def _cache_put(key: str, value: CrewOutput) -> None:
+    """Insert or refresh a cache entry, evicting oldest when over capacity."""
+    _KICKOFF_CACHE[key] = value
+    _KICKOFF_CACHE.move_to_end(key)
+    while len(_KICKOFF_CACHE) > _KICKOFF_CACHE_MAX_SIZE:
+        _KICKOFF_CACHE.popitem(last=False)
+
+
+def _cache_get(key: str) -> CrewOutput | None:
+    """Return cached value (refreshing LRU position) or None."""
+    if key in _KICKOFF_CACHE:
+        _KICKOFF_CACHE.move_to_end(key)
+        return _KICKOFF_CACHE[key]
+    return None
+
+
+# Process-wide distributed lock singleton. ``create_lock()`` with a
+# LocalLockBackend builds a fresh ``dict[str, asyncio.Lock]`` per call —
+# instantiating a new lock per kickoff_async() call would therefore NEVER
+# serialize two concurrent same-id kickoffs inside one process (each call
+# sees its own dict). We must reuse a single DistributedLock instance. See
+# NC2 in Round 3 review.
+_lock_singleton: "Any | None" = None
+_lock_singleton_init = threading.Lock()
+
+
+def _get_distributed_lock() -> "Any":
+    """Return the process-wide DistributedLock, constructing it lazily once.
+
+    Uses the double-checked-locking pattern with ``threading.Lock`` so multiple
+    threads importing this module cannot produce racing singletons. The
+    candidate ``create_lock(...)`` call happens OUTSIDE the threading.Lock
+    to avoid holding that lock while loading config / opening files.
+    """
+    global _lock_singleton
+    if _lock_singleton is not None:
+        return _lock_singleton
+
+    from cognithor.config import load_config
+    from cognithor.core.distributed_lock import create_lock
+
+    candidate = create_lock(load_config())  # built outside critical section
+    with _lock_singleton_init:
+        if _lock_singleton is None:
+            _lock_singleton = candidate
+    return _lock_singleton
+
 
 # In-process fallback lock, lazily constructed. Used only when the
 # distributed_lock module is unavailable. Cannot be created at import time
@@ -2390,8 +2546,10 @@ async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutpu
         kickoff_id = inputs.get("_kickoff_id")
         inputs = {k: v for k, v in inputs.items() if k != "_kickoff_id"}
 
-    if kickoff_id and kickoff_id in _KICKOFF_CACHE:
-        return _KICKOFF_CACHE[kickoff_id]
+    if kickoff_id:
+        cached = _cache_get(kickoff_id)
+        if cached is not None:
+            return cached
 
     from cognithor.crew.compiler import compile_and_run_async
     from cognithor.crew.runtime import get_default_planner, get_default_tool_registry
@@ -2402,22 +2560,23 @@ async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutpu
     async def _run_guarded() -> CrewOutput:
         """Run the compiler under whichever lock is available and cache."""
         # Double-check cache inside the lock to handle the race
-        if kickoff_id and kickoff_id in _KICKOFF_CACHE:
-            return _KICKOFF_CACHE[kickoff_id]
+        if kickoff_id:
+            cached_inner = _cache_get(kickoff_id)
+            if cached_inner is not None:
+                return cached_inner
         result = await compile_and_run_async(
             agents=self.agents, tasks=self.tasks, process=self.process,
             inputs=inputs, registry=registry, planner=planner,
         )
         if kickoff_id:
-            _KICKOFF_CACHE[kickoff_id] = result
+            _cache_put(kickoff_id, result)
         return result
 
     if kickoff_id:
-        # Preferred path: cross-process distributed lock.
-        #   lock = create_lock(cfg); async with lock(name, timeout): ...
+        # Preferred path: cross-process distributed lock (singleton).
+        #   lock = _get_distributed_lock(); async with lock(name, timeout): ...
         try:
-            from cognithor.config import load_config
-            from cognithor.core.distributed_lock import create_lock
+            lock = _get_distributed_lock()
         except ImportError:
             # Distributed-lock module missing (minimal install / dev setup).
             # Fall back to an in-process asyncio.Lock so concurrent kickoffs
@@ -2431,7 +2590,6 @@ async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutpu
             async with (await _get_fallback_lock()):
                 return await _run_guarded()
 
-        lock = create_lock(load_config())
         async with lock(f"crew:kickoff:{kickoff_id}", 300.0):
             return await _run_guarded()
 
@@ -2441,6 +2599,54 @@ async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutpu
         inputs=inputs, registry=registry, planner=planner,
     )
     return result
+```
+
+**Concurrency regression test — add to `tests/test_crew/test_idempotent_kickoff.py`:**
+
+```python
+@pytest.mark.asyncio
+async def test_concurrent_same_id_serializes_under_local_backend():
+    """Two concurrent kickoffs with same _kickoff_id must serialize.
+
+    Regression for NC2: constructing a NEW DistributedLock per kickoff_async
+    call made the "double-check cache inside the lock" pattern useless under
+    LocalLockBackend, because each call saw a fresh dict[str, asyncio.Lock].
+    The singleton helper _get_distributed_lock() fixes this.
+    """
+    agent = CrewAgent(role="x", goal="y")
+    task = CrewTask(description="a", expected_output="b", agent=agent)
+
+    in_flight = {"n": 0, "max_seen": 0}
+
+    async def fake_resp(user_message, results, working_memory):
+        in_flight["n"] += 1
+        in_flight["max_seen"] = max(in_flight["max_seen"], in_flight["n"])
+        await asyncio.sleep(0.05)  # make concurrency observable
+        in_flight["n"] -= 1
+        return ResponseEnvelope(content="RUN", directive=None)
+
+    mock_planner = MagicMock()
+    mock_planner.formulate_response = AsyncMock(side_effect=fake_resp)
+    mock_registry = MagicMock()
+    mock_registry.get_tools_for_role.return_value = []
+
+    crew = Crew(agents=[agent], tasks=[task], planner=mock_planner)
+
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr("cognithor.crew.runtime.get_default_tool_registry", lambda: mock_registry)
+        # Reset singleton so the test configures a fresh LocalLockBackend.
+        mp.setattr("cognithor.crew.crew._lock_singleton", None, raising=False)
+        out1, out2 = await asyncio.gather(
+            crew.kickoff_async(inputs={"_kickoff_id": "serialize-me"}),
+            crew.kickoff_async(inputs={"_kickoff_id": "serialize-me"}),
+        )
+
+    assert out1.raw == out2.raw
+    # At no point were two runs in flight simultaneously (serialized).
+    assert in_flight["max_seen"] == 1, (
+        "Concurrent kickoffs with the same id must serialize via the "
+        "singleton distributed lock, not run in parallel."
+    )
 ```
 
 - [ ] **Step 4: Run + commit**
@@ -4600,7 +4806,15 @@ class TestRenderTree:
 
 ```python
 # src/cognithor/crew/cli/scaffolder.py
-"""Jinja2-based directory tree renderer for cognithor init templates."""
+"""Jinja2-based directory tree renderer for cognithor init templates.
+
+Uses ``SandboxedEnvironment`` (not plain ``Environment``) so untrusted
+template content cannot access Python internals via ``__class__`` /
+``__mro__`` / ``__subclasses__`` tricks. HTML/XML autoescape is enabled for
+future HTML template support. Path segments are validated per-render to
+block traversal attacks like a filename literally containing
+``{{ '../../etc/passwd' }}``. See NC3 in Round 3 review.
+"""
 
 from __future__ import annotations
 
@@ -4609,14 +4823,35 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from jinja2 import FileSystemLoader, StrictUndefined, select_autoescape
+from jinja2.sandbox import SandboxedEnvironment
 
 
 _PROJECT_NAME_CLEAN = re.compile(r"[^a-zA-Z0-9_]")
 
+# Windows reserved device names that must never appear as file or project
+# basenames — touching ``CON``, ``NUL``, ``COM1``–``COM9``, ``LPT1``–``LPT9``
+# on NTFS returns to the console device and corrupts anything that tries to
+# read them. See NI4 in Round 3 review.
+_WIN_RESERVED = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
+# Path segments that must never appear AFTER rendering — blocks
+# ``{{ '../../etc/passwd' }}`` in a template filename escaping dest_dir.
+_FORBIDDEN_SEGMENTS = {"", ".", ".."}
+
 
 def sanitize_project_name(name: str) -> str:
-    """Convert free-form name to a safe Python package identifier."""
+    """Convert free-form name to a safe Python package identifier.
+
+    Rejects empty strings and Windows reserved device names (``CON``, ``NUL``,
+    ``COM1..9``, ``LPT1..9``, ``PRN``, ``AUX``) on ALL platforms — not just
+    Windows — so projects scaffolded on Linux remain portable to Windows
+    developers. See NI4 in Round 3 review.
+    """
     if not name or not name.strip():
         raise ValueError("project name cannot be empty")
     cleaned = _PROJECT_NAME_CLEAN.sub("_", name.strip().lower())
@@ -4625,14 +4860,54 @@ def sanitize_project_name(name: str) -> str:
         raise ValueError(f"project name reduces to empty: {name!r}")
     if cleaned[0].isdigit():
         cleaned = f"project_{cleaned}"
+    if cleaned.upper() in _WIN_RESERVED:
+        raise ValueError(
+            f"'{cleaned}' is a reserved Windows device name. "
+            f"Please choose a different name (e.g. '{cleaned}_app')."
+        )
     return cleaned
+
+
+def _build_env(src_dir: Path) -> SandboxedEnvironment:
+    """Construct a sandboxed Jinja2 environment with autoescape on."""
+    return SandboxedEnvironment(
+        loader=FileSystemLoader(str(src_dir)),
+        undefined=StrictUndefined,
+        autoescape=select_autoescape(["html", "xml"]),
+        keep_trailing_newline=True,
+        trim_blocks=False,
+        lstrip_blocks=False,
+    )
+
+
+def _safe_join(dest_dir: Path, rendered_parts: list[str]) -> Path:
+    """Validate every rendered segment, then join under dest_dir.
+
+    Raises ``ValueError`` on any sign of path traversal — forbidden tokens
+    (``.``, ``..``, empty), embedded separators (``/`` or ``\\``), or a
+    rendered basename that lands outside ``dest_dir`` after ``resolve()``.
+    """
+    for seg in rendered_parts:
+        if seg in _FORBIDDEN_SEGMENTS:
+            raise ValueError(f"Forbidden path segment after render: {seg!r}")
+        if "/" in seg or "\\" in seg or seg.startswith(".."):
+            raise ValueError(f"Path traversal in rendered segment: {seg!r}")
+    candidate = dest_dir.joinpath(*rendered_parts).resolve()
+    try:
+        candidate.relative_to(dest_dir.resolve())
+    except ValueError as exc:
+        raise ValueError(
+            f"Rendered path {candidate} escapes dest_dir {dest_dir}"
+        ) from exc
+    return candidate
 
 
 def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> None:
     """Render every file under src_dir into dest_dir, applying Jinja2 to .jinja files.
 
     Files ending in `.jinja` have that suffix stripped and their contents rendered.
-    Path segments with `{{...}}` tags are also rendered.
+    Path segments with `{{...}}` tags are also rendered — and validated through
+    :func:`_safe_join` so a malicious template cannot escape ``dest_dir``.
     Non-.jinja files are copied verbatim.
     """
     src_dir = Path(src_dir)
@@ -4640,17 +4915,13 @@ def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> No
     if dest_dir.exists() and any(dest_dir.iterdir()):
         raise FileExistsError(f"dest exists and is not empty: {dest_dir}")
 
-    env = Environment(
-        loader=FileSystemLoader(str(src_dir)),
-        undefined=StrictUndefined,
-        keep_trailing_newline=True,
-    )
+    env = _build_env(src_dir)
 
     for src_path in src_dir.rglob("*"):
         rel = src_path.relative_to(src_dir)
-        # Render path segments
-        rendered_rel = Path(*[env.from_string(p).render(**context) for p in rel.parts])
-        dest_path = dest_dir / rendered_rel
+        # Render path segments under the sandbox, then validate each one.
+        rendered_parts = [env.from_string(p).render(**context) for p in rel.parts]
+        dest_path = _safe_join(dest_dir, rendered_parts)
 
         if src_path.is_dir():
             dest_path.mkdir(parents=True, exist_ok=True)
@@ -4658,12 +4929,65 @@ def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> No
 
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         if src_path.suffix == ".jinja":
-            # Strip .jinja from filename + render
+            # Strip .jinja from filename + render contents through sandbox.
             dest_path = dest_path.with_suffix("")
             template = env.get_template(str(rel).replace("\\", "/"))
             dest_path.write_text(template.render(**context), encoding="utf-8")
         else:
             shutil.copy2(src_path, dest_path)
+```
+
+**Security regression tests — add to `tests/test_crew/test_cli/test_scaffolder.py`:**
+
+```python
+def test_scaffolder_blocks_path_traversal_in_filename(tmp_path):
+    """A template filename containing ``{{ '../../etc/passwd' }}`` MUST raise.
+
+    Regression for NC3: plain ``Environment`` rendered path segments with no
+    validation, letting malicious templates write outside ``dest_dir``.
+    The sandboxed environment plus ``_safe_join`` blocks this.
+    """
+    import pytest
+    from cognithor.crew.cli.scaffolder import render_tree
+
+    src = tmp_path / "tmpl"
+    (src / "subdir").mkdir(parents=True)
+    # A file whose NAME expands to "../../etc/passwd" at render time.
+    traversal = src / "subdir" / "{{ payload }}.jinja"
+    traversal.write_text("pwned", encoding="utf-8")
+
+    dest = tmp_path / "out"
+    with pytest.raises(ValueError, match="traversal|Forbidden"):
+        render_tree(src, dest, context={"payload": "../../etc/passwd"})
+
+
+def test_scaffolder_blocks_backslash_traversal_on_windows(tmp_path):
+    """Backslash-based traversal payloads are also rejected."""
+    import pytest
+    from cognithor.crew.cli.scaffolder import render_tree
+
+    src = tmp_path / "tmpl"
+    src.mkdir()
+    traversal = src / "{{ payload }}.jinja"
+    traversal.write_text("pwned", encoding="utf-8")
+
+    dest = tmp_path / "out"
+    with pytest.raises(ValueError, match="traversal|Forbidden"):
+        render_tree(src, dest, context={"payload": r"..\..\secrets"})
+
+
+def test_sanitize_project_name_rejects_CON_on_all_platforms():
+    """Windows reserved device names are rejected even when running on Linux.
+
+    Scaffolded projects must be portable to Windows developers — naming a
+    package ``con`` would make it unbuildable there. Regression for NI4.
+    """
+    import pytest
+    from cognithor.crew.cli.scaffolder import sanitize_project_name
+
+    for reserved in ("CON", "con", "nul", "COM1", "lpt9", "prn", "aux"):
+        with pytest.raises(ValueError, match="reserved Windows device name"):
+            sanitize_project_name(reserved)
 ```
 
 `src/cognithor/crew/cli/__init__.py` — keep empty for now.
@@ -4923,10 +5247,69 @@ def run_init(
         "lang": lang,
     }
     render_tree(template_dir, dest, context=context)
+
+    # Success output: header + folder preview (top 2 levels, capped ~15 lines)
+    # + next-command hint. Previously printed only "Projekt erstellt: <path>",
+    # which left the user guessing what to do next. See NI8 in Round 3 review.
     msg_done = "Projekt erstellt" if lang == "de" else "Project created"
     print(f"{msg_done}: {dest}")
+    print()
+    for line in _render_folder_tree(dest, max_depth=2, max_lines=15):
+        print(f"  {line}")
+    print()
+    try:
+        from cognithor.i18n import t
+        next_cmd = t("crew.init.next_command", dest=dest.name)
+    except Exception:
+        next_cmd = (
+            f"Next: cd {dest.name} && pip install -e .[dev] && cognithor run"
+            if lang != "de"
+            else f"Nächste Schritte: cd {dest.name} && pip install -e .[dev] && cognithor run"
+        )
+    print(next_cmd)
     return 0
+
+
+def _render_folder_tree(root: Path, *, max_depth: int = 2, max_lines: int = 15) -> list[str]:
+    """Return up to ``max_lines`` string representations of the scaffolded tree.
+
+    Breadth-first walk, capped at ``max_depth`` levels deep, sorted for
+    deterministic output. Prefixes children with ``└── `` for readability.
+    """
+    lines: list[str] = [root.name + "/"]
+    def walk(d: Path, depth: int, prefix: str) -> None:
+        if depth > max_depth or len(lines) >= max_lines:
+            return
+        try:
+            children = sorted(d.iterdir(), key=lambda p: (p.is_file(), p.name))
+        except OSError:
+            return
+        for i, child in enumerate(children):
+            if len(lines) >= max_lines:
+                lines.append(prefix + "…")
+                return
+            is_last = i == len(children) - 1
+            branch = "└── " if is_last else "├── "
+            suffix = "/" if child.is_dir() else ""
+            lines.append(prefix + branch + child.name + suffix)
+            if child.is_dir():
+                next_prefix = prefix + ("    " if is_last else "│   ")
+                walk(child, depth + 1, next_prefix)
+    walk(root, 1, "")
+    return lines[:max_lines]
 ```
+
+**Locale keys to add in `src/cognithor/i18n/locales/en.json` + `de.json`:**
+
+```jsonc
+// en.json
+"crew.init.next_command": "Next: cd {dest} && pip install -e .[dev] && cognithor run"
+
+// de.json
+"crew.init.next_command": "Nächste Schritte: cd {dest} && pip install -e .[dev] && cognithor run"
+```
+
+Update `test_creates_project_from_template` to assert the tree preview + next-command line appear in captured stdout (use `capsys` fixture).
 
 - [ ] **Step 3: Commit**
 
@@ -4979,12 +5362,39 @@ Spec §3.2 requires the invocation shape `cognithor init --list-templates` (flag
 If existing `__main__` uses argparse subparsers:
 
 ```python
+import argparse
+
+def _validate_lang(value: str) -> str:
+    """argparse type hook: accept any locale that i18n has a pack for.
+
+    Originally the flag hardcoded ``choices=["de", "en"]`` — which silently
+    broke ``--lang zh`` / ``--lang ar`` even though the i18n module ships
+    those locale packs. See NI5 in Round 3 review.
+    """
+    try:
+        from cognithor.i18n import available_languages
+        available = set(available_languages())  # e.g. {"en", "de", "zh", "ar"}
+    except ImportError:
+        # Minimal install without i18n — fall back to the hardcoded EN/DE pair.
+        available = {"en", "de"}
+    if value not in available:
+        raise argparse.ArgumentTypeError(
+            f"Unsupported language {value!r}. Available: {sorted(available)}"
+        )
+    return value
+
+
 # Inside the existing argparse setup
 init_parser = subparsers.add_parser("init", help="Scaffold a new Crew project")
 init_parser.add_argument("name", nargs="?", help="Project name (required unless --list-templates)")
 init_parser.add_argument("--template", help="Template name (required unless --list-templates)")
 init_parser.add_argument("--dir", dest="directory", type=Path, default=None)
-init_parser.add_argument("--lang", default="de", choices=["de", "en"])
+init_parser.add_argument(
+    "--lang",
+    type=_validate_lang,
+    default=None,
+    help="UI language (default: config.language). Accepts any i18n locale present in src/cognithor/i18n/locales/.",
+)
 init_parser.add_argument(
     "--list-templates",
     action="store_true",
@@ -6053,6 +6463,12 @@ git add docs/quickstart/00-installation.md docs/quickstart/00-installation.en.md
 git commit -m "docs(quickstart): installation page (DE + EN)"
 ```
 
+- [ ] **Step 4: Recruit 2-3 external testers NOW for the Task 62 review slot**
+
+Per NI11 in Round 3 review, external-reader recruitment starts in Week 4, not Week 6. Waiting until Task 62 (Week 6) has historically created release-day scrambles. Identify 2-3 developers who are (a) Python-literate, (b) comfortable installing Ollama, (c) new to Cognithor Crew-Layer, and (d) NOT the plan author. Secure a calendar slot for the review run targeting the week PR 4b opens. If no reader is available, escalate to the plan lead before the quickstart docs complete — a release-blocking gate you discover on release-day morning is a known anti-pattern.
+
+Track candidates in `docs/quickstart/EXTERNAL_REVIEW_RESULTS.md` under a `## Recruited testers` section (names, contact, scheduled slot).
+
 ---
 
 ### Task 55: `01-first-crew.md` — PKV example walkthrough
@@ -6176,6 +6592,92 @@ Links to Memory docs, Voice docs, Computer Use, MCP tool catalog. "After the qui
 
 ---
 
+### Task 60b: `07-troubleshooting.md` — common Quickstart stumbles
+
+**Rationale:** Real first-time users hit well-known snags (Ollama not running, missing model pulls, port collisions, template-name typos) that derail the 10-minute onboarding promise. Shipping a bilingual FAQ page alongside the happy-path pages is a cheap way to keep the external-reader gate in Task 81 achievable. See NI9 in Round 3 review.
+
+**Files:**
+- Create: `docs/quickstart/07-troubleshooting.md`
+- Create: `docs/quickstart/07-troubleshooting.en.md`
+
+- [ ] **Step 1: Write DE content**
+
+```markdown
+# 07 · Fehler & Probleme
+
+> Die häufigsten Stolperfallen beim Durchlauf der Cognithor-Quickstart.
+
+## "Ollama is not running"
+
+**Symptom:** `cognithor run` bricht sofort mit `ConnectionError: Ollama unreachable at 127.0.0.1:11434` ab.
+
+**Lösung:**
+- Linux/macOS: `ollama serve` im Hintergrund laufen lassen.
+- Windows: Ollama-Dienst via Startmenü starten (es läuft als Hintergrund-Service).
+- Prüfe: `curl http://127.0.0.1:11434/api/tags` liefert JSON.
+
+## "Model pull failed" / "model qwen3:8b not found"
+
+**Symptom:** Crew-Kickoff beklagt fehlendes Modell.
+
+**Lösung:**
+- `ollama pull qwen3:8b` (~5 GB, dauert je nach Bandbreite).
+- Plattenplatz prüfen — Windows-Ollama legt Modelle standardmäßig in `%USERPROFILE%\.ollama\models` ab (kann >20 GB mit mehreren Modellen werden).
+
+## Port 11434 / 8741 belegt
+
+**Symptom:** `OSError: [Errno 48] Address already in use`.
+
+**Lösung:**
+- `netstat -ano | findstr :8741` (Windows) oder `lsof -i :8741` (Linux) zeigt den Nutzer.
+- Alternative Ports: `COGNITHOR_API_PORT=8742 cognithor --no-cli`.
+
+## `GuardrailFailure` beim Task-Output
+
+**Symptom:** Crew liefert keine Antwort, stattdessen `GuardrailFailure: 'no_pii' rejected output after 3 attempt(s)`.
+
+**Lösung:** Siehe [`docs/guardrails.md`](../guardrails.md) — meist hängt der Guardrail am Task-Output-Schema oder am Kontext fest.
+
+## "Unknown tool 'xxx'"
+
+**Symptom:** `ToolNotFoundError: Tool 'search_web' not registered`.
+
+**Lösung:** `cognithor tools list` zeigt alle registrierten Tools. Fehlendes Tool kommt entweder aus einem fehlenden Pack oder aus nicht importiertem `@tool`-Modul.
+
+## Template-Namen Kollision
+
+**Symptom:** `FileExistsError: target directory is not empty: ./my_project`.
+
+**Lösung:** `cognithor init my_project --template research --force` oder anderen Projekt-Namen wählen.
+```
+
+- [ ] **Step 2: Write EN content**
+
+Same structure in English — not machine-translated, but written by hand so idioms + tone match the rest of the quickstart. Copy 1:1 structurally.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/quickstart/07-troubleshooting.md docs/quickstart/07-troubleshooting.en.md
+git commit -m "docs(quickstart): 07 troubleshooting + FAQ (DE + EN)"
+```
+
+- [ ] **Step 4: Update `docs/quickstart/README.md` + `README.en.md` index**
+
+Add the 8th row:
+
+```markdown
+| 07 | [Fehler & Probleme](07-troubleshooting.md) | 3 min |
+```
+
+(EN: `| 07 | [Troubleshooting](07-troubleshooting.en.md) | 3 min |`)
+
+- [ ] **Step 5: Update the CHANGELOG note in Task 66**
+
+The Feature 2 CHANGELOG bullet currently says "7 bilingual pages" — bump to "8 bilingual pages" when Task 66 runs.
+
+---
+
 ### Task 61: CI workflow `quickstart-examples.yml`
 
 **Files:**
@@ -6258,13 +6760,20 @@ Spec §2.4 AND §12 AC 4 require that an **external testreader** (not the author
 - [ ] Run the scaffolded crew successfully (`cognithor run`)
 - [ ] First `crew.kickoff()` returns a CrewOutput
 
-**Budget:** all five milestones complete within 15 minutes total, zero questions asked back to author.
+**Budget:** all five milestones complete within 30 minutes total, ≤1 small clarifying question back to author.
 
 ## Record
 - Total elapsed time: ___ minutes
 - Number of questions asked: ___
 - Typos / confusions found: (bulleted list)
-- Verdict: PASS / FAIL
+- Blocking bugs encountered: (bulleted list; empty list required for PASS or PASS_WITH_FOLLOWUPS)
+- Follow-up issues filed (issue numbers, required if PASS_WITH_FOLLOWUPS): _______________
+- **Verdict: PASS / PASS_WITH_FOLLOWUPS / FAIL**
+
+**Verdict guide (per NI11 in Round 3 review):**
+- **PASS:** happy path completed, ≤1 clarifying question, ≤30 min.
+- **PASS_WITH_FOLLOWUPS:** happy path completed unassisted, ≥1 minor confusion logged as 0.93.1 issues, no blockers.
+- **FAIL:** could not complete happy path unassisted, hit a blocker, or >30 min elapsed. Release blocked until fixed.
 ```
 
 - [ ] **Step 2: Obtain a real external run**
@@ -6303,7 +6812,7 @@ Task 81 (PR 4 open) has an explicit acceptance step: verify `EXTERNAL_REVIEW_RES
 - [ ] **Step 1: Add bullet after existing Crew-Layer bullet**
 
 ```markdown
-- **Quickstart** — 7-page onboarding guide at [`docs/quickstart/`](docs/quickstart/README.md). From empty terminal to first Crew in <10 minutes.
+- **Quickstart** — 8-page onboarding guide at [`docs/quickstart/`](docs/quickstart/README.md) (7 happy-path pages + a troubleshooting FAQ). From empty terminal to first Crew in <10 minutes.
 ```
 
 - [ ] **Step 2: Commit**
@@ -6327,7 +6836,7 @@ Task 81 (PR 4 open) has an explicit acceptance step: verify `EXTERNAL_REVIEW_RES
 - [ ] **Step 1: Append under `[Unreleased]` `### Added`**
 
 ```markdown
-- **Quickstart docs (Feature 2)** — 7 bilingual (DE+EN) pages at `docs/quickstart/`
+- **Quickstart docs (Feature 2)** — 8 bilingual (DE+EN) pages at `docs/quickstart/` (7 happy-path + 1 troubleshooting FAQ)
   covering installation, first-crew, first-tool, first-skill, guardrails,
   deployment, and next-steps. Every example runs in CI via
   `.github/workflows/quickstart-examples.yml`.
@@ -6936,6 +7445,58 @@ EOF
 
 ---
 
+### Task 80c: Draft cognithor-site PR for v0.93.0
+
+**Rationale:** Task 82 Step 2 hard-gates the tag push on a merged cognithor-site PR with the new integrations page live. Until this task existed, the site-PR had no task, no owner, and no start trigger — turning the hard gate into a surprise. This task schedules the site-PR to run IN PARALLEL with the PR 4b review window (not sequentially after), so the site-PR is already merged by the time Task 82 Step 2 runs its curl check.
+
+**Dependencies:** PR 4a merged (so `docs/integrations/catalog.json` exists on `main`). Runs in parallel with PR 4b review.
+
+**Repo:** separate `cognithor-site` repo at `D:\Jarvis\cognithor-site\` (Vercel, Next.js). NOT in this plan's commit range.
+
+**Files (in cognithor-site repo — relative to that repo's root):**
+- Modify: `app/(main)/integrations/page.tsx` — fetch catalog.json at build time
+- Modify: `app/(main)/changelog/page.mdx` — append v0.93.0 release notes
+- Create: `content/releases/0.93.0.md` — short release summary linked from changelog
+- Modify (if needed): `next.config.js` — whitelist new raw-content origin
+
+- [ ] **Step 1: Create branch in cognithor-site repo**
+
+```bash
+cd D:\Jarvis\cognithor-site\
+git checkout main && git pull
+git checkout -b release/v0.93.0
+```
+
+- [ ] **Step 2: Update integrations page**
+
+Fetch `catalog.json` at build time from
+`https://raw.githubusercontent.com/AlexanderSoellner/jarvis/v0.93.0/docs/integrations/catalog.json`
+(note: `v0.93.0` refers to the upcoming tag — at draft time, swap to a commit SHA on `main`, then bump to the tag once PR 4b merges). Render a category grid (5 categories: CRM, Productivity, Finance, DevOps, Messaging) with a dedicated DACH section for `dach_specific: true` entries.
+
+Fallback: if the fetch fails at build time (offline CI), fall back to a committed `content/integrations/catalog.snapshot.json` last-known-good copy.
+
+- [ ] **Step 3: Append changelog + release notes**
+
+Use the GitHub release body drafted in Task 81b as source of truth. Render as MDX page. Add an entry to the changelog index page.
+
+- [ ] **Step 4: Open PR**
+
+```bash
+gh pr create \
+  --title "release: v0.93.0 integrations + changelog" \
+  --body "Paired with cognithor v0.93.0 release. **BLOCKS tag push** in Task 82."
+```
+
+- [ ] **Step 5: Hand off to site owner for review**
+
+Owner: @AlexanderSoellner. If unavailable during the PR 4b review window, delegate to the CI-only review path — if tests pass + Vercel preview deploy is green + screenshots look correct, the PR is mergeable without human re-review.
+
+- [ ] **Step 6: Coordinate merge timing**
+
+The site-PR MUST be merged and the Vercel deployment MUST be live BEFORE Task 82 Step 3 (`git tag v0.93.0`). If PR 4b merges first, PAUSE before tagging until the site-PR merges + `curl -fsSL https://cognithor.ai/integrations` returns 200.
+
+---
+
 ### Task 80b: PR 4b — Feature 2 (Quickstart Docs) + version bump + release prep
 
 **Branch:** `feat/cognithor-crew-v1-f2` (cut from `main` after PR 4a merges). This is the ONLY PR that bumps the version and triggers the release pipeline.
@@ -6978,12 +7539,153 @@ Before `gh pr create` runs in Task 80b Step 5, the PR-open gate (spec §12 AC 4)
 
 This task exists as an explicit acceptance step to make the external-reader dependency first-class rather than a footnote.
 
-- [ ] `docs/quickstart/EXTERNAL_REVIEW_RESULTS.md` contains `Verdict: PASS`
-- [ ] At least one named external tester
-- [ ] Total elapsed time ≤ 15 minutes recorded in the results file
-- [ ] Zero questions asked back to the author recorded in the results file
+**Verdict model — 3 outcomes (see NI11 in Round 3 review):**
 
-If any of these fail, the PR is NOT opened and the plan lead finds another external reader.
+Spec §12 AC 4 asks for a "successful" external review. The original "PASS in ≤15 min, zero questions back to author" bar was unrealistically tight — realistic first-time users hit small snags (Ollama pull, Python version) that don't indicate a broken onboarding but do push them past 15 min. We split PASS into two actionable outcomes and keep FAIL strict:
+
+- **PASS** — user completed happy path end-to-end with ≤1 small clarifying question, total elapsed time ≤30 min. Release goes ahead.
+- **PASS_WITH_FOLLOWUPS** — user completed happy path unassisted, but logged ≥1 minor confusion worth fixing in 0.93.1. Acceptable for v0.93.0 release IF all follow-ups are filed as issues AND no issue is a blocker (i.e. doesn't prevent completion). Release goes ahead; follow-ups stack for 0.93.1.
+- **FAIL** — user could NOT complete happy path without author help, OR hit a blocking bug, OR the snag took >30 min to work around. Release BLOCKED until fixed + re-tested.
+
+**Acceptance (what Task 80b Step 3's grep looks for):**
+
+- [ ] `docs/quickstart/EXTERNAL_REVIEW_RESULTS.md` contains `Verdict: PASS` OR `Verdict: PASS_WITH_FOLLOWUPS`
+- [ ] At least one named external tester (not the plan author)
+- [ ] Total elapsed time recorded, ≤30 min
+- [ ] If `PASS_WITH_FOLLOWUPS`: every follow-up tracked as a 0.93.1 GitHub issue, with issue numbers pasted in the results file
+- [ ] If `FAIL`: release blocked, fix + re-test required
+
+Update the grep in Task 80b Step 3:
+
+```bash
+grep -qE "Verdict: (PASS|PASS_WITH_FOLLOWUPS)" docs/quickstart/EXTERNAL_REVIEW_RESULTS.md || {
+  echo "BLOCKED: EXTERNAL_REVIEW_RESULTS.md has no passing verdict — spec §12 AC 4"
+  exit 1
+}
+```
+
+**Earlier recruitment — mini-task inside Task 54:**
+
+To avoid a last-minute scramble, recruitment starts in Week 4, not Week 6. Add a mini-step at the end of Task 54 ("Recruit 2-3 external testers for the Week 6 review slot"): identify non-author developers who are Python-literate but new to Cognithor, and secure a calendar slot BEFORE PR 4b opens. If no reader is available, escalate to the plan lead before docs work completes — a release-blocking gate that you discover on the release-day morning is a known anti-pattern.
+
+---
+
+### Task 81b: Release announcement copy (GitHub release body + blog + social)
+
+**Rationale:** Version 0.93.0 is the Crew-Layer debut — a marketing moment worth more than a one-line CHANGELOG entry. Shipping release notes + blog outline + 3 social posts in the same PR as the version bump avoids the "released to silence" pattern. See NI10 in Round 3 review.
+
+**Files:**
+- Create: `docs/releases/v0.93.0.md` — GitHub release body (used verbatim by `gh release create`)
+- Create: `docs/releases/v0.93.0-announcement.md` — blog outline + 3 social posts (DE + EN)
+
+- [ ] **Step 1: Write GitHub release body in `docs/releases/v0.93.0.md`**
+
+Template (populate from the `[0.93.0]` CHANGELOG section — both Round 3 fixes and the feature list):
+
+```markdown
+# Cognithor 0.93.0 — Crew-Layer, Guardrails, Templates
+
+**Release date:** YYYY-MM-DD
+
+**What's new:**
+- **Crew-Layer v1.0:** declarative multi-agent crews on top of PGE-Trinity — `Crew(agents=[...], tasks=[...]).kickoff()`.
+- **Guardrails:** function + string validators, 4 built-ins (`hallucination_check`, `word_count`, `no_pii`, `schema`), retryable verdicts with audit-chain events.
+- **`cognithor init`:** Jinja2-based scaffolder + 5 first-party templates (`research`, `customer-support`, `data-analyst`, `content`, `versicherungs-vergleich`).
+- **8-page Quickstart:** from empty terminal to first kickoff in <10 minutes (bilingual DE + EN, FAQ page included).
+- **Integrations catalog:** DACH-aware, fully offline-capable `versicherungs-vergleich` template, first-party sevDesk connector.
+
+**Hello, Crew:**
+
+```python
+from cognithor.crew import Crew, CrewAgent, CrewTask
+
+analyst = CrewAgent(role="analyst", goal="compare PKV tariffs")
+writer = CrewAgent(role="writer", goal="draft a customer report")
+research = CrewTask(
+    description="Compare the top three PKV tariffs for a 35-year-old",
+    expected_output="Tabular comparison with price, coverage, exclusions",
+    agent=analyst,
+)
+report = CrewTask(
+    description="Turn the analysis into a customer report",
+    expected_output="Markdown",
+    agent=writer,
+    context=[research],
+)
+
+out = Crew(agents=[analyst, writer], tasks=[research, report]).kickoff()
+print(out.raw)
+```
+
+**Upgrade:**
+```
+pip install --upgrade cognithor==0.93.0
+```
+
+No breaking changes. Every existing `@agent` / `@tool` / `@skill` keeps working.
+
+**Full changelog:** see [CHANGELOG.md](../CHANGELOG.md).
+
+**Credits:** Thanks to reviewers, testers, and external readers — [see contributors](https://github.com/AlexanderSoellner/jarvis/graphs/contributors).
+```
+
+- [ ] **Step 2: Write blog outline in `docs/releases/v0.93.0-announcement.md`**
+
+```markdown
+# 0.93.0 — Crew-Layer lands (blog outline)
+
+## Headers (DE + EN)
+
+### DE
+1. Problem: Agent-Orchestrierung ohne Framework-Lock-in
+2. Wie's funktioniert: PGE-Trinity unter der Haube
+3. Hello-World: Erste Crew in 10 Zeilen
+4. Guardrails: 10-Zeilen-Validierung
+5. Templates: In 30 Sekunden zum Start
+6. Was kommt als Nächstes: Flows + Trace-UI in v1.x
+
+### EN
+1. Problem: agent orchestration without framework lock-in
+2. How it works: PGE-Trinity under the hood
+3. Hello-World: first crew in 10 lines
+4. Guardrails: validation in 10 lines
+5. Templates: go from zero to crew in 30 seconds
+6. Next up: Flows + Trace-UI in v1.x
+
+## 3 social posts (DE + EN each)
+
+### Twitter/X (280 chars)
+**EN:** "Cognithor 0.93.0 is out. Crew-Layer: declarative multi-agent teams on top of PGE-Trinity. 5 ready-to-use templates (including a DACH PKV-Vergleich). Guardrails + audit trail baked in. `pip install cognithor==0.93.0` — docs: cognithor.ai/quickstart"
+
+**DE:** "Cognithor 0.93.0 ist da. Crew-Layer: deklarative Multi-Agent-Teams auf PGE-Trinity. 5 Templates (inkl. PKV-Vergleich für DACH). Guardrails + Audit-Trail. `pip install cognithor==0.93.0` — Doku: cognithor.ai/quickstart"
+
+### LinkedIn (600 chars)
+**EN:** "Shipped today: Cognithor 0.93.0. The big addition is the Crew-Layer — declarative multi-agent teams on top of our existing PGE-Trinity runtime. You write Python dataclasses for agents + tasks; Cognithor compiles them into governed PlanRequests with full Gatekeeper checks and Hashline-Guard audit trails. Five first-party templates ship with it, including a fully offline DACH PKV-Vergleich template (§34d-neutral). 8-page Quickstart gets you from empty terminal to first kickoff in under 10 minutes. No breaking changes. Docs: cognithor.ai/quickstart"
+
+**DE:** [hand-translated, equivalent structure and tone — 600 chars]
+
+### Discord community (400 chars + code snippet)
+**EN:** "v0.93.0 is live — Crew-Layer, Guardrails, `cognithor init`. The one-liner you came here for:
+
+```python
+Crew(agents=[analyst, writer], tasks=[research, report]).kickoff()
+```
+
+Quickstart + migration notes in docs/quickstart/. Breaking changes: none. Feedback very welcome in #v0.93-feedback."
+
+**DE:** [hand-translated version]
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/releases/v0.93.0.md docs/releases/v0.93.0-announcement.md
+git commit -m "docs(release): v0.93.0 release body + announcement outline + social copy"
+```
+
+- [ ] **Step 4: Use the GitHub release body verbatim**
+
+Task 82 Step 4 runs `gh release edit v0.93.0 --notes-file docs/releases/v0.93.0.md` after `publish.yml` completes, replacing the auto-generated body with our curated text.
 
 ---
 
@@ -7006,14 +7708,15 @@ grep -q '## \[0.93.0\]' CHANGELOG.md
 
 Expected: all three greps exit 0. If any fails, STOP — the version bump was missed in PR 4b and needs a hotfix PR before release.
 
-- [ ] **Step 2: Open cognithor-site PR with v0.93.0 release notes — BLOCKS Step 3**
+- [ ] **Step 2: Verify cognithor-site PR (from Task 80c) is MERGED and live — BLOCKS Step 3**
 
-The `cognithor.ai/integrations` page lives in the separate `cognithor-site` (Vercel) repo. Open a site-repo PR that:
+The `cognithor.ai/integrations` page lives in the separate `cognithor-site` (Vercel) repo. The PR for it is drafted in **Task 80c** (runs in parallel with PR 4b review). By the time this step runs, that PR should already be merged. If not, this step blocks tag push until it is.
 
-1. Fetches `docs/integrations/catalog.json` from `main` at build time (Octokit, same pattern as the pack fetch).
+Expected content of the site-PR (as drafted in Task 80c):
+1. Fetches `docs/integrations/catalog.json` from the upcoming `v0.93.0` tag at build time.
 2. Renders a category-grouped integration grid with a dedicated DACH section for `dach_specific: true` entries.
 3. Adds the `v0.93.0` release notes page linking back to the GitHub release.
-4. Deploys to Vercel.
+4. Deploys to Vercel production.
 
 **Wait until this site-PR is MERGED and the Vercel deployment is live before proceeding.** Verify:
 
@@ -7025,7 +7728,7 @@ Expected: `live`. Log the site-PR number + merge timestamp in the release notes 
 
 **If site-PR is not yet merged, STOP — do not tag. Rationale: published release must link to live docs, not 404.**
 
-This is a **hard gate** on spec §12 AC 7. Cross-repo coordination is unavoidable here; publish.yml fires on tag push and there is no undo.
+This is a **hard gate** on spec §12 AC 7. Cross-repo coordination is unavoidable here; publish.yml fires on tag push and there is no undo. The parallelized schedule in Task 80c prevents this gate from being a surprise.
 
 - [ ] **Step 3: Tag + push (only after Step 2 confirmed live)**
 
@@ -7048,6 +7751,150 @@ gh release view v0.93.0    # confirm 6 artifacts attached
 ```
 
 Expected artifacts: Windows Installer, Launcher, Linux .deb, Android APK, iOS IPA, Flutter Web bundle.
+
+**If any of Steps 3-5 fails, STOP immediately and consult `docs/releases/ROLLBACK.md` (created in Task 82b) before retrying. Do NOT re-run the tag push — a PyPI wheel, once published, can be yanked but never re-uploaded under the same version.**
+
+---
+
+### Task 82b: Release rollback runbook
+
+**Rationale:** Tag-push → PyPI publish is one-way. If the Windows installer is broken, the PKV example fails on a real user's Ollama, or CI lied about success, there is currently zero documented recovery path. Every release process needs a rollback page. This task creates one and references it from Task 82's pre-publish checklist.
+
+**Files:**
+- Create: `docs/releases/ROLLBACK.md`
+- Create: `scripts/release_rollback.sh`
+
+- [ ] **Step 1: Create `docs/releases/ROLLBACK.md` decision matrix**
+
+```markdown
+# Release Rollback Runbook
+
+Scope: what to do when a tagged release goes wrong. Covers `v0.93.0` and
+every subsequent release. Consult BEFORE running `git tag` — not after.
+
+## Decision matrix
+
+| Severity | Symptom | Action |
+|---|---|---|
+| **CATASTROPHIC** | `pip install cognithor==X.Y.Z` completely broken (missing file, syntax error on import) | **Yank** PyPI release (below). Do NOT delete. |
+| **HIGH** | Shipping bug found after release, `pip install` works but feature is broken or unsafe | **Hotfix** `X.Y.Z+1` (below). |
+| **ARCHITECTURAL** | Regression so severe the new version should never have shipped | **Revert** to prior minor (below). |
+
+## Yank procedure (CATASTROPHIC)
+
+1. **NEVER** delete a PyPI release — it permanently reserves that version number, blocking any re-upload. Yank instead.
+2. Sign in to https://pypi.org/manage/project/cognithor/release/X.Y.Z/ as a project maintainer.
+3. Click "Options" → "Yank release". Provide reason (e.g. "Broken wheel, fixed in X.Y.Z+1").
+4. PyPI keeps the file reachable for existing `==X.Y.Z` pins but omits it from `pip install cognithor` range resolution.
+5. Announce in GitHub issue + Discord + mailing list. Link to the yank reason.
+
+## Hotfix procedure (HIGH)
+
+1. Branch `hotfix/X.Y.Z+1` off the broken tag:
+   ```bash
+   git checkout -b hotfix/0.93.1 v0.93.0
+   ```
+2. Commit the fix with a CHANGELOG entry:
+   ```
+   ## [0.93.1] — YYYY-MM-DD
+   ### Fixed
+   - <bug description>
+   ```
+3. Bump version in the 5 locations Task 80b enumerates:
+   - `pyproject.toml`
+   - `src/cognithor/__init__.py`
+   - `CHANGELOG.md`
+   - `flutter_app/pubspec.yaml`
+   - `flutter_app/lib/providers/connection_provider.dart`
+4. Re-run Task 82's full gate sequence:
+   - cognithor-site PR for `0.93.1` merged
+   - All CI jobs green
+   - Artifacts verified on preview
+5. Tag + push:
+   ```bash
+   git tag -a v0.93.1 -m "Cognithor v0.93.1 — hotfix"
+   git push origin v0.93.1
+   ```
+6. `publish.yml` fires. Verify as in Task 82 Step 5.
+
+## Revert procedure (ARCHITECTURAL)
+
+1. Yank the bad PyPI release (as above).
+2. Delete the tag locally + remote:
+   ```bash
+   git tag -d v0.93.0
+   git push origin :refs/tags/v0.93.0
+   ```
+   (This does NOT remove the PyPI upload; yank is separate.)
+3. File an incident postmortem in `docs/releases/INCIDENT-YYYY-MM-DD.md` with:
+   - Timeline
+   - Root cause
+   - Why CI missed it
+   - Prevention actions
+4. Open a revert PR to `main` reverting the `0.93.0` version bump + feature merges.
+5. Plan the re-release under a new version (e.g. `0.93.1` or `0.94.0`).
+
+## Never
+
+- **Never** `git push --force origin main` to erase the release commit.
+- **Never** skip the incident postmortem — even for "obvious" fixes.
+- **Never** re-upload the same version number to PyPI. Bump to the next patch.
+```
+
+- [ ] **Step 2: Create `scripts/release_rollback.sh` helper**
+
+```bash
+#!/usr/bin/env bash
+# Release rollback helper — always run in DRY-RUN first.
+# Usage: scripts/release_rollback.sh <version> [dry-run|delete-tag|yank|full]
+set -euo pipefail
+
+VERSION="${1:?Usage: release_rollback.sh <version> [dry-run|delete-tag|yank|full]}"
+ACTION="${2:-dry-run}"
+
+case "$ACTION" in
+  dry-run)
+    echo "DRY RUN for v$VERSION:"
+    echo "  - would delete tag v$VERSION locally + remote"
+    echo "  - would prompt for PyPI yank via https://pypi.org/manage/project/cognithor/release/$VERSION/"
+    echo "  - would open revert PR draft to main"
+    ;;
+  delete-tag)
+    git tag -d "v$VERSION" || true
+    git push origin ":refs/tags/v$VERSION"
+    echo "Tag v$VERSION deleted locally + on origin."
+    ;;
+  yank)
+    echo "MANUAL STEP: yank v$VERSION via"
+    echo "  https://pypi.org/manage/project/cognithor/release/$VERSION/"
+    echo "Provide a reason. Never delete — only yank."
+    ;;
+  full)
+    git tag -d "v$VERSION" || true
+    git push origin ":refs/tags/v$VERSION"
+    echo "Tag v$VERSION deleted locally + on origin."
+    echo "MANUAL: yank PyPI release at https://pypi.org/manage/project/cognithor/release/$VERSION/"
+    echo "MANUAL: open revert PR against main"
+    ;;
+  *)
+    echo "Unknown action: $ACTION"
+    echo "Actions: dry-run | delete-tag | yank | full"
+    exit 1
+    ;;
+esac
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+chmod +x scripts/release_rollback.sh
+git add docs/releases/ROLLBACK.md scripts/release_rollback.sh
+git commit -m "docs(release): add v0.93.0 rollback runbook + helper script"
+```
+
+- [ ] **Step 4: Cross-reference from Task 82**
+
+The final note under Task 82 Step 5 ("If any of Steps 3-5 fails, STOP … consult `docs/releases/ROLLBACK.md`") is already in place. Sanity-check that the reference exists.
 
 ---
 
@@ -7129,8 +7976,11 @@ After every Feature (1, 4, 3, 7, 2) is fully implemented + self-reviewed:
 - Task 79c — PR 3 (Feature 3)
 - Task 80a — PR 4a (Feature 7 — code only)
 - Task 80b — PR 4b (Feature 2 — docs + version bump)
+- Task 80c — cognithor-site PR (runs in parallel with PR 4b review; hard gate on Task 82)
 - Task 81 — PR 4b open gate (external-reader PASS required)
-- Task 82 — post-merge release (site-PR gates tag push)
+- Task 81b — Release announcement copy (GitHub release body + social posts)
+- Task 82 — post-merge release (site-PR must already be merged)
+- Task 82b — release rollback runbook
 
 Target: v0.93.0 released to PyPI + GitHub. All 6 release artifacts (Windows Installer, Launcher, Linux .deb, Android APK, iOS IPA, Flutter Web) auto-built + attached to the release.
 
