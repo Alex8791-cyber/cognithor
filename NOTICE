@@ -76,3 +76,13 @@ This project contains NO proprietary SDKs with restrictive clauses.
 All cloud provider SDKs (elevenlabs, google-auth, etc.) are MIT or Apache-2.0.
 The cloud *services* themselves have their own Terms of Service, but the
 client libraries used by Cognithor are permissively licensed.
+
+================================================================================
+                          THIRD-PARTY ATTRIBUTIONS
+================================================================================
+
+Cognithor Crew-Layer
+Copyright 2026 Alexander Söllner
+
+This product includes software concepts inspired by CrewAI (https://github.com/crewAIInc/crewAI),
+licensed under the MIT License. No CrewAI source code is included verbatim.

@@ -5,6 +5,22 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **`cognithor.crew` — Crew-Layer (Feature 1 of v1.0 adoption)** — high-level
+  declarative Multi-Agent API on top of PGE-Trinity. `CrewAgent`, `CrewTask`,
+  `Crew`, `CrewProcess` (SEQUENTIAL + HIERARCHICAL), plus async kickoff,
+  YAML loader, and `@agent` / `@task` / `@crew` method decorators. Every
+  execution routes through the existing Planner → Gatekeeper → Executor
+  pipeline — no new LLM entry point, no bypass. Audit events emit via the
+  Hashline-Guard chain with PII redaction. Trilingual error messages
+  (en/de/zh) via `cognithor.i18n`. Spec at
+  `docs/superpowers/specs/2026-04-23-cognithor-crew-v1-adoption.md`.
+
+### Breaking Changes
+None. The Crew-Layer is strictly additive — no existing public API changes.
+
 ## [0.92.7] -- 2026-04-23
 
 ### Added

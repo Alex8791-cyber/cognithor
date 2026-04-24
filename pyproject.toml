@@ -8,6 +8,7 @@ version = "0.92.7"
 description = "Cognithor · Agent OS — Local-first autonomous agent operating system"
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 authors = [
     { name = "Alexander Söllner" },
@@ -245,6 +246,10 @@ ignore = [
 "src/cognithor/crew/compiler.py" = ["TC001"]  # CrewAgent/CrewTask/CrewProcess used at runtime in pure-function signatures
 "src/cognithor/crew/compiler_hierarchical.py" = ["TC001"]  # CrewAgent/CrewTask used at runtime in pure-function signatures
 "src/cognithor/crew/crew.py" = ["TC001"]  # CrewAgent/CrewTask/CrewProcess must be imported at runtime for Pydantic validation
+
+[tool.coverage.report]
+fail_under = 89
+show_missing = true
 
 [tool.mypy]
 python_version = "3.12"
