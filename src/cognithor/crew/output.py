@@ -43,10 +43,12 @@ class CrewOutput(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def token_usage(self) -> TokenUsageDict:
-        prompt = sum(t.token_usage["prompt_tokens"] for t in self.tasks_output)
-        completion = sum(t.token_usage["completion_tokens"] for t in self.tasks_output)
+        # Sum each field independently. total_tokens is summed directly from
+        # per-task totals (not recomputed from prompt + completion) so that
+        # providers which report additional buckets (e.g. cached tokens) keep
+        # their contribution to total_tokens at the aggregate level.
         return {
-            "prompt_tokens": prompt,
-            "completion_tokens": completion,
-            "total_tokens": prompt + completion,
+            "prompt_tokens": sum(t.token_usage["prompt_tokens"] for t in self.tasks_output),
+            "completion_tokens": sum(t.token_usage["completion_tokens"] for t in self.tasks_output),
+            "total_tokens": sum(t.token_usage["total_tokens"] for t in self.tasks_output),
         }

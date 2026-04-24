@@ -62,3 +62,19 @@ class TestCrewOutput:
     def test_trace_id_required(self):
         with pytest.raises(ValidationError):
             CrewOutput(raw="x", tasks_output=[])  # trace_id omitted
+
+    def test_aggregates_total_tokens_directly_not_recomputed(self):
+        # total_tokens must be summed from per-task totals, NOT recomputed
+        # from prompt + completion. Providers that report cached/reasoning
+        # tokens as a separate bucket can set total_tokens > prompt + completion
+        # on an individual TaskOutput; the aggregate must preserve that.
+        t = TaskOutput(
+            task_id="t1",
+            agent_role="analyst",
+            raw="X",
+            token_usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 42},
+        )
+        out = CrewOutput(raw="X", tasks_output=[t], trace_id="tid")
+        assert out.token_usage["total_tokens"] == 42  # NOT 15
+        assert out.token_usage["prompt_tokens"] == 10
+        assert out.token_usage["completion_tokens"] == 5
