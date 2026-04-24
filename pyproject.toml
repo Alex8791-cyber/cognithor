@@ -241,6 +241,7 @@ ignore = [
 "tests/test_install_fixes.py" = ["E501"]  # Embedded shell/JS scripts in strings
 "tests/test_packs/test_installer.py" = ["TC003"]  # Path used in runtime test bodies via pytest fixtures
 "tests/test_gateway/test_video_cleanup.py" = ["TC003"]  # Path used in runtime test bodies via pytest fixtures
+"src/cognithor/crew/task.py" = ["TC001"]  # CrewAgent must be imported at runtime for Pydantic model_rebuild()
 
 [tool.mypy]
 python_version = "3.12"
