@@ -22,7 +22,12 @@ async def test_crew_kickoff_with_mock_planner(monkeypatch):
         return_value=ResponseEnvelope(content="MOCK_OUTPUT", directive=None),
     )
     mock_registry = MagicMock()
-    mock_registry.get_tools_for_role.return_value = []
+    # The analyst agent declares `tools=["python_sandbox"]` — register it in the
+    # mock so `resolve_tools` passes. Real projects wire the actual sandbox via
+    # the MCP tool registry at runtime.
+    _sandbox = MagicMock()
+    _sandbox.name = "python_sandbox"
+    mock_registry.get_tools_for_role.return_value = [_sandbox]
 
     monkeypatch.setattr(
         "cognithor.crew.runtime.get_default_tool_registry",
