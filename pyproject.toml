@@ -190,6 +190,9 @@ jarvis = "cognithor.__main__:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/cognithor"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"src/cognithor/crew/templates" = "cognithor/crew/templates"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
