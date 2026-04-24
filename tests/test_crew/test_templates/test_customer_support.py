@@ -1,7 +1,5 @@
 """Task 40 — customer-support template E2E test."""
 
-from __future__ import annotations
-
 import ast
 from pathlib import Path
 

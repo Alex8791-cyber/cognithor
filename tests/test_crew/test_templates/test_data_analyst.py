@@ -1,7 +1,5 @@
 """Task 41 — data-analyst template E2E test."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from cognithor.crew.cli.init_cmd import run_init
