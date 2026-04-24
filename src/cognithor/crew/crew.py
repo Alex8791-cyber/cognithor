@@ -39,8 +39,19 @@ class Crew(BaseModel):
         return self
 
     def kickoff(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
-        """Synchronous kickoff. Implemented in Task 8."""
-        raise NotImplementedError("Crew.kickoff landing in Task 8 — Sequential compiler wiring")
+        """Synchronous kickoff. Calls the sync compiler directly; Task 9 rewires
+        this through asyncio.run(self.kickoff_async(inputs)).
+        """
+        from cognithor.crew.compiler import compile_and_run_sync
+        from cognithor.crew.runtime import get_default_tool_registry
+
+        return compile_and_run_sync(
+            agents=self.agents,
+            tasks=self.tasks,
+            process=self.process,
+            inputs=inputs,
+            registry=get_default_tool_registry(),
+        )
 
     async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
         """Async kickoff. Implemented in Task 9."""
