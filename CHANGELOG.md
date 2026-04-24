@@ -17,6 +17,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   Hashline-Guard chain with PII redaction. Trilingual error messages
   (en/de/zh) via `cognithor.i18n`. Spec at
   `docs/superpowers/specs/2026-04-23-cognithor-crew-v1-adoption.md`.
+- **`cognithor.crew.guardrails` — Task-Level Guardrails (Feature 4)** — function-
+  based + string-based validators, built-in `hallucination_check`, `word_count`,
+  `no_pii` (DE-focused), `schema` (Pydantic), plus `chain()` combinator. Failures
+  trigger retry-with-feedback up to `task.max_retries`, then raise
+  `GuardrailFailure`. Every verdict is recorded in the Hashline-Guard audit chain
+  with PII-detection flag.
 
 ### Breaking Changes
 None. The Crew-Layer is strictly additive — no existing public API changes.
