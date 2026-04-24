@@ -89,3 +89,40 @@ def schema(model_cls: type[BaseModel]):
         return GuardrailResult(passed=True, feedback=None)
 
     return _guard
+
+
+def hallucination_check(*, reference: str, min_overlap: float = 0.5):
+    """Compare output tokens against a reference corpus. Fails when too few
+    of the output's informative tokens appear in the reference (simple
+    heuristic — not a substitute for retrieval grounding).
+    """
+    ref_tokens = {t.lower() for t in reference.split() if len(t) > 2}
+    _number_re = re.compile(r"\b\d{3,}\b")  # 3+ digit numbers
+
+    def _guard(output: TaskOutput) -> GuardrailResult:
+        if min_overlap <= 0.0:
+            return GuardrailResult(passed=True, feedback=None)
+
+        out_tokens = [t.lower() for t in output.raw.split() if len(t) > 2]
+        if not out_tokens:
+            return GuardrailResult(passed=True, feedback=None)
+
+        overlap = sum(1 for t in out_tokens if t in ref_tokens) / len(out_tokens)
+
+        # Additionally fail when any 3+ digit number in output is not in reference
+        invented = [n for n in _number_re.findall(output.raw) if n not in reference]
+        if invented:
+            return GuardrailResult(
+                passed=False,
+                feedback=(f"Output enthält Zahlen ohne Referenz-Nachweis: {', '.join(invented)}"),
+            )
+        if overlap < min_overlap:
+            return GuardrailResult(
+                passed=False,
+                feedback=(
+                    f"Output-Referenz-Überlappung {overlap:.0%} unter Schwelle {min_overlap:.0%}."
+                ),
+            )
+        return GuardrailResult(passed=True, feedback=None)
+
+    return _guard
