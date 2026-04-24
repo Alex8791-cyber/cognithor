@@ -1,0 +1,39 @@
+name: Integrations Catalog Freshness
+
+on:
+  push:
+    branches: [main, "feat/**"]
+    paths:
+      - "src/cognithor/mcp/**"
+      - "scripts/generate_integrations_catalog.py"
+  pull_request:
+    paths:
+      - "src/cognithor/mcp/**"
+      - "scripts/generate_integrations_catalog.py"
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e .
+      - name: Regenerate catalog
+        run: |
+          python scripts/generate_integrations_catalog.py --output /tmp/new_catalog.json
+      - name: Diff against committed catalog
+        run: |
+          python -c "
+          import json
+          committed = json.load(open('docs/integrations/catalog.json'))
+          fresh = json.load(open('/tmp/new_catalog.json'))
+          committed.pop('generated_at', None)
+          fresh.pop('generated_at', None)
+          if committed != fresh:
+              print('::error::Integrations catalog is stale. Run scripts/generate_integrations_catalog.py and commit.')
+              exit(1)
+          print('Catalog is fresh.')
+          "
