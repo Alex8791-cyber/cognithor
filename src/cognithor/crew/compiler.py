@@ -63,10 +63,12 @@ def _warn_if_guardrail_silently_ignored(task: CrewTask) -> None:
         warnings.warn(
             f"CrewTask '{task.task_id}' has a guardrail but "
             "cognithor.crew.guardrails is not available in this release. "
-            "The guardrail will be IGNORED. Upgrade to cognithor>=0.93.1 "
+            "The guardrail will be IGNORED. Upgrade to cognithor>=0.93.0 "
             "(or install via `pip install cognithor[all]`) to enable guardrails.",
             UserWarning,
-            stacklevel=3,
+            # Chain: warn -> _warn_if_guardrail_silently_ignored ->
+            #        compile_and_run_sync -> Crew.kickoff -> USER
+            stacklevel=4,
         )
 
 
