@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json as _json
 import re
 from typing import TYPE_CHECKING
+
+from pydantic import BaseModel, ValidationError
 
 from cognithor.crew.guardrails.base import GuardrailResult
 
@@ -62,5 +65,27 @@ def no_pii():
             feedback=f"PII erkannt: {categories}. Bitte anonymisieren.",
             pii_detected=True,
         )
+
+    return _guard
+
+
+def schema(model_cls: type[BaseModel]):
+    """Guardrail that enforces a Pydantic schema on the output JSON."""
+
+    def _guard(output: TaskOutput) -> GuardrailResult:
+        try:
+            data = _json.loads(output.raw)
+        except _json.JSONDecodeError as exc:
+            return GuardrailResult(passed=False, feedback=f"Output ist kein valides JSON: {exc}")
+        try:
+            model_cls.model_validate(data)
+        except ValidationError as exc:
+            errs = "; ".join(
+                f"{'/'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()
+            )
+            return GuardrailResult(
+                passed=False, feedback=f"Schema-Validierung fehlgeschlagen: {errs}"
+            )
+        return GuardrailResult(passed=True, feedback=None)
 
     return _guard
