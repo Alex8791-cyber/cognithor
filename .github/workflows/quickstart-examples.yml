@@ -1,0 +1,44 @@
+name: Quickstart Examples
+
+on:
+  push:
+    branches: [main, "feat/**"]
+    paths:
+      - "examples/quickstart/**"
+      - ".github/workflows/quickstart-examples.yml"
+  pull_request:
+    paths:
+      - "examples/quickstart/**"
+      - ".github/workflows/quickstart-examples.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke-test example ${{ matrix.example }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - 01_first_crew
+          - 02_first_tool
+          - 03_first_skill
+          - 04_guardrails
+          - 05_pkv_report
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install cognithor (editable + dev extras)
+        run: pip install -e ".[dev]"
+
+      - name: Smoke-test ${{ matrix.example }}
+        run: |
+          cd examples/quickstart/${{ matrix.example }}
+          python -m pytest test_example.py -v
