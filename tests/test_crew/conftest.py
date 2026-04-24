@@ -42,6 +42,23 @@ def _patched_tool_registry(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
+def _clear_kickoff_cache() -> None:
+    """Flush the module-level ``_KICKOFF_CACHE`` before + after every test.
+
+    Without this, a test that wrote to the cache (e.g. idempotent-kickoff
+    tests using ``_kickoff_id``) leaks state into any later test that reuses
+    the same id, silently returning a stale ``CrewOutput`` from the wrong
+    mock planner. Clearing both sides keeps tests hermetic regardless of
+    execution order.
+    """
+    import cognithor.crew.crew as crew_mod
+
+    crew_mod._KICKOFF_CACHE.clear()
+    yield
+    crew_mod._KICKOFF_CACHE.clear()
+
+
+@pytest.fixture(autouse=True)
 def _patched_default_planner(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Replace ``get_default_planner`` with a MagicMock Planner.
 

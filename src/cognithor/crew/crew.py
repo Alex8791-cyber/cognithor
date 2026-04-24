@@ -69,7 +69,10 @@ def _get_distributed_lock() -> Any:
     with _lock_singleton_init:
         if _lock_singleton is None:
             _lock_singleton = candidate
-    return _lock_singleton
+        # Return INSIDE the critical section so an external reset of
+        # _lock_singleton (e.g. test monkeypatch) between the lock exit and
+        # the return can't leave us handing back None.
+        return _lock_singleton
 
 
 # In-process fallback, lazily constructed (asyncio.Lock() needs a running loop).
