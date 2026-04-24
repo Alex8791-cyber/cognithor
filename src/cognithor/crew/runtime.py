@@ -37,7 +37,8 @@ def get_default_tool_registry() -> Any:
                 f"cognithor config load failed ({exc!r}); using temp-dir tool "
                 "registry. State will not persist across restarts.",
                 RuntimeWarning,
-                stacklevel=2,
+                # warn -> get_default_tool_registry -> kickoff -> USER  (4 frames)
+                stacklevel=3,
             )
             db_path = Path(tempfile.gettempdir()) / "cognithor_crew_registry.db"
         _registry_singleton = ToolRegistryDB(db_path=db_path)

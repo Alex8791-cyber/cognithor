@@ -5,6 +5,11 @@ the Crew-Layer needs: 'give me every tool name'. The real registry groups
 tools by role (planner/executor/browser/…) — we ask for role='all' to flatten.
 
 Provides friendly 'did you mean' suggestions via difflib (stdlib, no new deps).
+
+**Unwired by design until Task 11:** this module is imported and tested in
+Task 7 but `resolve_tools` has no call site yet — `execute_task` (Task 11)
+will call it to validate each agent's/task's tool list against the real
+registry before routing through the Planner.
 """
 
 from __future__ import annotations

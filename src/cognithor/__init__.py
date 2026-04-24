@@ -15,3 +15,9 @@ BANNER_ASCII = r"""
 
 PRODUCT_NAME = "COGNITHOR"
 PRODUCT_FULL = f"Cognithor · Agent OS v{__version__}"
+
+# ── Public Crew-Layer surface (Spec §1.2) ──
+# Re-export the crew subpackage so `import cognithor; cognithor.crew.Crew(...)`
+# works, not just `from cognithor.crew import Crew`. This is a spec requirement,
+# not a convenience — the §1.4 PKV example documents both import styles.
+from cognithor import crew as crew

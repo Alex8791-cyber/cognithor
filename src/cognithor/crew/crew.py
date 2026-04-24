@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from cognithor.crew.agent import CrewAgent
+from cognithor.crew.agent import CrewAgent, LLMConfig
 from cognithor.crew.process import CrewProcess
 from cognithor.crew.task import CrewTask
 
@@ -25,7 +25,8 @@ class Crew(BaseModel):
     process: CrewProcess = CrewProcess.SEQUENTIAL
     verbose: bool = False
     planning: bool = False
-    manager_llm: str | None = None
+    # Spec §1.2 — matches CrewAgent.llm: str | LLMConfig | None.
+    manager_llm: str | LLMConfig | None = None
 
     @model_validator(mode="after")
     def _warn_on_hierarchical_without_manager(self) -> Crew:

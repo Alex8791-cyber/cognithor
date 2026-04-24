@@ -18,7 +18,7 @@ from cognithor.crew.errors import (
 )
 from cognithor.crew.output import CrewOutput, TaskOutput, TokenUsageDict
 from cognithor.crew.process import CrewProcess
-from cognithor.crew.task import CrewTask
+from cognithor.crew.task import CrewTask, GuardrailCallable
 
 __all__ = [
     "Crew",
@@ -28,6 +28,7 @@ __all__ = [
     "CrewOutput",
     "CrewProcess",
     "CrewTask",
+    "GuardrailCallable",
     "GuardrailFailure",
     "LLMConfig",
     "TaskOutput",

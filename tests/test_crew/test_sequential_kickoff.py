@@ -45,7 +45,7 @@ class TestSequentialKickoff:
 
         captured: list = []
 
-        def spy(task, *, context, inputs, registry):
+        def spy(task, *, context, inputs, registry, planner=None):
             captured.append(inputs)
             return TaskOutput(task_id=task.task_id, agent_role=task.agent.role, raw="OK")
 

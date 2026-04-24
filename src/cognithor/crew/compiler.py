@@ -29,6 +29,7 @@ def execute_task(
     context: list[TaskOutput],
     inputs: dict[str, Any] | None,
     registry: Any,
+    planner: Any | None = None,
 ) -> TaskOutput:
     """Route one task through the PGE pipeline.
 
@@ -73,17 +74,46 @@ def _warn_if_guardrail_silently_ignored(task: CrewTask) -> None:
         )
 
 
+def _warn_if_hierarchical_is_stubbed(process: CrewProcess) -> None:
+    """PR 1 → Task 10 bridge guard.
+
+    HIERARCHICAL currently falls through to `compiler_hierarchical.order_tasks_hierarchical`,
+    which is a declaration-order stub until Task 10 lands the real manager-LLM
+    routing. A user running a HIERARCHICAL crew today gets sequential semantics
+    silently — warn them so the divergence from spec §1.3 is visible.
+    Removed in Task 10 when the real router lands.
+    """
+    import warnings
+
+    if process is CrewProcess.HIERARCHICAL:
+        warnings.warn(
+            "CrewProcess.HIERARCHICAL currently uses a declaration-order stub "
+            "(Task 10 lands manager-LLM routing). Tasks will run in the order "
+            "you declared them, not as chosen by a manager LLM. Upgrade to "
+            "cognithor>=0.93.0 for real hierarchical routing.",
+            UserWarning,
+            # Chain: warn -> _warn_if_hierarchical_is_stubbed ->
+            #        compile_and_run_{sync,async} -> kickoff{,_async} -> USER
+            stacklevel=4,
+        )
+
+
 def compile_and_run_sync(
     agents: list[CrewAgent],
     tasks: list[CrewTask],
     process: CrewProcess,
     inputs: dict[str, Any] | None,
     registry: Any,
+    planner: Any | None = None,
 ) -> CrewOutput:
     """Synchronous compiler + runner.
 
     Sequential: straight linear order. Hierarchical: Task 10.
+
+    ``planner`` is optional in Task 8/9 (stub `execute_task` doesn't need it);
+    Task 11 wires a real Planner and starts passing it down.
     """
+    _warn_if_hierarchical_is_stubbed(process)
     if process is CrewProcess.SEQUENTIAL:
         ordered = order_tasks_sequential(tasks)
     else:
@@ -95,7 +125,13 @@ def compile_and_run_sync(
     outputs: list[TaskOutput] = []
     for t in ordered:
         _warn_if_guardrail_silently_ignored(t)  # PR 1 → PR 2 bridge guard
-        out = execute_task(t, context=outputs, inputs=inputs, registry=registry)
+        out = execute_task(
+            t,
+            context=outputs,
+            inputs=inputs,
+            registry=registry,
+            planner=planner,
+        )
         outputs.append(out)
     return CrewOutput(raw=outputs[-1].raw, tasks_output=outputs, trace_id=trace_id)
 
@@ -106,6 +142,7 @@ async def execute_task_async(
     context: list[TaskOutput],
     inputs: dict[str, Any] | None,
     registry: Any,
+    planner: Any | None = None,
 ) -> TaskOutput:
     """Async counterpart of execute_task. Real PGE wiring in Task 11."""
     raise NotImplementedError(
@@ -119,13 +156,20 @@ async def compile_and_run_async(
     process: CrewProcess,
     inputs: dict[str, Any] | None,
     registry: Any,
+    planner: Any | None = None,
 ) -> CrewOutput:
     """Async compiler + runner with parallel fan-out for async_execution=True tasks.
 
     Consecutive tasks marked `async_execution=True` that don't depend on each
     other are gathered and run concurrently via `asyncio.gather`. Everything
     else falls back to sequential await.
+
+    ``planner`` is optional in Task 8/9 (stub `execute_task_async` doesn't need
+    it); Task 11 wires a real Planner and starts passing it down. Keeping the
+    default here prevents Task 11 from cascading a breaking signature change
+    across all fan-out call sites.
     """
+    _warn_if_hierarchical_is_stubbed(process)
     if process is CrewProcess.SEQUENTIAL:
         ordered = order_tasks_sequential(tasks)
     else:
@@ -158,13 +202,23 @@ async def compile_and_run_async(
                     break
         if len(group) == 1:
             out = await execute_task_async(
-                group[0], context=outputs, inputs=inputs, registry=registry
+                group[0],
+                context=outputs,
+                inputs=inputs,
+                registry=registry,
+                planner=planner,
             )
             outputs.append(out)
         else:
             parallel_outs = await asyncio.gather(
                 *[
-                    execute_task_async(t, context=outputs, inputs=inputs, registry=registry)
+                    execute_task_async(
+                        t,
+                        context=outputs,
+                        inputs=inputs,
+                        registry=registry,
+                        planner=planner,
+                    )
                     for t in group
                 ]
             )

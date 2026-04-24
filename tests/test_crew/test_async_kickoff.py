@@ -28,7 +28,7 @@ async def test_async_tasks_run_concurrently_when_no_dependency():
 
     call_times: list[float] = []
 
-    async def timed(task, context, inputs, registry):
+    async def timed(task, context, inputs, registry, planner=None):
         call_times.append(asyncio.get_running_loop().time())
         await asyncio.sleep(0.05)
         return TaskOutput(task_id=task.task_id, agent_role="x", raw="OK")
@@ -36,8 +36,9 @@ async def test_async_tasks_run_concurrently_when_no_dependency():
     with patch("cognithor.crew.compiler.execute_task_async", side_effect=timed):
         await crew.kickoff_async()
 
-    # Two async-marked tasks with no dependency start within ~50 ms of each
-    # other. 50 ms is well under the 50 ms per-task sleep — a sequential
-    # execution would show a ≥50 ms gap — but it's above Windows' ~15 ms
-    # system-timer resolution, so CI isn't flaky on the Windows runner.
-    assert abs(call_times[0] - call_times[1]) < 0.05
+    # Concurrent execution: both tasks start before either finishes its 50 ms
+    # sleep, so the start-time delta is pure event-loop overhead (<< 30 ms).
+    # A sequential execution would require ≥50 ms between starts. Using 30 ms
+    # gives headroom over Windows' ~15 ms system-timer resolution while still
+    # distinguishing concurrent from sequential.
+    assert abs(call_times[0] - call_times[1]) < 0.03
