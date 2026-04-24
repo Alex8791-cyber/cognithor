@@ -52,6 +52,7 @@ class Crew(BaseModel):
             process=self.process,
             inputs=inputs,
             registry=get_default_tool_registry(),
+            manager_llm=self.manager_llm if isinstance(self.manager_llm, str) else None,
         )
 
     async def kickoff_async(self, inputs: dict[str, Any] | None = None) -> CrewOutput:
@@ -65,4 +66,5 @@ class Crew(BaseModel):
             process=self.process,
             inputs=inputs,
             registry=get_default_tool_registry(),
+            manager_llm=self.manager_llm if isinstance(self.manager_llm, str) else None,
         )

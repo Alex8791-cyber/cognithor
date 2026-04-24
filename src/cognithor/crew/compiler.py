@@ -105,6 +105,7 @@ def compile_and_run_sync(
     inputs: dict[str, Any] | None,
     registry: Any,
     planner: Any | None = None,
+    manager_llm: str | None = None,
 ) -> CrewOutput:
     """Synchronous compiler + runner.
 
@@ -112,6 +113,9 @@ def compile_and_run_sync(
 
     ``planner`` is optional in Task 8/9 (stub `execute_task` doesn't need it);
     Task 11 wires a real Planner and starts passing it down.
+    ``manager_llm`` forwards the Crew's manager model to
+    :func:`order_tasks_hierarchical`; coerced to str when the caller passes
+    an ``LLMConfig`` dict.
     """
     _warn_if_hierarchical_is_stubbed(process)
     if process is CrewProcess.SEQUENTIAL:
@@ -119,7 +123,7 @@ def compile_and_run_sync(
     else:
         from cognithor.crew.compiler_hierarchical import order_tasks_hierarchical
 
-        ordered = order_tasks_hierarchical(tasks, agents)
+        ordered = order_tasks_hierarchical(tasks, agents, manager_llm=manager_llm)
 
     trace_id = _uuid.uuid4().hex
     outputs: list[TaskOutput] = []
@@ -157,6 +161,7 @@ async def compile_and_run_async(
     inputs: dict[str, Any] | None,
     registry: Any,
     planner: Any | None = None,
+    manager_llm: str | None = None,
 ) -> CrewOutput:
     """Async compiler + runner with parallel fan-out for async_execution=True tasks.
 
@@ -168,6 +173,8 @@ async def compile_and_run_async(
     it); Task 11 wires a real Planner and starts passing it down. Keeping the
     default here prevents Task 11 from cascading a breaking signature change
     across all fan-out call sites.
+    ``manager_llm`` forwards the Crew's manager model to
+    :func:`order_tasks_hierarchical`.
     """
     _warn_if_hierarchical_is_stubbed(process)
     if process is CrewProcess.SEQUENTIAL:
@@ -175,7 +182,7 @@ async def compile_and_run_async(
     else:
         from cognithor.crew.compiler_hierarchical import order_tasks_hierarchical
 
-        ordered = order_tasks_hierarchical(tasks, agents)
+        ordered = order_tasks_hierarchical(tasks, agents, manager_llm=manager_llm)
 
     trace_id = _uuid.uuid4().hex
     outputs: list[TaskOutput] = []

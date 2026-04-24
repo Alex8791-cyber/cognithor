@@ -1,7 +1,10 @@
-"""Hierarchical compiler: inserts a synthetic manager agent that picks
-execution order for each task. When manager_llm is not available (offline
-tests, no model set), falls back to declaration order to keep behaviour
-deterministic.
+"""Hierarchical compiler: determines task execution order under a manager
+LLM. When manager_llm is not available (offline tests, no model set) the
+routing falls back to declaration order, keeping behaviour deterministic.
+
+Task 11 will replace the placeholder branch with a real call through
+``cognithor.core.delegation`` — at that point a synthetic manager agent
+is instantiated and the manager_llm actually steers the choice.
 """
 
 from __future__ import annotations
