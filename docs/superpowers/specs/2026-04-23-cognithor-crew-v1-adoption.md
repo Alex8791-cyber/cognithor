@@ -1,5 +1,7 @@
 # Cognithor · Umsetzungsprompt: Übernahme ausgewählter CrewAI-Konzepte
 
+> **Status (PR 3 merged, 2026-04-24):** Features 1, 4, 3 shipped. Features 2, 7 + merge-prep remaining.
+
 **Version:** 1.0 · **Zielstand:** Cognithor v1.0.0 Launch (~6 Wochen)
 **Adressat:** Coding-Modell mit Zugriff auf das `Alex8791-cyber/cognithor`-Repository
 **Lizenzrahmen:** Cognithor ist Apache 2.0, CrewAI ist MIT. Konzepte dürfen frei adaptiert werden; **Code von CrewAI nicht verbatim kopieren.** Die in diesem Dokument referenzierten API-Designs sind Inspiration, keine Vorlage zum 1:1-Abschreiben.
