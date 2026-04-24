@@ -1,0 +1,43 @@
+"""Entry point for the {{ project_name }} crew.
+
+Run via::
+
+    {{ project_name }}                    # via project.scripts
+    python -m {{ project_name }}.main     # module form
+
+Or embed in Python code::
+
+    from {{ project_name }}.crew import DataAnalystCrew
+
+    result = DataAnalystCrew().assemble().kickoff(
+        inputs={"csv_path": "data.csv"}
+    )
+    print(result.raw)
+"""
+
+from __future__ import annotations
+
+import asyncio
+import sys
+
+from {{ project_name }}.crew import DataAnalystCrew
+
+
+def main() -> int:
+    """CLI entry — accept the CSV path as the first arg or prompt for it."""
+    if len(sys.argv) > 1:
+        csv_path = sys.argv[1]
+    else:
+        csv_path = input("CSV path: ").strip()
+    if not csv_path:
+        print("error: no csv_path given", file=sys.stderr)
+        return 2
+
+    crew = DataAnalystCrew().assemble()
+    result = asyncio.run(crew.kickoff_async(inputs={"csv_path": csv_path}))
+    print(result.raw)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

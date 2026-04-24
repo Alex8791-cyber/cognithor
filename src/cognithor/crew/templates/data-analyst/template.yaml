@@ -1,0 +1,10 @@
+name: data-analyst
+description_de: Zwei-Agenten-Daten-Analyst — Code-Interpreter + Visualisierung, sequenziell.
+description_en: Two-agent data-analyst crew — code interpreter + visualization, sequential.
+order: 3
+required_models:
+  - ollama/qwen3:8b
+tags:
+  - sequential
+  - code-interpreter
+  - visualization

@@ -1,0 +1,62 @@
+# {{ project_name }}
+
+Zwei-Agenten-Daten-Analyst (Analyst + Visualizer), sequenziell ausgeführt —
+erzeugt mit `cognithor init --template data-analyst`. Der Analyst nutzt das
+`python_sandbox`-Tool für Code-Ausführung auf CSV-Eingaben.
+
+## Quickstart
+
+```bash
+# 1. Dev-Installation
+pip install -e .[dev]
+
+# 2. Ollama-Modell sicherstellen
+ollama pull qwen3:8b
+
+# 3. Crew starten
+{{ project_name }} path/to/data.csv
+```
+
+Alternativ direkt per Python:
+
+```python
+import asyncio
+from {{ project_name }}.crew import DataAnalystCrew
+
+result = asyncio.run(
+    DataAnalystCrew().assemble().kickoff_async(
+        inputs={"csv_path": "data.csv"}
+    )
+)
+print(result.raw)
+```
+
+## Struktur
+
+```
+{{ project_name }}/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── config/
+│   ├── agents.yaml       # YAML-Spiegel der Agenten
+│   └── tasks.yaml        # YAML-Spiegel der Tasks
+├── src/{{ project_name }}/
+│   ├── __init__.py
+│   ├── crew.py           # DataAnalystCrew mit @agent/@task/@crew
+│   └── main.py           # CLI Entry-Point
+└── tests/
+    └── test_crew.py      # Smoke-Test mit Mock-Planner
+```
+
+## Anpassung
+
+- `src/{{ project_name }}/crew.py` — Agenten, Tasks und Tools ändern.
+- `config/agents.yaml` + `config/tasks.yaml` — optionale YAML-Konfiguration.
+- `.env` (aus `.env.example` kopieren) — Ollama-Host, Cognithor-Home.
+
+## Tests
+
+```bash
+pytest -q
+```

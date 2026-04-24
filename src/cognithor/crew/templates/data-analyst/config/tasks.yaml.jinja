@@ -1,0 +1,10 @@
+analyze:
+  description: "Analysiere die CSV unter: {csv_path}"
+  expected_output: "Statistische Zusammenfassung: n, mean, std, Korrelationen."
+  agent: analyst
+
+visualize:
+  description: Erstelle einen Report mit Chart-Beschreibungen.
+  expected_output: Markdown-Report, 300-500 Wörter, mit Chart-Abschnitten.
+  agent: visualizer
+  context: [analyze]
