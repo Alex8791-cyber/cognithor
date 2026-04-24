@@ -2348,9 +2348,13 @@ def append_audit(event: str, **fields: Any) -> None:
             exc_info=exc,
         )
         try:
-            from cognithor.telemetry.metrics import audit_failure_counter
-            audit_failure_counter.inc()
-        except ImportError:
+            from cognithor.telemetry.metrics import MetricsProvider
+            MetricsProvider.get_instance().counter(
+                "cognithor_crew_audit_record_failures_total",
+                1,
+                labels={"reason": type(exc).__name__},
+            )
+        except (ImportError, AttributeError):
             # Metrics module optional in minimal installs — the log entry is
             # still present, so the failure isn't invisible.
             pass
@@ -2435,9 +2439,13 @@ def append_audit(event: str, **fields: Any) -> None:
             exc_info=exc,
         )
         try:
-            from cognithor.telemetry.metrics import audit_failure_counter
-            audit_failure_counter.inc()
-        except ImportError:
+            from cognithor.telemetry.metrics import MetricsProvider
+            MetricsProvider.get_instance().counter(
+                "cognithor_crew_audit_record_failures_total",
+                1,
+                labels={"reason": type(exc).__name__},
+            )
+        except (ImportError, AttributeError):
             pass
 ```
 
@@ -3202,7 +3210,7 @@ class TestYamlLoaderLocalizedErrors:
         )
 
         with pytest.raises(CrewCompilationError) as exc:
-            load_crew_from_yaml(agents_yaml=agents_yaml, tasks_yaml=tasks_yaml)
+            load_crew_from_yaml(agents=agents_yaml, tasks=tasks_yaml)
         # Message text comes from i18n pack (default: EN). Both the referring
         # task alias and the missing ref must appear.
         assert "two" in str(exc.value)
@@ -5125,20 +5133,60 @@ def _safe_join(dest_dir: Path, rendered_parts: list[str]) -> Path:
     return candidate
 
 
-def _resolve_language_variant(src_path: Path, lang: str) -> Path | None:
-    """Select the language-appropriate variant of a template file.
+_LANG_FALLBACK = "en"
 
-    If ``src_path`` has one of ``_LANG_SUFFIXES`` (``.de``/``.en``/``.zh``/``.ar``)
-    as its outermost suffix, keep it only when it matches the requested ``lang``;
-    return ``None`` otherwise to signal "skip this wrong-language variant".
-    Files without a language suffix are passed through unchanged.
+
+def _select_language_files(src_dir: Path, lang: str) -> set[Path]:
+    """For each base path with language variants, pick exactly ONE to render.
+
+    Fallback order per base (R5 fix for zh-no-README regression):
+      1. Requested ``lang`` variant if it exists
+      2. ``en`` variant as universal fallback
+      3. First (alphabetically) available variant as last resort
+
+    Files WITHOUT a language suffix are NOT in the returned set — the render
+    loop always processes those unconditionally. The returned set only gates
+    files that HAVE a language suffix.
     """
-    if src_path.suffix in _LANG_SUFFIXES:
-        file_lang = src_path.suffix.lstrip(".")
-        if file_lang != lang:
-            return None
+    variants: dict[Path, dict[str, Path]] = {}
+    for src in src_dir.rglob("*"):
+        if not src.is_file() or src.suffix not in _LANG_SUFFIXES:
+            continue
+        base = src.with_suffix("")  # path without .de/.en/.zh/.ar
+        file_lang = src.suffix.lstrip(".")
+        variants.setdefault(base, {})[file_lang] = src
+
+    selected: set[Path] = set()
+    for _base, by_lang in variants.items():
+        if lang in by_lang:
+            selected.add(by_lang[lang])
+        elif _LANG_FALLBACK in by_lang:
+            selected.add(by_lang[_LANG_FALLBACK])
+        else:
+            first = sorted(by_lang.keys())[0]
+            selected.add(by_lang[first])
+    return selected
+
+
+def _resolve_language_variant(
+    src_path: Path,
+    lang: str,
+    *,
+    selected: set[Path] | None = None,
+) -> Path | None:
+    """Return ``src_path`` to keep, or ``None`` to skip.
+
+    If ``selected`` is provided, files with a language suffix are kept only
+    when they appear in the selection set (see :func:`_select_language_files`).
+    If ``selected`` is ``None``, falls back to the Round-4 strict behaviour
+    (exact-match or skip) — kept for tests that exercise the helper directly.
+    """
+    if src_path.suffix not in _LANG_SUFFIXES:
         return src_path
-    return src_path
+    if selected is not None:
+        return src_path if src_path in selected else None
+    file_lang = src_path.suffix.lstrip(".")
+    return src_path if file_lang == lang else None
 
 
 def _strip_template_suffixes(rel: Path, lang: str) -> Path:
@@ -5186,11 +5234,19 @@ def render_tree(src_dir: Path, dest_dir: Path, *, context: dict[str, Any]) -> No
     env = _build_env(src_dir)
     lang = context.get("lang", "en")
 
+    # Pre-scan: for every base filename with language variants, pick ONE
+    # variant (requested lang → en fallback → first available). This closes
+    # the Round-5 regression where ``lang='zh'`` with only .de/.en variants
+    # produced a scaffold with no README at all.
+    selected_variants = _select_language_files(src_dir, lang)
+
     for src_path in src_dir.rglob("*"):
         rel = src_path.relative_to(src_dir)
 
         # Filter out wrong-language variants BEFORE rendering anything.
-        if src_path.is_file() and _resolve_language_variant(src_path, lang) is None:
+        if src_path.is_file() and _resolve_language_variant(
+            src_path, lang, selected=selected_variants
+        ) is None:
             continue
 
         # Compute the output relative path by stripping template suffixes,
@@ -5314,6 +5370,44 @@ def test_scaffolder_renders_language_specific_readme_en(tmp_path):
     assert (dest / "README.md").read_text() == "# demo (EN)"
     assert not (dest / "README.md.jinja.en").exists()
     assert not (dest / "README.md.jinja.de").exists()
+
+
+def test_scaffolder_falls_back_to_en_when_requested_lang_missing(tmp_path):
+    """R5 regression: ``lang='zh'`` with only .de/.en variants must still
+    produce a README.md by falling back to the EN variant — NOT drop the
+    file entirely, which is what the Round-4 strict filter did.
+    """
+    from cognithor.crew.cli.scaffolder import render_tree
+
+    src = tmp_path / "tmpl"
+    src.mkdir()
+    (src / "README.md.jinja.de").write_text("# {{ project_name }} (DE)")
+    (src / "README.md.jinja.en").write_text("# {{ project_name }} (EN)")
+    dest = tmp_path / "out"
+
+    render_tree(src, dest, context={"project_name": "demo", "lang": "zh"})
+
+    # Fallback to EN — never leave the scaffold without a README.
+    assert (dest / "README.md").read_text() == "# demo (EN)"
+    assert not (dest / "README.md.jinja.en").exists()
+    assert not (dest / "README.md.jinja.de").exists()
+
+
+def test_scaffolder_falls_back_to_first_sorted_when_no_en_variant(tmp_path):
+    """Edge case: no requested lang AND no 'en' variant — pick the first
+    alphabetically available variant deterministically (here: .de)."""
+    from cognithor.crew.cli.scaffolder import render_tree
+
+    src = tmp_path / "tmpl"
+    src.mkdir()
+    (src / "README.md.jinja.de").write_text("# {{ project_name }} (DE)")
+    (src / "README.md.jinja.zh").write_text("# {{ project_name }} (ZH)")
+    dest = tmp_path / "out"
+
+    render_tree(src, dest, context={"project_name": "demo", "lang": "ar"})
+
+    # .de sorts before .zh alphabetically.
+    assert (dest / "README.md").read_text() == "# demo (DE)"
 ```
 
 `src/cognithor/crew/cli/__init__.py` — keep empty for now.
@@ -7438,7 +7532,10 @@ def main() -> int:
         "tools": deduped,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(catalog, indent=2, ensure_ascii=False))
+    args.output.write_text(
+        json.dumps(catalog, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
     print(f"wrote {len(deduped)} tools to {args.output}")
     return 0
 
