@@ -833,6 +833,9 @@
       "unknown_tool": "Agent 引用了未知的工具 '{tool}'。已知工具:{known}",
       "tool_suggestion": "Agent 引用了未知的工具 '{tool}'。您是否想使用 '{suggestion}'?",
       "unknown_task": "任务 '{task}' 引用了未知的任务 '{ref}'"
+    },
+    "init": {
+      "next_command": "下一步:cd {dest} && pip install -e .[dev] && cognithor run"
     }
   }
 }
