@@ -27,7 +27,7 @@ async def _dispatch_to_router(
     """Forward to cognithor.core.model_router. Imported lazily to avoid circular deps."""
     # This stays narrow on purpose: the real model_router has many entry points,
     # we use the simple `generate` path which is shared by cognithor.crew agents.
-    from cognithor.core import model_router  # type: ignore[attr-defined]
+    from cognithor.core import model_router
 
     text = await model_router.generate(  # type: ignore[attr-defined]
         model=model,

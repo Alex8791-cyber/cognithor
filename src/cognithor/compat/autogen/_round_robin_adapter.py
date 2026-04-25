@@ -84,10 +84,11 @@ class _RoundRobinAdapter:
         cls = type(self.termination)
         name = getattr(cls, "__name__", "TerminationCondition")
         if name.startswith("_"):
-            # _AndTermination / _OrTermination — report nested types instead.
+            # _AndTermination / _OrTermination — duck-type access to .left/.right;
+            # base _TerminationCondition lacks these, hence the attr-defined ignores.
             try:
-                left = type(self.termination.left).__name__
-                right = type(self.termination.right).__name__
+                left = type(self.termination.left).__name__  # type: ignore[attr-defined]
+                right = type(self.termination.right).__name__  # type: ignore[attr-defined]
                 return f"{name.lstrip('_')}({left},{right})"
             except AttributeError:
                 return name
