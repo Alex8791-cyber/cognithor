@@ -11,6 +11,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - `docs/competitive-analysis/` — comparison docs for AutoGen, MAF, LangGraph, CrewAI (WP1).
 - `docs/adr/0001-pge-trinity-vs-group-chat.md` — first Architecture Decision Record (WP5).
+- `cognithor_bench/` — reproducible Multi-Agent benchmark scaffold (WP4).
+  CLI: `cognithor-bench run|tabulate`. Default adapter: Cognithor; opt-in
+  AutoGen adapter via `pip install cognithor[autogen]`. Bundled smoke
+  scenarios under `cognithor_bench/src/cognithor_bench/scenarios/`.
+- `pyproject.toml` — new `[autogen]` extra (`autogen-agentchat==0.7.5`)
+  as the single pin-point for v0.94.0's source-compat shim and bench adapter.
 
 ## [0.93.0] -- 2026-04-24
 
