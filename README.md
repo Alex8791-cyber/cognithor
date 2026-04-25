@@ -273,6 +273,17 @@ User Goal → CUTaskDecomposer → Sub-Tasks
 
 Cognithor can control your desktop like a human: take screenshots, analyze them with a vision model, click at pixel coordinates, type text, scroll, and drag. Phase 3 adds Windows UI Automation via pywinauto, which reads the OS accessibility tree to get exact element coordinates without relying on vision alone. A 3-layer security model (allowlist + gatekeeper + tool enforcer) ensures destructive operations require explicit approval.
 
+### Architecture Decision Records
+
+- [`docs/adr/0001-pge-trinity-vs-group-chat.md`](docs/adr/0001-pge-trinity-vs-group-chat.md)
+  — Why Cognithor uses Planner/Gatekeeper/Executor instead of conversational
+  GroupChat patterns.
+
+### Comparison with Other Frameworks
+
+- [`docs/competitive-analysis/`](docs/competitive-analysis/README.md) —
+  Cognithor vs AutoGen, Microsoft Agent Framework, LangGraph, CrewAI.
+
 ## LLM Providers
 
 Cognithor auto-detects your backend from API keys. Set one key and models are configured automatically:
