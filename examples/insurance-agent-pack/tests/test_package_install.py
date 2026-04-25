@@ -2,13 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
-pytestmark = pytest.mark.xfail(
-    reason="cli/crew arrive in Tasks 42-49",
-    strict=False,
-)
-
 
 def test_package_imports() -> None:
     import insurance_agent_pack
