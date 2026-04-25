@@ -5,6 +5,13 @@ All notable changes to Cognithor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `docs/competitive-analysis/` — comparison docs for AutoGen, MAF, LangGraph, CrewAI (WP1).
+- `docs/adr/0001-pge-trinity-vs-group-chat.md` — first Architecture Decision Record (WP5).
+
 ## [0.93.0] -- 2026-04-24
 
 ### Added
