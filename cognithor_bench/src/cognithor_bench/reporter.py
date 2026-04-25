@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from statistics import mean
+from typing import TYPE_CHECKING
 
-from cognithor_bench.adapters.base import ScenarioResult
+if TYPE_CHECKING:
+    from cognithor_bench.adapters.base import ScenarioResult
 
 
 def _format_pass_rate(passed: int, total: int) -> str:
@@ -39,13 +41,10 @@ def tabulate_results(results: list[ScenarioResult]) -> str:
         avg = mean(r.duration_sec for r in runs)
         sample = (runs[0].output or "")[:40].replace("\n", " ")
         sample_md = sample if sample else (runs[0].error or "—")
-        lines.append(
-            f"| {sid} | {n} | {_format_pass_rate(passed, n)} | {avg:.3f} | {sample_md} |"
-        )
+        lines.append(f"| {sid} | {n} | {_format_pass_rate(passed, n)} | {avg:.3f} | {sample_md} |")
         total_runs += n
         total_pass += passed
 
-    lines.append(
-        f"| **Total** | **{total_runs}** | **{_format_pass_rate(total_pass, total_runs)}** | — | — |"
-    )
+    total_pct = _format_pass_rate(total_pass, total_runs)
+    lines.append(f"| **Total** | **{total_runs}** | **{total_pct}** | — | — |")
     return "\n".join(lines) + "\n"

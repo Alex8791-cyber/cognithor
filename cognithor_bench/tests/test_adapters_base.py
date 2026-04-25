@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from cognithor_bench.adapters.base import Adapter, ScenarioInput, ScenarioResult
 
@@ -13,8 +14,11 @@ def test_adapter_is_runtime_checkable_protocol() -> None:
 
         async def run(self, scenario: ScenarioInput) -> ScenarioResult:
             return ScenarioResult(
-                id=scenario.id, output="x", success=False,
-                duration_sec=0.0, error=None,
+                id=scenario.id,
+                output="x",
+                success=False,
+                duration_sec=0.0,
+                error=None,
             )
 
     assert isinstance(Dummy(), Adapter)
@@ -35,5 +39,5 @@ def test_scenario_result_required_fields() -> None:
 
 def test_scenario_input_is_frozen() -> None:
     s = ScenarioInput(id="s1", task="2+2", expected="4", timeout_sec=10, requires=())
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         s.id = "modified"  # type: ignore[misc]

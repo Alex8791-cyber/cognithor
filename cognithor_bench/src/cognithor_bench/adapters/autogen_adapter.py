@@ -29,8 +29,12 @@ class AutoGenAdapter:
         start = time.perf_counter()
         try:
             try:
-                from autogen_agentchat.agents import AssistantAgent  # type: ignore[import-not-found]
-                from autogen_ext.models.openai import OpenAIChatCompletionClient  # type: ignore[import-not-found]
+                from autogen_agentchat.agents import (
+                    AssistantAgent,  # type: ignore[import-not-found]
+                )
+                from autogen_ext.models.openai import (
+                    OpenAIChatCompletionClient,  # type: ignore[import-not-found]
+                )
             except ImportError as e:
                 raise ImportError(_AUTOGEN_IMPORT_ERROR_HINT) from e
 
@@ -56,7 +60,7 @@ class AutoGenAdapter:
             )
         except ImportError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return ScenarioResult(
                 id=scenario.id,
                 output="",

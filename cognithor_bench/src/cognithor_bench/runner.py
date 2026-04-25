@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import random
-import time
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from cognithor_bench.adapters.base import Adapter, ScenarioInput, ScenarioResult
+from cognithor_bench.adapters.base import ScenarioInput
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from cognithor_bench.adapters.base import Adapter, ScenarioResult
 
 
 class BenchRunner:
@@ -29,7 +32,7 @@ class BenchRunner:
     ) -> list[ScenarioResult]:
         scenarios = self._load(scenario_path)
         if subsample < 1.0:
-            n = max(1, int(round(len(scenarios) * subsample)))
+            n = max(1, round(len(scenarios) * subsample))
             scenarios = self._rng.sample(scenarios, n)
 
         results: list[ScenarioResult] = []
@@ -39,7 +42,7 @@ class BenchRunner:
 
         if output_dir is not None:
             output_dir.mkdir(parents=True, exist_ok=True)
-            stamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            stamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
             out_file = output_dir / f"{self.adapter.name}-{scenario_path.stem}-{stamp}.jsonl"
             out_file.write_text(
                 "\n".join(r.model_dump_json() for r in results) + "\n",

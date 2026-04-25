@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from cognithor_bench.adapters.base import ScenarioInput, ScenarioResult
+from cognithor_bench.adapters.base import ScenarioResult
 from cognithor_bench.runner import BenchRunner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _scenario_file(tmp_path: Path, rows: list[dict]) -> Path:
@@ -29,10 +31,12 @@ async def test_runner_executes_each_scenario(tmp_path: Path) -> None:
 
     adapter = MagicMock()
     adapter.name = "test"
-    adapter.run = AsyncMock(side_effect=[
-        ScenarioResult(id="a", output="x", success=True, duration_sec=0.1, error=None),
-        ScenarioResult(id="b", output="z", success=False, duration_sec=0.2, error=None),
-    ])
+    adapter.run = AsyncMock(
+        side_effect=[
+            ScenarioResult(id="a", output="x", success=True, duration_sec=0.1, error=None),
+            ScenarioResult(id="b", output="z", success=False, duration_sec=0.2, error=None),
+        ]
+    )
 
     runner = BenchRunner(adapter=adapter)
     results = await runner.run_file(path, repeat=1, subsample=1.0)
@@ -49,9 +53,15 @@ async def test_runner_repeats_scenarios(tmp_path: Path) -> None:
 
     adapter = MagicMock()
     adapter.name = "test"
-    adapter.run = AsyncMock(return_value=ScenarioResult(
-        id="a", output="x", success=True, duration_sec=0.05, error=None,
-    ))
+    adapter.run = AsyncMock(
+        return_value=ScenarioResult(
+            id="a",
+            output="x",
+            success=True,
+            duration_sec=0.05,
+            error=None,
+        )
+    )
 
     runner = BenchRunner(adapter=adapter)
     results = await runner.run_file(path, repeat=3, subsample=1.0)
@@ -68,9 +78,15 @@ async def test_runner_subsample_reduces_count(tmp_path: Path) -> None:
 
     adapter = MagicMock()
     adapter.name = "test"
-    adapter.run = AsyncMock(side_effect=lambda s: ScenarioResult(
-        id=s.id, output="x", success=True, duration_sec=0.01, error=None,
-    ))
+    adapter.run = AsyncMock(
+        side_effect=lambda s: ScenarioResult(
+            id=s.id,
+            output="x",
+            success=True,
+            duration_sec=0.01,
+            error=None,
+        )
+    )
 
     runner = BenchRunner(adapter=adapter, seed=42)
     results = await runner.run_file(path, repeat=1, subsample=0.5)
@@ -84,9 +100,15 @@ async def test_runner_writes_results_to_dir(tmp_path: Path) -> None:
 
     adapter = MagicMock()
     adapter.name = "test"
-    adapter.run = AsyncMock(return_value=ScenarioResult(
-        id="a", output="x", success=True, duration_sec=0.01, error=None,
-    ))
+    adapter.run = AsyncMock(
+        return_value=ScenarioResult(
+            id="a",
+            output="x",
+            success=True,
+            duration_sec=0.01,
+            error=None,
+        )
+    )
 
     out_dir = tmp_path / "results"
     runner = BenchRunner(adapter=adapter)

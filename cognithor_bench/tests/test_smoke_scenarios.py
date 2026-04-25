@@ -5,11 +5,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from cognithor_bench.adapters.base import ScenarioInput
 
-SMOKE = Path(__file__).resolve().parent.parent / "src" / "cognithor_bench" / "scenarios" / "smoke_test.jsonl"
+SMOKE = (
+    Path(__file__).resolve().parent.parent
+    / "src"
+    / "cognithor_bench"
+    / "scenarios"
+    / "smoke_test.jsonl"
+)
 
 
 def test_smoke_file_exists() -> None:
@@ -17,7 +21,11 @@ def test_smoke_file_exists() -> None:
 
 
 def test_smoke_file_has_three_to_five_rows() -> None:
-    lines = [l for l in SMOKE.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#")]
+    lines = [
+        line
+        for line in SMOKE.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
     assert 3 <= len(lines) <= 5
 
 

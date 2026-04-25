@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from cognithor_bench.adapters.autogen_adapter import AutoGenAdapter, _AUTOGEN_IMPORT_ERROR_HINT
+from cognithor_bench.adapters.autogen_adapter import _AUTOGEN_IMPORT_ERROR_HINT, AutoGenAdapter
 from cognithor_bench.adapters.base import ScenarioInput
 
 
@@ -54,10 +54,13 @@ async def test_autogen_adapter_runs_when_import_succeeds() -> None:
     fake_models_module = MagicMock()
     fake_models_module.OpenAIChatCompletionClient = MagicMock(return_value=MagicMock())
 
-    with patch.dict(sys.modules, {
-        "autogen_agentchat.agents": fake_agents_module,
-        "autogen_ext.models.openai": fake_models_module,
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "autogen_agentchat.agents": fake_agents_module,
+            "autogen_ext.models.openai": fake_models_module,
+        },
+    ):
         a = AutoGenAdapter(model="ollama/qwen3:8b")
         scenario = ScenarioInput(id="s1", task="2+2", expected="4", timeout_sec=10, requires=())
         result = await a.run(scenario)

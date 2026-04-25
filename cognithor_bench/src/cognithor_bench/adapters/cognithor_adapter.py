@@ -48,7 +48,7 @@ class CognithorAdapter:
                 duration_sec=time.perf_counter() - start,
                 error=None,
             )
-        except Exception as exc:  # noqa: BLE001 — adapter must capture all errors
+        except Exception as exc:
             return ScenarioResult(
                 id=scenario.id,
                 output="",
