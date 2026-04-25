@@ -25,6 +25,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   classes, `OpenAIChatCompletionClient` wrapper. Not supported by design:
   `SelectorGroupChat`, `Swarm`, `MagenticOneGroupChat` (see ADR 0001).
 - `NOTICE` — AutoGen-MIT attribution under "Third-party attributions".
+- `examples/insurance-agent-pack/` — DACH insurance pre-advisory reference
+  pack (WP3). Standalone `pip install ./examples/insurance-agent-pack/`.
+  4 agents (NeedsAssessor, PolicyAnalyst with PDF tool-use, ComplianceGatekeeper
+  as visible PGE-demo, ReportGenerator). §34d-NEUTRAL — see DISCLAIMER.md.
+- `pyproject.toml` `[dev]` extra — registers `insurance-agent-pack` editable.
 
 ## [0.93.0] -- 2026-04-24
 
