@@ -40,5 +40,17 @@ warnings.warn(
 )
 
 from cognithor.compat.autogen.agents import AssistantAgent
+from cognithor.compat.autogen.messages import (
+    HandoffMessage,
+    StructuredMessage,
+    TextMessage,
+    ToolCallSummaryMessage,
+)
 
-__all__ = ["AssistantAgent"]
+__all__ = [
+    "AssistantAgent",
+    "HandoffMessage",
+    "StructuredMessage",
+    "TextMessage",
+    "ToolCallSummaryMessage",
+]
