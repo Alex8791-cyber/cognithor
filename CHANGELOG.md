@@ -17,6 +17,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   scenarios under `cognithor_bench/src/cognithor_bench/scenarios/`.
 - `pyproject.toml` — new `[autogen]` extra (`autogen-agentchat==0.7.5`)
   as the single pin-point for v0.94.0's source-compat shim and bench adapter.
+- `cognithor.compat.autogen` — source-compatibility shim for
+  `autogen-agentchat==0.7.5` (WP2). Search-and-replace import
+  migration from AutoGen-AgentChat to Cognithor; 1-shot path uses
+  `cognithor.crew`, multi-round path uses a 250-LOC `_RoundRobinAdapter`.
+  Supported: `AssistantAgent`, `RoundRobinGroupChat`, message + termination
+  classes, `OpenAIChatCompletionClient` wrapper. Not supported by design:
+  `SelectorGroupChat`, `Swarm`, `MagenticOneGroupChat` (see ADR 0001).
+- `NOTICE` — AutoGen-MIT attribution under "Third-party attributions".
 
 ## [0.93.0] -- 2026-04-24
 
