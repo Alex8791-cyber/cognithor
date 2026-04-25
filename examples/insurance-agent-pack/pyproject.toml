@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "insurance-agent-pack"
+version = "0.1.0"
+description = "Reference Cognithor pack: DACH insurance pre-advisory crew"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [{ name = "Alexander Söllner" }]
+keywords = ["ai", "agent", "insurance", "dach", "cognithor"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "cognithor>=0.93.0",
+    "pydantic>=2.10,<3",
+    "pymupdf>=1.23",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.24,<1",
+    "pytest-cov>=6.0,<7",
+]
+
+[project.scripts]
+insurance-agent-pack = "insurance_agent_pack.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/insurance_agent_pack"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
