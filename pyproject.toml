@@ -198,6 +198,12 @@ Repository = "https://github.com/Alex8791-cyber/cognithor"
 cognithor = "cognithor.__main__:main"
 jarvis = "cognithor.__main__:main"
 
+[tool.hatch.metadata]
+# Allow `cognithor-bench @ file:./cognithor_bench` direct-reference in [dev]
+# extra. Hatch refuses direct refs by default since they are not PyPI-installable;
+# `cognithor-bench` is intentionally a local-only dev dependency, never published.
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/cognithor"]
 # Templates (.jinja / .yaml / non-.py files) are shipped automatically by the
