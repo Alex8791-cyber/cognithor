@@ -14,7 +14,6 @@ the ComplianceGatekeeper here is an *additional* visible check on top.
 from __future__ import annotations
 
 from cognithor.crew import Crew, CrewProcess, CrewTask
-
 from insurance_agent_pack.agents.compliance_gatekeeper import build_compliance_gatekeeper
 from insurance_agent_pack.agents.needs_assessor import build_needs_assessor
 from insurance_agent_pack.agents.policy_analyst import build_policy_analyst

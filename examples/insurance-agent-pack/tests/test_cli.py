@@ -6,7 +6,6 @@ import io
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from insurance_agent_pack.cli import main
 
 

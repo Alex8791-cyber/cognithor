@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from cognithor.crew import Crew, CrewProcess
-
 from insurance_agent_pack.crew import build_team
+
+from cognithor.crew import Crew, CrewProcess
 
 
 def test_build_team_returns_crew() -> None:

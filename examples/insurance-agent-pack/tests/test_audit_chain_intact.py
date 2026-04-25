@@ -10,9 +10,9 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from insurance_agent_pack.crew import build_team
 
 from cognithor.crew import Crew
-from insurance_agent_pack.crew import build_team
 
 
 @pytest.mark.asyncio

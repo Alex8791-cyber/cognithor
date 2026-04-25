@@ -44,7 +44,6 @@ def test_seed_has_required_fields(name: str) -> None:
 def test_seed_minimum_three_rows(name: str) -> None:
     p = KNOWLEDGE / f"{name}.jsonl"
     rows = [
-        l for l in p.read_text(encoding="utf-8").splitlines()
-        if l.strip() and not l.startswith("#")
+        l for l in p.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#")
     ]
     assert len(rows) >= 3, f"{name} should have at least 3 seed rows"

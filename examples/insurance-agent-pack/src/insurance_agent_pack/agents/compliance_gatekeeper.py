@@ -87,7 +87,9 @@ def build_compliance_gatekeeper(*, model: str) -> CrewAgent:
     backstory = _PROMPT_PATH.read_text(encoding="utf-8")
     return CrewAgent(
         role="compliance-gatekeeper",
-        goal="Block legal-advice and concrete-recommendation requests; allow pre-advisory questions.",
+        goal=(
+            "Block legal-advice and concrete-recommendation requests; allow pre-advisory questions."
+        ),
         backstory=backstory,
         tools=[],
         llm=model,

@@ -22,12 +22,14 @@ async def test_full_run_with_local_ollama() -> None:
     from insurance_agent_pack.crew import build_team
 
     crew = build_team(model="ollama/qwen3:8b")
-    result = await crew.kickoff_async({
-        "name": "Anon",
-        "age": "40",
-        "berufsstatus": "GGF",
-        "bestehende_policen": "keine",
-    })
+    result = await crew.kickoff_async(
+        {
+            "name": "Anon",
+            "age": "40",
+            "berufsstatus": "GGF",
+            "bestehende_policen": "keine",
+        }
+    )
 
     raw = str(getattr(result, "raw", "") or "")
     assert raw, "expected a non-empty Pre-Beratungs-Report"

@@ -8,7 +8,6 @@ blocked WITHOUT exception, with a clear reason).
 from __future__ import annotations
 
 import pytest
-
 from insurance_agent_pack.agents.compliance_gatekeeper import (
     ComplianceVerdict,
     classify_intent,

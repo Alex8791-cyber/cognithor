@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from insurance_agent_pack.tools.pdf_extractor import pdf_extract_text
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sample_policy.pdf"
