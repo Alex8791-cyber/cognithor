@@ -178,6 +178,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
 - **Observer Audit Layer** — Every response audited against 4 quality dimensions (hallucination, sycophancy, laziness, tool-ignorance) with differentiated retry strategies. Runs locally with qwen3:32b.
 - **Integrations Catalog** — Auto-generated from `src/cognithor/mcp/` — see [`docs/integrations/catalog.json`](docs/integrations/catalog.json). DACH-specific: sevDesk REST connector (accounting).
+- **Competitive Analysis** — [`docs/competitive-analysis/`](docs/competitive-analysis/README.md) — Cognithor vs AutoGen / MAF / LangGraph / CrewAI.
 - **13,000+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
 
 ## Architecture
