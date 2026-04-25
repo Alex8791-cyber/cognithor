@@ -1,0 +1,3 @@
+{"id": "smoke-arith", "task": "Was ist 2 plus 2? Antworte mit einer einzigen Zahl.", "expected": "4", "timeout_sec": 30, "requires": ["no_network"]}
+{"id": "smoke-capital", "task": "Was ist die Hauptstadt von Frankreich? Antworte mit einer einzigen Stadt.", "expected": "Paris", "timeout_sec": 30, "requires": ["no_network"]}
+{"id": "smoke-translate", "task": "Übersetze 'hello' auf Deutsch. Antworte mit einem einzigen Wort.", "expected": "hallo", "timeout_sec": 30, "requires": ["no_network"]}
