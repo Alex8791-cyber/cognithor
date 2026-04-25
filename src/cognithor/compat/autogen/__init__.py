@@ -47,11 +47,13 @@ from cognithor.compat.autogen.messages import (
     TextMessage,
     ToolCallSummaryMessage,
 )
+from cognithor.compat.autogen.models import OpenAIChatCompletionClient
 
 __all__ = [
     "AssistantAgent",
     "HandoffMessage",
     "MaxMessageTermination",
+    "OpenAIChatCompletionClient",
     "StructuredMessage",
     "TextMentionTermination",
     "TextMessage",
