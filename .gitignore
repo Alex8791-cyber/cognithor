@@ -91,3 +91,7 @@ arc_agi3_validation.json
 
 # cognithor-bench result artifacts
 cognithor_bench/results/
+
+# insurance-agent-pack runtime artifacts
+examples/insurance-agent-pack/.cache/
+examples/insurance-agent-pack/results/

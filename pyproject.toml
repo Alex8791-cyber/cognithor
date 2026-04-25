@@ -60,6 +60,8 @@ dev = [
     # WP4: Local cognithor-bench submodule, shipped as a separate package
     # but installed editable for tests. See cognithor_bench/pyproject.toml.
     "cognithor-bench @ file:./cognithor_bench",
+    # WP3: Reference insurance-agent-pack — installed editable for tests.
+    "insurance-agent-pack @ file:./examples/insurance-agent-pack",
 ]
 memory = [
     "numpy>=2.0,<3",
