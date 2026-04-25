@@ -57,6 +57,9 @@ dev = [
     "hypothesis>=6.0,<7",
     "ruff>=0.9,<1",
     "mypy>=1.14,<2",
+    # WP4: Local cognithor-bench submodule, shipped as a separate package
+    # but installed editable for tests. See cognithor_bench/pyproject.toml.
+    "cognithor-bench @ file:./cognithor_bench",
 ]
 memory = [
     "numpy>=2.0,<3",

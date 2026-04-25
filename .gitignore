@@ -88,3 +88,6 @@ flutter_app/build/web/canvaskit/wimp*
 .hypothesis/
 environment_files/
 arc_agi3_validation.json
+
+# cognithor-bench result artifacts
+cognithor_bench/results/
