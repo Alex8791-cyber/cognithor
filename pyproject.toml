@@ -171,6 +171,14 @@ arc-gpu = [
     "cognithor[arc]",
     "torch>=2.2.0",
 ]
+autogen = [
+    # Single pin-point for AutoGen-source-compat shim.
+    # Referenced by:
+    #   - tests/test_compat/test_autogen/ (signature parity, behaviour tests)
+    #   - cognithor_bench/src/cognithor_bench/adapters/autogen_adapter.py (lazy import)
+    # See spec §6 (Single Pin-Point) and §8.4 acceptance criteria.
+    "autogen-agentchat==0.7.5",
+]
 all = [
     "cognithor[memory,vector,mcp,telegram,web,search,cron,documents,identity,desktop,arc,encryption]",
 ]
