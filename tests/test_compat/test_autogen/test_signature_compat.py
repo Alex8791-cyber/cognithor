@@ -23,9 +23,7 @@ def test_assistant_agent_signature_matches_autogen() -> None:
     real_params = list(real_sig.parameters.keys())
     shim_params = list(shim_sig.parameters.keys())
     assert real_params == shim_params, (
-        f"parameter ORDER mismatch:\n"
-        f"  real: {real_params}\n"
-        f"  shim: {shim_params}"
+        f"parameter ORDER mismatch:\n  real: {real_params}\n  shim: {shim_params}"
     )
 
 
@@ -61,15 +59,17 @@ def test_assistant_agent_defaults_match() -> None:
         # are None or empty-collection-like must still match.
         if name in {"tools", "handoffs", "memory", "workbench", "model_context"}:
             continue
-        assert real[name].default == shim[name].default, (
-            f"default mismatch for '{name}': real={real[name].default!r} shim={shim[name].default!r}"
+        real_default = real[name].default
+        shim_default = shim[name].default
+        assert real_default == shim_default, (
+            f"default mismatch for '{name}': real={real_default!r} shim={shim_default!r}"
         )
 
 
 def test_assistant_agent_has_run_and_run_stream_methods() -> None:
     """Independent of autogen install — shim must expose run + run_stream."""
-    assert callable(getattr(AssistantAgent, "run"))
-    assert callable(getattr(AssistantAgent, "run_stream"))
+    assert callable(AssistantAgent.run)
+    assert callable(AssistantAgent.run_stream)
 
 
 def test_assistant_agent_signature_field_count() -> None:

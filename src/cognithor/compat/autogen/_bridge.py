@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from cognithor.crew import Crew, CrewAgent, CrewTask
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Sequence
+
     from cognithor.compat.autogen.agents._assistant_agent import AssistantAgent
 
 

@@ -13,13 +13,14 @@ here) — this adapter only orchestrates turn-taking and termination.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from cognithor.compat.autogen.messages import TextMessage
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from cognithor.compat.autogen.agents._assistant_agent import AssistantAgent
     from cognithor.compat.autogen.conditions import _TerminationCondition
 

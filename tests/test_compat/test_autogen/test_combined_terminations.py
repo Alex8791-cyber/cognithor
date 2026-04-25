@@ -21,6 +21,7 @@ def _stub_agent(name: str, replies: list[str]) -> MagicMock:
 
     async def _run(*, task):
         from cognithor.compat.autogen._bridge import TaskResult
+
         return TaskResult(
             messages=[TextMessage(content=queue.pop(0), source=name)],
             stop_reason=None,

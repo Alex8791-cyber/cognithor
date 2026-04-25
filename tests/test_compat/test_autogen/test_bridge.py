@@ -28,8 +28,8 @@ async def test_run_single_task_returns_task_result_with_messages() -> None:
         assert isinstance(result, TaskResult)
         assert result.messages
         last = result.messages[-1]
-        assert getattr(last, "content") == "Hello back."
-        assert getattr(last, "source") == "bot"
+        assert last.content == "Hello back."
+        assert last.source == "bot"
 
 
 @pytest.mark.asyncio

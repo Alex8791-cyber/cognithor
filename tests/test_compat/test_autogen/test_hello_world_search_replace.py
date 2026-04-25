@@ -56,7 +56,7 @@ async def test_autogen_hello_world_runs_through_shim() -> None:
 
 @pytest.mark.asyncio
 async def test_message_event_shape_matches_autogen_attrs() -> None:
-    """Spec §8.4 verhaltensgarantien — events expose source, models_usage, metadata, content, type."""
+    """Spec §8.4 verhaltensgarantien — events expose source/models_usage/metadata/content/type."""
     fake_output = MagicMock()
     fake_output.raw = "OK"
     fake_output.tasks_outputs = []

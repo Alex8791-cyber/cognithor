@@ -18,6 +18,7 @@ def _stub_assistant(name: str, replies: list[str]) -> MagicMock:
 
     async def _run(*, task):
         from cognithor.compat.autogen._bridge import TaskResult
+
         return TaskResult(
             messages=[TextMessage(content=queue.pop(0), source=name)],
             stop_reason=None,
@@ -40,7 +41,7 @@ async def test_round_robin_constructor_and_run() -> None:
 
 
 def test_round_robin_attributes_match_autogen_signature() -> None:
-    """Construction kwargs match `RoundRobinGroupChat(participants=..., termination_condition=...)`."""
+    """Construction kwargs match `RoundRobinGroupChat(participants=, termination_condition=)`."""
     import inspect
 
     sig = inspect.signature(RoundRobinGroupChat.__init__)

@@ -17,10 +17,11 @@ Cognithor's translation (no AutoGen code copied verbatim):
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Sequence
+
     from cognithor.compat.autogen._bridge import TaskResult
 
 
@@ -80,15 +81,13 @@ class AssistantAgent:
         self.memory = memory
         self.metadata = metadata or {}
 
-    async def run(self, *, task: str | Sequence[Any]) -> "TaskResult":
+    async def run(self, *, task: str | Sequence[Any]) -> TaskResult:
         """Run a single 1-shot task. Maps to cognithor.crew.Crew.kickoff_async()."""
         from cognithor.compat.autogen._bridge import run_single_task
 
         return await run_single_task(self, task)
 
-    def run_stream(
-        self, *, task: str | Sequence[Any]
-    ) -> AsyncIterator[Any]:
+    def run_stream(self, *, task: str | Sequence[Any]) -> AsyncIterator[Any]:
         """Stream events from a single 1-shot task."""
         from cognithor.compat.autogen._bridge import stream_single_task
 

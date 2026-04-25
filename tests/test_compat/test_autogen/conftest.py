@@ -17,6 +17,7 @@ def pytest_collection_modifyitems(config, items) -> None:
     """Skip @requires_autogen tests when autogen-agentchat is not installed."""
     try:
         import autogen_agentchat  # noqa: F401
+
         autogen_available = True
     except ImportError:
         autogen_available = False
@@ -49,6 +50,7 @@ class _MockModelClient:
         class _R:
             content = self._response
             usage = {"prompt_tokens": 0, "completion_tokens": 0}
+
         return _R()
 
 

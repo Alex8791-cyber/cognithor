@@ -36,4 +36,4 @@ async def test_client_create_routes_through_cognithor_model_router() -> None:
         c = OpenAIChatCompletionClient(model="ollama/qwen3:8b")
         result = await c.create(messages=[{"role": "user", "content": "hi"}])
         dispatch.assert_called_once()
-        assert getattr(result, "content") == "response"
+        assert result.content == "response"

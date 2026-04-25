@@ -40,4 +40,4 @@ class StructuredMessage(_BaseMessage):
     type: str = "StructuredMessage"
 
 
-__all__ = ["TextMessage", "ToolCallSummaryMessage", "HandoffMessage", "StructuredMessage"]
+__all__ = ["HandoffMessage", "StructuredMessage", "TextMessage", "ToolCallSummaryMessage"]
