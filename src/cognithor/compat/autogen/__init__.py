@@ -40,6 +40,7 @@ warnings.warn(
 )
 
 from cognithor.compat.autogen.agents import AssistantAgent
+from cognithor.compat.autogen.conditions import MaxMessageTermination, TextMentionTermination
 from cognithor.compat.autogen.messages import (
     HandoffMessage,
     StructuredMessage,
@@ -50,7 +51,9 @@ from cognithor.compat.autogen.messages import (
 __all__ = [
     "AssistantAgent",
     "HandoffMessage",
+    "MaxMessageTermination",
     "StructuredMessage",
+    "TextMentionTermination",
     "TextMessage",
     "ToolCallSummaryMessage",
 ]
