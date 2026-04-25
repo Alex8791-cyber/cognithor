@@ -48,12 +48,14 @@ from cognithor.compat.autogen.messages import (
     ToolCallSummaryMessage,
 )
 from cognithor.compat.autogen.models import OpenAIChatCompletionClient
+from cognithor.compat.autogen.teams import RoundRobinGroupChat
 
 __all__ = [
     "AssistantAgent",
     "HandoffMessage",
     "MaxMessageTermination",
     "OpenAIChatCompletionClient",
+    "RoundRobinGroupChat",
     "StructuredMessage",
     "TextMentionTermination",
     "TextMessage",
