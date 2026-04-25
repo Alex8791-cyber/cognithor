@@ -18,7 +18,10 @@ classifiers = [
 ]
 
 dependencies = [
-    "cognithor>=0.94.0",
+    # cognithor.crew (used by CognithorAdapter) ships in 0.93.0+, so >=0.93.0
+    # is the true minimum. Tighten to >=0.94.0 once v0.94.0 makes the [autogen]
+    # extra available on PyPI for users running `cognithor-bench --adapter autogen`.
+    "cognithor>=0.93.0",
     "anyio>=4.0,<5",
     "structlog>=25.4,<26",
 ]
