@@ -39,5 +39,6 @@ warnings.warn(
     stacklevel=2,
 )
 
-# Public re-exports filled in subsequent tasks.
-__all__: list[str] = []
+from cognithor.compat.autogen.agents import AssistantAgent
+
+__all__ = ["AssistantAgent"]
