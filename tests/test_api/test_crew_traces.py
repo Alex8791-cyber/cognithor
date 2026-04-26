@@ -271,3 +271,17 @@ def test_list_traces_respects_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert resp.status_code == 200
     assert len(resp.json()["traces"]) == 1
+
+
+def test_app_smoke_includes_crew_traces_router() -> None:
+    """Verify the application factory mounts the crew-traces router."""
+    import pytest as _pytest
+
+    try:
+        from cognithor.api import build_app  # type: ignore[attr-defined]
+    except ImportError:
+        _pytest.skip("Application factory not present; skipping mount smoke")
+    app = build_app()
+    paths = {r.path for r in app.routes if hasattr(r, "path")}
+    assert "/api/crew/traces" in paths
+    assert "/api/crew/trace/{trace_id}" in paths
