@@ -11,8 +11,10 @@ lines are skipped with a counter surfaced in response meta.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -53,3 +55,94 @@ def read_audit_lines(path: Path) -> tuple[list[dict[str, Any]], int]:
         else:
             skipped += 1
     return events, skipped
+
+
+def group_by_trace(
+    events: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Group events by `session_id` (== trace_id), preserving file order."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for ev in events:
+        tid = ev.get("session_id")
+        if not tid:
+            continue
+        grouped.setdefault(tid, []).append(ev)
+    return grouped
+
+
+def _event_type(ev: dict[str, Any]) -> str:
+    return str(ev.get("event_type") or ev.get("event") or "")
+
+
+def _details(ev: dict[str, Any]) -> dict[str, Any]:
+    d = ev.get("details")
+    return d if isinstance(d, dict) else {}
+
+
+def derive_trace_meta(trace_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compute summary metadata for one trace's events.
+
+    Returns: {trace_id, status, started_at, ended_at, duration_ms,
+              n_tasks, total_tokens, agent_count, n_failed_guardrails}
+    """
+    started_at: str | None = None
+    ended_at: str | None = None
+    n_tasks = 0
+    total_tokens = 0
+    agents: set[str] = set()
+    n_failed_guardrails = 0
+    has_kickoff_completed = False
+    has_kickoff_failed = False
+
+    for ev in events:
+        et = _event_type(ev)
+        ts = ev.get("timestamp")
+        details = _details(ev)
+        if et == "crew_kickoff_started":
+            started_at = ts if isinstance(ts, str) else started_at
+            n_tasks = int(details.get("n_tasks", n_tasks) or n_tasks)
+        elif et == "crew_kickoff_completed":
+            has_kickoff_completed = True
+            ended_at = ts if isinstance(ts, str) else ended_at
+        elif et == "crew_kickoff_failed":
+            has_kickoff_failed = True
+            ended_at = ts if isinstance(ts, str) else ended_at
+        elif et == "crew_task_started":
+            role = details.get("agent_role")
+            if isinstance(role, str):
+                agents.add(role)
+        elif et == "crew_task_completed":
+            tokens = details.get("tokens", 0) or 0
+            with contextlib.suppress(TypeError, ValueError):
+                total_tokens += int(tokens)
+        elif et == "crew_guardrail_check":
+            if details.get("verdict") == "fail":
+                n_failed_guardrails += 1
+
+    if has_kickoff_failed:
+        status = "failed"
+    elif has_kickoff_completed:
+        status = "completed"
+    else:
+        status = "running"
+
+    duration_ms: float | None = None
+    if started_at and ended_at:
+        try:
+            t0 = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+            t1 = datetime.fromisoformat(ended_at.replace("Z", "+00:00"))
+            duration_ms = (t1 - t0).total_seconds() * 1000.0
+        except ValueError:
+            duration_ms = None
+
+    return {
+        "trace_id": trace_id,
+        "status": status,
+        "started_at": started_at,
+        "ended_at": ended_at,
+        "duration_ms": duration_ms,
+        "n_tasks": n_tasks,
+        "total_tokens": total_tokens,
+        "agent_count": len(agents),
+        "n_failed_guardrails": n_failed_guardrails,
+    }
