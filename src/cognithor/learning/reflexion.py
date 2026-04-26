@@ -188,8 +188,17 @@ class ReflexionMemory:
         return rules
 
     def get_recent_errors(self, limit: int = 20) -> list[ReflexionEntry]:
-        """Get most recent error entries."""
-        return sorted(self._all_entries, key=lambda e: e.timestamp, reverse=True)[:limit]
+        """Get most recent error entries, newest first.
+
+        Sorts by (timestamp, insertion_index) descending so that when several
+        entries share a timestamp -- common on Windows where ``time.time()``
+        only ticks every ~16 ms -- the most recently inserted one still
+        comes first. Without the index tie-break the test
+        ``test_recent_errors_ordered`` flakes on Win-py3.12 runners.
+        """
+        indexed = list(enumerate(self._all_entries))
+        indexed.sort(key=lambda pair: (pair[1].timestamp, pair[0]), reverse=True)
+        return [entry for _, entry in indexed[:limit]]
 
     def get_recurring_errors(self, min_count: int = 3) -> list[ReflexionEntry]:
         """Get errors that recur frequently."""
