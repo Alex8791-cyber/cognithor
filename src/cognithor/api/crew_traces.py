@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
 from cognithor.security.owner import OwnerRequiredError, require_owner
 
@@ -246,16 +246,29 @@ def _audit_path() -> Path:
 
 
 @router.get("/traces")
-def list_traces(_user: str = Depends(_require_owner_dep)) -> dict[str, Any]:
+def list_traces(
+    status: str | None = Query(
+        default=None, description="Filter by status (running|completed|failed)"
+    ),
+    since: str | None = Query(
+        default=None, description="Filter to traces started after ISO-8601 timestamp"
+    ),
+    limit: int = Query(default=50, ge=1, le=1000, description="Max number of traces to return"),
+    _user: str = Depends(_require_owner_dep),
+) -> dict[str, Any]:
     """List all traces with derived metadata."""
     events, skipped = read_audit_lines(_audit_path())
     grouped = group_by_trace(events)
     traces = [derive_trace_meta(tid, evs) for tid, evs in grouped.items()]
-    # Sort newest first by started_at (None values last).
+    if status:
+        traces = [t for t in traces if t["status"] == status]
+    if since:
+        traces = [t for t in traces if t["started_at"] and t["started_at"] >= since]
     traces.sort(
         key=lambda t: (t["started_at"] is None, t["started_at"] or ""),
         reverse=True,
     )
+    traces = traces[:limit]
     return {"traces": traces, "meta": {"skipped_lines": skipped}}
 
 

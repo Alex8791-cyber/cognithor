@@ -229,3 +229,45 @@ def test_list_traces_200_for_owner_token(monkeypatch: pytest.MonkeyPatch) -> Non
     client = TestClient(app)
     resp = client.get("/api/crew/traces", headers={"X-Cognithor-User": "owner-x"})
     assert resp.status_code == 200
+
+
+def test_list_traces_filters_by_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "owner")
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/crew/traces?status=running",
+        headers={"X-Cognithor-User": "owner"},
+    )
+    assert resp.status_code == 200
+    statuses = [t["status"] for t in resp.json()["traces"]]
+    assert "running" in statuses
+    assert "completed" not in statuses
+
+
+def test_list_traces_respects_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "owner")
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/crew/traces?limit=1",
+        headers={"X-Cognithor-User": "owner"},
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()["traces"]) == 1
