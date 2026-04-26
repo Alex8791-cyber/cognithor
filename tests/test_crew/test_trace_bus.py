@@ -106,3 +106,25 @@ async def test_queue_full_drops_oldest_and_increments_counter() -> None:
     assert first["task_id"] == "2"
     assert second["task_id"] == "3"
     assert handle.dropped_count == 1
+
+
+def test_publish_hot_path_under_1ms_with_many_subscribers() -> None:
+    """publish() should be <1ms even with ~50 active subscribers."""
+    import time as _time
+
+    bus = TraceBus()
+    queues = [asyncio.Queue(maxsize=100) for _ in range(50)]
+    handles = [bus.subscribe(f"trace-{i}", q) for i, q in enumerate(queues)]
+    bus.subscribe_lifecycle(asyncio.Queue(maxsize=100))
+
+    record = {"event_type": "crew_task_started", "trace_id": "trace-25", "task_id": "perf"}
+
+    start = _time.perf_counter()
+    for _ in range(1000):
+        bus.publish(record)
+    elapsed = _time.perf_counter() - start
+    avg_us = (elapsed / 1000) * 1_000_000
+    assert avg_us < 1000, f"publish too slow: avg {avg_us:.1f}µs (target <1000µs)"
+
+    for h in handles:
+        bus.unsubscribe(h)
