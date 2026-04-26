@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from cognithor.api.crew_traces import read_audit_lines
+
+if TYPE_CHECKING:
+    import pytest
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_audit.jsonl"
 
@@ -110,3 +114,75 @@ def test_derive_trace_stats_counts_guardrail_verdicts(tmp_path: Path) -> None:
     assert stats["guardrail_summary"]["fail"] == 1
     assert stats["guardrail_summary"]["retries"] == 1
     assert stats["agent_breakdown"] == {"a": 500}
+
+
+def test_list_traces_endpoint_returns_grouped_meta(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get("/api/crew/traces")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "traces" in body
+    trace_ids = [t["trace_id"] for t in body["traces"]]
+    assert "trace-aaa" in trace_ids
+    assert "trace-bbb" in trace_ids
+
+
+def test_get_trace_endpoint_returns_events(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get("/api/crew/trace/trace-aaa")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["trace_id"] == "trace-aaa"
+    assert len(body["events"]) == 4
+    assert body["meta"]["skipped_lines"] == 1
+
+
+def test_get_trace_endpoint_404_for_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get("/api/crew/trace/does-not-exist")
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["error"] == "trace_not_found"
+
+
+def test_get_trace_stats_endpoint_returns_aggregates(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get("/api/crew/trace/trace-aaa/stats")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total_tokens"] == 1234
+    assert "agent_breakdown" in body

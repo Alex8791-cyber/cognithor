@@ -15,10 +15,10 @@ import contextlib
 import json
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from fastapi import APIRouter, HTTPException
 
 log = logging.getLogger(__name__)
 
@@ -216,3 +216,58 @@ def derive_trace_stats(events: list[dict[str, Any]]) -> dict[str, Any]:
             "retries": guardrail_retries,
         },
     }
+
+
+router = APIRouter(prefix="/api/crew", tags=["crew-traces"])
+
+
+def _audit_path() -> Path:
+    """Return the on-disk path to the audit JSONL. Override via monkeypatch in tests."""
+    from cognithor.config import load_config
+
+    cfg = load_config()
+    return Path(cfg.cognithor_home) / "logs" / "audit.jsonl"
+
+
+@router.get("/traces")
+def list_traces() -> dict[str, Any]:
+    """List all traces with derived metadata."""
+    events, skipped = read_audit_lines(_audit_path())
+    grouped = group_by_trace(events)
+    traces = [derive_trace_meta(tid, evs) for tid, evs in grouped.items()]
+    # Sort newest first by started_at (None values last).
+    traces.sort(
+        key=lambda t: (t["started_at"] is None, t["started_at"] or ""),
+        reverse=True,
+    )
+    return {"traces": traces, "meta": {"skipped_lines": skipped}}
+
+
+@router.get("/trace/{trace_id}")
+def get_trace(trace_id: str) -> dict[str, Any]:
+    """Return full event list for one trace_id."""
+    events, skipped = read_audit_lines(_audit_path())
+    grouped = group_by_trace(events)
+    if trace_id not in grouped:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "trace_not_found", "trace_id": trace_id},
+        )
+    return {
+        "trace_id": trace_id,
+        "events": grouped[trace_id],
+        "meta": {"skipped_lines": skipped},
+    }
+
+
+@router.get("/trace/{trace_id}/stats")
+def get_trace_stats(trace_id: str) -> dict[str, Any]:
+    """Return derived per-trace aggregates."""
+    events, _skipped = read_audit_lines(_audit_path())
+    grouped = group_by_trace(events)
+    if trace_id not in grouped:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "trace_not_found", "trace_id": trace_id},
+        )
+    return derive_trace_stats(grouped[trace_id])
