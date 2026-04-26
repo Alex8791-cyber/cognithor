@@ -18,9 +18,25 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
+
+from cognithor.security.owner import OwnerRequiredError, require_owner
 
 log = logging.getLogger(__name__)
+
+
+def _require_owner_dep(
+    x_cognithor_user: str | None = Header(default=None, alias="X-Cognithor-User"),
+) -> str:
+    """FastAPI dependency: extract user from header, enforce owner gate."""
+    try:
+        require_owner(x_cognithor_user)
+    except OwnerRequiredError as exc:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "owner_only", "message": str(exc)},
+        ) from exc
+    return x_cognithor_user or ""
 
 
 def read_audit_lines(path: Path) -> tuple[list[dict[str, Any]], int]:
@@ -230,7 +246,7 @@ def _audit_path() -> Path:
 
 
 @router.get("/traces")
-def list_traces() -> dict[str, Any]:
+def list_traces(_user: str = Depends(_require_owner_dep)) -> dict[str, Any]:
     """List all traces with derived metadata."""
     events, skipped = read_audit_lines(_audit_path())
     grouped = group_by_trace(events)
@@ -244,7 +260,7 @@ def list_traces() -> dict[str, Any]:
 
 
 @router.get("/trace/{trace_id}")
-def get_trace(trace_id: str) -> dict[str, Any]:
+def get_trace(trace_id: str, _user: str = Depends(_require_owner_dep)) -> dict[str, Any]:
     """Return full event list for one trace_id."""
     events, skipped = read_audit_lines(_audit_path())
     grouped = group_by_trace(events)
@@ -261,7 +277,7 @@ def get_trace(trace_id: str) -> dict[str, Any]:
 
 
 @router.get("/trace/{trace_id}/stats")
-def get_trace_stats(trace_id: str) -> dict[str, Any]:
+def get_trace_stats(trace_id: str, _user: str = Depends(_require_owner_dep)) -> dict[str, Any]:
     """Return derived per-trace aggregates."""
     events, _skipped = read_audit_lines(_audit_path())
     grouped = group_by_trace(events)

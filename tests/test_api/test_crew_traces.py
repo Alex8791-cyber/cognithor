@@ -125,11 +125,12 @@ def test_list_traces_endpoint_returns_grouped_meta(
     from cognithor.api.crew_traces import router
 
     monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
 
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    resp = client.get("/api/crew/traces")
+    resp = client.get("/api/crew/traces", headers={"X-Cognithor-User": "test-owner"})
     assert resp.status_code == 200
     body = resp.json()
     assert "traces" in body
@@ -145,10 +146,11 @@ def test_get_trace_endpoint_returns_events(monkeypatch: pytest.MonkeyPatch) -> N
     from cognithor.api.crew_traces import router
 
     monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    resp = client.get("/api/crew/trace/trace-aaa")
+    resp = client.get("/api/crew/trace/trace-aaa", headers={"X-Cognithor-User": "test-owner"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["trace_id"] == "trace-aaa"
@@ -163,10 +165,14 @@ def test_get_trace_endpoint_404_for_unknown(monkeypatch: pytest.MonkeyPatch) -> 
     from cognithor.api.crew_traces import router
 
     monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    resp = client.get("/api/crew/trace/does-not-exist")
+    resp = client.get(
+        "/api/crew/trace/does-not-exist",
+        headers={"X-Cognithor-User": "test-owner"},
+    )
     assert resp.status_code == 404
     assert resp.json()["detail"]["error"] == "trace_not_found"
 
@@ -178,11 +184,48 @@ def test_get_trace_stats_endpoint_returns_aggregates(monkeypatch: pytest.MonkeyP
     from cognithor.api.crew_traces import router
 
     monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    resp = client.get("/api/crew/trace/trace-aaa/stats")
+    resp = client.get(
+        "/api/crew/trace/trace-aaa/stats",
+        headers={"X-Cognithor-User": "test-owner"},
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["total_tokens"] == 1234
     assert "agent_breakdown" in body
+
+
+def test_list_traces_403_for_non_owner_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "real-owner")
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get("/api/crew/traces", headers={"X-Cognithor-User": "guest"})
+    assert resp.status_code == 403
+    assert resp.json()["detail"]["error"] == "owner_only"
+
+
+def test_list_traces_200_for_owner_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "owner-x")
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get("/api/crew/traces", headers={"X-Cognithor-User": "owner-x"})
+    assert resp.status_code == 200
