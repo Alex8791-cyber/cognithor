@@ -88,3 +88,21 @@ async def test_lifecycle_event_also_reaches_topic_subscriber() -> None:
     bus.publish({"event_type": "crew_kickoff_started", "trace_id": "trace-y", "n_tasks": 2})
     rec = await asyncio.wait_for(queue.get(), timeout=0.5)
     assert rec["event_type"] == "crew_kickoff_started"
+
+
+@pytest.mark.asyncio
+async def test_queue_full_drops_oldest_and_increments_counter() -> None:
+    bus = TraceBus()
+    queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=2)
+    handle = bus.subscribe("trace-z", queue)
+
+    bus.publish({"event_type": "crew_task_started", "trace_id": "trace-z", "task_id": "1"})
+    bus.publish({"event_type": "crew_task_started", "trace_id": "trace-z", "task_id": "2"})
+    bus.publish({"event_type": "crew_task_started", "trace_id": "trace-z", "task_id": "3"})
+
+    # Queue should have items 2 and 3 (oldest "1" was dropped).
+    first = await asyncio.wait_for(queue.get(), timeout=0.5)
+    second = await asyncio.wait_for(queue.get(), timeout=0.5)
+    assert first["task_id"] == "2"
+    assert second["task_id"] == "3"
+    assert handle.dropped_count == 1
