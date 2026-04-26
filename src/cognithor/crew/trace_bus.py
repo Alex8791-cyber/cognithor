@@ -68,12 +68,21 @@ class TraceBus:
             if not subs:
                 self._subscribers.pop(handle.topic, None)
 
+    def subscribe(self, trace_id: str, queue: asyncio.Queue[dict[str, Any]]) -> SubscriptionHandle:
+        """Subscribe to all events for a single trace_id."""
+        handle = SubscriptionHandle(topic=trace_id, queue=queue)
+        with self._lock:
+            self._subscribers.setdefault(trace_id, []).append(handle)
+        return handle
+
     def publish(self, record: dict[str, Any]) -> None:
         """Broadcast an audit record. Hot-path; must be <1ms."""
         event_type = record.get("event_type") or record.get("event")
+        trace_id = record.get("trace_id") or record.get("session_id")
         if event_type in LIFECYCLE_EVENTS:
             self._fanout(LIFECYCLE_TOPIC, record)
-        # Per-trace topic fan-out lands in Task 3.
+        if trace_id:
+            self._fanout(trace_id, record)
 
     def _fanout(self, topic: str, record: dict[str, Any]) -> None:
         with self._lock:

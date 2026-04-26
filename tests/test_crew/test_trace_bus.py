@@ -50,3 +50,41 @@ async def test_non_lifecycle_event_does_not_reach_lifecycle_subscriber() -> None
     bus.publish({"event_type": "crew_task_started", "trace_id": "abc", "task_id": "t1"})
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(queue.get(), timeout=0.1)
+
+
+@pytest.mark.asyncio
+async def test_subscribe_topic_routes_per_trace_events() -> None:
+    bus = TraceBus()
+    q1: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=10)
+    q2: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=10)
+    bus.subscribe("trace-1", q1)
+    bus.subscribe("trace-2", q2)
+
+    bus.publish({"event_type": "crew_task_started", "trace_id": "trace-1", "task_id": "t1"})
+
+    rec1 = await asyncio.wait_for(q1.get(), timeout=0.5)
+    assert rec1["task_id"] == "t1"
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(q2.get(), timeout=0.1)
+
+
+@pytest.mark.asyncio
+async def test_unsubscribe_removes_from_routing() -> None:
+    bus = TraceBus()
+    queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=10)
+    handle = bus.subscribe("trace-x", queue)
+    bus.unsubscribe(handle)
+    bus.publish({"event_type": "crew_task_completed", "trace_id": "trace-x"})
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(queue.get(), timeout=0.1)
+
+
+@pytest.mark.asyncio
+async def test_lifecycle_event_also_reaches_topic_subscriber() -> None:
+    """A crew_kickoff_started event has trace_id; topic-subscribers want it too."""
+    bus = TraceBus()
+    queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=10)
+    bus.subscribe("trace-y", queue)
+    bus.publish({"event_type": "crew_kickoff_started", "trace_id": "trace-y", "n_tasks": 2})
+    rec = await asyncio.wait_for(queue.get(), timeout=0.5)
+    assert rec["event_type"] == "crew_kickoff_started"
