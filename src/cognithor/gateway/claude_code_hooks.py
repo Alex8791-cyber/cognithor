@@ -25,20 +25,27 @@ Design notes:
   heuristics). The full four-dimension Observer audit runs only on ``Stop``
   because it issues an LLM call and is too expensive per tool.
 - ``GateStatus.APPROVE`` is routed through ``ApprovalManager`` when one is
-  wired: the bridge creates a HITL request with an ``AUTO_REJECT``
-  escalation policy and awaits resolution within a short timeout (default
-  25s, under Claude Code's typical 30s hook timeout). Mapping:
-  APPROVED→allow, REJECTED→deny (this is also the path taken when the
-  approver does not respond before the timeout, since AUTO_REJECT turns
-  silence into a rejection). All other terminal states (TIMED_OUT after
-  max_escalations, ESCALATED, CANCELED, DELEGATED, still-PENDING) are
-  treated as "deny for safety". If no manager is available, the bridge
-  falls back to Claude Code's native ``"ask"``.
+  wired: the bridge creates a HITL request with a ``PAUSE_INDEFINITELY``
+  escalation policy and awaits resolution within a short timeout
+  (default 25s, under Claude Code's typical 30s hook timeout). Mapping:
+  APPROVED→allow, REJECTED→deny. If the request is still PENDING (or in
+  any other non-terminal state) when the wait elapses, the bridge maps
+  to Claude Code's native ``"ask"`` prompt -- the user can answer in
+  VSC right away, while the HITL request stays open in the background
+  so a late Telegram/webhook reply is still recorded. Manager-side
+  failures fall back to ``"ask"`` (best effort without a working
+  notifier); wait-side failures deny for safety.
+- Per-session decision cache: identical (tool, params) calls within the
+  same Claude Code session re-use the prior Gatekeeper decision for a
+  60s TTL. ``APPROVE`` decisions are NOT cached, so HITL prompts always
+  fire on borderline calls.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json as _json
+import time
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -46,6 +53,7 @@ from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel, ConfigDict, Field
 
 from cognithor.models import (
+    GateDecision,
     GateStatus,
     PlannedAction,
     SessionContext,
@@ -131,16 +139,43 @@ class CCSessionEndInput(_CCHookBase):
 
 
 _MAX_TRACKED_SESSIONS = 256
+_DEFAULT_DECISION_CACHE_TTL_SECONDS = 60.0
+_MAX_CACHED_DECISIONS_PER_SESSION = 128
+
+
+def _hash_tool_call(tool_name: str, tool_input: dict[str, Any]) -> str:
+    """Stable hash of a tool name + its parameters for cache keying.
+
+    Uses sorted-keys JSON so dict ordering does not produce different hashes
+    for the same logical call. Non-JSON-serializable params fall back to
+    ``str(...)`` rather than crashing -- a rare-tool cache miss is fine,
+    a 500 from the bridge is not.
+    """
+    try:
+        payload = _json.dumps({"t": tool_name, "i": tool_input}, sort_keys=True, default=str)
+    except Exception:
+        payload = f"{tool_name}::{tool_input!r}"
+    return hashlib.sha1(payload.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 class _SessionTracker:
     """Per-process LRU of Claude-Code-session → Cognithor state."""
 
-    def __init__(self, max_sessions: int = _MAX_TRACKED_SESSIONS) -> None:
+    def __init__(
+        self,
+        max_sessions: int = _MAX_TRACKED_SESSIONS,
+        *,
+        decision_cache_ttl_seconds: float = _DEFAULT_DECISION_CACHE_TTL_SECONDS,
+    ) -> None:
         self._max = max_sessions
         self._contexts: OrderedDict[str, SessionContext] = OrderedDict()
         self._tool_log: dict[str, list[ToolResult]] = {}
         self._user_prompts: dict[str, str] = {}
+        # Per-session LRU of (call_hash) → (decision, expires_at).
+        self._decision_cache: dict[str, OrderedDict[str, tuple[GateDecision, float]]] = {}
+        self._decision_cache_ttl = max(0.0, float(decision_cache_ttl_seconds))
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     def get_or_create(self, cc_session_id: str, cwd: str = "") -> SessionContext:
         ctx = self._contexts.get(cc_session_id)
@@ -154,6 +189,7 @@ class _SessionTracker:
             self._contexts[cc_session_id] = ctx
             self._tool_log[cc_session_id] = []
             self._user_prompts.setdefault(cc_session_id, "")
+            self._decision_cache[cc_session_id] = OrderedDict()
             self._evict_if_needed()
         else:
             self._contexts.move_to_end(cc_session_id)
@@ -169,16 +205,67 @@ class _SessionTracker:
     def tool_history(self, cc_session_id: str) -> list[ToolResult]:
         return list(self._tool_log.get(cc_session_id, []))
 
+    def get_cached_decision(self, cc_session_id: str, call_hash: str) -> GateDecision | None:
+        """Return a cached GateDecision if present and not expired."""
+        if self._decision_cache_ttl <= 0:
+            return None
+        cache = self._decision_cache.get(cc_session_id)
+        if cache is None:
+            return None
+        entry = cache.get(call_hash)
+        if entry is None:
+            self._cache_misses += 1
+            return None
+        decision, expires_at = entry
+        if time.monotonic() >= expires_at:
+            cache.pop(call_hash, None)
+            self._cache_misses += 1
+            return None
+        cache.move_to_end(call_hash)
+        self._cache_hits += 1
+        return decision
+
+    def cache_decision(
+        self,
+        cc_session_id: str,
+        call_hash: str,
+        decision: GateDecision,
+    ) -> None:
+        """Cache a Gatekeeper decision under (session, call_hash) for TTL.
+
+        ``APPROVE`` is intentionally NOT cached -- HITL responses must be
+        fresh per call so the user can revisit a borderline decision.
+        """
+        if self._decision_cache_ttl <= 0:
+            return
+        if decision.status == GateStatus.APPROVE:
+            return
+        cache = self._decision_cache.setdefault(cc_session_id, OrderedDict())
+        cache[call_hash] = (decision, time.monotonic() + self._decision_cache_ttl)
+        cache.move_to_end(call_hash)
+        # Bound per-session entries.
+        while len(cache) > _MAX_CACHED_DECISIONS_PER_SESSION:
+            cache.popitem(last=False)
+
+    def cache_stats(self) -> dict[str, int]:
+        return {
+            "hits": self._cache_hits,
+            "misses": self._cache_misses,
+            "tracked_sessions": len(self._contexts),
+        }
+
     def drop(self, cc_session_id: str) -> None:
         self._contexts.pop(cc_session_id, None)
         self._tool_log.pop(cc_session_id, None)
         self._user_prompts.pop(cc_session_id, None)
+        self._decision_cache.pop(cc_session_id, None)
 
     def _evict_if_needed(self) -> None:
         while len(self._contexts) > self._max:
             old_id, _ = self._contexts.popitem(last=False)
             self._tool_log.pop(old_id, None)
             self._user_prompts.pop(old_id, None)
+            self._decision_cache.pop(old_id, None)
             log.debug("claude_code_hooks_session_evicted", session_id=old_id)
 
 
@@ -254,6 +341,7 @@ def create_claude_code_hooks_router(
 
     @router.get("/health")
     async def health() -> dict[str, Any]:
+        stats = session_tracker.cache_stats()
         return {
             "ok": True,
             "gatekeeper": gatekeeper is not None,
@@ -261,7 +349,9 @@ def create_claude_code_hooks_router(
             "hook_runner": hook_runner is not None,
             "approval_manager": approval_manager is not None,
             "hitl_timeout_seconds": hitl_timeout_seconds,
-            "tracked_sessions": len(session_tracker._contexts),
+            "tracked_sessions": stats["tracked_sessions"],
+            "decision_cache_hits": stats["hits"],
+            "decision_cache_misses": stats["misses"],
         }
 
     @router.post("/pre-tool-use")
@@ -275,21 +365,31 @@ def create_claude_code_hooks_router(
             return _allow("Cognithor Gatekeeper not wired -- allowing by default")
 
         session = session_tracker.get_or_create(body.session_id, body.cwd)
-        action = PlannedAction(
-            tool=body.tool_name,
-            params=body.tool_input,
-            rationale=f"Claude Code PreToolUse (session {body.session_id[:8]})",
-        )
+        # Cheap optimisation: identical (tool, params) inside the same session
+        # within TTL re-uses the prior decision. Halves Gatekeeper load on
+        # read-heavy turns where Claude does Read/Grep dozens of times.
+        call_hash = _hash_tool_call(body.tool_name, body.tool_input)
+        decision = session_tracker.get_cached_decision(body.session_id, call_hash)
+        cache_hit = decision is not None
 
-        try:
-            decision = gatekeeper.evaluate(action, session)
-        except Exception as exc:  # fail-open
-            log.warning(
-                "claude_code_pre_tool_use_gatekeeper_error",
+        if decision is None:
+            action = PlannedAction(
                 tool=body.tool_name,
-                error=str(exc),
+                params=body.tool_input,
+                rationale=f"Claude Code PreToolUse (session {body.session_id[:8]})",
             )
-            return _allow(f"Gatekeeper raised -- failing open: {exc!s}")
+
+            try:
+                decision = gatekeeper.evaluate(action, session)
+            except Exception as exc:  # fail-open
+                log.warning(
+                    "claude_code_pre_tool_use_gatekeeper_error",
+                    tool=body.tool_name,
+                    error=str(exc),
+                )
+                return _allow(f"Gatekeeper raised -- failing open: {exc!s}")
+
+            session_tracker.cache_decision(body.session_id, call_hash, decision)
 
         log.info(
             "claude_code_pre_tool_use",
@@ -298,6 +398,7 @@ def create_claude_code_hooks_router(
             risk=decision.risk_level.value,
             policy=decision.policy_name or None,
             session=body.session_id[:8],
+            cache_hit=cache_hit,
         )
 
         if decision.is_allowed:
@@ -534,10 +635,24 @@ async def _route_approval(
     cwd: str,
     timeout_seconds: float,
 ) -> tuple[str, str | None]:
-    """Route a Gatekeeper APPROVE through HITL.
+    """Route a Gatekeeper APPROVE through HITL with a graceful fallback.
 
-    Returns ``(cc_decision, reason_override_or_None)``. Falls back to
-    ``"ask"`` if no manager is wired or HITL itself errors.
+    Behaviour:
+      * If no ``ApprovalManager`` is wired -> ``"ask"`` (Claude Code's
+        native VSC prompt handles the user-in-the-loop).
+      * Otherwise create an HITL request with ``PAUSE_INDEFINITELY``
+        escalation. Wait up to ``timeout_seconds`` for resolution.
+      * APPROVED -> ``"allow"`` (with reviewer comment).
+      * REJECTED -> ``"deny"`` (with reviewer comment).
+      * Still PENDING after the wait, or any unexpected status, ->
+        ``"ask"``: Claude Code prompts the user inside VSC, the HITL
+        request stays open in the background so a late Telegram answer
+        is still recorded for audit/forensics.
+      * Manager-side errors (create_request raise) -> ``"ask"`` (best
+        we can do without a working notifier). Wait-side errors ->
+        ``"deny"`` (treat as integrity failure of the supervision layer).
+
+    Returns ``(cc_decision, reason_override_or_None)``.
     """
     if approval_manager is None:
         return "ask", None
@@ -565,9 +680,13 @@ async def _route_approval(
         priority=(
             ReviewPriority.HIGH if risk_value in ("orange", "red") else ReviewPriority.NORMAL
         ),
+        # PAUSE_INDEFINITELY keeps the request open after the hook timeout
+        # so the user can still answer via Telegram/webhook later. The
+        # bridge falls back to Claude Code's native "ask" prompt when the
+        # initial wait elapses.
         escalation=EscalationPolicy(
             timeout_seconds=int(max(1.0, timeout_seconds)),
-            action=EscalationAction.AUTO_REJECT,
+            action=EscalationAction.PAUSE_INDEFINITELY,
         ),
     )
 
@@ -623,9 +742,15 @@ async def _route_approval(
             comment = task.responses[-1].comment or ""
         reason = "HITL rejected" + (f": {comment}" if comment else "")
         return "deny", reason
-    # TIMED_OUT, ESCALATED, CANCELED, DELEGATED, PENDING -> safe default
+    # PENDING / ESCALATED / DELEGATED / CANCELED / TIMED_OUT -> hand the
+    # decision back to Claude Code's native "ask" prompt. The HITL request
+    # is intentionally NOT cancelled so a late Telegram/webhook reply
+    # still gets recorded for audit.
     status_repr = getattr(status, "value", str(status))
-    return "deny", f"HITL unresolved (status={status_repr}) -- denying for safety"
+    return "ask", (
+        f"HITL still {status_repr} after {int(timeout_seconds)}s "
+        f"(request {request.request_id}) -- handing off to Claude Code's prompt"
+    )
 
 
 __all__ = [
