@@ -356,14 +356,27 @@ class TestApproveRouting:
         assert "HITL rejected" in out["permissionDecisionReason"]
         assert "too risky" in out["permissionDecisionReason"]
 
-    def test_timed_out_status_denies_for_safety(self, gatekeeper_approving):
-        mgr = _make_approval_manager(final_status=ApprovalStatus.TIMED_OUT)
+    def test_pending_status_falls_back_to_ask_with_request_in_reason(self, gatekeeper_approving):
+        # Default _StubRequest has status=PENDING, simulating an HITL
+        # request that was not answered before the wait elapsed. The
+        # bridge should hand off to Claude Code's native "ask" prompt
+        # rather than denying outright.
+        mgr = _make_approval_manager(final_status=ApprovalStatus.PENDING)
         app = build_claude_code_hooks_app(gatekeeper=gatekeeper_approving, approval_manager=mgr)
         client = TestClient(app)
         r = client.post("/api/claude-hooks/pre-tool-use", json=_payload())
         out = r.json()["hookSpecificOutput"]
-        assert out["permissionDecision"] == "deny"
-        assert "unresolved" in out["permissionDecisionReason"]
+        assert out["permissionDecision"] == "ask"
+        assert "still" in out["permissionDecisionReason"].lower()
+        assert "apr_test" in out["permissionDecisionReason"]
+
+    def test_escalated_status_falls_back_to_ask(self, gatekeeper_approving):
+        mgr = _make_approval_manager(final_status=ApprovalStatus.ESCALATED)
+        app = build_claude_code_hooks_app(gatekeeper=gatekeeper_approving, approval_manager=mgr)
+        client = TestClient(app)
+        r = client.post("/api/claude-hooks/pre-tool-use", json=_payload())
+        out = r.json()["hookSpecificOutput"]
+        assert out["permissionDecision"] == "ask"
 
     def test_no_approval_manager_falls_back_to_ask(self, gatekeeper_approving):
         app = build_claude_code_hooks_app(gatekeeper=gatekeeper_approving, approval_manager=None)
@@ -391,3 +404,66 @@ class TestApproveRouting:
         out = r.json()["hookSpecificOutput"]
         assert out["permissionDecision"] == "deny"
         assert "wait error" in out["permissionDecisionReason"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-session decision cache
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestDecisionCache:
+    def test_identical_call_uses_cache(self, gatekeeper_allowing):
+        app = build_claude_code_hooks_app(gatekeeper=gatekeeper_allowing)
+        client = TestClient(app)
+        # Three identical pre-tool-use calls with same session + same params.
+        for _ in range(3):
+            r = client.post("/api/claude-hooks/pre-tool-use", json=_payload())
+            assert r.json()["hookSpecificOutput"]["permissionDecision"] == "allow"
+        # Gatekeeper should have been called exactly once -- two cache hits.
+        assert gatekeeper_allowing.evaluate.call_count == 1
+
+        health = client.get("/api/claude-hooks/health").json()
+        assert health["decision_cache_hits"] >= 2
+        assert health["decision_cache_misses"] >= 1
+
+    def test_different_params_bypass_cache(self, gatekeeper_allowing):
+        app = build_claude_code_hooks_app(gatekeeper=gatekeeper_allowing)
+        client = TestClient(app)
+        client.post("/api/claude-hooks/pre-tool-use", json=_payload(command="ls"))
+        client.post("/api/claude-hooks/pre-tool-use", json=_payload(command="pwd"))
+        client.post("/api/claude-hooks/pre-tool-use", json=_payload(command="ls"))
+        # ls (miss), pwd (miss), ls (hit) → 2 evaluate() calls.
+        assert gatekeeper_allowing.evaluate.call_count == 2
+
+    def test_different_session_isolates_cache(self, gatekeeper_allowing):
+        app = build_claude_code_hooks_app(gatekeeper=gatekeeper_allowing)
+        client = TestClient(app)
+        p1 = _payload()
+        p2 = dict(p1, session_id="other-session-9999")
+        client.post("/api/claude-hooks/pre-tool-use", json=p1)
+        client.post("/api/claude-hooks/pre-tool-use", json=p2)
+        # Same params, different sessions → two evaluations, no cross-talk.
+        assert gatekeeper_allowing.evaluate.call_count == 2
+
+    def test_approve_decision_is_not_cached(self, gatekeeper_approving):
+        # Simulate a manager that always returns PENDING (so each call
+        # triggers a fresh wait_for_resolution path) -- the important
+        # thing is the gatekeeper.evaluate must NOT be cache-shortcircuited.
+        mgr = _make_approval_manager(final_status=ApprovalStatus.PENDING)
+        app = build_claude_code_hooks_app(gatekeeper=gatekeeper_approving, approval_manager=mgr)
+        client = TestClient(app)
+        for _ in range(3):
+            client.post("/api/claude-hooks/pre-tool-use", json=_payload())
+        # APPROVE decisions are intentionally never cached; every call
+        # must re-evaluate the Gatekeeper so HITL fires fresh each time.
+        assert gatekeeper_approving.evaluate.call_count == 3
+        assert mgr.create_request.await_count == 3
+
+    def test_health_exposes_cache_counters(self):
+        app = build_claude_code_hooks_app()
+        client = TestClient(app)
+        health = client.get("/api/claude-hooks/health").json()
+        assert "decision_cache_hits" in health
+        assert "decision_cache_misses" in health
+        assert health["decision_cache_hits"] == 0
+        assert health["decision_cache_misses"] == 0

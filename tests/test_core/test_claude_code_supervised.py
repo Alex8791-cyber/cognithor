@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -18,9 +18,14 @@ from cognithor.core.claude_code_supervised import (
     ClaudeCodeSupervisedBackend,
     ClaudeCodeSupervisor,
     GoalEvaluation,
+    PlannerGoalEvaluator,
     SupervisorResult,
+    TurnResult,
 )
 from cognithor.core.llm_backend import ChatResponse, LLMBackendError, LLMBackendType
+
+if TYPE_CHECKING:
+    from cognithor.models import ToolResult
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fake subprocess plumbing
@@ -427,3 +432,153 @@ class TestSupervisedBackend:
         b = ClaudeCodeSupervisedBackend()
         with pytest.raises(LLMBackendError):
             await b.embed("any", "text")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PlannerGoalEvaluator
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _turn(
+    *,
+    turn: int = 1,
+    text: str = "ok",
+    tools: list[ToolResult] | None = None,
+    cost: float = 0.01,
+    is_error: bool = False,
+    error: str | None = None,
+) -> TurnResult:
+    return TurnResult(
+        turn=turn,
+        prompt="(prompt)",
+        assistant_text=text,
+        tool_results=list(tools or []),
+        cost_usd=cost,
+        duration_ms=10,
+        is_error=is_error,
+        error=error,
+        session_id="sess",
+    )
+
+
+class _FakeLLM:
+    """Minimal LLM stub matching the .chat(model, messages, **kwargs) shape."""
+
+    def __init__(self, content: str, *, raise_on_call: Exception | None = None) -> None:
+        self.content = content
+        self.calls: list[dict] = []
+        self._raise = raise_on_call
+
+    async def chat(self, model: str, messages: list[dict], **kwargs):
+        self.calls.append({"model": model, "messages": messages, "kwargs": kwargs})
+        if self._raise is not None:
+            raise self._raise
+        return ChatResponse(content=self.content, model=model)
+
+
+class TestPlannerGoalEvaluator:
+    @pytest.mark.asyncio
+    async def test_done_verdict_parsed(self):
+        llm = _FakeLLM(content='{"verdict": "done", "next_prompt": "", "reason": "goal met"}')
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("write hello.py", [_turn(text="DONE — wrote hello.py")])
+        assert result.verdict == "done"
+        assert result.reason == "goal met"
+        assert llm.calls and llm.calls[0]["model"] == "sonnet"
+
+    @pytest.mark.asyncio
+    async def test_continue_verdict_carries_next_prompt(self):
+        llm = _FakeLLM(
+            content=(
+                '{"verdict": "continue", "next_prompt": "Now add tests for it.", '
+                '"reason": "code written but no tests"}'
+            )
+        )
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("write hello.py with tests", [_turn(text="wrote hello.py")])
+        assert result.verdict == "continue"
+        assert result.next_prompt == "Now add tests for it."
+
+    @pytest.mark.asyncio
+    async def test_abort_verdict_parsed(self):
+        llm = _FakeLLM(content='{"verdict": "abort", "next_prompt": "", "reason": "stuck"}')
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev(
+            "do impossible thing",
+            [_turn(text="failed again", is_error=True, error="loop detected")],
+        )
+        assert result.verdict == "abort"
+        assert result.reason == "stuck"
+
+    @pytest.mark.asyncio
+    async def test_json_with_code_fences_is_parsed(self):
+        llm = _FakeLLM(
+            content=('```json\n{"verdict": "done", "next_prompt": "", "reason": "ok"}\n```\n')
+        )
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("goal", [_turn()])
+        assert result.verdict == "done"
+
+    @pytest.mark.asyncio
+    async def test_json_with_prose_preamble_is_parsed(self):
+        llm = _FakeLLM(
+            content=(
+                "Here is my verdict:\n"
+                '{"verdict": "continue", "next_prompt": "do step 2", "reason": "step 1 done"}'
+            )
+        )
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("goal", [_turn()])
+        assert result.verdict == "continue"
+        assert result.next_prompt == "do step 2"
+
+    @pytest.mark.asyncio
+    async def test_unparseable_response_returns_failure_default(self):
+        llm = _FakeLLM(content="Not JSON at all, just words.")
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("goal", [_turn()])
+        assert result.verdict == "continue"
+        assert result.reason == "judge_unavailable"
+
+    @pytest.mark.asyncio
+    async def test_invalid_verdict_value_returns_failure_default(self):
+        llm = _FakeLLM(content='{"verdict": "maybe", "next_prompt": "", "reason": "?"}')
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("goal", [_turn()])
+        assert result.verdict == "continue"
+        assert result.reason == "judge_unavailable"
+
+    @pytest.mark.asyncio
+    async def test_llm_raise_returns_failure_default(self):
+        llm = _FakeLLM(content="", raise_on_call=RuntimeError("boom"))
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("goal", [_turn()])
+        assert result.verdict == "continue"
+        assert "judge could not produce" in result.next_prompt
+
+    @pytest.mark.asyncio
+    async def test_no_turns_yields_continue(self):
+        llm = _FakeLLM(content='{"verdict": "done"}')
+        ev = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        result = await ev("goal", [])
+        assert result.verdict == "continue"
+        # LLM must not be called when there's nothing to judge.
+        assert llm.calls == []
+
+    @pytest.mark.asyncio
+    async def test_evaluator_plugged_into_supervisor(self):
+        llm = _FakeLLM(content='{"verdict": "done", "next_prompt": "", "reason": "fits"}')
+        evaluator = PlannerGoalEvaluator(llm=llm, model="sonnet")
+        proc = _FakeProc(_script_events(text="wrote it"))
+        with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)):
+            sup = ClaudeCodeSupervisor(
+                claude_path="claude",
+                goal_evaluator=evaluator,
+            )
+            result = await sup.run("write hello.py")
+        assert result.verdict == "done"
+        # The supervisor must have passed the user_intent through the new
+        # two-arg evaluator signature.
+        assert llm.calls, "evaluator should have been invoked"
+        user_msg = llm.calls[0]["messages"][1]["content"]
+        assert "write hello.py" in user_msg

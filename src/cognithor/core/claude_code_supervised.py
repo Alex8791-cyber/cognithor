@@ -114,7 +114,12 @@ class SupervisorResult:
     total_duration_ms: int
 
 
-GoalEvaluator = Callable[[list[TurnResult]], Awaitable[GoalEvaluation]]
+# A goal evaluator receives the original user intent plus the per-turn
+# history accumulated so far and returns whether the supervisor should
+# stop, send another prompt, or abort. Receiving the intent makes it
+# possible to plug in Planner-style judges that compare turn outcomes
+# against the goal explicitly.
+GoalEvaluator = Callable[[str, list[TurnResult]], Awaitable[GoalEvaluation]]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -417,7 +422,7 @@ class ClaudeCodeSupervisor:
     async def _evaluate(self, *, user_intent: str, turns: list[TurnResult]) -> GoalEvaluation:
         if self._goal_evaluator is not None:
             try:
-                return await self._goal_evaluator(turns)
+                return await self._goal_evaluator(user_intent, turns)
             except Exception as exc:
                 log.warning("claude_code_supervisor_evaluator_failed", error=str(exc))
                 return GoalEvaluation(verdict="abort", reason=f"evaluator raised: {exc!s}")
@@ -552,9 +557,226 @@ __all__ = [
     "ClaudeCodeSupervisor",
     "GoalEvaluation",
     "GoalEvaluator",
+    "PlannerGoalEvaluator",
     "SupervisorResult",
     "TurnResult",
 ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Planner-driven goal evaluator
+#
+# Lightweight LLM judge that compares the goal against accumulated turn
+# outcomes and returns done/continue/abort with a follow-up prompt. Does
+# not invoke the full Cognithor Planner (which expects WorkingMemory and
+# tool schemas) -- instead it makes a focused chat call to the same LLM
+# client the Planner uses.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+_GOAL_JUDGE_SYSTEM = (
+    "You are a goal-completion judge for an autonomous coding agent driving "
+    "Claude Code. Read the user goal and the agent's progress, then decide "
+    "whether the goal is reached, whether one more attempt would help, or "
+    "whether the agent is stuck.\n\n"
+    "Respond with EXACTLY one JSON object on a single line, no prose, no "
+    "code fences, with this shape:\n"
+    '  {"verdict": "done"|"continue"|"abort", '
+    '"next_prompt": "<used only when verdict=continue>", '
+    '"reason": "<one short sentence>"}\n\n'
+    "Decision rules:\n"
+    "- done: the user goal is fully and visibly satisfied by the latest "
+    "assistant message and the tool history. Prefer 'done' when in doubt and "
+    "the agent's last message claims completion AND the tool errors are zero.\n"
+    "- continue: there is real progress but the goal is not yet met. Provide "
+    "a focused next_prompt that names the specific next step. Do NOT just "
+    "say 'continue'. Be concrete.\n"
+    "- abort: the agent is looping, repeating the same tool with the same "
+    "error, or has clearly diverged from the goal. Recovery via re-prompting "
+    "is unlikely.\n"
+)
+
+
+def _format_turn_summary(turn: TurnResult, *, max_chars: int = 600) -> str:
+    parts = [
+        f"turn {turn.turn} (cost ${turn.cost_usd:.4f}, {turn.duration_ms}ms"
+        f"{', ERROR' if turn.is_error else ''}):",
+    ]
+    if turn.tool_results:
+        parts.append(f"  tools: {len(turn.tool_results)}")
+        for tr in turn.tool_results[:6]:
+            content = (tr.error_message or tr.content or "").strip().replace("\n", " ")
+            tag = "ERR" if tr.is_error else "ok"
+            parts.append(f"    - [{tag}] {tr.tool_name}: {content[:100]}")
+        if len(turn.tool_results) > 6:
+            parts.append(f"    ... (+{len(turn.tool_results) - 6} more)")
+    if turn.assistant_text:
+        parts.append(f"  text: {turn.assistant_text.strip()[:max_chars]}")
+    if turn.error:
+        parts.append(f"  error: {turn.error[:300]}")
+    return "\n".join(parts)
+
+
+class PlannerGoalEvaluator:
+    """Goal evaluator that asks an LLM whether the supervisor should stop.
+
+    Plug-compatible with ``ClaudeCodeSupervisor.goal_evaluator``: instances
+    are awaitable callables matching the
+    ``Callable[[str, list[TurnResult]], Awaitable[GoalEvaluation]]``
+    signature.
+
+    The judge is intentionally model-agnostic and accepts any LLM client
+    that exposes ``async chat(model, messages, **kwargs) -> ChatResponse``
+    (so Cognithor's Ollama / Anthropic / Claude-Code / vLLM backends all
+    work). On any LLM failure the evaluator returns ``verdict="continue"``
+    with a generic follow-up prompt -- failing the loop closed (towards
+    "done") would silently mask real progress problems.
+
+    Args:
+        llm: Async chat client. Must accept (model, messages, **kwargs)
+            and return a ``ChatResponse``-shaped object with a ``content``
+            attribute.
+        model: Model name to pass to the chat call.
+        max_history_turns: Cap on how many earlier turns to summarize.
+        on_failure: What to return if the LLM call or JSON parse fails.
+            Defaults to a benign "continue" verdict.
+    """
+
+    def __init__(
+        self,
+        *,
+        llm: Any,
+        model: str,
+        max_history_turns: int = 6,
+        on_failure: GoalEvaluation | None = None,
+    ) -> None:
+        self._llm = llm
+        self._model = model
+        self._max_history_turns = max(1, max_history_turns)
+        self._on_failure = on_failure or GoalEvaluation(
+            verdict="continue",
+            next_prompt=(
+                "The goal-completion judge could not produce a verdict. "
+                "Continue toward the goal and explicitly state 'DONE' when "
+                "you believe it is reached."
+            ),
+            reason="judge_unavailable",
+        )
+
+    async def __call__(self, user_intent: str, turns: list[TurnResult]) -> GoalEvaluation:
+        if not turns:
+            return GoalEvaluation(verdict="continue", reason="no turns yet")
+
+        history = turns[-self._max_history_turns :]
+        history_block = "\n".join(_format_turn_summary(t) for t in history)
+        prompt_user = (
+            f"USER GOAL:\n{user_intent}\n\n"
+            f"PROGRESS ({len(history)} of {len(turns)} turns shown, "
+            f"oldest first):\n{history_block}\n\n"
+            "Return the JSON verdict now."
+        )
+
+        try:
+            response = await self._llm.chat(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": _GOAL_JUDGE_SYSTEM},
+                    {"role": "user", "content": prompt_user},
+                ],
+                temperature=0.2,
+                top_p=0.9,
+                format_json=True,
+            )
+        except TypeError:
+            # Older clients without format_json kwarg.
+            try:
+                response = await self._llm.chat(
+                    model=self._model,
+                    messages=[
+                        {"role": "system", "content": _GOAL_JUDGE_SYSTEM},
+                        {"role": "user", "content": prompt_user},
+                    ],
+                    temperature=0.2,
+                    top_p=0.9,
+                )
+            except Exception as exc:
+                log.warning("planner_goal_evaluator_llm_error", error=str(exc))
+                return self._on_failure
+        except Exception as exc:
+            log.warning("planner_goal_evaluator_llm_error", error=str(exc))
+            return self._on_failure
+
+        content = getattr(response, "content", "") or ""
+        parsed = _extract_json_object(content)
+        if parsed is None:
+            log.warning("planner_goal_evaluator_parse_failed", content_preview=content[:200])
+            return self._on_failure
+
+        verdict = str(parsed.get("verdict", "")).strip().lower()
+        if verdict not in ("done", "continue", "abort"):
+            log.warning("planner_goal_evaluator_bad_verdict", got=verdict)
+            return self._on_failure
+
+        next_prompt = str(parsed.get("next_prompt", "")).strip()
+        reason = str(parsed.get("reason", "")).strip()
+
+        log.info(
+            "planner_goal_evaluator_verdict",
+            verdict=verdict,
+            turns=len(turns),
+            reason=reason[:160],
+        )
+        return GoalEvaluation(
+            verdict=verdict,  # type: ignore[arg-type]
+            next_prompt=next_prompt,
+            reason=reason,
+        )
+
+
+def _extract_json_object(text: str) -> dict[str, Any] | None:
+    """Best-effort extract a single top-level JSON object from LLM output.
+
+    Tolerates a trailing newline, a leading prose preamble, or accidental
+    code fences. Returns ``None`` if nothing parseable is found.
+    """
+    if not text:
+        return None
+    # Strip a single set of ```json ... ``` fences if present.
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        first_nl = stripped.find("\n")
+        if first_nl > 0:
+            stripped = stripped[first_nl + 1 :]
+        if stripped.endswith("```"):
+            stripped = stripped[:-3]
+        stripped = stripped.strip()
+    # Try direct parse first.
+    try:
+        obj = json.loads(stripped)
+        if isinstance(obj, dict):
+            return obj
+    except json.JSONDecodeError:
+        pass
+    # Fallback: find the first balanced {...} block.
+    start = stripped.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    for i in range(start, len(stripped)):
+        ch = stripped[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                candidate = stripped[start : i + 1]
+                try:
+                    obj = json.loads(candidate)
+                    if isinstance(obj, dict):
+                        return obj
+                except json.JSONDecodeError:
+                    return None
+    return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
