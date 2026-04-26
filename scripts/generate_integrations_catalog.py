@@ -30,6 +30,17 @@ MCP_DIR = REPO_ROOT / "src" / "cognithor" / "mcp"
 
 DACH_MARKERS = {"datev", "lexware", "sevdesk", "elster", "schufa"}
 
+# Modules that carry @mcp_tool-decorated functions but are NOT yet wired into
+# the live MCP server (no register_tool calls, module not imported by the
+# server boot path). Excluded from the public catalog so the cognithor.ai
+# /integrations page doesn't over-promise capability.
+#
+# When wiring a module into the live server, remove its prefix from this set
+# AND add the appropriate register_tool calls in the module's __init__.
+NOT_YET_REGISTERED_PREFIXES: set[str] = {
+    "cognithor.mcp.sevdesk",
+}
+
 
 def extract_tools(py_file: Path) -> list[dict]:
     """Parse a Python file and return any @mcp_tool-decorated function metadata."""
@@ -112,6 +123,12 @@ def main() -> int:
     tools: list[dict] = []
     for py in MCP_DIR.rglob("*.py"):
         tools.extend(extract_tools(py))
+
+    # Filter out tools from modules that aren't wired into the live server yet.
+    # See NOT_YET_REGISTERED_PREFIXES at top of file.
+    tools = [
+        t for t in tools if not any(t["module"].startswith(p) for p in NOT_YET_REGISTERED_PREFIXES)
+    ]
 
     seen: set[tuple[str, str]] = set()
     deduped: list[dict] = []

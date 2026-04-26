@@ -33,8 +33,12 @@ dev = [
     "pytest-cov>=6.0,<7",
 ]
 # Mirrors the root cognithor[autogen] extra so cognithor_bench can pull
-# autogen-agentchat for the optional AutoGenAdapter without re-pinning.
-autogen = ["autogen-agentchat==0.7.5"]
+# autogen-agentchat AND autogen-ext for the optional AutoGenAdapter
+# (autogen-ext provides OpenAIChatCompletionClient).
+autogen = [
+    "autogen-agentchat==0.7.5",
+    "autogen-ext[openai]==0.7.5",
+]
 
 [project.scripts]
 cognithor-bench = "cognithor_bench.cli:main"

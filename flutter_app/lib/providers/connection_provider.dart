@@ -13,7 +13,7 @@ enum CognithorConnectionState { disconnected, connecting, connected, error }
 /// Frontend version — must match backend `__version__` (major.minor).
 /// See issue #111: version mismatch between Flutter and Python backend
 /// should block entry to the app.
-const String kFrontendVersion = '0.94.0';
+const String kFrontendVersion = '0.94.1';
 
 /// Extracts "major.minor" from a semver-ish string like "0.91.0" or "0.91.0+1".
 String? _majorMinor(String? v) {

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cognithor"
-version = "0.94.0"
+version = "0.94.1"
 description = "Cognithor · Agent OS — Local-first autonomous agent operating system"
 readme = "README.md"
 license = "Apache-2.0"
@@ -184,6 +184,10 @@ autogen = [
     #   - cognithor_bench/src/cognithor_bench/adapters/autogen_adapter.py (lazy import)
     # See spec §6 (Single Pin-Point) and §8.4 acceptance criteria.
     "autogen-agentchat==0.7.5",
+    # autogen-ext provides OpenAIChatCompletionClient which the bench-adapter
+    # imports directly. Without it, `cognithor-bench --adapter autogen` raises
+    # a misleading ImportError. Pinned to the same minor as autogen-agentchat.
+    "autogen-ext[openai]==0.7.5",
 ]
 all = [
     "cognithor[memory,vector,mcp,telegram,web,search,cron,documents,identity,desktop,arc,encryption]",

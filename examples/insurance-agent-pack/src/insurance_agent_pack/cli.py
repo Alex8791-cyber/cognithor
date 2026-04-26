@@ -48,7 +48,20 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ensure_utf8_stdio() -> None:
+    """On Windows, default console encoding is cp1252 — German § becomes mojibake.
+
+    This reconfigures stdout/stderr to UTF-8 so e.g. "§34d" in argparse
+    descriptions and prompt text renders correctly. No-op on POSIX.
+    """
+    if sys.platform == "win32":
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _ensure_utf8_stdio()
     args = _build_parser().parse_args(argv)
     if args.cmd == "run":
         return _cmd_run(args)

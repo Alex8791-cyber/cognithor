@@ -1,20 +1,5 @@
 {
-  "generated_at": "2026-04-24T18:23:51.198452+00:00",
-  "tool_count": 2,
-  "tools": [
-    {
-      "name": "sevdesk_get_invoice",
-      "module": "cognithor.mcp.sevdesk.tools",
-      "category": "sevdesk",
-      "description": "DACH accounting: fetch a single sevDesk invoice (Rechnung) by id.",
-      "dach_specific": true
-    },
-    {
-      "name": "sevdesk_list_contacts",
-      "module": "cognithor.mcp.sevdesk.tools",
-      "category": "sevdesk",
-      "description": "DACH accounting: list sevDesk contacts (Kunden/Lieferanten).",
-      "dach_specific": true
-    }
-  ]
+  "generated_at": "2026-04-26T12:13:31.047907+00:00",
+  "tool_count": 0,
+  "tools": []
 }

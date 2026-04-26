@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.94.1] — 2026-04-26
+
+### Fixed — v0.94.0 hotfix
+
+- `[autogen]` extra (root + `cognithor_bench`) now also pins
+  `autogen-ext[openai]==0.7.5`. Without it, `cognithor-bench --adapter autogen`
+  raised a misleading ImportError because `OpenAIChatCompletionClient` lives
+  in `autogen-ext`, not `autogen-agentchat`. Updated the adapter's error hint
+  accordingly. Surfaced by post-release dry-run audit (`docs/superpowers/reports/2026-04-26-v094-dry-run-audit.md` — BUG-1, HIGH).
+- `docs/integrations/catalog.json` no longer lists `sevdesk_get_invoice` and
+  `sevdesk_list_contacts`. The sevDesk MCP module uses a no-op `@mcp_tool`
+  marker decorator and is not yet wired into the live MCP server, so the
+  catalog over-promised capability. The generator script
+  (`scripts/generate_integrations_catalog.py`) now has an explicit
+  `NOT_YET_REGISTERED_PREFIXES` filter — re-add `cognithor.mcp.sevdesk` to
+  the catalog automatically when the connector lands. (BUG-2, MEDIUM.)
+- `insurance-agent-pack run --interview` no longer renders `§34d` as
+  mojibake on Windows consoles. CLI now reconfigures `sys.stdout`/`sys.stderr`
+  to UTF-8 on `win32` at entry. (BUG-3, LOW.)
+
 ## [0.94.0] — 2026-04-25
 
 ### Added — AutoGen Strategy Adoption

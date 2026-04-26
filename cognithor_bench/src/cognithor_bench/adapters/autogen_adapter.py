@@ -13,7 +13,9 @@ from cognithor_bench.adapters.base import ScenarioInput, ScenarioResult
 
 _AUTOGEN_IMPORT_ERROR_HINT = (
     "AutoGenAdapter requires `pip install cognithor[autogen]` "
-    "(or `pip install autogen-agentchat==0.7.5`)."
+    "which installs both `autogen-agentchat==0.7.5` and "
+    "`autogen-ext[openai]==0.7.5` "
+    "(autogen-ext supplies OpenAIChatCompletionClient)."
 )
 
 
