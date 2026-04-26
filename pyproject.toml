@@ -130,6 +130,9 @@ documents = [
 search = [
     "trafilatura>=2.0",
     "ddgs>=9.0,<10",
+    # trafilatura -> justext imports lxml.html.clean, which lxml 6.x moved
+    # into the separate lxml-html-clean package.
+    "lxml-html-clean>=0.4",
 ]
 cron = [
     "apscheduler>=3.10,<4",
