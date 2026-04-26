@@ -146,3 +146,73 @@ def derive_trace_meta(trace_id: str, events: list[dict[str, Any]]) -> dict[str, 
         "agent_count": len(agents),
         "n_failed_guardrails": n_failed_guardrails,
     }
+
+
+def derive_trace_stats(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compute Stats-Sidebar aggregates: per-agent tokens + guardrail summary."""
+    total_tokens = 0
+    agent_breakdown: dict[str, int] = {}
+    guardrail_pass = 0
+    guardrail_fail = 0
+    guardrail_retries = 0
+
+    # Track current agent per task_id so we can attribute tokens correctly.
+    task_agent: dict[str, str] = {}
+    for ev in events:
+        et = _event_type(ev)
+        details = _details(ev)
+        if et == "crew_task_started":
+            tid = str(details.get("task_id", ""))
+            role = details.get("agent_role")
+            if tid and isinstance(role, str):
+                task_agent[tid] = role
+        elif et == "crew_task_completed":
+            tid = str(details.get("task_id", ""))
+            tokens_val = details.get("tokens", 0) or 0
+            tok = 0
+            with contextlib.suppress(TypeError, ValueError):
+                tok = int(tokens_val)
+            total_tokens += tok
+            role = task_agent.get(tid)
+            if role:
+                agent_breakdown[role] = agent_breakdown.get(role, 0) + tok
+        elif et == "crew_guardrail_check":
+            verdict = details.get("verdict")
+            retry_count_val = details.get("retry_count", 0) or 0
+            rc = 0
+            with contextlib.suppress(TypeError, ValueError):
+                rc = int(retry_count_val)
+            guardrail_retries += rc
+            if verdict == "pass":
+                guardrail_pass += 1
+            elif verdict == "fail":
+                guardrail_fail += 1
+
+    total_duration_ms: float | None = None
+    if events:
+        # Attempt to compute total duration from first task_started → last task_completed.
+        first_ts: str | None = None
+        last_ts: str | None = None
+        for ev in events:
+            ts = ev.get("timestamp")
+            if not isinstance(ts, str):
+                continue
+            if first_ts is None:
+                first_ts = ts
+            last_ts = ts
+        if first_ts and last_ts:
+            with contextlib.suppress(ValueError):
+                t0 = datetime.fromisoformat(first_ts.replace("Z", "+00:00"))
+                t1 = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
+                total_duration_ms = (t1 - t0).total_seconds() * 1000.0
+
+    return {
+        "total_tokens": total_tokens,
+        "total_duration_ms": total_duration_ms,
+        "agent_breakdown": agent_breakdown,
+        "guardrail_summary": {
+            "pass": guardrail_pass,
+            "fail": guardrail_fail,
+            "retries": guardrail_retries,
+        },
+    }

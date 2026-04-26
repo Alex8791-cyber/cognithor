@@ -72,3 +72,41 @@ def test_derive_trace_meta_returns_running_status_for_unfinished_trace() -> None
     meta = derive_trace_meta("trace-bbb", bbb_events)
     assert meta["status"] == "running"
     assert meta["ended_at"] is None
+
+
+def test_derive_trace_stats_aggregates_per_agent_tokens() -> None:
+    from cognithor.api.crew_traces import derive_trace_stats, read_audit_lines
+
+    events, _ = read_audit_lines(FIXTURE)
+    aaa_events = [e for e in events if e["session_id"] == "trace-aaa"]
+    stats = derive_trace_stats(aaa_events)
+
+    assert stats["total_tokens"] == 1234
+    assert stats["agent_breakdown"] == {"researcher": 1234}
+    assert stats["guardrail_summary"]["pass"] == 0
+    assert stats["guardrail_summary"]["fail"] == 0
+    assert stats["guardrail_summary"]["retries"] == 0
+
+
+def test_derive_trace_stats_counts_guardrail_verdicts(tmp_path: Path) -> None:
+    from cognithor.api.crew_traces import derive_trace_stats, read_audit_lines
+
+    f = tmp_path / "stats.jsonl"
+    f.write_text(
+        "\n".join(
+            [
+                '{"session_id":"x","event_type":"crew_task_started","details":{"agent_role":"a","task_id":"t1"}}',
+                '{"session_id":"x","event_type":"crew_guardrail_check","details":{"verdict":"fail","retry_count":1}}',
+                '{"session_id":"x","event_type":"crew_guardrail_check","details":{"verdict":"pass","retry_count":0}}',
+                '{"session_id":"x","event_type":"crew_task_completed","details":{"task_id":"t1","tokens":500}}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    events, _ = read_audit_lines(f)
+    stats = derive_trace_stats(events)
+    assert stats["guardrail_summary"]["pass"] == 1
+    assert stats["guardrail_summary"]["fail"] == 1
+    assert stats["guardrail_summary"]["retries"] == 1
+    assert stats["agent_breakdown"] == {"a": 500}
