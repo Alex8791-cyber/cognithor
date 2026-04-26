@@ -26,6 +26,7 @@ from cognithor.crew.output import CrewOutput, TaskOutput, TokenUsageDict
 from cognithor.crew.process import CrewProcess
 from cognithor.crew.task import CrewTask
 from cognithor.crew.tool_resolver import resolve_tools
+from cognithor.crew.trace_bus import get_trace_bus
 from cognithor.models import ToolResult, WorkingMemory
 from cognithor.security.pii_redactor import PIIRedactor
 
@@ -93,34 +94,45 @@ def _get_audit_trail() -> Any:
 def append_audit(event: str, **fields: Any) -> None:
     """Emit a Crew-Layer audit event via the Hashline-Guard chain.
 
-    Falls back to a no-op when AuditTrail cannot be built (e.g. standalone
-    test without ~/.cognithor/ present). Test code monkey-patches this
-    callable directly rather than the AuditTrail inside it.
+    Falls back to a no-op for the JSONL persistence side when AuditTrail
+    cannot be built. The TraceBus pub/sub side runs unconditionally so live
+    Trace-UI subscribers see events even when ~/.cognithor/ is missing
+    (e.g. standalone test setups).
     """
     trail = _get_audit_trail()
-    if trail is None:
-        return
     session_id = fields.pop("trace_id", "crew")
     scrubbed = _scrub_audit_fields(fields)  # spec 8.2 / R4-I8 - PII before persist
+    if trail is not None:
+        try:
+            trail.record_event(session_id=session_id, event_type=event, details=scrubbed)
+        except Exception as exc:
+            # Spec 11.5: audit failures must be SURFACED, not silently swallowed.
+            log.warning(
+                "crew_audit_record_failed - Hashline-Guard chain may be incomplete",
+                extra={"event": event, "session_id": session_id},
+                exc_info=exc,
+            )
+            try:
+                from cognithor.telemetry.metrics import MetricsProvider
+
+                MetricsProvider.get_instance().counter(
+                    "cognithor_crew_audit_record_failures_total",
+                    1,
+                    labels={"reason": type(exc).__name__},
+                )
+            except (ImportError, AttributeError):
+                pass
+
+    # TraceBus publish — independent of JSONL success. Hot path; never raise.
     try:
-        trail.record_event(session_id=session_id, event_type=event, details=scrubbed)
-    except Exception as exc:
-        # Spec 11.5: audit failures must be SURFACED, not silently swallowed.
+        get_trace_bus().publish({"event_type": event, "trace_id": session_id, **scrubbed})
+    except Exception as exc:  # bus must never break audit
         log.warning(
-            "crew_audit_record_failed - Hashline-Guard chain may be incomplete",
-            extra={"event": event, "session_id": session_id},
+            "trace_bus_publish_failed event=%s trace_id=%s",
+            event,
+            session_id,
             exc_info=exc,
         )
-        try:
-            from cognithor.telemetry.metrics import MetricsProvider
-
-            MetricsProvider.get_instance().counter(
-                "cognithor_crew_audit_record_failures_total",
-                1,
-                labels={"reason": type(exc).__name__},
-            )
-        except (ImportError, AttributeError):
-            pass
 
 
 def order_tasks_sequential(tasks: list[CrewTask]) -> list[CrewTask]:
