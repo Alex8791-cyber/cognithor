@@ -1,0 +1,6 @@
+{"hash": "h1", "prev_hash": "0", "timestamp": "2026-04-26T10:00:00Z", "session_id": "trace-aaa", "event_type": "crew_kickoff_started", "details": {"n_tasks": 2, "process": "SEQUENTIAL"}}
+{"hash": "h2", "prev_hash": "h1", "timestamp": "2026-04-26T10:00:01Z", "session_id": "trace-aaa", "event_type": "crew_task_started", "details": {"task_id": "t1", "agent_role": "researcher"}}
+{NOT VALID JSON corrupt line
+{"hash": "h3", "prev_hash": "h2", "timestamp": "2026-04-26T10:00:05Z", "session_id": "trace-aaa", "event_type": "crew_task_completed", "details": {"task_id": "t1", "duration_ms": 4000.0, "tokens": 1234}}
+{"hash": "h4", "prev_hash": "h3", "timestamp": "2026-04-26T10:00:06Z", "session_id": "trace-aaa", "event_type": "crew_kickoff_completed", "details": {"n_tasks": 2}}
+{"hash": "h5", "prev_hash": "h4", "timestamp": "2026-04-26T10:01:00Z", "session_id": "trace-bbb", "event_type": "crew_kickoff_started", "details": {"n_tasks": 1, "process": "SEQUENTIAL"}}
