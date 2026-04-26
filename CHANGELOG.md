@@ -11,6 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - `cognithor.crew.trace_bus.TraceBus` — in-process pub/sub for crew audit events. Hooks `compiler.append_audit()` to live-broadcast crew_* events via lifecycle stream + per-trace topic subscriptions. Backpressure: drop-oldest at 1000-event queue cap (WP1 of v0.95.0 Trace-UI).
 - `cognithor.security.owner.require_owner()` — owner-token gating for Trace-UI surfaces. Reads `COGNITHOR_OWNER_USER_ID` env var with `pyproject.toml` author-name fallback.
+- Three FastAPI endpoints under `/api/crew/`: `traces` (list), `trace/{id}` (full events), `trace/{id}/stats` (aggregates). Owner-gated via `X-Cognithor-User` header. Reads `~/.cognithor/logs/audit.jsonl` directly; corrupt lines are skipped with the count surfaced via `meta.skipped_lines` (WP2 of v0.95.0 Trace-UI).
+- `docs/api/crew-traces.md` — endpoint reference.
 
 ## [0.94.1] — 2026-04-26
 
