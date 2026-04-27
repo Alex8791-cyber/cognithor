@@ -16,7 +16,7 @@ import pytest
 
 pytest.importorskip("chromadb")
 
-from cognithor.identity.cognitio.vector_store import VectorStore  # noqa: E402
+from cognithor.identity.cognitio.vector_store import VectorStore
 
 # ---------------------------------------------------------------------------
 # Helpers
