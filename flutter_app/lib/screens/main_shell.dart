@@ -22,6 +22,7 @@ import 'package:cognithor_ui/widgets/global_search_dialog.dart';
 import 'package:cognithor_ui/widgets/responsive_scaffold.dart';
 import 'package:cognithor_ui/widgets/connection_guard.dart';
 import 'package:cognithor_ui/widgets/robot_office/pip_overlay.dart';
+import 'package:cognithor_ui/screens/trace/trace_list_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -38,6 +39,7 @@ class _MainShellState extends State<MainShell> {
     AdminHubScreen(),
     IdentityScreen(),
     KanbanScreen(),
+    TraceListScreen(),
   ];
 
   void _openSearch() {
@@ -132,18 +134,24 @@ class _MainShellState extends State<MainShell> {
         label: l.kanban,
         shortcut: '^6',
       ),
+      const NavItem(
+        icon: Icons.timeline_outlined,
+        selectedIcon: Icons.timeline,
+        label: 'Traces',
+        shortcut: '^7',
+      ),
       if (leadsEngineEnabled)
         NavItem(
           icon: Icons.track_changes_outlined,
           selectedIcon: Icons.track_changes,
           label: l.redditLeads,
-          shortcut: '^7',
+          shortcut: '^8',
         ),
       NavItem(
         icon: Icons.biotech_outlined,
         selectedIcon: Icons.biotech,
         label: l.research,
-        shortcut: '^8',
+        shortcut: leadsEngineEnabled ? '^9' : '^8',
       ),
     ];
 
@@ -169,11 +177,13 @@ class _MainShellState extends State<MainShell> {
               () => _navigateTab(4),
           const SingleActivator(LogicalKeyboardKey.digit6, control: true):
               () => _navigateTab(5),
+          const SingleActivator(LogicalKeyboardKey.digit7, control: true):
+              () => _navigateTab(6),
           if (leadsEngineEnabled)
-            const SingleActivator(LogicalKeyboardKey.digit7, control: true):
-                () => _navigateTab(6),
-          const SingleActivator(LogicalKeyboardKey.digit8, control: true):
-              () => _navigateTab(leadsEngineEnabled ? 7 : 6),
+            const SingleActivator(LogicalKeyboardKey.digit8, control: true):
+                () => _navigateTab(7),
+          const SingleActivator(LogicalKeyboardKey.digit9, control: true):
+              () => _navigateTab(leadsEngineEnabled ? 8 : 7),
         },
         child: Focus(
           autofocus: true,
