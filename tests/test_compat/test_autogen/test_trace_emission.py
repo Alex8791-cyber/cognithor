@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from cognithor.compat.autogen import AssistantAgent
-from cognithor.crew.trace_bus import TraceBus, get_trace_bus
+from cognithor.crew.trace_bus import get_trace_bus
 
 
 @pytest.mark.asyncio
@@ -39,9 +39,6 @@ async def test_assistant_agent_run_publishes_kickoff_events() -> None:
     finally:
         bus.unsubscribe(handle)
 
-    event_types = [
-        c.get("event_type") or c.get("event") for c in captured
-    ]
     # The shim's bridge instantiates a real Crew; if Crew is mocked, audit
     # events come from the bridge OR not at all. We assert on intent —
     # at least the bus subscription mechanism is functional.
@@ -52,10 +49,12 @@ async def test_assistant_agent_run_publishes_kickoff_events() -> None:
 def test_run_path_uses_real_crew_kickoff() -> None:
     """Smoke: run_single_task() in _bridge.py imports cognithor.crew.Crew."""
     from cognithor.compat.autogen import _bridge
+
     src = _bridge.run_single_task.__module__
     assert "cognithor.compat.autogen._bridge" in src
     # Source-level check: the function constructs cognithor.crew.Crew.
     import inspect
+
     source = inspect.getsource(_bridge.run_single_task)
     assert "Crew(" in source, "bridge must instantiate cognithor.crew.Crew"
     assert "kickoff_async" in source, "bridge must call kickoff_async"
