@@ -3,13 +3,20 @@ tests/test_identity/cognitio/test_vector_store.py
 
 Integration-light tests for cognithor.identity.cognitio.vector_store.
 Uses a real ChromaDB PersistentClient with tmp_path for full isolation.
+
+Skipped when chromadb is not installed — it lives in the `[identity]`
+optional-dependency group of pyproject.toml, so CI's default-deps test legs
+won't have it. Run `pip install -e ".[identity]"` (or just `pip install
+chromadb`) to enable these tests.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from cognithor.identity.cognitio.vector_store import VectorStore
+pytest.importorskip("chromadb")
+
+from cognithor.identity.cognitio.vector_store import VectorStore  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers
