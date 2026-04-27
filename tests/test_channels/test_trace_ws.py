@@ -8,8 +8,9 @@ a uvicorn server.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -33,7 +34,7 @@ async def test_trace_subscriber_state_creates_handles_dict() -> None:
 async def test_trace_subscriber_state_clear_unsubscribes_everything() -> None:
     """clear_all() should unsubscribe lifecycle + every topic from the bus."""
     from cognithor.channels.webui import TraceSubscriberState
-    from cognithor.crew.trace_bus import TraceBus, get_trace_bus
+    from cognithor.crew.trace_bus import get_trace_bus
 
     bus = get_trace_bus()
     state = TraceSubscriberState()
@@ -41,7 +42,7 @@ async def test_trace_subscriber_state_clear_unsubscribes_everything() -> None:
 
     state.lifecycle_handle = bus.subscribe_lifecycle(queue)
     state.topic_handles["trace-x"] = bus.subscribe("trace-x", queue)
-    assert len(bus._subscribers) == 2  # noqa: SLF001 — internal check
+    assert len(bus._subscribers) == 2  # internal check — SLF001 not enabled
 
     state.clear_all(bus)
     assert state.lifecycle_handle is None
@@ -49,7 +50,9 @@ async def test_trace_subscriber_state_clear_unsubscribes_everything() -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_lifecycle_subscribe_for_owner_creates_handle(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_handle_lifecycle_subscribe_for_owner_creates_handle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from cognithor.channels.webui import (
         TraceSubscriberState,
         handle_trace_subscribe_message,
@@ -201,10 +204,8 @@ async def test_pump_queue_to_websocket_forwards_lifecycle_events() -> None:
     bus.publish({"event_type": "crew_kickoff_started", "trace_id": "abc", "n_tasks": 3})
     await asyncio.sleep(0.05)
     pump_task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await pump_task
-    except asyncio.CancelledError:
-        pass
 
     state.clear_all(bus)
     assert sender.call_count >= 1
@@ -214,7 +215,9 @@ async def test_pump_queue_to_websocket_forwards_lifecycle_events() -> None:
 
 
 @pytest.mark.asyncio
-async def test_clear_all_after_subscribes_releases_bus_subscriptions(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_clear_all_after_subscribes_releases_bus_subscriptions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verify TraceSubscriberState.clear_all() removes all bus subscriptions
     so a disconnect doesn't leak."""
     from cognithor.channels.webui import (
@@ -231,26 +234,35 @@ async def test_clear_all_after_subscribes_releases_bus_subscriptions(monkeypatch
     # Subscribe to lifecycle + 2 topics
     await handle_trace_subscribe_message(
         message={"type": "crew_lifecycle_subscribe"},
-        state=state, bus=bus, user_id="owner", sender=sender,
+        state=state,
+        bus=bus,
+        user_id="owner",
+        sender=sender,
     )
     await handle_trace_subscribe_message(
         message={"type": "crew_subscribe", "trace_id": "t1"},
-        state=state, bus=bus, user_id="owner", sender=sender,
+        state=state,
+        bus=bus,
+        user_id="owner",
+        sender=sender,
     )
     await handle_trace_subscribe_message(
         message={"type": "crew_subscribe", "trace_id": "t2"},
-        state=state, bus=bus, user_id="owner", sender=sender,
+        state=state,
+        bus=bus,
+        user_id="owner",
+        sender=sender,
     )
 
     # Confirm bus has 3 distinct topic entries.
-    assert "__lifecycle__" in bus._subscribers  # noqa: SLF001
-    assert "t1" in bus._subscribers  # noqa: SLF001
-    assert "t2" in bus._subscribers  # noqa: SLF001
+    assert "__lifecycle__" in bus._subscribers
+    assert "t1" in bus._subscribers
+    assert "t2" in bus._subscribers
 
     # Simulate WebSocket disconnect cleanup.
     state.clear_all(bus)
 
     # Bus should now have no subscribers in any of these topics.
-    assert "__lifecycle__" not in bus._subscribers  # noqa: SLF001
-    assert "t1" not in bus._subscribers  # noqa: SLF001
-    assert "t2" not in bus._subscribers  # noqa: SLF001
+    assert "__lifecycle__" not in bus._subscribers
+    assert "t1" not in bus._subscribers
+    assert "t2" not in bus._subscribers

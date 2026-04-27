@@ -135,16 +135,12 @@ async def handle_trace_subscribe_message(
     try:
         require_owner(user_id)
     except OwnerRequiredError:
-        await sender(
-            {"type": "error", "code": "owner_only", "context": msg_type}
-        )
+        await sender({"type": "error", "code": "owner_only", "context": msg_type})
         return "owner_only"
 
     if msg_type == "crew_lifecycle_subscribe":
         if state.lifecycle_handle is None:
-            queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
-                maxsize=_TRACE_QUEUE_MAXSIZE
-            )
+            queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=_TRACE_QUEUE_MAXSIZE)
             state.lifecycle_handle = bus.subscribe_lifecycle(queue)
         return None
 
@@ -191,7 +187,7 @@ async def pump_queue_to_websocket(
             await sender({"type": frame_type, "payload": record})
         except asyncio.CancelledError:
             raise
-        except Exception as exc:  # noqa: BLE001 — pump must survive
+        except Exception as exc:  # pump must survive sender errors
             log.warning(
                 "trace_ws_send_failed type=%s err=%s",
                 frame_type,
@@ -639,7 +635,8 @@ class WebUIChannel(Channel):
                                     if getattr(t, "_trace_pump_topic", None) == trace_id:
                                         t.cancel()
                                         trace_pumps.remove(t)
-                            continue  # crew_* messages handled; do NOT fall through to _handle_ws_message
+                            # crew_* handled — do NOT fall through to _handle_ws_message
+                            continue
                         await self._handle_ws_message(websocket, session_id, msg)
                 except WebSocketDisconnect:
                     log.info("ws_disconnected", session_id=session_id)
