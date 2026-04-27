@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from cognithor.channels.base import Channel, MessageHandler, StatusType
-from cognithor.crew.trace_bus import SubscriptionHandle, TraceBus
+from cognithor.crew.trace_bus import SubscriptionHandle, TraceBus, get_trace_bus
 from cognithor.models import IncomingMessage, OutgoingMessage, PlannedAction
 from cognithor.security.owner import OwnerRequiredError, require_owner
 from cognithor.security.rate_limiter import RateLimiter
@@ -574,10 +574,62 @@ class WebUIChannel(Channel):
                 self._connections[session_id] = websocket
                 log.info("ws_connected", session_id=session_id)
 
+                trace_state = TraceSubscriberState()
+                trace_pumps: list[asyncio.Task[None]] = []
+                trace_bus = get_trace_bus()
+                # Owner identity for WS auth: WebUI uses a shared API token,
+                # so all sessions share user_id="web_user". Operators wanting
+                # access to live Crew traces must set COGNITHOR_OWNER_USER_ID=web_user.
+                trace_user_id = "web_user"
+
                 try:
                     while True:
                         data = await websocket.receive_text()
                         msg = json.loads(data)
+                        msg_type = msg.get("type", "")
+                        if msg_type in {
+                            "crew_lifecycle_subscribe",
+                            "crew_subscribe",
+                            "crew_unsubscribe",
+                        }:
+                            err = await handle_trace_subscribe_message(
+                                message=msg,
+                                state=trace_state,
+                                bus=trace_bus,
+                                user_id=trace_user_id,
+                                sender=websocket.send_json,
+                            )
+                            if err is None and msg_type == "crew_lifecycle_subscribe":
+                                if trace_state.lifecycle_handle is not None and not any(
+                                    getattr(t, "_trace_pump_topic", None) == "__lifecycle__"
+                                    for t in trace_pumps
+                                ):
+                                    queue = trace_state.lifecycle_handle.queue
+                                    task = asyncio.create_task(
+                                        pump_queue_to_websocket(
+                                            queue, websocket.send_json, "crew_lifecycle"
+                                        )
+                                    )
+                                    task._trace_pump_topic = "__lifecycle__"  # type: ignore[attr-defined]
+                                    trace_pumps.append(task)
+                            elif err is None and msg_type == "crew_subscribe":
+                                trace_id = msg.get("trace_id")
+                                if isinstance(trace_id, str) and trace_id in trace_state.topic_handles:
+                                    queue = trace_state.topic_handles[trace_id].queue
+                                    task = asyncio.create_task(
+                                        pump_queue_to_websocket(
+                                            queue, websocket.send_json, "crew_event"
+                                        )
+                                    )
+                                    task._trace_pump_topic = trace_id  # type: ignore[attr-defined]
+                                    trace_pumps.append(task)
+                            elif err is None and msg_type == "crew_unsubscribe":
+                                trace_id = msg.get("trace_id")
+                                for t in list(trace_pumps):
+                                    if getattr(t, "_trace_pump_topic", None) == trace_id:
+                                        t.cancel()
+                                        trace_pumps.remove(t)
+                            continue  # crew_* messages handled; do NOT fall through to _handle_ws_message
                         await self._handle_ws_message(websocket, session_id, msg)
                 except WebSocketDisconnect:
                     log.info("ws_disconnected", session_id=session_id)
@@ -592,6 +644,9 @@ class WebUIChannel(Channel):
                 except Exception as exc:
                     log.error("ws_error", error=str(exc), session_id=session_id)
                 finally:
+                    for task in trace_pumps:
+                        task.cancel()
+                    trace_state.clear_all(trace_bus)
                     self._connections.pop(session_id, None)
 
             # --- Config-API Routes ---
