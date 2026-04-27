@@ -31,6 +31,7 @@ from uuid import uuid4
 from cognithor.channels.base import Channel, MessageHandler, StatusType
 from cognithor.crew.trace_bus import SubscriptionHandle, TraceBus
 from cognithor.models import IncomingMessage, OutgoingMessage, PlannedAction
+from cognithor.security.owner import OwnerRequiredError, require_owner
 from cognithor.security.rate_limiter import RateLimiter
 from cognithor.security.token_store import get_token_store
 from cognithor.utils.logging import get_logger
@@ -103,6 +104,71 @@ class TraceSubscriberState:
         for handle in list(self.topic_handles.values()):
             bus.unsubscribe(handle)
         self.topic_handles.clear()
+
+
+# Bounded queue size for trace subscribers; matches TraceBus default.
+_TRACE_QUEUE_MAXSIZE = 1000
+
+
+async def handle_trace_subscribe_message(
+    *,
+    message: dict[str, Any],
+    state: TraceSubscriberState,
+    bus: TraceBus,
+    user_id: str | None,
+    sender: Any,
+) -> str | None:
+    """Handle a crew_*_subscribe / crew_unsubscribe message.
+
+    Returns None on success, or a short error code string on failure
+    (also sent to the client via `sender` as an error frame).
+    """
+    msg_type = message.get("type")
+    if msg_type not in {
+        "crew_lifecycle_subscribe",
+        "crew_subscribe",
+        "crew_unsubscribe",
+    }:
+        return "unknown_message_type"
+
+    # Owner-gate every trace WS message.
+    try:
+        require_owner(user_id)
+    except OwnerRequiredError:
+        await sender(
+            {"type": "error", "code": "owner_only", "context": msg_type}
+        )
+        return "owner_only"
+
+    if msg_type == "crew_lifecycle_subscribe":
+        if state.lifecycle_handle is None:
+            queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
+                maxsize=_TRACE_QUEUE_MAXSIZE
+            )
+            state.lifecycle_handle = bus.subscribe_lifecycle(queue)
+        return None
+
+    if msg_type == "crew_subscribe":
+        trace_id = message.get("trace_id")
+        if not isinstance(trace_id, str) or not trace_id:
+            await sender({"type": "error", "code": "invalid_trace_id"})
+            return "invalid_trace_id"
+        if trace_id in state.topic_handles:
+            return None  # idempotent
+        queue = asyncio.Queue(maxsize=_TRACE_QUEUE_MAXSIZE)
+        state.topic_handles[trace_id] = bus.subscribe(trace_id, queue)
+        return None
+
+    if msg_type == "crew_unsubscribe":
+        trace_id = message.get("trace_id")
+        if not isinstance(trace_id, str) or not trace_id:
+            return None  # silently ignore
+        handle = state.topic_handles.pop(trace_id, None)
+        if handle is not None:
+            bus.unsubscribe(handle)
+        return None
+
+    return "unknown_message_type"  # unreachable
 
 
 # ============================================================================
