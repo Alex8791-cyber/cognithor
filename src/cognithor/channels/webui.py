@@ -614,7 +614,17 @@ class WebUIChannel(Channel):
                                     trace_pumps.append(task)
                             elif err is None and msg_type == "crew_subscribe":
                                 trace_id = msg.get("trace_id")
-                                if isinstance(trace_id, str) and trace_id in trace_state.topic_handles:
+                                # Pump-existence check mirrors the lifecycle branch above:
+                                # handle_trace_subscribe_message is idempotent on re-subscribe, so
+                                # we must not spawn a second pump for the same topic.
+                                if (
+                                    isinstance(trace_id, str)
+                                    and trace_id in trace_state.topic_handles
+                                    and not any(
+                                        getattr(t, "_trace_pump_topic", None) == trace_id
+                                        for t in trace_pumps
+                                    )
+                                ):
                                     queue = trace_state.topic_handles[trace_id].queue
                                     task = asyncio.create_task(
                                         pump_queue_to_websocket(
