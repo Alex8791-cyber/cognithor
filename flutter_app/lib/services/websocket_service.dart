@@ -55,6 +55,13 @@ abstract final class WsType {
 
   // Kanban
   static const kanbanUpdate = 'kanban_update';
+
+  // Crew / Trace
+  static const String crewLifecycle = 'crew_lifecycle';
+  static const String crewEvent = 'crew_event';
+  static const String crewLifecycleSubscribe = 'crew_lifecycle_subscribe';
+  static const String crewSubscribe = 'crew_subscribe';
+  static const String crewUnsubscribe = 'crew_unsubscribe';
 }
 
 // ---------------------------------------------------------------------------
