@@ -15,6 +15,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `docs/api/crew-traces.md` — endpoint reference.
 - WebSocket message types `crew_lifecycle_subscribe`, `crew_subscribe`, `crew_unsubscribe` for live Crew event streaming. Owner-gated; non-owner subscribes receive `{type:"error", code:"owner_only"}` and are ignored. Disconnect auto-cleans all subscriptions (WP3 of v0.95.0 Trace-UI).
 - Outbound frames: `{type:"crew_lifecycle", payload:<event>}` for lifecycle stream, `{type:"crew_event", payload:<event>}` for per-trace topic stream.
+- Flutter Trace-UI: `TraceListScreen` (master) + `TraceDetailScreen` (detail) with vertical timeline-log + stats sidebar (per-agent token breakdown, guardrail summary, elapsed). REST-fetch on open, WebSocket subscribe for live updates, auto-cleanup on unpin/disconnect (WP4 of v0.95.0).
+- `tests/test_compat/test_autogen/test_trace_emission.py` — verifies `cognithor.compat.autogen.AssistantAgent.run()` routes through `cognithor.crew.Crew` so AutoGen-shim runs surface in Trace-UI (WP5 of v0.95.0).
+- New i18n keys: `navTraces`, `traceStatus*`, `traceFilter*`, `traceEmpty`, `traceNotFound` (en + de + ar + zh).
 
 ## [0.94.1] — 2026-04-26
 
