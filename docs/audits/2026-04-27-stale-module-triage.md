@@ -7,11 +7,11 @@ Audit of 14 backend modules under `src/cognithor/` with no commits since 2026-04
 | Category | Count | Modules |
 |---|---|---|
 | **KEEP-ACTIVE** | 9 | `aacs`, `forensics`, `governance`, `graph`, `hashline`, `hitl`, `kanban`, `osint`, `system` |
-| **KEEP-DOCUMENTED** | 3 | `documents`, `proactive`, `sdk` |
-| **VERIFY-WIRING** | 2 | `benchmark`, `ui` |
-| **ARCHIVE-CANDIDATE** | 0 | — |
+| **KEEP-DOCUMENTED** | 3 | `documents`, `proactive`, `sdk` (all stability-docstring'd in `4573dc21`) |
+| **VERIFY-WIRING** | 1 | `benchmark` |
+| **ARCHIVED / DELETED** | 1 | ~~`ui`~~ (deleted PR #162) |
 
-**No outright dead code.** Every stale module either has live production imports or carries an unanswered question.
+> **Update 2026-04-27 evening:** `ui` deleted, KEEP-DOCUMENTED stability docstrings written, ARCHITECTURE.md gains HITL + Forensics sections, false-positive TODO counts in `kanban/` + `proactive/` corrected. See per-module entries for trail.
 
 ## Per-module findings
 
@@ -35,8 +35,7 @@ Audit of 14 backend modules under `src/cognithor/` with no commits since 2026-04
 - **Purpose:** Document parsing/chunking + Typst template wrapper (2 files, 215 LOC).
 - **External import count:** 1 (used by MCP media tools).
 - **Test coverage:** 1 test ref.
-- **Recommendation:** Add to `src/cognithor/documents/__init__.py`:
-  > *"Stable Typst-template wrapper used by `cognithor.mcp.media`. Feature-complete; expand only when adding new template formats."*
+- **Recommendation:** Stability docstring added in commit `4573dc21`.
 
 ### `forensics` — **KEEP-ACTIVE**
 
@@ -75,10 +74,10 @@ Audit of 14 backend modules under `src/cognithor/` with no commits since 2026-04
 
 ### `kanban` — **KEEP-ACTIVE**
 
-- **Purpose:** Kanban board state machine + workflows (6 files, 956 LOC, 7 TODOs — highest TODO density in the stale set).
+- **Purpose:** Kanban board state machine + workflows (6 files, 956 LOC).
 - **External import count:** 8.
 - **Test coverage:** 13 test refs; 133 doc refs.
-- **Recommendation:** No archival. **Resolve the 7 TODOs in `kanban/models.py` and `kanban/engine.py`** as a separate cleanup task — likely unblocks blocked work.
+- **Recommendation:** No archival, no follow-up needed. The "7 TODOs" reported in the original audit were a false positive — they were enum members named `TaskStatus.TODO` and references to it (e.g. `TaskStatus.TODO: {TaskStatus.IN_PROGRESS, ...}`), not `# TODO:` work-marker comments.
 
 ### `osint` — **KEEP-ACTIVE**
 
@@ -91,17 +90,15 @@ Audit of 14 backend modules under `src/cognithor/` with no commits since 2026-04
 
 - **Purpose:** Event-driven heartbeat, autonomous task scheduling (1 file, 669 LOC). Single-file, feature-complete.
 - **External import count:** 2 (used by cron engine).
-- **Test coverage:** 3 test refs; 2 TODOs in `__init__.py`.
-- **Recommendation:** Resolve the 2 TODOs (probably trivial), then add stability docstring:
-  > *"Feature-complete. Used by `cognithor.cron.engine`. Expand only when adding new heartbeat strategies."*
+- **Test coverage:** 3 test refs.
+- **Recommendation:** Stability docstring added in commit `4573dc21`. The "2 TODOs" reported in the original audit were enum members (`EventType.TODO_REMINDER`) and references to it, not work-marker comments.
 
 ### `sdk` — **KEEP-DOCUMENTED**
 
 - **Purpose:** Developer-facing decorators + scaffolding helpers (5 files, 649 LOC).
 - **External import count:** 0 in production (decorator-only — developer-time API).
 - **Test coverage:** 10 test refs.
-- **Recommendation:** Add docstring to `src/cognithor/sdk/__init__.py`:
-  > *"Public developer SDK — `@tool`, `@skill`, scaffolding helpers. Used at definition time, not runtime. Stable API; bump major when changing decorator signatures."*
+- **Recommendation:** Stability docstring added in commit `4573dc21`.
 
 ### `system` — **KEEP-ACTIVE**
 
@@ -110,24 +107,21 @@ Audit of 14 backend modules under `src/cognithor/` with no commits since 2026-04
 - **Test coverage:** 17 test refs; 230 doc refs (highest doc density in the stale set).
 - **Recommendation:** No action.
 
-### `ui` — **VERIFY-WIRING**
+### `ui` — ~~VERIFY-WIRING~~ → **DELETED** (PR #162, commit `c95cd729`)
 
-- **Purpose:** Near-empty package (`__init__.py` = `# Jarvis UI utilities`). 2 files, 168 LOC.
-- **External import count:** 0 in production.
-- **Test coverage:** 1 test ref.
-- **Runtime relevance:** None detectable.
-- **Questions for the user:**
-  1. Is this a deprecated stub from the pre-Cognithor rebrand era?
-  2. Should it host shared UI helper functions, or be removed?
-  3. The single test file — should it migrate to `flutter_app/test/` or be deleted?
+User confirmed deprecation. The package + its single experimental file
+(`session_manager.py` — a 6th-tier Core Memory + SQLite persistence
+experiment that was never wired in) plus the only consumer
+(`tests/test_v036/test_sessions.py`) were removed. Full backend regression
+green post-deletion (14 454 passed).
 
 ## Next-action checklist
 
-- [ ] Add stability docstrings to `documents/__init__.py`, `proactive/__init__.py`, `sdk/__init__.py` (KEEP-DOCUMENTED).
-- [ ] Resolve `kanban/` (7 TODOs) and `proactive/` (2 TODOs) hot-spots.
-- [ ] Decide `benchmark/`: archive vs. keep-for-ARC-AGI-3.
-- [ ] Decide `ui/`: stub for shared helpers, deprecated remnant, or delete?
-- [ ] Add brief sections to `docs/ARCHITECTURE.md` for `forensics/` (replay capability) and `hitl/` (approval flow).
+- [x] ~~Add stability docstrings to `documents/__init__.py`, `proactive/__init__.py`, `sdk/__init__.py`~~ — done (`4573dc21`).
+- [x] ~~Resolve `kanban/` (7 TODOs) and `proactive/` (2 TODOs) hot-spots~~ — false positive, the "TODOs" were enum members named `TODO`, not work markers.
+- [x] ~~Decide `ui/`~~ — deleted (PR #162).
+- [x] ~~Add brief sections to `docs/ARCHITECTURE.md` for `forensics/` and `hitl/`~~ — done (`adcd6314`).
+- [ ] Decide `benchmark/`: archive vs. keep-for-ARC-AGI-3 (still pending — user judgment call).
 
 ## Notes
 
