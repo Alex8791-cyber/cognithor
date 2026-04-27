@@ -13,6 +13,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `cognithor.security.owner.require_owner()` — owner-token gating for Trace-UI surfaces. Reads `COGNITHOR_OWNER_USER_ID` env var with `pyproject.toml` author-name fallback.
 - Three FastAPI endpoints under `/api/crew/`: `traces` (list), `trace/{id}` (full events), `trace/{id}/stats` (aggregates). Owner-gated via `X-Cognithor-User` header. Reads `~/.cognithor/logs/audit.jsonl` directly; corrupt lines are skipped with the count surfaced via `meta.skipped_lines` (WP2 of v0.95.0 Trace-UI).
 - `docs/api/crew-traces.md` — endpoint reference.
+- WebSocket message types `crew_lifecycle_subscribe`, `crew_subscribe`, `crew_unsubscribe` for live Crew event streaming. Owner-gated; non-owner subscribes receive `{type:"error", code:"owner_only"}` and are ignored. Disconnect auto-cleans all subscriptions (WP3 of v0.95.0 Trace-UI).
+- Outbound frames: `{type:"crew_lifecycle", payload:<event>}` for lifecycle stream, `{type:"crew_event", payload:<event>}` for per-trace topic stream.
 
 ## [0.94.1] — 2026-04-26
 
