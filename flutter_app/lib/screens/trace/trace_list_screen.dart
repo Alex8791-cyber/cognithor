@@ -74,29 +74,30 @@ class _TraceListScreenState extends State<TraceListScreen> {
             child: provider.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.traces.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No traces yet',
-                          style: TextStyle(color: Color(0xFF6B7A99)),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: provider.traces.length,
-                        itemBuilder: (ctx, i) {
-                          final meta = provider.traces[i];
-                          return TraceCard(
-                            meta: meta,
-                            onTap: () {
-                              Navigator.of(ctx).push(
-                                MaterialPageRoute(
-                                  builder: (_) => TraceDetailScreen(traceId: meta.traceId),
-                                ),
-                              );
-                            },
+                ? const Center(
+                    child: Text(
+                      'No traces yet',
+                      style: TextStyle(color: Color(0xFF6B7A99)),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: provider.traces.length,
+                    itemBuilder: (ctx, i) {
+                      final meta = provider.traces[i];
+                      return TraceCard(
+                        meta: meta,
+                        onTap: () {
+                          Navigator.of(ctx).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  TraceDetailScreen(traceId: meta.traceId),
+                            ),
                           );
                         },
-                      ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

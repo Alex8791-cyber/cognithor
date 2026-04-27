@@ -4,7 +4,8 @@
 /// deleting, and renaming conversations.
 library;
 
-import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint, kDebugMode;
+import 'package:flutter/foundation.dart'
+    show ChangeNotifier, debugPrint, kDebugMode;
 import 'package:cognithor_ui/services/api_client.dart';
 
 void _log(String msg) {
@@ -210,12 +211,11 @@ class SessionsProvider extends ChangeNotifier {
     }
     // Sort: 'Allgemein' last, rest alphabetical
     final sorted = Map<String, List<Map<String, dynamic>>>.fromEntries(
-      grouped.entries.toList()
-        ..sort((a, b) {
-          if (a.key == 'Allgemein') return 1;
-          if (b.key == 'Allgemein') return -1;
-          return a.key.compareTo(b.key);
-        }),
+      grouped.entries.toList()..sort((a, b) {
+        if (a.key == 'Allgemein') return 1;
+        if (b.key == 'Allgemein') return -1;
+        return a.key.compareTo(b.key);
+      }),
     );
     return sorted;
   }

@@ -26,7 +26,11 @@ class _TemplatePickerState extends State<TemplatePicker> {
     final templates = await context.read<RedditLeadsProvider>().getTemplates(
       subreddit: widget.subreddit,
     );
-    if (mounted) setState(() { _templates = templates; _loading = false; });
+    if (mounted)
+      setState(() {
+        _templates = templates;
+        _loading = false;
+      });
   }
 
   @override
@@ -46,28 +50,36 @@ class _TemplatePickerState extends State<TemplatePicker> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _templates.isEmpty
-                  ? Center(child: Text(l.noTemplates))
-                  : ListView.builder(
-                      controller: scrollController,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _templates.length,
-                      itemBuilder: (context, i) {
-                        final t = _templates[i];
-                        return ListTile(
-                          title: Text(t['name']?.toString() ?? ''),
-                          subtitle: Text(
-                            (t['template_text']?.toString() ?? '').replaceAll('\n', ' '),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: Text(
-                            '${t['use_count'] ?? 0}x',
-                            style: TextStyle(color: CognithorTheme.textSecondary, fontSize: 11),
-                          ),
-                          onTap: () => Navigator.of(context).pop(t['template_text']?.toString() ?? ''),
-                        );
-                      },
-                    ),
+              ? Center(child: Text(l.noTemplates))
+              : ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _templates.length,
+                  itemBuilder: (context, i) {
+                    final t = _templates[i];
+                    return ListTile(
+                      title: Text(t['name']?.toString() ?? ''),
+                      subtitle: Text(
+                        (t['template_text']?.toString() ?? '').replaceAll(
+                          '\n',
+                          ' ',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Text(
+                        '${t['use_count'] ?? 0}x',
+                        style: TextStyle(
+                          color: CognithorTheme.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                      onTap: () => Navigator.of(
+                        context,
+                      ).pop(t['template_text']?.toString() ?? ''),
+                    );
+                  },
+                ),
         );
       },
     );

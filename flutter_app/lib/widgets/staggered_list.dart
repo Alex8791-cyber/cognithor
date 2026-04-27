@@ -38,10 +38,8 @@ class _StaggeredListState extends State<StaggeredList>
   void _initAnimations() {
     _controllers = List.generate(
       widget.children.length,
-      (index) => AnimationController(
-        vsync: this,
-        duration: widget.animationDuration,
-      ),
+      (index) =>
+          AnimationController(vsync: this, duration: widget.animationDuration),
     );
 
     _fadeAnimations = _controllers.map((controller) {
@@ -55,10 +53,7 @@ class _StaggeredListState extends State<StaggeredList>
       return CurvedAnimation(
         parent: controller,
         curve: widget.curve,
-      ).drive(Tween<Offset>(
-        begin: const Offset(0, 20),
-        end: Offset.zero,
-      ));
+      ).drive(Tween<Offset>(begin: const Offset(0, 20), end: Offset.zero));
     }).toList();
   }
 
@@ -132,10 +127,7 @@ class _StaggeredItem extends AnimatedWidget {
   Widget build(BuildContext context) {
     return Transform.translate(
       offset: slideAnimation.value,
-      child: Opacity(
-        opacity: fadeAnimation.value,
-        child: child,
-      ),
+      child: Opacity(opacity: fadeAnimation.value, child: child),
     );
   }
 }

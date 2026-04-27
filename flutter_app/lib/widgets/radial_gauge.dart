@@ -52,9 +52,10 @@ class _RadialGaugeState extends State<RadialGauge>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _animation = Tween<double>(begin: 0, end: widget.value).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
-    );
+    _animation = Tween<double>(
+      begin: 0,
+      end: widget.value,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
     _previousValue = widget.value;
     _controller.forward();
   }
@@ -64,12 +65,10 @@ class _RadialGaugeState extends State<RadialGauge>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
       _previousValue = _animation.value;
-      _animation = Tween<double>(
-        begin: _previousValue,
-        end: widget.value,
-      ).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
-      );
+      _animation = Tween<double>(begin: _previousValue, end: widget.value)
+          .animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
+          );
       _controller
         ..reset()
         ..forward();
@@ -90,8 +89,8 @@ class _RadialGaugeState extends State<RadialGauge>
       listenable: _animation,
       builder: (context, child) {
         final animatedValue = _animation.value.clamp(0.0, 1.0);
-        final displayText = widget.valueText ??
-            '${(animatedValue * 100).round()}%';
+        final displayText =
+            widget.valueText ?? '${(animatedValue * 100).round()}%';
 
         return SizedBox(
           width: widget.size,
@@ -191,5 +190,7 @@ class _RadialGaugePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RadialGaugePainter old) =>
-      old.value != value || old.color != color || old.strokeWidth != strokeWidth;
+      old.value != value ||
+      old.color != color ||
+      old.strokeWidth != strokeWidth;
 }

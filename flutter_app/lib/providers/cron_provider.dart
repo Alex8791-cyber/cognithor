@@ -25,15 +25,15 @@ class CronJob {
   });
 
   factory CronJob.fromJson(Map<String, dynamic> j) => CronJob(
-        name: j['name'] as String? ?? '',
-        schedule: j['schedule'] as String? ?? '',
-        prompt: j['prompt'] as String? ?? '',
-        channel: j['channel'] as String? ?? 'telegram',
-        model: j['model'] as String? ?? 'qwen3:8b',
-        enabled: j['enabled'] as bool? ?? false,
-        agent: j['agent'] as String? ?? '',
-        nextRun: j['next_run'] as String?,
-      );
+    name: j['name'] as String? ?? '',
+    schedule: j['schedule'] as String? ?? '',
+    prompt: j['prompt'] as String? ?? '',
+    channel: j['channel'] as String? ?? 'telegram',
+    model: j['model'] as String? ?? 'qwen3:8b',
+    enabled: j['enabled'] as bool? ?? false,
+    agent: j['agent'] as String? ?? '',
+    nextRun: j['next_run'] as String?,
+  );
 
   /// Human-readable schedule description.
   String get scheduleLabel {
@@ -44,8 +44,10 @@ class CronJob {
     final dow = parts[4];
     if (dow == '1-5') return 'Weekdays $hour:${minute.padLeft(2, '0')}';
     if (dow == '5') return 'Fridays $hour:${minute.padLeft(2, '0')}';
-    if (parts[2] == '1' && parts[3] == '*') return 'Monthly (1st) $hour:${minute.padLeft(2, '0')}';
-    if (dow == '*' && parts[2] == '*') return 'Daily $hour:${minute.padLeft(2, '0')}';
+    if (parts[2] == '1' && parts[3] == '*')
+      return 'Monthly (1st) $hour:${minute.padLeft(2, '0')}';
+    if (dow == '*' && parts[2] == '*')
+      return 'Daily $hour:${minute.padLeft(2, '0')}';
     return schedule;
   }
 }
@@ -67,7 +69,10 @@ class CronProvider extends ChangeNotifier {
       fetchJobs();
       // Refresh every 30s for next_run updates
       _refreshTimer?.cancel();
-      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => fetchJobs());
+      _refreshTimer = Timer.periodic(
+        const Duration(seconds: 30),
+        (_) => fetchJobs(),
+      );
     }
   }
 
@@ -79,7 +84,9 @@ class CronProvider extends ChangeNotifier {
     try {
       final resp = await _api!.get('/cron-jobs/enriched');
       final items = resp['jobs'] as List<dynamic>? ?? [];
-      _jobs = items.map((j) => CronJob.fromJson(j as Map<String, dynamic>)).toList();
+      _jobs = items
+          .map((j) => CronJob.fromJson(j as Map<String, dynamic>))
+          .toList();
       _error = null;
     } catch (e) {
       _error = '$e';

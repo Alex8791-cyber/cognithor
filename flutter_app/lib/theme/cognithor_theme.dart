@@ -111,8 +111,10 @@ abstract final class CognithorTheme {
   };
 
   // ── Code Block Colors ─────────────────────────────────────
-  static Color get codeBlockBg => _isDark ? const Color(0xFF0A0F24) : const Color(0xFFF0F0F5);
-  static Color get codeBlockBorder => _isDark ? const Color(0xFF1A2044) : const Color(0xFFD8D8E4);
+  static Color get codeBlockBg =>
+      _isDark ? const Color(0xFF0A0F24) : const Color(0xFFF0F0F5);
+  static Color get codeBlockBorder =>
+      _isDark ? const Color(0xFF1A2044) : const Color(0xFFD8D8E4);
 
   // ── Component-Specific ────────────────────────────────────
   /// Semi-transparent accent for button backgrounds
@@ -230,9 +232,7 @@ abstract final class CognithorTheme {
         scrolledUnderElevation: 1,
         shadowColor: Color(0x22000000),
         surfaceTintColor: Colors.transparent,
-        shape: Border(
-          bottom: BorderSide(color: Color(0xFFD8D8E4)),
-        ),
+        shape: Border(bottom: BorderSide(color: Color(0xFFD8D8E4))),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -278,9 +278,7 @@ abstract final class CognithorTheme {
           color: _lightText1,
           fontWeight: FontWeight.w500,
         ),
-        labelLarge: baseText.labelLarge?.copyWith(
-          color: _lightText1,
-        ),
+        labelLarge: baseText.labelLarge?.copyWith(color: _lightText1),
       ),
       iconTheme: const IconThemeData(color: _lightText2),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -347,18 +345,9 @@ abstract final class CognithorTheme {
         ),
       ),
       textTheme: baseText.copyWith(
-        bodyLarge: baseText.bodyLarge?.copyWith(
-          color: _text1,
-          fontSize: 15,
-        ),
-        bodyMedium: baseText.bodyMedium?.copyWith(
-          color: _text1,
-          fontSize: 14,
-        ),
-        bodySmall: baseText.bodySmall?.copyWith(
-          color: _text2,
-          fontSize: 12,
-        ),
+        bodyLarge: baseText.bodyLarge?.copyWith(color: _text1, fontSize: 15),
+        bodyMedium: baseText.bodyMedium?.copyWith(color: _text1, fontSize: 14),
+        bodySmall: baseText.bodySmall?.copyWith(color: _text2, fontSize: 12),
         titleLarge: baseText.titleLarge?.copyWith(
           color: _text1,
           fontSize: 20,

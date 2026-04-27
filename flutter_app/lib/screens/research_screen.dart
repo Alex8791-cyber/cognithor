@@ -48,8 +48,10 @@ class _ResearchScreenState extends State<ResearchScreen> {
 
   Future<void> _exportResult(String id, String format) async {
     final messenger = ScaffoldMessenger.of(context);
-    final path =
-        await context.read<ResearchProvider>().exportResearch(id, format);
+    final path = await context.read<ResearchProvider>().exportResearch(
+      id,
+      format,
+    );
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
@@ -65,8 +67,9 @@ class _ResearchScreenState extends State<ResearchScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete research?'),
-        content:
-            const Text('This will permanently remove this research report.'),
+        content: const Text(
+          'This will permanently remove this research report.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -134,8 +137,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF00BCD4),
               foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             ),
           ),
           const SizedBox(width: 8),
@@ -251,9 +253,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
                   ),
 
                 // Main content
-                Expanded(
-                  child: _buildMainContent(provider, theme),
-                ),
+                Expanded(child: _buildMainContent(provider, theme)),
               ],
             ),
           ),
@@ -274,8 +274,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline,
-                size: 48, color: Color(0xFFFF5252)),
+            const Icon(Icons.error_outline, size: 48, color: Color(0xFFFF5252)),
             const SizedBox(height: 12),
             Text(
               provider.error!,
@@ -336,20 +335,24 @@ class _ResearchScreenState extends State<ResearchScreen> {
             spacing: 8,
             runSpacing: 8,
             alignment: WrapAlignment.center,
-            children: [
-              'What are the latest LLM benchmarks?',
-              'How does RAG compare to fine-tuning?',
-              'Best practices for Python async code?',
-            ]
-                .map(
-                  (suggestion) => ActionChip(
-                    label: Text(suggestion, style: const TextStyle(fontSize: 12)),
-                    onPressed: () {
-                      _queryController.text = suggestion;
-                    },
-                  ),
-                )
-                .toList(),
+            children:
+                [
+                      'What are the latest LLM benchmarks?',
+                      'How does RAG compare to fine-tuning?',
+                      'Best practices for Python async code?',
+                    ]
+                    .map(
+                      (suggestion) => ActionChip(
+                        label: Text(
+                          suggestion,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        onPressed: () {
+                          _queryController.text = suggestion;
+                        },
+                      ),
+                    )
+                    .toList(),
           ),
         ],
       ),

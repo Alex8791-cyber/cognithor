@@ -9,9 +9,9 @@ class NavigationProvider extends ChangeNotifier {
   String get sectionName => CognithorTheme.sectionNameFor(_currentTab);
 
   double get sidebarWidth => switch (_currentTab) {
-        3 => 220, // Admin — slightly wider for sub-navigation
-        _ => 180, // All tabs: consistent expanded sidebar
-      };
+    3 => 220, // Admin — slightly wider for sub-navigation
+    _ => 180, // All tabs: consistent expanded sidebar
+  };
 
   void setTab(int index) {
     if (index != _currentTab) {

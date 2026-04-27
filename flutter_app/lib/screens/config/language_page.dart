@@ -33,7 +33,11 @@ class _LanguagePageState extends State<LanguagePage> {
     if (prompts.isEmpty) {
       try {
         final defaults = await api.get('config/prompts');
-        for (final key in ['plannerSystem', 'replanPrompt', 'escalationPrompt']) {
+        for (final key in [
+          'plannerSystem',
+          'replanPrompt',
+          'escalationPrompt',
+        ]) {
           final val = (defaults[key] ?? '').toString();
           if (val.isNotEmpty) prompts[key] = val;
         }
@@ -43,7 +47,11 @@ class _LanguagePageState extends State<LanguagePage> {
     if (prompts.isEmpty) {
       setState(() => _translating = false);
       if (mounted) {
-        CognithorToast.show(context, 'No prompts to translate', type: ToastType.warning);
+        CognithorToast.show(
+          context,
+          'No prompts to translate',
+          type: ToastType.warning,
+        );
       }
       return;
     }
@@ -72,7 +80,11 @@ class _LanguagePageState extends State<LanguagePage> {
         cfg.prompts[entry.key] = entry.value.toString();
       }
       cfg.notify();
-      CognithorToast.show(context, l.promptsTranslated, type: ToastType.success);
+      CognithorToast.show(
+        context,
+        l.promptsTranslated,
+        type: ToastType.success,
+      );
     }
   }
 
@@ -83,8 +95,9 @@ class _LanguagePageState extends State<LanguagePage> {
       builder: (context, cfg, _) {
         final lang = (cfg.cfg['language'] ?? 'de').toString();
         // Ensure the value is one of the supported codes
-        final effectiveLang =
-            LocaleProvider.supportedCodes.contains(lang) ? lang : 'de';
+        final effectiveLang = LocaleProvider.supportedCodes.contains(lang)
+            ? lang
+            : 'de';
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -105,16 +118,17 @@ class _LanguagePageState extends State<LanguagePage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed:
-                  _translating ? null : () => _translatePrompts(effectiveLang),
+              onPressed: _translating
+                  ? null
+                  : () => _translatePrompts(effectiveLang),
               icon: _translating
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.translate, size: 18),
-              label: Text(
-                  _translating ? l.translating : l.translatePrompts),
+              label: Text(_translating ? l.translating : l.translatePrompts),
             ),
           ],
         );

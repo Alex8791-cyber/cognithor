@@ -18,12 +18,14 @@ void main() {
       BackendEntry(name: 'vllm', enabled: false, status: 'disabled'),
     ], 'ollama');
 
-    await tester.pumpWidget(MaterialApp(
-      home: ChangeNotifierProvider<LlmBackendProvider>.value(
-        value: provider,
-        child: const LlmBackendsScreen(),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<LlmBackendProvider>.value(
+          value: provider,
+          child: const LlmBackendsScreen(),
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Ollama'), findsOneWidget);
     expect(find.text('vLLM'), findsOneWidget);
@@ -35,12 +37,14 @@ void main() {
       BackendEntry(name: 'vllm', enabled: true, status: 'ready'),
     ], 'vllm');
 
-    await tester.pumpWidget(MaterialApp(
-      home: ChangeNotifierProvider<LlmBackendProvider>.value(
-        value: provider,
-        child: const LlmBackendsScreen(),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<LlmBackendProvider>.value(
+          value: provider,
+          child: const LlmBackendsScreen(),
+        ),
       ),
-    ));
+    );
 
     expect(find.byKey(const ValueKey('backend-vllm-active')), findsOneWidget);
   });

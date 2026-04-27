@@ -70,9 +70,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Expanded(
-              child: _buildTabContent(provider, l),
-            ),
+            Expanded(child: _buildTabContent(provider, l)),
           ],
         );
       },
@@ -155,10 +153,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
           CognithorSection(title: l.entities),
 
           if (provider.entities.isEmpty)
-            CognithorEmptyState(
-              icon: Icons.hub_outlined,
-              title: l.noEntities,
-            )
+            CognithorEmptyState(icon: Icons.hub_outlined, title: l.noEntities)
           else
             ...provider.entities.map<Widget>((entity) {
               final e = entity as Map<String, dynamic>;
@@ -169,20 +164,20 @@ class _MemoryScreenState extends State<MemoryScreen> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: NeonCard(
-                tint: CognithorTheme.sectionAdmin,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: CognithorListTile(
-                  title: name,
-                  subtitle: '$relations ${l.relations}',
-                  leading: CognithorStatusBadge(
-                    label: type,
-                    color: CognithorTheme.accent,
+                  tint: CognithorTheme.sectionAdmin,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                  dense: true,
-                ),
+                  child: CognithorListTile(
+                    title: name,
+                    subtitle: '$relations ${l.relations}',
+                    leading: CognithorStatusBadge(
+                      label: type,
+                      color: CognithorTheme.accent,
+                    ),
+                    dense: true,
+                  ),
                 ),
               );
             }),
@@ -273,21 +268,21 @@ class _MemoryScreenState extends State<MemoryScreen> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: NeonCard(
-                tint: CognithorTheme.sectionAdmin,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: CognithorListTile(
-                  title: name,
-                  subtitle: '$reason\n$timestamp',
-                  leading: Icon(
-                    Icons.warning_amber,
-                    color: CognithorTheme.red,
-                    size: 20,
+                  tint: CognithorTheme.sectionAdmin,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                  dense: true,
-                ),
+                  child: CognithorListTile(
+                    title: name,
+                    subtitle: '$reason\n$timestamp',
+                    leading: Icon(
+                      Icons.warning_amber,
+                      color: CognithorTheme.red,
+                      size: 20,
+                    ),
+                    dense: true,
+                  ),
                 ),
               );
             }),
@@ -314,10 +309,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     }
   }
 
-  Widget _buildExplainabilityTab(
-    MemoryProvider provider,
-    AppLocalizations l,
-  ) {
+  Widget _buildExplainabilityTab(MemoryProvider provider, AppLocalizations l) {
     final stats = provider.explainabilityStats;
     final totalRequests = stats?['total_requests']?.toString() ?? '0';
     final activeTrails = stats?['active_trails']?.toString() ?? '0';
@@ -380,27 +372,26 @@ class _MemoryScreenState extends State<MemoryScreen> {
               final t = trail as Map<String, dynamic>;
               final id = t['id']?.toString() ?? '';
               final status = t['status']?.toString() ?? '';
-              final confidence =
-                  (t['confidence'] as num?)?.toDouble() ?? 0.0;
+              final confidence = (t['confidence'] as num?)?.toDouble() ?? 0.0;
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: NeonCard(
-                tint: CognithorTheme.sectionAdmin,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: CognithorListTile(
-                  title: id,
-                  subtitle: status,
-                  trailing: CognithorStatusBadge(
-                    label: '${(confidence * 100).toStringAsFixed(0)}%',
-                    color: _confidenceColor(confidence),
-                    icon: Icons.speed,
+                  tint: CognithorTheme.sectionAdmin,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                  dense: true,
-                ),
+                  child: CognithorListTile(
+                    title: id,
+                    subtitle: status,
+                    trailing: CognithorStatusBadge(
+                      label: '${(confidence * 100).toStringAsFixed(0)}%',
+                      color: _confidenceColor(confidence),
+                      icon: Icons.speed,
+                    ),
+                    dense: true,
+                  ),
                 ),
               );
             }),
@@ -413,27 +404,26 @@ class _MemoryScreenState extends State<MemoryScreen> {
               final t = trail as Map<String, dynamic>;
               final id = t['id']?.toString() ?? '';
               final status = t['status']?.toString() ?? '';
-              final confidence =
-                  (t['confidence'] as num?)?.toDouble() ?? 0.0;
+              final confidence = (t['confidence'] as num?)?.toDouble() ?? 0.0;
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: NeonCard(
-                tint: CognithorTheme.sectionAdmin,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: CognithorListTile(
-                  title: id,
-                  subtitle: status,
-                  trailing: CognithorStatusBadge(
-                    label: '${(confidence * 100).toStringAsFixed(0)}%',
-                    color: CognithorTheme.red,
-                    icon: Icons.warning_amber,
+                  tint: CognithorTheme.sectionAdmin,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                  dense: true,
-                ),
+                  child: CognithorListTile(
+                    title: id,
+                    subtitle: status,
+                    trailing: CognithorStatusBadge(
+                      label: '${(confidence * 100).toStringAsFixed(0)}%',
+                      color: CognithorTheme.red,
+                      icon: Icons.warning_amber,
+                    ),
+                    dense: true,
+                  ),
                 ),
               );
             }),

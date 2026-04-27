@@ -31,7 +31,9 @@ class CognithorTabBar extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: isSelected ? CognithorTheme.accent : Colors.transparent,
+                    color: isSelected
+                        ? CognithorTheme.accent
+                        : Colors.transparent,
                     width: 2,
                   ),
                 ),
@@ -43,15 +45,21 @@ class CognithorTabBar extends StatelessWidget {
                     Icon(
                       icons![i],
                       size: CognithorTheme.iconSizeSm,
-                      color: isSelected ? CognithorTheme.accent : CognithorTheme.textSecondary,
+                      color: isSelected
+                          ? CognithorTheme.accent
+                          : CognithorTheme.textSecondary,
                     ),
                     const SizedBox(width: 6),
                   ],
                   Text(
                     tabs[i],
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isSelected ? CognithorTheme.accent : CognithorTheme.textSecondary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      color: isSelected
+                          ? CognithorTheme.accent
+                          : CognithorTheme.textSecondary,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ],

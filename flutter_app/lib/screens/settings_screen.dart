@@ -39,8 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           // Server URL
-          Text(l.serverUrl,
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(l.serverUrl, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
           TextField(
             controller: _urlController,
@@ -64,10 +63,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (conn.backendVersion != null)
             Text(
               l.version(conn.backendVersion!),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: CognithorTheme.accent),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: CognithorTheme.accent),
             ),
         ],
       ),

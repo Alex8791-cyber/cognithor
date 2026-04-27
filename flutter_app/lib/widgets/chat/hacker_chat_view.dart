@@ -55,7 +55,7 @@ class _HackerChatViewState extends State<HackerChatView>
           radius: 1.2,
           colors: [
             Color(0xFF001A00), // very dark green center
-            Colors.black,      // pure black edges
+            Colors.black, // pure black edges
           ],
         ),
       ),
@@ -67,9 +67,7 @@ class _HackerChatViewState extends State<HackerChatView>
               listenable: _rainController,
               builder: (context, _) {
                 return CustomPaint(
-                  painter: MatrixRainPainter(
-                    time: _rainController.value * 8,
-                  ),
+                  painter: MatrixRainPainter(time: _rainController.value * 8),
                 );
               },
             ),
@@ -79,18 +77,20 @@ class _HackerChatViewState extends State<HackerChatView>
           ListView.builder(
             controller: widget.scrollController,
             padding: const EdgeInsets.all(16),
-            itemCount: widget.messages.length +
+            itemCount:
+                widget.messages.length +
                 (widget.isStreaming ? 1 : 0) +
                 (widget.activeTool != null ? 1 : 0),
             itemBuilder: (context, index) {
               // Active tool line
-              if (widget.activeTool != null && index == widget.messages.length) {
+              if (widget.activeTool != null &&
+                  index == widget.messages.length) {
                 return _buildToolLine(widget.activeTool!);
               }
 
               // Streaming line
-              final streamIndex = widget.messages.length +
-                  (widget.activeTool != null ? 1 : 0);
+              final streamIndex =
+                  widget.messages.length + (widget.activeTool != null ? 1 : 0);
               if (widget.isStreaming && index == streamIndex) {
                 return _buildTerminalLine(
                   timestamp: DateTime.now(),
@@ -147,17 +147,15 @@ class _HackerChatViewState extends State<HackerChatView>
     required Color color,
     bool showCursor = false,
   }) {
-    final ts = '${_pad(timestamp.hour)}:${_pad(timestamp.minute)}:${_pad(timestamp.second)}';
+    final ts =
+        '${_pad(timestamp.hour)}:${_pad(timestamp.minute)}:${_pad(timestamp.second)}';
     final mono = CognithorTheme.monoTextTheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: SelectableText.rich(
         TextSpan(
-          style: mono.bodyMedium?.copyWith(
-            fontSize: 13,
-            height: 1.6,
-          ),
+          style: mono.bodyMedium?.copyWith(fontSize: 13, height: 1.6),
           children: [
             TextSpan(
               text: '[$ts] ',
@@ -165,10 +163,7 @@ class _HackerChatViewState extends State<HackerChatView>
             ),
             TextSpan(
               text: '$prefix > ',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
             ),
             TextSpan(
               text: text,
@@ -187,4 +182,3 @@ class _HackerChatViewState extends State<HackerChatView>
 
   static String _pad(int n) => n.toString().padLeft(2, '0');
 }
-

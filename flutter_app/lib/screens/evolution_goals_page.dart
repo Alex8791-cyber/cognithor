@@ -74,10 +74,9 @@ class _EvolutionGoalsPageState extends State<EvolutionGoalsPage>
                     border: OutlineInputBorder(),
                   ),
                   items: [1, 2, 3, 4, 5]
-                      .map((p) => DropdownMenuItem(
-                            value: p,
-                            child: Text('P$p'),
-                          ))
+                      .map(
+                        (p) => DropdownMenuItem(value: p, child: Text('P$p')),
+                      )
                       .toList(),
                   onChanged: (v) => setDialogState(() => priority = v ?? 3),
                 ),
@@ -100,10 +99,10 @@ class _EvolutionGoalsPageState extends State<EvolutionGoalsPage>
 
     if (result == true && titleCtrl.text.trim().isNotEmpty && mounted) {
       await context.read<EvolutionProvider>().createGoal(
-            title: titleCtrl.text.trim(),
-            description: descCtrl.text.trim(),
-            priority: priority,
-          );
+        title: titleCtrl.text.trim(),
+        description: descCtrl.text.trim(),
+        priority: priority,
+      );
     }
     titleCtrl.dispose();
     descCtrl.dispose();
@@ -165,11 +164,14 @@ class _EvolutionGoalsPageState extends State<EvolutionGoalsPage>
 class _GoalsTab extends StatelessWidget {
   final List<EvolutionGoal> goals;
   final Map<String, dynamic> stats;
-  final Future<bool> Function(String,
-      {String? title,
-      String? description,
-      String? status,
-      int? priority}) onUpdate;
+  final Future<bool> Function(
+    String, {
+    String? title,
+    String? description,
+    String? status,
+    int? priority,
+  })
+  onUpdate;
   final Future<bool> Function(String) onDelete;
 
   const _GoalsTab({
@@ -235,10 +237,9 @@ class _GoalsTab extends StatelessWidget {
                     border: OutlineInputBorder(),
                   ),
                   items: [1, 2, 3, 4, 5]
-                      .map((p) => DropdownMenuItem(
-                            value: p,
-                            child: Text('P$p'),
-                          ))
+                      .map(
+                        (p) => DropdownMenuItem(value: p, child: Text('P$p')),
+                      )
                       .toList(),
                   onChanged: (v) => setDialogState(() => priority = v ?? 3),
                 ),
@@ -312,8 +313,10 @@ class _GoalsTab extends StatelessWidget {
             const SizedBox(height: 16),
             Text('No learning goals yet.', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text('Create one with the + button.',
-                style: theme.textTheme.bodySmall),
+            Text(
+              'Create one with the + button.',
+              style: theme.textTheme.bodySmall,
+            ),
           ],
         ),
       );
@@ -397,14 +400,18 @@ class _GoalsTab extends StatelessWidget {
                   const PopupMenuItem(value: 'resume', child: Text('Resume')),
                 if (goal.status != 'completed' && goal.status != 'mastered')
                   const PopupMenuItem(
-                      value: 'complete', child: Text('Mark Complete')),
+                    value: 'complete',
+                    child: Text('Mark Complete'),
+                  ),
                 const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: 'delete',
                   child: ListTile(
                     leading: Icon(Icons.delete, size: 20, color: Colors.red),
-                    title:
-                        Text('Loeschen', style: TextStyle(color: Colors.red)),
+                    title: Text(
+                      'Loeschen',
+                      style: TextStyle(color: Colors.red),
+                    ),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -440,8 +447,10 @@ class _PlansTab extends StatelessWidget {
 
     if (plans.isEmpty) {
       return Center(
-        child: Text('No learning plans active.',
-            style: theme.textTheme.titleMedium),
+        child: Text(
+          'No learning plans active.',
+          style: theme.textTheme.titleMedium,
+        ),
       );
     }
 
@@ -464,8 +473,9 @@ class _PlansTab extends StatelessWidget {
                     Expanded(
                       child: Text(
                         plan.goal,
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     Chip(
@@ -536,10 +546,9 @@ class _MetricChip extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 9,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -563,8 +572,10 @@ class _JournalTab extends StatelessWidget {
 
     if (journal.isEmpty) {
       return Center(
-        child: Text('No journal entries yet.',
-            style: theme.textTheme.titleMedium),
+        child: Text(
+          'No journal entries yet.',
+          style: theme.textTheme.titleMedium,
+        ),
       );
     }
 

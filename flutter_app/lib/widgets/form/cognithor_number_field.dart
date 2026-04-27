@@ -87,24 +87,32 @@ class _CognithorNumberFieldState extends State<CognithorNumberField> {
           Text(widget.label, style: theme.textTheme.bodyMedium),
           if (widget.description != null) ...[
             const SizedBox(height: 2),
-            Text(widget.description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           TextField(
             controller: _ctrl,
             keyboardType: TextInputType.numberWithOptions(
-                decimal: widget.decimal, signed: true),
+              decimal: widget.decimal,
+              signed: true,
+            ),
             inputFormatters: [
               FilteringTextInputFormatter.allow(
-                  RegExp(widget.decimal ? r'[\d.\-]' : r'[\d\-]')),
+                RegExp(widget.decimal ? r'[\d.\-]' : r'[\d\-]'),
+              ),
             ],
             decoration: InputDecoration(
               errorText: widget.error ?? _localError,
               isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
             ),
             onChanged: _onChanged,
           ),

@@ -39,8 +39,10 @@ class ChannelsPage extends StatelessWidget {
             // Compact toggle grid
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(AppLocalizations.of(context).channelToggles,
-                  style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                AppLocalizations.of(context).channelToggles,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             Wrap(
               spacing: 8,
@@ -60,207 +62,295 @@ class ChannelsPage extends StatelessWidget {
             // Detailed config per channel (collapsible)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(AppLocalizations.of(context).channelSettings,
-                  style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                AppLocalizations.of(context).channelSettings,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
-            _channelCard(cfg, ch, 'webui', 'Web UI', Icons.web, extra: [
-              CognithorNumberField(
-                label: 'Port',
-                value: (ch['webui_port'] as num?) ?? 8741,
-                onChanged: (v) => cfg.set('channels.webui_port', v),
-                min: 1024,
-                max: 65535,
-              ),
-            ]),
-            _channelCard(cfg, ch, 'telegram', 'Telegram', Icons.telegram,
-                extra: [
-              CognithorListField(
-                label: 'Whitelist',
-                value: _toStringList(ch['telegram_whitelist']),
-                onChanged: (v) => cfg.set('channels.telegram_whitelist', v),
-                placeholder: 'User ID',
-              ),
-            ]),
-            _channelCard(cfg, ch, 'slack', 'Slack', Icons.tag, extra: [
-              CognithorTextField(
-                label: 'Default Channel',
-                value: (ch['slack_default_channel'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.slack_default_channel', v),
-              ),
-            ]),
-            _channelCard(cfg, ch, 'discord', 'Discord', Icons.discord,
-                extra: [
-              CognithorTextField(
-                label: 'Channel ID',
-                value: (ch['discord_channel_id'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.discord_channel_id', v),
-                description: 'Stored as string to prevent precision loss',
-              ),
-            ]),
-            _channelCard(cfg, ch, 'whatsapp', 'WhatsApp', Icons.chat,
-                extra: [
-              CognithorTextField(
-                label: 'Default Chat',
-                value: (ch['whatsapp_default_chat'] ?? '').toString(),
-                onChanged: (v) =>
-                    cfg.set('channels.whatsapp_default_chat', v),
-              ),
-              CognithorTextField(
-                label: 'Phone Number ID',
-                value: (ch['whatsapp_phone_number_id'] ?? '').toString(),
-                onChanged: (v) =>
-                    cfg.set('channels.whatsapp_phone_number_id', v),
-              ),
-              CognithorNumberField(
-                label: 'Webhook Port',
-                value: (ch['whatsapp_webhook_port'] as num?) ?? 8742,
-                onChanged: (v) =>
-                    cfg.set('channels.whatsapp_webhook_port', v),
-                min: 1024,
-              ),
-              CognithorTextField(
-                label: 'Verify Token',
-                value: (ch['whatsapp_verify_token'] ?? '').toString(),
-                onChanged: (v) =>
-                    cfg.set('channels.whatsapp_verify_token', v),
-                isPassword: true,
-              ),
-              CognithorListField(
-                label: 'Allowed Numbers',
-                value: _toStringList(ch['whatsapp_allowed_numbers']),
-                onChanged: (v) =>
-                    cfg.set('channels.whatsapp_allowed_numbers', v),
-              ),
-            ]),
-            _channelCard(cfg, ch, 'signal', 'Signal', Icons.lock, extra: [
-              CognithorTextField(
-                label: 'Default User',
-                value: (ch['signal_default_user'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.signal_default_user', v),
-              ),
-            ]),
-            _channelCard(cfg, ch, 'matrix', 'Matrix', Icons.grid_view,
-                extra: [
-              CognithorTextField(
-                label: 'Homeserver',
-                value: (ch['matrix_homeserver'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.matrix_homeserver', v),
-              ),
-              CognithorTextField(
-                label: 'User ID',
-                value: (ch['matrix_user_id'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.matrix_user_id', v),
-              ),
-            ]),
-            _channelCard(cfg, ch, 'teams', 'Teams', Icons.groups, extra: [
-              CognithorTextField(
-                label: 'Default Channel',
-                value: (ch['teams_default_channel'] ?? '').toString(),
-                onChanged: (v) =>
-                    cfg.set('channels.teams_default_channel', v),
-              ),
-            ]),
-            _channelCard(cfg, ch, 'imessage', 'iMessage', Icons.message,
-                extra: [
-              CognithorTextField(
-                label: 'Device ID',
-                value: (ch['imessage_device_id'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.imessage_device_id', v),
-              ),
-            ]),
             _channelCard(
-                cfg, ch, 'google_chat', 'Google Chat', Icons.chat_bubble,
-                extra: [
-              CognithorTextField(
-                label: 'Credentials Path',
-                value: (ch['google_chat_credentials_path'] ?? '').toString(),
-                onChanged: (v) =>
-                    cfg.set('channels.google_chat_credentials_path', v),
-              ),
-              CognithorListField(
-                label: 'Allowed Spaces',
-                value: _toStringList(ch['google_chat_allowed_spaces']),
-                onChanged: (v) =>
-                    cfg.set('channels.google_chat_allowed_spaces', v),
-              ),
-            ]),
+              cfg,
+              ch,
+              'webui',
+              'Web UI',
+              Icons.web,
+              extra: [
+                CognithorNumberField(
+                  label: 'Port',
+                  value: (ch['webui_port'] as num?) ?? 8741,
+                  onChanged: (v) => cfg.set('channels.webui_port', v),
+                  min: 1024,
+                  max: 65535,
+                ),
+              ],
+            ),
             _channelCard(
-                cfg, ch, 'mattermost', 'Mattermost', Icons.forum,
-                extra: [
-              CognithorTextField(
-                label: 'URL',
-                value: (ch['mattermost_url'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.mattermost_url', v),
-              ),
-              CognithorTextField(
-                label: 'Token',
-                value: (ch['mattermost_token'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.mattermost_token', v),
-                isPassword: true,
-              ),
-              CognithorTextField(
-                label: 'Channel',
-                value: (ch['mattermost_channel'] ?? '').toString(),
-                onChanged: (v) =>
-                    cfg.set('channels.mattermost_channel', v),
-              ),
-            ]),
-            _channelCard(cfg, ch, 'feishu', 'Feishu', Icons.business,
-                extra: [
-              CognithorTextField(
-                label: 'App ID',
-                value: (ch['feishu_app_id'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.feishu_app_id', v),
-              ),
-              CognithorTextField(
-                label: 'App Secret',
-                value: (ch['feishu_app_secret'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.feishu_app_secret', v),
-                isPassword: true,
-              ),
-            ]),
-            _channelCard(cfg, ch, 'irc', 'IRC', Icons.tag, extra: [
-              CognithorTextField(
-                label: 'Server',
-                value: (ch['irc_server'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.irc_server', v),
-              ),
-              CognithorNumberField(
-                label: 'Port',
-                value: (ch['irc_port'] as num?) ?? 6667,
-                onChanged: (v) => cfg.set('channels.irc_port', v),
-              ),
-              CognithorTextField(
-                label: 'Nick',
-                value: (ch['irc_nick'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.irc_nick', v),
-              ),
-              CognithorListField(
-                label: 'Channels',
-                value: _toStringList(ch['irc_channels']),
-                onChanged: (v) => cfg.set('channels.irc_channels', v),
-              ),
-            ]),
-            _channelCard(cfg, ch, 'twitch', 'Twitch', Icons.live_tv,
-                extra: [
-              CognithorTextField(
-                label: 'Token',
-                value: (ch['twitch_token'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.twitch_token', v),
-                isPassword: true,
-              ),
-              CognithorTextField(
-                label: 'Channel',
-                value: (ch['twitch_channel'] ?? '').toString(),
-                onChanged: (v) => cfg.set('channels.twitch_channel', v),
-              ),
-              CognithorListField(
-                label: 'Allowed Users',
-                value: _toStringList(ch['twitch_allowed_users']),
-                onChanged: (v) =>
-                    cfg.set('channels.twitch_allowed_users', v),
-              ),
-            ]),
+              cfg,
+              ch,
+              'telegram',
+              'Telegram',
+              Icons.telegram,
+              extra: [
+                CognithorListField(
+                  label: 'Whitelist',
+                  value: _toStringList(ch['telegram_whitelist']),
+                  onChanged: (v) => cfg.set('channels.telegram_whitelist', v),
+                  placeholder: 'User ID',
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'slack',
+              'Slack',
+              Icons.tag,
+              extra: [
+                CognithorTextField(
+                  label: 'Default Channel',
+                  value: (ch['slack_default_channel'] ?? '').toString(),
+                  onChanged: (v) =>
+                      cfg.set('channels.slack_default_channel', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'discord',
+              'Discord',
+              Icons.discord,
+              extra: [
+                CognithorTextField(
+                  label: 'Channel ID',
+                  value: (ch['discord_channel_id'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.discord_channel_id', v),
+                  description: 'Stored as string to prevent precision loss',
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'whatsapp',
+              'WhatsApp',
+              Icons.chat,
+              extra: [
+                CognithorTextField(
+                  label: 'Default Chat',
+                  value: (ch['whatsapp_default_chat'] ?? '').toString(),
+                  onChanged: (v) =>
+                      cfg.set('channels.whatsapp_default_chat', v),
+                ),
+                CognithorTextField(
+                  label: 'Phone Number ID',
+                  value: (ch['whatsapp_phone_number_id'] ?? '').toString(),
+                  onChanged: (v) =>
+                      cfg.set('channels.whatsapp_phone_number_id', v),
+                ),
+                CognithorNumberField(
+                  label: 'Webhook Port',
+                  value: (ch['whatsapp_webhook_port'] as num?) ?? 8742,
+                  onChanged: (v) =>
+                      cfg.set('channels.whatsapp_webhook_port', v),
+                  min: 1024,
+                ),
+                CognithorTextField(
+                  label: 'Verify Token',
+                  value: (ch['whatsapp_verify_token'] ?? '').toString(),
+                  onChanged: (v) =>
+                      cfg.set('channels.whatsapp_verify_token', v),
+                  isPassword: true,
+                ),
+                CognithorListField(
+                  label: 'Allowed Numbers',
+                  value: _toStringList(ch['whatsapp_allowed_numbers']),
+                  onChanged: (v) =>
+                      cfg.set('channels.whatsapp_allowed_numbers', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'signal',
+              'Signal',
+              Icons.lock,
+              extra: [
+                CognithorTextField(
+                  label: 'Default User',
+                  value: (ch['signal_default_user'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.signal_default_user', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'matrix',
+              'Matrix',
+              Icons.grid_view,
+              extra: [
+                CognithorTextField(
+                  label: 'Homeserver',
+                  value: (ch['matrix_homeserver'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.matrix_homeserver', v),
+                ),
+                CognithorTextField(
+                  label: 'User ID',
+                  value: (ch['matrix_user_id'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.matrix_user_id', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'teams',
+              'Teams',
+              Icons.groups,
+              extra: [
+                CognithorTextField(
+                  label: 'Default Channel',
+                  value: (ch['teams_default_channel'] ?? '').toString(),
+                  onChanged: (v) =>
+                      cfg.set('channels.teams_default_channel', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'imessage',
+              'iMessage',
+              Icons.message,
+              extra: [
+                CognithorTextField(
+                  label: 'Device ID',
+                  value: (ch['imessage_device_id'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.imessage_device_id', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'google_chat',
+              'Google Chat',
+              Icons.chat_bubble,
+              extra: [
+                CognithorTextField(
+                  label: 'Credentials Path',
+                  value: (ch['google_chat_credentials_path'] ?? '').toString(),
+                  onChanged: (v) =>
+                      cfg.set('channels.google_chat_credentials_path', v),
+                ),
+                CognithorListField(
+                  label: 'Allowed Spaces',
+                  value: _toStringList(ch['google_chat_allowed_spaces']),
+                  onChanged: (v) =>
+                      cfg.set('channels.google_chat_allowed_spaces', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'mattermost',
+              'Mattermost',
+              Icons.forum,
+              extra: [
+                CognithorTextField(
+                  label: 'URL',
+                  value: (ch['mattermost_url'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.mattermost_url', v),
+                ),
+                CognithorTextField(
+                  label: 'Token',
+                  value: (ch['mattermost_token'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.mattermost_token', v),
+                  isPassword: true,
+                ),
+                CognithorTextField(
+                  label: 'Channel',
+                  value: (ch['mattermost_channel'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.mattermost_channel', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'feishu',
+              'Feishu',
+              Icons.business,
+              extra: [
+                CognithorTextField(
+                  label: 'App ID',
+                  value: (ch['feishu_app_id'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.feishu_app_id', v),
+                ),
+                CognithorTextField(
+                  label: 'App Secret',
+                  value: (ch['feishu_app_secret'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.feishu_app_secret', v),
+                  isPassword: true,
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'irc',
+              'IRC',
+              Icons.tag,
+              extra: [
+                CognithorTextField(
+                  label: 'Server',
+                  value: (ch['irc_server'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.irc_server', v),
+                ),
+                CognithorNumberField(
+                  label: 'Port',
+                  value: (ch['irc_port'] as num?) ?? 6667,
+                  onChanged: (v) => cfg.set('channels.irc_port', v),
+                ),
+                CognithorTextField(
+                  label: 'Nick',
+                  value: (ch['irc_nick'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.irc_nick', v),
+                ),
+                CognithorListField(
+                  label: 'Channels',
+                  value: _toStringList(ch['irc_channels']),
+                  onChanged: (v) => cfg.set('channels.irc_channels', v),
+                ),
+              ],
+            ),
+            _channelCard(
+              cfg,
+              ch,
+              'twitch',
+              'Twitch',
+              Icons.live_tv,
+              extra: [
+                CognithorTextField(
+                  label: 'Token',
+                  value: (ch['twitch_token'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.twitch_token', v),
+                  isPassword: true,
+                ),
+                CognithorTextField(
+                  label: 'Channel',
+                  value: (ch['twitch_channel'] ?? '').toString(),
+                  onChanged: (v) => cfg.set('channels.twitch_channel', v),
+                ),
+                CognithorListField(
+                  label: 'Allowed Users',
+                  value: _toStringList(ch['twitch_allowed_users']),
+                  onChanged: (v) => cfg.set('channels.twitch_allowed_users', v),
+                ),
+              ],
+            ),
             const Divider(height: 32),
             // Voice config
             CognithorCollapsibleCard(
@@ -281,9 +371,14 @@ class ChannelsPage extends StatelessWidget {
     );
   }
 
-  Widget _channelCard(ConfigProvider cfg, Map<String, dynamic> ch,
-      String key, String label, IconData icon,
-      {List<Widget> extra = const []}) {
+  Widget _channelCard(
+    ConfigProvider cfg,
+    Map<String, dynamic> ch,
+    String key,
+    String label,
+    IconData icon, {
+    List<Widget> extra = const [],
+  }) {
     final enabledKey = '${key}_enabled';
     return CognithorCollapsibleCard(
       title: label,
@@ -300,8 +395,7 @@ class ChannelsPage extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildVoiceConfig(
-      ConfigProvider cfg, Map<String, dynamic> ch) {
+  List<Widget> _buildVoiceConfig(ConfigProvider cfg, Map<String, dynamic> ch) {
     final vc = ch['voice_config'] as Map<String, dynamic>? ?? {};
     return [
       CognithorSelectField.fromStrings(
@@ -341,8 +435,7 @@ class ChannelsPage extends StatelessWidget {
       CognithorToggleField(
         label: 'Wake Word Enabled',
         value: vc['wake_word_enabled'] == true,
-        onChanged: (v) =>
-            cfg.set('channels.voice_config.wake_word_enabled', v),
+        onChanged: (v) => cfg.set('channels.voice_config.wake_word_enabled', v),
       ),
       CognithorTextField(
         label: 'Wake Word',
@@ -353,14 +446,12 @@ class ChannelsPage extends StatelessWidget {
         label: 'Wake Word Backend',
         value: (vc['wake_word_backend'] ?? 'browser').toString(),
         options: const ['browser', 'vosk', 'porcupine'],
-        onChanged: (v) =>
-            cfg.set('channels.voice_config.wake_word_backend', v),
+        onChanged: (v) => cfg.set('channels.voice_config.wake_word_backend', v),
       ),
       CognithorToggleField(
         label: 'Talk Mode',
         value: vc['talk_mode_enabled'] == true,
-        onChanged: (v) =>
-            cfg.set('channels.voice_config.talk_mode_enabled', v),
+        onChanged: (v) => cfg.set('channels.voice_config.talk_mode_enabled', v),
       ),
       CognithorToggleField(
         label: 'Auto-Listen',
@@ -425,8 +516,12 @@ class _CompactChannelToggle extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: enabled ? FontWeight.w600 : FontWeight.normal,
                 color: enabled
-                    ? (isDark ? CognithorTheme.textPrimary : const Color(0xFF1A1A2E))
-                    : (isDark ? CognithorTheme.textSecondary : const Color(0xFF6B6B80)),
+                    ? (isDark
+                          ? CognithorTheme.textPrimary
+                          : const Color(0xFF1A1A2E))
+                    : (isDark
+                          ? CognithorTheme.textSecondary
+                          : const Color(0xFF6B6B80)),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

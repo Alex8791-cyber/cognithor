@@ -17,27 +17,31 @@ void main() {
 
   testWidgets('renders timeline events from provider', (tester) async {
     final svc = _MockTraceService();
-    when(() => svc.fetchTrace(any())).thenAnswer((_) async => [
-          const CrewEvent(
-            traceId: 'abc',
-            eventType: 'crew_kickoff_started',
-            timestamp: '2026-04-26T10:00:00Z',
-            details: {'n_tasks': 2},
-          ),
-          const CrewEvent(
-            traceId: 'abc',
-            eventType: 'crew_task_started',
-            timestamp: '2026-04-26T10:00:01Z',
-            details: {'task_id': 't1', 'agent_role': 'researcher'},
-          ),
-        ]);
-    when(() => svc.fetchTraceStats(any())).thenAnswer((_) async => const CrewTraceStats(
-          totalTokens: 0,
-          agentBreakdown: {},
-          guardrailPass: 0,
-          guardrailFail: 0,
-          guardrailRetries: 0,
-        ));
+    when(() => svc.fetchTrace(any())).thenAnswer(
+      (_) async => [
+        const CrewEvent(
+          traceId: 'abc',
+          eventType: 'crew_kickoff_started',
+          timestamp: '2026-04-26T10:00:00Z',
+          details: {'n_tasks': 2},
+        ),
+        const CrewEvent(
+          traceId: 'abc',
+          eventType: 'crew_task_started',
+          timestamp: '2026-04-26T10:00:01Z',
+          details: {'task_id': 't1', 'agent_role': 'researcher'},
+        ),
+      ],
+    );
+    when(() => svc.fetchTraceStats(any())).thenAnswer(
+      (_) async => const CrewTraceStats(
+        totalTokens: 0,
+        agentBreakdown: {},
+        guardrailPass: 0,
+        guardrailFail: 0,
+        guardrailRetries: 0,
+      ),
+    );
     when(() => svc.subscribeToTrace(any(), any())).thenAnswer((_) {});
     when(() => svc.unsubscribeFromTrace(any())).thenAnswer((_) {});
 

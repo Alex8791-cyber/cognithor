@@ -97,11 +97,13 @@ class CrewTraceStats {
   });
 
   factory CrewTraceStats.fromJson(Map<String, dynamic> j) {
-    final breakdown = (j['agent_breakdown'] as Map?)?.map(
+    final breakdown =
+        (j['agent_breakdown'] as Map?)?.map(
           (k, v) => MapEntry(k as String, (v as num).toInt()),
         ) ??
         const <String, int>{};
-    final summary = (j['guardrail_summary'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final summary =
+        (j['guardrail_summary'] as Map?)?.cast<String, dynamic>() ?? const {};
     return CrewTraceStats(
       totalTokens: (j['total_tokens'] as num?)?.toInt() ?? 0,
       totalDurationMs: (j['total_duration_ms'] as num?)?.toDouble(),

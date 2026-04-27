@@ -204,6 +204,11 @@ class EvolutionProvider extends ChangeNotifier {
   }
 
   Future<void> fetchAll() async {
-    await Future.wait([fetchGoals(), fetchPlans(), fetchJournal(), fetchStats()]);
+    await Future.wait([
+      fetchGoals(),
+      fetchPlans(),
+      fetchJournal(),
+      fetchStats(),
+    ]);
   }
 }

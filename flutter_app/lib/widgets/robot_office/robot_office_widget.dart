@@ -33,28 +33,60 @@ class _RobotMessages {
   }
 
   static const _taskMessagesEn = [
-    'Thinking hard...', 'Filing papers...', 'Daydreaming...',
-    'Refilling coffee...', 'Organizing desk...', 'Stretching circuits...',
-    'Browsing memes...', 'Watering plants...', 'Feeding the dog...',
-    'Checking the clock...', 'Doodling...', 'Stacking boxes...',
+    'Thinking hard...',
+    'Filing papers...',
+    'Daydreaming...',
+    'Refilling coffee...',
+    'Organizing desk...',
+    'Stretching circuits...',
+    'Browsing memes...',
+    'Watering plants...',
+    'Feeding the dog...',
+    'Checking the clock...',
+    'Doodling...',
+    'Stacking boxes...',
   ];
   static const _taskMessagesDe = [
-    'Nachdenken...', 'Akten sortieren...', 'Tagtraeumen...',
-    'Kaffee nachfuellen...', 'Schreibtisch aufraeumen...', 'Schaltkreise dehnen...',
-    'Memes durchstoebern...', 'Pflanzen giessen...', 'Hund fuettern...',
-    'Auf die Uhr schauen...', 'Kritzeln...', 'Kisten stapeln...',
+    'Nachdenken...',
+    'Akten sortieren...',
+    'Tagtraeumen...',
+    'Kaffee nachfuellen...',
+    'Schreibtisch aufraeumen...',
+    'Schaltkreise dehnen...',
+    'Memes durchstoebern...',
+    'Pflanzen giessen...',
+    'Hund fuettern...',
+    'Auf die Uhr schauen...',
+    'Kritzeln...',
+    'Kisten stapeln...',
   ];
   static const _taskMessagesZh = [
-    '\u601D\u8003\u4E2D...', '\u6574\u7406\u6587\u4EF6...', '\u767D\u65E5\u68A6...',
-    '\u7EED\u676F\u5496\u5561...', '\u6574\u7406\u684C\u9762...', '\u62C9\u4F38\u7535\u8DEF...',
-    '\u770B\u8868\u60C5\u5305...', '\u6D47\u82B1...', '\u5582\u72D7...',
-    '\u770B\u65F6\u95F4...', '\u6D82\u9E26...', '\u5806\u7BB1\u5B50...',
+    '\u601D\u8003\u4E2D...',
+    '\u6574\u7406\u6587\u4EF6...',
+    '\u767D\u65E5\u68A6...',
+    '\u7EED\u676F\u5496\u5561...',
+    '\u6574\u7406\u684C\u9762...',
+    '\u62C9\u4F38\u7535\u8DEF...',
+    '\u770B\u8868\u60C5\u5305...',
+    '\u6D47\u82B1...',
+    '\u5582\u72D7...',
+    '\u770B\u65F6\u95F4...',
+    '\u6D82\u9E26...',
+    '\u5806\u7BB1\u5B50...',
   ];
   static const _taskMessagesAr = [
-    '\u062A\u0641\u0643\u064A\u0631 \u0639\u0645\u064A\u0642...', '\u062A\u0631\u062A\u064A\u0628 \u0627\u0644\u0623\u0648\u0631\u0627\u0642...', '\u0623\u062D\u0644\u0627\u0645 \u064A\u0642\u0638\u0629...',
-    '\u0625\u0639\u0627\u062F\u0629 \u0645\u0644\u0621 \u0627\u0644\u0642\u0647\u0648\u0629...', '\u062A\u0631\u062A\u064A\u0628 \u0627\u0644\u0645\u0643\u062A\u0628...', '\u062A\u0645\u062F\u064A\u062F \u0627\u0644\u062F\u0648\u0627\u0626\u0631...',
-    '\u062A\u0635\u0641\u062D \u0627\u0644\u0645\u064A\u0645\u0632...', '\u0633\u0642\u064A \u0627\u0644\u0646\u0628\u0627\u062A\u0627\u062A...', '\u0625\u0637\u0639\u0627\u0645 \u0627\u0644\u0643\u0644\u0628...',
-    '\u0627\u0644\u0646\u0638\u0631 \u0644\u0644\u0633\u0627\u0639\u0629...', '\u0631\u0633\u0645 \u0639\u0634\u0648\u0627\u0626\u064A...', '\u062A\u0643\u062F\u064A\u0633 \u0627\u0644\u0635\u0646\u0627\u062F\u064A\u0642...',
+    '\u062A\u0641\u0643\u064A\u0631 \u0639\u0645\u064A\u0642...',
+    '\u062A\u0631\u062A\u064A\u0628 \u0627\u0644\u0623\u0648\u0631\u0627\u0642...',
+    '\u0623\u062D\u0644\u0627\u0645 \u064A\u0642\u0638\u0629...',
+    '\u0625\u0639\u0627\u062F\u0629 \u0645\u0644\u0621 \u0627\u0644\u0642\u0647\u0648\u0629...',
+    '\u062A\u0631\u062A\u064A\u0628 \u0627\u0644\u0645\u0643\u062A\u0628...',
+    '\u062A\u0645\u062F\u064A\u062F \u0627\u0644\u062F\u0648\u0627\u0626\u0631...',
+    '\u062A\u0635\u0641\u062D \u0627\u0644\u0645\u064A\u0645\u0632...',
+    '\u0633\u0642\u064A \u0627\u0644\u0646\u0628\u0627\u062A\u0627\u062A...',
+    '\u0625\u0637\u0639\u0627\u0645 \u0627\u0644\u0643\u0644\u0628...',
+    '\u0627\u0644\u0646\u0638\u0631 \u0644\u0644\u0633\u0627\u0639\u0629...',
+    '\u0631\u0633\u0645 \u0639\u0634\u0648\u0627\u0626\u064A...',
+    '\u062A\u0643\u062F\u064A\u0633 \u0627\u0644\u0635\u0646\u0627\u062F\u064A\u0642...',
   ];
 
   // ── Chat messages (robot-to-robot banter) ──────────────────────────────
@@ -287,7 +319,8 @@ class _RobotMessages {
     'researcher': '\u0628\u062D\u062B',
     'gatekeeper': '\u0623\u0645\u0627\u0646',
     'coder': '\u0628\u0631\u0645\u062C\u0629',
-    'analyst': '\u062A\u062D\u0644\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A',
+    'analyst':
+        '\u062A\u062D\u0644\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A',
     'memory': '\u0645\u0639\u0631\u0641\u0629',
     'ops': '\u0628\u0646\u064A\u0629 \u062A\u062D\u062A\u064A\u0629',
   };
@@ -449,11 +482,17 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       r.stateTimer = 0;
       r.typing = false;
       r.carrying = false;
-      r.state = RobotState.idle; // will trigger _assignWorkBehavior on next tick
+      r.state =
+          RobotState.idle; // will trigger _assignWorkBehavior on next tick
     }
     // Spark burst for the excitement
-    _particles.emit(ParticleType.spark, 0.5, 0.4,
-        const Color(0xFF00d4ff), count: 20);
+    _particles.emit(
+      ParticleType.spark,
+      0.5,
+      0.4,
+      const Color(0xFF00d4ff),
+      count: 20,
+    );
   }
 
   @override
@@ -491,26 +530,39 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     final robots = <Robot>[
       // PGE Trinity — always present
       Robot(
-        id: 'planner', name: 'Planner',
-        color: const Color(0xFF6366f1), eyeColor: const Color(0xFFa5b4fc),
-        role: _RobotMessages.role('planner', l), hasAntenna: true, isSystem: true,
-        x: 0.18, y: 0.72,
+        id: 'planner',
+        name: 'Planner',
+        color: const Color(0xFF6366f1),
+        eyeColor: const Color(0xFFa5b4fc),
+        role: _RobotMessages.role('planner', l),
+        hasAntenna: true,
+        isSystem: true,
+        x: 0.18,
+        y: 0.72,
         state: RobotState.idle,
         stateTimer: 3.0 + _rng.nextDouble() * 3,
       ),
       Robot(
-        id: 'executor', name: 'Executor',
-        color: const Color(0xFF10b981), eyeColor: const Color(0xFF6ee7b7),
-        role: _RobotMessages.role('executor', l), isSystem: true,
-        x: 0.45, y: 0.58,
+        id: 'executor',
+        name: 'Executor',
+        color: const Color(0xFF10b981),
+        eyeColor: const Color(0xFF6ee7b7),
+        role: _RobotMessages.role('executor', l),
+        isSystem: true,
+        x: 0.45,
+        y: 0.58,
         state: RobotState.idle,
         stateTimer: 2.0 + _rng.nextDouble() * 4,
       ),
       Robot(
-        id: 'gatekeeper', name: 'Gatekeeper',
-        color: const Color(0xFFef4444), eyeColor: const Color(0xFFfca5a5),
-        role: _RobotMessages.role('gatekeeper', l), isSystem: true,
-        x: 0.88, y: 0.42,
+        id: 'gatekeeper',
+        name: 'Gatekeeper',
+        color: const Color(0xFFef4444),
+        eyeColor: const Color(0xFFfca5a5),
+        role: _RobotMessages.role('gatekeeper', l),
+        isSystem: true,
+        x: 0.88,
+        y: 0.42,
         state: RobotState.idle,
         stateTimer: 0.5 + _rng.nextDouble(),
       ),
@@ -522,14 +574,19 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     for (var i = 0; i < names.length; i++) {
       final colorIdx = i % _agentColors.length;
       final pos = positions[i];
-      robots.add(Robot(
-        id: 'agent_$i', name: names[i],
-        color: _agentColors[colorIdx], eyeColor: _agentEyeColors[colorIdx],
-        role: names[i],
-        x: pos.dx, y: pos.dy,
-        state: RobotState.idle,
-        stateTimer: 1.0 + _rng.nextDouble() * 3,
-      ));
+      robots.add(
+        Robot(
+          id: 'agent_$i',
+          name: names[i],
+          color: _agentColors[colorIdx],
+          eyeColor: _agentEyeColors[colorIdx],
+          role: names[i],
+          x: pos.dx,
+          y: pos.dy,
+          state: RobotState.idle,
+          stateTimer: 1.0 + _rng.nextDouble() * 3,
+        ),
+      );
     }
 
     return robots;
@@ -540,9 +597,15 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     if (count == 0) return [];
     // Available floor positions (avoiding Trinity positions and furniture)
     const slots = [
-      Offset(0.30, 0.52), Offset(0.72, 0.75), Offset(0.08, 0.35),
-      Offset(0.58, 0.28), Offset(0.60, 0.80), Offset(0.35, 0.35),
-      Offset(0.78, 0.58), Offset(0.15, 0.50), Offset(0.50, 0.42),
+      Offset(0.30, 0.52),
+      Offset(0.72, 0.75),
+      Offset(0.08, 0.35),
+      Offset(0.58, 0.28),
+      Offset(0.60, 0.80),
+      Offset(0.35, 0.35),
+      Offset(0.78, 0.58),
+      Offset(0.15, 0.50),
+      Offset(0.50, 0.42),
     ];
     return [for (var i = 0; i < count && i < slots.length; i++) slots[i]];
   }
@@ -550,9 +613,18 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   // ── PGE state synchronization ───────────────────────────────
 
   void _syncPgeStates() {
-    final planner = _robots.firstWhere((r) => r.id == 'planner', orElse: () => _robots.first);
-    final executor = _robots.firstWhere((r) => r.id == 'executor', orElse: () => _robots.first);
-    final gatekeeper = _robots.firstWhere((r) => r.id == 'gatekeeper', orElse: () => _robots.first);
+    final planner = _robots.firstWhere(
+      (r) => r.id == 'planner',
+      orElse: () => _robots.first,
+    );
+    final executor = _robots.firstWhere(
+      (r) => r.id == 'executor',
+      orElse: () => _robots.first,
+    );
+    final gatekeeper = _robots.firstWhere(
+      (r) => r.id == 'gatekeeper',
+      orElse: () => _robots.first,
+    );
 
     switch (widget.pgePhase) {
       case 0: // planning
@@ -601,7 +673,8 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
           r.typing = true;
           r.stateTimer = 30.0;
         }
-        r.taskMsg = 'Processing: ${task.length > 25 ? '${task.substring(0, 25)}...' : task}';
+        r.taskMsg =
+            'Processing: ${task.length > 25 ? '${task.substring(0, 25)}...' : task}';
         r.msgTimer = 5.0;
       }
     }
@@ -652,7 +725,9 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     if (_dataPacketCooldown > 0) return;
     _dataPacketCooldown = 0.4 + _rng.nextDouble() * 0.6;
 
-    final working = _robots.where((r) => r.state == RobotState.working).toList();
+    final working = _robots
+        .where((r) => r.state == RobotState.working)
+        .toList();
     if (working.length < 2) return;
 
     final sender = working[_rng.nextInt(working.length)];
@@ -661,7 +736,13 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       receiver = working[_rng.nextInt(working.length)];
     } while (receiver == sender);
 
-    _particles.emitDataPacket(sender.x, sender.y, receiver.x, receiver.y, sender.color);
+    _particles.emitDataPacket(
+      sender.x,
+      sender.y,
+      receiver.x,
+      receiver.y,
+      sender.color,
+    );
   }
 
   void _updateRobot(Robot r, double dt) {
@@ -733,7 +814,9 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       case RobotState.chatting:
         // Alternate chat bubbles
         if (r.chatBubbleTimer <= 0 && r.stateTimer > 1.0) {
-          r.chatBubble = _RobotMessages.chatMessages(_locale)[_rng.nextInt(_RobotMessages.chatMessages(_locale).length)];
+          r.chatBubble = _RobotMessages.chatMessages(
+            _locale,
+          )[_rng.nextInt(_RobotMessages.chatMessages(_locale).length)];
           r.chatBubbleTimer = 1.5 + _rng.nextDouble();
         }
         if (r.stateTimer <= 0) {
@@ -974,8 +1057,11 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.carrying = false;
     // Wobble by emitting sparks around the robot
     _particles.emit(
-      ParticleType.spark, r.x, r.y,
-      const Color(0xFFFF8A65), count: 6,
+      ParticleType.spark,
+      r.x,
+      r.y,
+      const Color(0xFFFF8A65),
+      count: 6,
     );
   }
 
@@ -990,8 +1076,11 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.carrying = false;
     // Wild sparks
     _particles.emit(
-      ParticleType.spark, r.x, r.y - 0.04,
-      const Color(0xFFFF5252), count: 12,
+      ParticleType.spark,
+      r.x,
+      r.y - 0.04,
+      const Color(0xFFFF5252),
+      count: 12,
     );
   }
 
@@ -1005,12 +1094,18 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.carrying = false;
     // Orange/red sparks simulate fire
     _particles.emit(
-      ParticleType.spark, r.x, r.y,
-      const Color(0xFFFF6D00), count: 10,
+      ParticleType.spark,
+      r.x,
+      r.y,
+      const Color(0xFFFF6D00),
+      count: 10,
     );
     _particles.emit(
-      ParticleType.spark, r.x, r.y - 0.02,
-      const Color(0xFFFF1744), count: 8,
+      ParticleType.spark,
+      r.x,
+      r.y - 0.02,
+      const Color(0xFFFF1744),
+      count: 8,
     );
   }
 
@@ -1026,8 +1121,11 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.typing = false;
     r.carrying = false;
     _particles.emit(
-      ParticleType.spark, 0.35, 0.30,
-      const Color(0xFFFFD600), count: 8,
+      ParticleType.spark,
+      0.35,
+      0.30,
+      const Color(0xFFFFD600),
+      count: 8,
     );
   }
 
@@ -1040,12 +1138,20 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.typing = false;
     r.carrying = false;
     _particles.emit(
-      ParticleType.text, r.x, r.y - 0.06,
-      const Color(0xFFFF5252), text: '!', count: 1,
+      ParticleType.text,
+      r.x,
+      r.y - 0.06,
+      const Color(0xFFFF5252),
+      text: '!',
+      count: 1,
     );
     _particles.emit(
-      ParticleType.text, r.x + 0.02, r.y - 0.07,
-      const Color(0xFFFF5252), text: '!', count: 1,
+      ParticleType.text,
+      r.x + 0.02,
+      r.y - 0.07,
+      const Color(0xFFFF5252),
+      text: '!',
+      count: 1,
     );
   }
 
@@ -1060,12 +1166,20 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.carrying = false;
     // Stars
     _particles.emit(
-      ParticleType.text, r.x - 0.02, r.y - 0.05,
-      const Color(0xFFFFD54F), text: '💫', count: 1,
+      ParticleType.text,
+      r.x - 0.02,
+      r.y - 0.05,
+      const Color(0xFFFFD54F),
+      text: '💫',
+      count: 1,
     );
     _particles.emit(
-      ParticleType.text, r.x + 0.02, r.y - 0.06,
-      const Color(0xFFFFD54F), text: '💫', count: 1,
+      ParticleType.text,
+      r.x + 0.02,
+      r.y - 0.06,
+      const Color(0xFFFFD54F),
+      text: '💫',
+      count: 1,
     );
   }
 
@@ -1079,8 +1193,11 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.carrying = false;
     // Papers fly like a sneeze
     _particles.emit(
-      ParticleType.confetti, r.x, r.y - 0.04,
-      Colors.white, count: 15,
+      ParticleType.confetti,
+      r.x,
+      r.y - 0.04,
+      Colors.white,
+      count: 15,
     );
   }
 
@@ -1147,12 +1264,20 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   void _assignWorkAtDesk(Robot r) {
     final desks = officeFurniture.where((f) => f.type == 'desk').toList();
     final desk = desks[_rng.nextInt(desks.length)];
-    r.targetX = (desk.x + desk.w / 2 + (_rng.nextDouble() - 0.5) * 0.04).clamp(0.05, 0.95);
-    r.targetY = (desk.y + desk.h + 0.02 + _rng.nextDouble() * 0.03).clamp(0.15, 0.90);
+    r.targetX = (desk.x + desk.w / 2 + (_rng.nextDouble() - 0.5) * 0.04).clamp(
+      0.05,
+      0.95,
+    );
+    r.targetY = (desk.y + desk.h + 0.02 + _rng.nextDouble() * 0.03).clamp(
+      0.15,
+      0.90,
+    );
     _setPathForRobot(r);
     r.state = RobotState.walking;
     r.stateTimer = 10;
-    r.taskMsg = _RobotMessages.taskMessages(_locale)[_rng.nextInt(_RobotMessages.taskMessages(_locale).length)];
+    r.taskMsg = _RobotMessages.taskMessages(
+      _locale,
+    )[_rng.nextInt(_RobotMessages.taskMessages(_locale).length)];
     r.msgTimer = 3.0;
     _currentTask = r.taskMsg;
     widget.onStateChanged?.call(_currentTask, _taskCount);
@@ -1160,15 +1285,23 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
 
   void _assignWalk(Robot r) {
     final targets = officeFurniture
-        .where((f) => f.type == 'desk' || f.type == 'server' || f.type == 'board')
+        .where(
+          (f) => f.type == 'desk' || f.type == 'server' || f.type == 'board',
+        )
         .toList();
     final target = targets[_rng.nextInt(targets.length)];
-    r.targetX = (target.x + target.w / 2 + (_rng.nextDouble() - 0.5) * 0.04).clamp(0.05, 0.95);
-    r.targetY = (target.y + target.h + 0.02 + _rng.nextDouble() * 0.03).clamp(0.15, 0.90);
+    r.targetX = (target.x + target.w / 2 + (_rng.nextDouble() - 0.5) * 0.04)
+        .clamp(0.05, 0.95);
+    r.targetY = (target.y + target.h + 0.02 + _rng.nextDouble() * 0.03).clamp(
+      0.15,
+      0.90,
+    );
     _setPathForRobot(r);
     r.state = RobotState.walking;
     r.stateTimer = 10;
-    r.taskMsg = _RobotMessages.taskMessages(_locale)[_rng.nextInt(_RobotMessages.taskMessages(_locale).length)];
+    r.taskMsg = _RobotMessages.taskMessages(
+      _locale,
+    )[_rng.nextInt(_RobotMessages.taskMessages(_locale).length)];
     r.msgTimer = 2.5;
   }
 
@@ -1239,7 +1372,9 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     r.state = RobotState.chatting;
     r.stateTimer = 4.0 + _rng.nextDouble() * 3.0;
     r.interactionPartner = partner;
-    r.chatBubble = _RobotMessages.chatMessages(_locale)[_rng.nextInt(_RobotMessages.chatMessages(_locale).length)];
+    r.chatBubble = _RobotMessages.chatMessages(
+      _locale,
+    )[_rng.nextInt(_RobotMessages.chatMessages(_locale).length)];
     r.chatBubbleTimer = 1.5;
 
     partner.state = RobotState.chatting;
@@ -1301,7 +1436,9 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   }
 
   void _assignCoffeeBreak(Robot r) {
-    final coffeeSpots = officeFurniture.where((f) => f.type == 'coffee').toList();
+    final coffeeSpots = officeFurniture
+        .where((f) => f.type == 'coffee')
+        .toList();
     if (coffeeSpots.isEmpty) {
       _assignWorkAtDesk(r);
       return;
@@ -1404,7 +1541,8 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     double nearestDist = double.infinity;
     for (final other in _robots) {
       if (other == r) continue;
-      if (other.state != RobotState.idle && other.state != RobotState.working) continue;
+      if (other.state != RobotState.idle && other.state != RobotState.working)
+        continue;
       final dx = other.x - r.x;
       final dy = other.y - r.y;
       final dist = dx * dx + dy * dy;
@@ -1473,7 +1611,9 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     }
 
     // Paw prints from dog
-    if (pet.type == PetType.dog && dist > 0.005 && pet.petState != PetState.sleeping) {
+    if (pet.type == PetType.dog &&
+        dist > 0.005 &&
+        pet.petState != PetState.sleeping) {
       pet.pawPrintTimer -= dt;
       if (pet.pawPrintTimer <= 0) {
         pet.pawPrintTimer = 0.5;
@@ -1497,7 +1637,10 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
         // Wander on the floor
         pet.petState = PetState.wandering;
         pet.targetX = (0.05 + _rng.nextDouble() * 0.90).clamp(0.05, 0.95);
-        pet.targetY = (_dogMinY + _rng.nextDouble() * (0.90 - _dogMinY)).clamp(_dogMinY, 0.90);
+        pet.targetY = (_dogMinY + _rng.nextDouble() * (0.90 - _dogMinY)).clamp(
+          _dogMinY,
+          0.90,
+        );
         pet.stateTimer = 3.0 + _rng.nextDouble() * 4.0;
       } else if (roll < 0.45) {
         // Follow a robot — but stay on the floor
@@ -1521,8 +1664,14 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       } else {
         // Play (fetch ball) on the floor
         pet.petState = PetState.playing;
-        pet.targetX = (pet.x + (_rng.nextDouble() - 0.5) * 0.2).clamp(0.05, 0.95);
-        pet.targetY = (pet.y + (_rng.nextDouble() - 0.5) * 0.15).clamp(_dogMinY, 0.90);
+        pet.targetX = (pet.x + (_rng.nextDouble() - 0.5) * 0.2).clamp(
+          0.05,
+          0.95,
+        );
+        pet.targetY = (pet.y + (_rng.nextDouble() - 0.5) * 0.15).clamp(
+          _dogMinY,
+          0.90,
+        );
         pet.stateTimer = 3.0 + _rng.nextDouble() * 2.0;
       }
     } else {
@@ -1530,7 +1679,9 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       if (roll < 0.30) {
         // Sleep on server rack (warm!) — position at the top of the server
         pet.petState = PetState.sleeping;
-        final servers = officeFurniture.where((f) => f.type == 'server').toList();
+        final servers = officeFurniture
+            .where((f) => f.type == 'server')
+            .toList();
         if (servers.isNotEmpty) {
           final server = servers.first;
           pet.targetX = server.x + server.w / 2;
@@ -1556,13 +1707,19 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
         // Run from dog — cat stays within allowed range
         pet.petState = PetState.chasingOther; // fleeing = reversed chase
         pet.targetX = (_dog.x > 0.5 ? 0.1 : 0.9).clamp(0.05, 0.95);
-        pet.targetY = (_catMinY + _rng.nextDouble() * (0.90 - _catMinY)).clamp(_catMinY, 0.90);
+        pet.targetY = (_catMinY + _rng.nextDouble() * (0.90 - _catMinY)).clamp(
+          _catMinY,
+          0.90,
+        );
         pet.stateTimer = 2.0 + _rng.nextDouble() * 2.0;
       } else {
         // Wander
         pet.petState = PetState.wandering;
         pet.targetX = (0.05 + _rng.nextDouble() * 0.90).clamp(0.05, 0.95);
-        pet.targetY = (_catMinY + _rng.nextDouble() * (0.90 - _catMinY)).clamp(_catMinY, 0.90);
+        pet.targetY = (_catMinY + _rng.nextDouble() * (0.90 - _catMinY)).clamp(
+          _catMinY,
+          0.90,
+        );
         pet.stateTimer = 3.0 + _rng.nextDouble() * 3.0;
       }
     }
@@ -1595,7 +1752,12 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   /// Check whether a line segment from (x1,y1) to (x2,y2) intersects [rect].
   /// Uses Liang-Barsky line-clipping against an AABB.
   static bool _lineIntersectsRect(
-      double x1, double y1, double x2, double y2, Rect rect) {
+    double x1,
+    double y1,
+    double x2,
+    double y2,
+    Rect rect,
+  ) {
     double tMin = 0.0;
     double tMax = 1.0;
     final ddx = x2 - x1;
@@ -1638,7 +1800,11 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
   /// Compute a list of waypoints (intermediate + final target) that routes
   /// from (fromX,fromY) to (toX,toY) while avoiding desks.
   static List<Offset> _findPath(
-      double fromX, double fromY, double toX, double toY) {
+    double fromX,
+    double fromY,
+    double toX,
+    double toY,
+  ) {
     // If direct path is clear, no waypoints needed.
     if (!_pathCrossesDesk(fromX, fromY, toX, toY)) {
       return const [];
@@ -1676,7 +1842,8 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
         if (wpB == wpA) continue;
         if (_pathCrossesDesk(wpA.dx, wpA.dy, wpB.dx, wpB.dy)) continue;
         if (_pathCrossesDesk(wpB.dx, wpB.dy, toX, toY)) continue;
-        final dist = (wpA.dx - fromX) * (wpA.dx - fromX) +
+        final dist =
+            (wpA.dx - fromX) * (wpA.dx - fromX) +
             (wpA.dy - fromY) * (wpA.dy - fromY) +
             (wpB.dx - toX) * (wpB.dx - toX) +
             (wpB.dy - toY) * (wpB.dy - toY);
@@ -1782,10 +1949,15 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     final colW = bw / 3;
 
     // Check if pointer is inside kanban content area
-    if (position.dx < bx || position.dx > bx + bw ||
-        position.dy < contentTop || position.dy > by + bh) {
+    if (position.dx < bx ||
+        position.dx > bx + bw ||
+        position.dy < contentTop ||
+        position.dy > by + bh) {
       if (_kanbanTooltip != null) {
-        setState(() { _hoverPosition = null; _kanbanTooltip = null; });
+        setState(() {
+          _hoverPosition = null;
+          _kanbanTooltip = null;
+        });
       }
       return;
     }
@@ -1795,8 +1967,8 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     final statusKeys = colIndex == 0
         ? ['backlog']
         : colIndex == 1
-            ? ['in_progress']
-            : ['done', 'verifying'];
+        ? ['in_progress']
+        : ['done', 'verifying'];
 
     // Build tooltip from task titles
     final titles = <String>[];
@@ -1805,12 +1977,19 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     }
     if (titles.isEmpty) {
       if (_kanbanTooltip != null) {
-        setState(() { _hoverPosition = null; _kanbanTooltip = null; });
+        setState(() {
+          _hoverPosition = null;
+          _kanbanTooltip = null;
+        });
       }
       return;
     }
 
-    final colLabel = colIndex == 0 ? 'To Do' : colIndex == 1 ? 'WIP' : 'Done';
+    final colLabel = colIndex == 0
+        ? 'To Do'
+        : colIndex == 1
+        ? 'WIP'
+        : 'Done';
     final display = titles.take(6).join('\n');
     final extra = titles.length > 6 ? '\n+${titles.length - 6} more' : '';
     final tooltip = '$colLabel:\n$display$extra';
@@ -1843,7 +2022,10 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
       borderRadius: BorderRadius.circular(12),
       child: MouseRegion(
         onHover: (event) => _updateKanbanTooltip(event.localPosition),
-        onExit: (_) => setState(() { _hoverPosition = null; _kanbanTooltip = null; }),
+        onExit: (_) => setState(() {
+          _hoverPosition = null;
+          _kanbanTooltip = null;
+        }),
         child: GestureDetector(
           onTapDown: (details) => _onTap(details.localPosition, context),
           child: Stack(
@@ -1883,14 +2065,20 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
                   top: _hoverPosition!.dy - 20,
                   child: IgnorePointer(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black87,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         _kanbanTooltip!,
-                        style: const TextStyle(color: Colors.white, fontSize: 10),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                   ),
@@ -1941,14 +2129,7 @@ class OfficePet {
 
 // ── Particle System ──────────────────────────────────────────
 
-enum ParticleType {
-  spark,
-  confetti,
-  text,
-  dataPacket,
-  pawPrint,
-  fallingItem,
-}
+enum ParticleType { spark, confetti, text, dataPacket, pawPrint, fallingItem }
 
 class Particle {
   Particle({
@@ -2004,75 +2185,85 @@ class ParticleSystem {
         case ParticleType.spark:
           final angle = rng.nextDouble() * 2 * pi;
           final speed = 0.05 + rng.nextDouble() * 0.1;
-          particles.add(Particle(
-            x: x,
-            y: y,
-            vx: cos(angle) * speed,
-            vy: sin(angle) * speed,
-            life: 0.5 + rng.nextDouble() * 0.5,
-            maxLife: 1.0,
-            color: color,
-            size: 2 + rng.nextDouble() * 2,
-            type: type,
-          ));
-        case ParticleType.confetti:
-          particles.add(Particle(
-            x: x + (rng.nextDouble() - 0.5) * 0.06,
-            y: y,
-            vx: (rng.nextDouble() - 0.5) * 0.04,
-            vy: 0.02 + rng.nextDouble() * 0.03,
-            life: 2.0 + rng.nextDouble() * 1.0,
-            maxLife: 3.0,
-            color: Color.fromARGB(
-              255,
-              rng.nextInt(256),
-              rng.nextInt(256),
-              rng.nextInt(256),
+          particles.add(
+            Particle(
+              x: x,
+              y: y,
+              vx: cos(angle) * speed,
+              vy: sin(angle) * speed,
+              life: 0.5 + rng.nextDouble() * 0.5,
+              maxLife: 1.0,
+              color: color,
+              size: 2 + rng.nextDouble() * 2,
+              type: type,
             ),
-            size: 2 + rng.nextDouble() * 3,
-            type: type,
-            rotation: rng.nextDouble() * 6.28,
-            rotationSpeed: (rng.nextDouble() - 0.5) * 8,
-          ));
+          );
+        case ParticleType.confetti:
+          particles.add(
+            Particle(
+              x: x + (rng.nextDouble() - 0.5) * 0.06,
+              y: y,
+              vx: (rng.nextDouble() - 0.5) * 0.04,
+              vy: 0.02 + rng.nextDouble() * 0.03,
+              life: 2.0 + rng.nextDouble() * 1.0,
+              maxLife: 3.0,
+              color: Color.fromARGB(
+                255,
+                rng.nextInt(256),
+                rng.nextInt(256),
+                rng.nextInt(256),
+              ),
+              size: 2 + rng.nextDouble() * 3,
+              type: type,
+              rotation: rng.nextDouble() * 6.28,
+              rotationSpeed: (rng.nextDouble() - 0.5) * 8,
+            ),
+          );
         case ParticleType.text:
-          particles.add(Particle(
-            x: x + (rng.nextDouble() - 0.5) * 0.02,
-            y: y,
-            vx: (rng.nextDouble() - 0.5) * 0.005,
-            vy: -0.02 - rng.nextDouble() * 0.01,
-            life: 1.5 + rng.nextDouble() * 0.5,
-            maxLife: 2.0,
-            color: color,
-            size: 8 + rng.nextDouble() * 6,
-            type: type,
-            text: text,
-          ));
+          particles.add(
+            Particle(
+              x: x + (rng.nextDouble() - 0.5) * 0.02,
+              y: y,
+              vx: (rng.nextDouble() - 0.5) * 0.005,
+              vy: -0.02 - rng.nextDouble() * 0.01,
+              life: 1.5 + rng.nextDouble() * 0.5,
+              maxLife: 2.0,
+              color: color,
+              size: 8 + rng.nextDouble() * 6,
+              type: type,
+              text: text,
+            ),
+          );
         case ParticleType.pawPrint:
-          particles.add(Particle(
-            x: x,
-            y: y,
-            vx: 0,
-            vy: 0,
-            life: 3.0,
-            maxLife: 3.0,
-            color: color,
-            size: 3,
-            type: type,
-          ));
+          particles.add(
+            Particle(
+              x: x,
+              y: y,
+              vx: 0,
+              vy: 0,
+              life: 3.0,
+              maxLife: 3.0,
+              color: color,
+              size: 3,
+              type: type,
+            ),
+          );
         case ParticleType.fallingItem:
-          particles.add(Particle(
-            x: x,
-            y: y,
-            vx: (rng.nextDouble() - 0.5) * 0.02,
-            vy: 0.05 + rng.nextDouble() * 0.03,
-            life: 1.5,
-            maxLife: 1.5,
-            color: color,
-            size: 4,
-            type: type,
-            rotation: rng.nextDouble() * 6.28,
-            rotationSpeed: (rng.nextDouble() - 0.5) * 6,
-          ));
+          particles.add(
+            Particle(
+              x: x,
+              y: y,
+              vx: (rng.nextDouble() - 0.5) * 0.02,
+              vy: 0.05 + rng.nextDouble() * 0.03,
+              life: 1.5,
+              maxLife: 1.5,
+              color: color,
+              size: 4,
+              type: type,
+              rotation: rng.nextDouble() * 6.28,
+              rotationSpeed: (rng.nextDouble() - 0.5) * 6,
+            ),
+          );
         case ParticleType.dataPacket:
           break; // handled by emitDataPacket
       }
@@ -2087,22 +2278,24 @@ class ParticleSystem {
     Color color,
   ) {
     if (particles.length >= _maxParticles) return;
-    particles.add(Particle(
-      x: startX,
-      y: startY,
-      vx: 0,
-      vy: 0,
-      life: 1.2,
-      maxLife: 1.2,
-      color: color,
-      size: 3,
-      type: ParticleType.dataPacket,
-      progress: 0,
-      startX: startX,
-      startY: startY,
-      endX: endX,
-      endY: endY,
-    ));
+    particles.add(
+      Particle(
+        x: startX,
+        y: startY,
+        vx: 0,
+        vy: 0,
+        life: 1.2,
+        maxLife: 1.2,
+        color: color,
+        size: 3,
+        type: ParticleType.dataPacket,
+        progress: 0,
+        startX: startX,
+        startY: startY,
+        endX: endX,
+        endY: endY,
+      ),
+    );
   }
 
   void update(double dt) {
@@ -2123,8 +2316,14 @@ class ParticleSystem {
           final t = p.progress;
           final midX = (p.startX + p.endX) / 2;
           final midY = min(p.startY, p.endY) - 0.08;
-          p.x = (1 - t) * (1 - t) * p.startX + 2 * (1 - t) * t * midX + t * t * p.endX;
-          p.y = (1 - t) * (1 - t) * p.startY + 2 * (1 - t) * t * midY + t * t * p.endY;
+          p.x =
+              (1 - t) * (1 - t) * p.startX +
+              2 * (1 - t) * t * midX +
+              t * t * p.endX;
+          p.y =
+              (1 - t) * (1 - t) * p.startY +
+              2 * (1 - t) * t * midY +
+              t * t * p.endY;
           // Spark explosion on arrival
           if (p.progress >= 0.98 && p.life > 0.1) {
             emit(ParticleType.spark, p.endX, p.endY, p.color, count: 8);

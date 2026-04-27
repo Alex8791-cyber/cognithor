@@ -25,8 +25,9 @@ class _AuditPageState extends State<AuditPage> {
       final result = await api.get('audit/verify');
       setState(() => _verifyResult = result);
     } catch (e) {
-      setState(() =>
-          _verifyResult = {'status': 'error', 'message': e.toString()});
+      setState(
+        () => _verifyResult = {'status': 'error', 'message': e.toString()},
+      );
     } finally {
       setState(() => _verifying = false);
     }
@@ -74,7 +75,8 @@ class _AuditPageState extends State<AuditPage> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.security, size: 18),
               label: Text(l.auditVerifyChain),
             ),
@@ -101,8 +103,7 @@ class _AuditPageState extends State<AuditPage> {
             ],
           ],
         ),
-        if (_verifyResult != null &&
-            _verifyResult!['broken_at_line'] != null)
+        if (_verifyResult != null && _verifyResult!['broken_at_line'] != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
@@ -121,21 +122,24 @@ class _AuditPageState extends State<AuditPage> {
           Text(
             'TSA: ${_timestampsResult!['tsa_enabled'] == true ? 'Enabled' : 'Disabled'}'
             ' \u2014 ${_timestampsResult!['count'] ?? 0} timestamps',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: CognithorTheme.textSecondary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: CognithorTheme.textSecondary,
+            ),
           ),
           const SizedBox(height: 8),
-          if ((_timestampsResult!['timestamps'] as List?)?.isNotEmpty ==
-              true)
+          if ((_timestampsResult!['timestamps'] as List?)?.isNotEmpty == true)
             ...(_timestampsResult!['timestamps'] as List).map(
               (ts) => ListTile(
                 dense: true,
-                leading: const Icon(Icons.verified,
-                    size: 18, color: Colors.green),
-                title: Text(ts['date']?.toString() ?? '',
-                    style: const TextStyle(fontSize: 13)),
+                leading: const Icon(
+                  Icons.verified,
+                  size: 18,
+                  color: Colors.green,
+                ),
+                title: Text(
+                  ts['date']?.toString() ?? '',
+                  style: const TextStyle(fontSize: 13),
+                ),
                 trailing: Text(
                   '${((ts['size_bytes'] ?? 0) / 1024).toStringAsFixed(1)} KB',
                   style: Theme.of(context).textTheme.bodySmall,
@@ -143,8 +147,10 @@ class _AuditPageState extends State<AuditPage> {
               ),
             )
           else
-            Text('No timestamps yet',
-                style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              'No timestamps yet',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
         ],
         const SizedBox(height: 24),
 
@@ -160,9 +166,12 @@ class _AuditPageState extends State<AuditPage> {
                   hintText: 'Channel filter (optional)',
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 style: const TextStyle(fontSize: 13),
               ),
@@ -173,16 +182,16 @@ class _AuditPageState extends State<AuditPage> {
                 final api = context.read<ConnectionProvider>().api;
                 final messenger = ScaffoldMessenger.of(context);
                 final channel = _channelController.text.trim();
-                final query =
-                    channel.isNotEmpty ? '?channel=$channel' : '';
+                final query = channel.isNotEmpty ? '?channel=$channel' : '';
                 try {
-                  final result =
-                      await api.get('user/audit-data$query');
+                  final result = await api.get('user/audit-data$query');
                   if (mounted) {
                     messenger.showSnackBar(
                       SnackBar(
-                          content: Text(
-                              'Exported ${result['count'] ?? 0} entries')),
+                        content: Text(
+                          'Exported ${result['count'] ?? 0} entries',
+                        ),
+                      ),
                     );
                   }
                 } catch (e) {
@@ -205,9 +214,9 @@ class _AuditPageState extends State<AuditPage> {
     return Text(
       title,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: CognithorTheme.accent,
-            fontWeight: FontWeight.w600,
-          ),
+        color: CognithorTheme.accent,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }

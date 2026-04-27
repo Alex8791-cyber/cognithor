@@ -48,15 +48,21 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
     final baseColor = theme.cardColor;
     final highlightColor = isDark
         ? HSLColor.fromColor(baseColor)
-            .withLightness(
-              (HSLColor.fromColor(baseColor).lightness + 0.06).clamp(0.0, 1.0),
-            )
-            .toColor()
+              .withLightness(
+                (HSLColor.fromColor(baseColor).lightness + 0.06).clamp(
+                  0.0,
+                  1.0,
+                ),
+              )
+              .toColor()
         : HSLColor.fromColor(baseColor)
-            .withLightness(
-              (HSLColor.fromColor(baseColor).lightness - 0.04).clamp(0.0, 1.0),
-            )
-            .toColor();
+              .withLightness(
+                (HSLColor.fromColor(baseColor).lightness - 0.04).clamp(
+                  0.0,
+                  1.0,
+                ),
+              )
+              .toColor();
 
     return AnimatedBuilder(
       animation: _controller,
@@ -111,11 +117,7 @@ class _ShimmerRect extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment(dx - 0.6, 0),
           end: Alignment(dx + 0.6, 0),
-          colors: [
-            baseColor,
-            highlightColor,
-            baseColor,
-          ],
+          colors: [baseColor, highlightColor, baseColor],
           stops: const [0.0, 0.5, 1.0],
         ),
       ),

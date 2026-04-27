@@ -31,103 +31,103 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
   int _selectedIndex = 0;
 
   List<_AdminSection> _buildSections(AppLocalizations l) => [
-        _AdminSection(
-          icon: Icons.tune,
-          title: l.config,
-          subtitle: l.adminConfigSubtitle,
-          builder: (_) => const ConfigScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.smart_toy,
-          title: l.agentsTitle,
-          subtitle: l.adminAgentsSubtitle,
-          builder: (_) => const AgentsScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.model_training,
-          title: l.modelsTitle,
-          subtitle: l.adminModelsSubtitle,
-          builder: (_) => const ModelsScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.shield,
-          title: l.securityTitle,
-          subtitle: l.adminSecuritySubtitle,
-          builder: (_) => const SecurityScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.account_tree,
-          title: l.workflowsTitle,
-          subtitle: l.adminWorkflowsSubtitle,
-          builder: (_) => const WorkflowsScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.hub,
-          title: l.memoryTitle,
-          subtitle: l.adminMemorySubtitle,
-          builder: (_) => const MemoryScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.lock,
-          title: l.vaultTitle,
-          subtitle: l.adminVaultSubtitle,
-          builder: (_) => const VaultScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.dns,
-          title: l.systemTitle,
-          subtitle: l.adminSystemSubtitle,
-          builder: (_) => const SystemScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.scatter_plot,
-          title: l.knowledgeGraph,
-          subtitle: l.entityVisualization,
-          builder: (_) => const KnowledgeGraphScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.vpn_key,
-          title: l.credentialsTitle,
-          subtitle: l.manageSecrets,
-          builder: (_) => const CredentialsScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.school,
-          title: l.learningTitle,
-          subtitle: l.adminLearningSubtitle,
-          builder: (_) => const LearningScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.auto_stories,
-          title: l.teachCognithor,
-          subtitle: l.adminTeachSubtitle,
-          builder: (_) => const TeachScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.devices,
-          title: 'Device',
-          subtitle: 'Native device features & connection',
-          builder: (_) => const DeviceSettingsScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.phone_android,
-          title: l.connectedDevices,
-          subtitle: l.connectedDevicesSubtitle,
-          builder: (_) => const ConnectedDevicesScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.wifi,
-          title: l.networkSettings,
-          subtitle: l.networkSettingsSubtitle,
-          builder: (_) => const NetworkSettingsScreen(),
-        ),
-        _AdminSection(
-          icon: Icons.psychology_alt_outlined,
-          title: 'Evolution',
-          subtitle: 'Goals, learning plans & journal',
-          builder: (_) => const EvolutionGoalsPage(),
-        ),
-      ];
+    _AdminSection(
+      icon: Icons.tune,
+      title: l.config,
+      subtitle: l.adminConfigSubtitle,
+      builder: (_) => const ConfigScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.smart_toy,
+      title: l.agentsTitle,
+      subtitle: l.adminAgentsSubtitle,
+      builder: (_) => const AgentsScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.model_training,
+      title: l.modelsTitle,
+      subtitle: l.adminModelsSubtitle,
+      builder: (_) => const ModelsScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.shield,
+      title: l.securityTitle,
+      subtitle: l.adminSecuritySubtitle,
+      builder: (_) => const SecurityScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.account_tree,
+      title: l.workflowsTitle,
+      subtitle: l.adminWorkflowsSubtitle,
+      builder: (_) => const WorkflowsScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.hub,
+      title: l.memoryTitle,
+      subtitle: l.adminMemorySubtitle,
+      builder: (_) => const MemoryScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.lock,
+      title: l.vaultTitle,
+      subtitle: l.adminVaultSubtitle,
+      builder: (_) => const VaultScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.dns,
+      title: l.systemTitle,
+      subtitle: l.adminSystemSubtitle,
+      builder: (_) => const SystemScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.scatter_plot,
+      title: l.knowledgeGraph,
+      subtitle: l.entityVisualization,
+      builder: (_) => const KnowledgeGraphScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.vpn_key,
+      title: l.credentialsTitle,
+      subtitle: l.manageSecrets,
+      builder: (_) => const CredentialsScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.school,
+      title: l.learningTitle,
+      subtitle: l.adminLearningSubtitle,
+      builder: (_) => const LearningScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.auto_stories,
+      title: l.teachCognithor,
+      subtitle: l.adminTeachSubtitle,
+      builder: (_) => const TeachScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.devices,
+      title: 'Device',
+      subtitle: 'Native device features & connection',
+      builder: (_) => const DeviceSettingsScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.phone_android,
+      title: l.connectedDevices,
+      subtitle: l.connectedDevicesSubtitle,
+      builder: (_) => const ConnectedDevicesScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.wifi,
+      title: l.networkSettings,
+      subtitle: l.networkSettingsSubtitle,
+      builder: (_) => const NetworkSettingsScreen(),
+    ),
+    _AdminSection(
+      icon: Icons.psychology_alt_outlined,
+      title: 'Evolution',
+      subtitle: 'Goals, learning plans & journal',
+      builder: (_) => const EvolutionGoalsPage(),
+    ),
+  ];
 
   Widget _buildList(
     BuildContext context, {
@@ -170,9 +170,9 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
           if (isWide) {
             setState(() => _selectedIndex = index);
           } else {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: section.builder),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: section.builder));
           }
         },
       );
@@ -180,9 +180,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: CognithorTheme.spacingSm),
-      children: [
-        StaggeredList(children: tiles),
-      ],
+      children: [StaggeredList(children: tiles)],
     );
   }
 

@@ -30,15 +30,31 @@ class EventRow extends StatelessWidget {
     switch (type) {
       case 'crew_kickoff_started':
       case 'crew_task_started':
-        return (icon: Icons.play_arrow, color: const Color(0xFF8B5CF6), label: 'start');
+        return (
+          icon: Icons.play_arrow,
+          color: const Color(0xFF8B5CF6),
+          label: 'start',
+        );
       case 'crew_task_completed':
       case 'crew_kickoff_completed':
-        return (icon: Icons.check, color: const Color(0xFF00E676), label: 'done');
+        return (
+          icon: Icons.check,
+          color: const Color(0xFF00E676),
+          label: 'done',
+        );
       case 'crew_task_failed':
       case 'crew_kickoff_failed':
-        return (icon: Icons.error_outline, color: const Color(0xFFFF5252), label: 'fail');
+        return (
+          icon: Icons.error_outline,
+          color: const Color(0xFFFF5252),
+          label: 'fail',
+        );
       case 'crew_guardrail_check':
-        return (icon: Icons.shield, color: const Color(0xFFFFAB40), label: 'guard');
+        return (
+          icon: Icons.shield,
+          color: const Color(0xFFFFAB40),
+          label: 'guard',
+        );
       default:
         return (icon: Icons.circle, color: Colors.grey, label: type);
     }

@@ -69,24 +69,31 @@ class _CognithorTextAreaFieldState extends State<CognithorTextAreaField> {
                 TextButton.icon(
                   onPressed: widget.onReset,
                   icon: const Icon(Icons.restore, size: 14),
-                  label: Text(widget.resetLabel ?? 'Reset',
-                      style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    widget.resetLabel ?? 'Reset',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
             ],
           ),
           if (widget.description != null) ...[
             const SizedBox(height: 2),
-            Text(widget.description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           TextField(
             controller: _ctrl,
             maxLines: widget.rows,
             style: widget.mono
-                ? theme.textTheme.bodyMedium
-                    ?.copyWith(fontFamily: 'monospace', fontSize: 13)
+                ? theme.textTheme.bodyMedium?.copyWith(
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                  )
                 : null,
             decoration: InputDecoration(
               errorText: widget.error,

@@ -17,7 +17,9 @@ class SocialPage extends StatelessWidget {
       builder: (context, cfg, _) {
         final social = cfg.cfg['social'] as Map<String, dynamic>? ?? {};
         final productName = (social['reddit_product_name'] ?? '').toString();
-        final hasSubs = (social['reddit_subreddits'] as List<dynamic>?)?.isNotEmpty ?? false;
+        final hasSubs =
+            (social['reddit_subreddits'] as List<dynamic>?)?.isNotEmpty ??
+            false;
         final isConfigured = productName.isNotEmpty && hasSubs;
 
         return ListView(
@@ -38,18 +40,23 @@ class SocialPage extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: Colors.orange.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.warning_amber, color: Colors.orange[300], size: 20),
+                            Icon(
+                              Icons.warning_amber,
+                              color: Colors.orange[300],
+                              size: 20,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 l.socialSetupRequired,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.orange[300],
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: Colors.orange[300]),
                               ),
                             ),
                           ],
@@ -58,17 +65,20 @@ class SocialPage extends StatelessWidget {
                     CognithorToggleField(
                       label: l.autoScan,
                       value: social['reddit_scan_enabled'] == true,
-                      onChanged: (v) => cfg.set('social.reddit_scan_enabled', v),
+                      onChanged: (v) =>
+                          cfg.set('social.reddit_scan_enabled', v),
                     ),
                     CognithorTextField(
                       label: l.productName,
                       value: (social['reddit_product_name'] ?? '').toString(),
                       placeholder: 'e.g. Cognithor',
-                      onChanged: (v) => cfg.set('social.reddit_product_name', v),
+                      onChanged: (v) =>
+                          cfg.set('social.reddit_product_name', v),
                     ),
                     CognithorTextField(
                       label: l.productDescription,
-                      value: (social['reddit_product_description'] ?? '').toString(),
+                      value: (social['reddit_product_description'] ?? '')
+                          .toString(),
                       placeholder: 'One-sentence description for AI scoring',
                       onChanged: (v) =>
                           cfg.set('social.reddit_product_description', v),
@@ -76,13 +86,16 @@ class SocialPage extends StatelessWidget {
                     CognithorTextField(
                       label: l.replyTone,
                       value: (social['reddit_reply_tone'] ?? '').toString(),
-                      placeholder: 'helpful, technically credible, no sales pitch',
+                      placeholder:
+                          'helpful, technically credible, no sales pitch',
                       onChanged: (v) => cfg.set('social.reddit_reply_tone', v),
                     ),
                     CognithorTextField(
                       label: l.subreddits,
-                      value: (social['reddit_subreddits'] as List<dynamic>?)
-                              ?.join(', ') ??
+                      value:
+                          (social['reddit_subreddits'] as List<dynamic>?)?.join(
+                            ', ',
+                          ) ??
                           '',
                       description: l.subredditsHint,
                       placeholder: 'LocalLLaMA, SaaS, Python',
@@ -104,7 +117,9 @@ class SocialPage extends StatelessWidget {
                     ),
                     CognithorNumberField(
                       label: l.scanInterval,
-                      value: (social['reddit_scan_interval_minutes'] as num?) ?? 30,
+                      value:
+                          (social['reddit_scan_interval_minutes'] as num?) ??
+                          30,
                       min: 5,
                       max: 1440,
                       onChanged: (v) =>
@@ -118,7 +133,9 @@ class SocialPage extends StatelessWidget {
                     ),
                     CognithorTextField(
                       label: 'Auto-Post Whitelist',
-                      value: (social['reddit_auto_post_whitelist'] as List<dynamic>?)
+                      value:
+                          (social['reddit_auto_post_whitelist']
+                                  as List<dynamic>?)
                               ?.join(', ') ??
                           '',
                       placeholder: 'ollama, selfhosted',
@@ -144,7 +161,8 @@ class SocialPage extends StatelessWidget {
                           'Minimum intent score required to auto-post. Leads below '
                           'this threshold always fall back to clipboard review, '
                           'even on whitelisted subs.',
-                      onChanged: (v) => cfg.set('social.reddit_min_auto_score', v),
+                      onChanged: (v) =>
+                          cfg.set('social.reddit_min_auto_score', v),
                     ),
                   ],
                 );
@@ -174,11 +192,17 @@ class SocialPage extends StatelessWidget {
             ),
             CognithorTextField(
               label: 'HN Categories',
-              value: (social['hn_categories'] as List<dynamic>?)?.join(', ') ?? 'top, new',
+              value:
+                  (social['hn_categories'] as List<dynamic>?)?.join(', ') ??
+                  'top, new',
               placeholder: 'top, new, best, ask, show',
               onChanged: (v) => cfg.set(
                 'social.hn_categories',
-                v.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+                v
+                    .split(',')
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList(),
               ),
             ),
             CognithorNumberField(
@@ -208,12 +232,20 @@ class SocialPage extends StatelessWidget {
             ),
             CognithorTextField(
               label: 'Discord Channel IDs',
-              value: (social['discord_scan_channels'] as List<dynamic>?)?.join(', ') ?? '',
+              value:
+                  (social['discord_scan_channels'] as List<dynamic>?)?.join(
+                    ', ',
+                  ) ??
+                  '',
               placeholder: '123456789, 987654321',
               description: 'Comma-separated Discord channel IDs to monitor',
               onChanged: (v) => cfg.set(
                 'social.discord_scan_channels',
-                v.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+                v
+                    .split(',')
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList(),
               ),
             ),
             CognithorNumberField(
@@ -228,12 +260,16 @@ class SocialPage extends StatelessWidget {
               value: (social['discord_scan_interval_minutes'] as num?) ?? 30,
               min: 5,
               max: 1440,
-              onChanged: (v) => cfg.set('social.discord_scan_interval_minutes', v),
+              onChanged: (v) =>
+                  cfg.set('social.discord_scan_interval_minutes', v),
             ),
 
             // ── RSS / Atom ──────────────────────────────────
             const Divider(height: 32),
-            Text('RSS / Atom Feeds', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'RSS / Atom Feeds',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             CognithorToggleField(
               label: 'RSS Scanning',
@@ -245,12 +281,17 @@ class SocialPage extends StatelessWidget {
             CognithorTextField(
               label: 'RSS Feed URLs',
               value: (social['rss_feeds'] as List<dynamic>?)?.join(', ') ?? '',
-              placeholder: 'https://example.com/feed.xml, https://blog.example.com/rss',
+              placeholder:
+                  'https://example.com/feed.xml, https://blog.example.com/rss',
               description:
                   'Comma-separated full feed URLs (RSS 2.0 or Atom). Each entry is scored by the LLM.',
               onChanged: (v) => cfg.set(
                 'social.rss_feeds',
-                v.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+                v
+                    .split(',')
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList(),
               ),
             ),
             CognithorNumberField(

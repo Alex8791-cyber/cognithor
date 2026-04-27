@@ -58,21 +58,20 @@ class _SplashScreenState extends State<SplashScreen> {
     chat.attach(conn.ws);
 
     // Auto-session: resume recent or create new based on inactivity timeout
-    final sessionId = await sessions.autoSessionOnStartup() ??
+    final sessionId =
+        await sessions.autoSessionOnStartup() ??
         'flutter_${DateTime.now().millisecondsSinceEpoch}';
     conn.ws.connect(sessionId);
 
     // Check if the first-run wizard has been completed.
     final prefs = await SharedPreferences.getInstance();
-    final firstRunComplete =
-        prefs.getBool(SetupWizardScreen.prefKey) ?? false;
+    final firstRunComplete = prefs.getBool(SetupWizardScreen.prefKey) ?? false;
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) => firstRunComplete
-            ? const MainShell()
-            : const SetupWizardScreen(),
+        builder: (_) =>
+            firstRunComplete ? const MainShell() : const SetupWizardScreen(),
       ),
     );
   }
@@ -98,19 +97,21 @@ class _SplashScreenState extends State<SplashScreen> {
               Text(
                 l.appTitle,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w700,
-                      color: CognithorTheme.accent,
-                      letterSpacing: 4,
-                    ),
+                  fontSize: 48,
+                  fontWeight: FontWeight.w700,
+                  color: CognithorTheme.accent,
+                  letterSpacing: 4,
+                ),
               ),
               const SizedBox(height: 32),
 
               if (conn.state == CognithorConnectionState.connecting) ...[
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
-                Text(l.connecting,
-                    style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  l.connecting,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ],
 
               if (conn.state == CognithorConnectionState.error) ...[
@@ -123,13 +124,10 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  conn.versionMismatch
-                      ? 'Version Mismatch'
-                      : l.connectionError,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(color: CognithorTheme.red),
+                  conn.versionMismatch ? 'Version Mismatch' : l.connectionError,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(color: CognithorTheme.red),
                 ),
                 const SizedBox(height: 8),
                 if (conn.versionMismatch) ...[
@@ -169,7 +167,8 @@ class _SplashScreenState extends State<SplashScreen> {
                     OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                            builder: (_) => const SettingsScreen()),
+                          builder: (_) => const SettingsScreen(),
+                        ),
                       ),
                       icon: const Icon(Icons.settings),
                       label: Text(l.settings),
@@ -183,8 +182,10 @@ class _SplashScreenState extends State<SplashScreen> {
               ],
 
               if (conn.state == CognithorConnectionState.disconnected) ...[
-                Text(l.connecting,
-                    style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  l.connecting,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ],
             ],
           ),

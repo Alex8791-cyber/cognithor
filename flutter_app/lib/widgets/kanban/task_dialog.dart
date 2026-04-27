@@ -39,7 +39,9 @@ class _TaskDialogState extends State<TaskDialog> {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.initialTitle ?? '');
     _descCtrl = TextEditingController(text: widget.initialDescription ?? '');
-    _labelsCtrl = TextEditingController(text: (widget.initialLabels ?? []).join(', '));
+    _labelsCtrl = TextEditingController(
+      text: (widget.initialLabels ?? []).join(', '),
+    );
     _priority = widget.initialPriority ?? 'medium';
     _agent = widget.initialAgent ?? '';
   }
@@ -56,7 +58,9 @@ class _TaskDialogState extends State<TaskDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text(widget.initialTitle != null ? l.kanbanEditTask : l.kanbanNewTask),
+      title: Text(
+        widget.initialTitle != null ? l.kanbanEditTask : l.kanbanNewTask,
+      ),
       content: SizedBox(
         width: 400,
         child: SingleChildScrollView(
@@ -91,9 +95,12 @@ class _TaskDialogState extends State<TaskDialog> {
                         border: OutlineInputBorder(),
                       ),
                       items: _priorities
-                          .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                          .map(
+                            (p) => DropdownMenuItem(value: p, child: Text(p)),
+                          )
                           .toList(),
-                      onChanged: (v) => setState(() => _priority = v ?? 'medium'),
+                      onChanged: (v) =>
+                          setState(() => _priority = v ?? 'medium'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -105,10 +112,12 @@ class _TaskDialogState extends State<TaskDialog> {
                         border: OutlineInputBorder(),
                       ),
                       items: _agents
-                          .map((a) => DropdownMenuItem(
-                                value: a,
-                                child: Text(a.isEmpty ? '(none)' : a),
-                              ))
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a,
+                              child: Text(a.isEmpty ? '(none)' : a),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) => setState(() => _agent = v ?? ''),
                     ),
@@ -149,7 +158,9 @@ class _TaskDialogState extends State<TaskDialog> {
               'labels': labels,
             });
           },
-          child: Text(widget.initialTitle != null ? l.kanbanSave : l.kanbanCreate),
+          child: Text(
+            widget.initialTitle != null ? l.kanbanSave : l.kanbanCreate,
+          ),
         ),
       ],
     );

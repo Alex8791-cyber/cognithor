@@ -58,7 +58,8 @@ const List<KnownPack> kKnownPacks = [
     qualifiedId: 'cognithor-official/reddit-lead-hunter-pro',
     packId: 'reddit-lead-hunter-pro',
     displayName: 'Reddit Lead Hunter Pro',
-    tagline: 'Find high-intent leads on Reddit, score them with your local LLM, '
+    tagline:
+        'Find high-intent leads on Reddit, score them with your local LLM, '
         'draft replies from 50 curated templates, and drop them into an encrypted CRM.',
     featureBullets: [
       'OAuth Reddit API (rate-safe, never banned)',
@@ -92,7 +93,8 @@ const List<KnownPack> kKnownPacks = [
     qualifiedId: 'cognithor-official/discord-lead-hunter',
     packId: 'discord-lead-hunter',
     displayName: 'Discord Lead Hunter',
-    tagline: 'Score messages in your Discord channels. Requires your own bot token.',
+    tagline:
+        'Score messages in your Discord channels. Requires your own bot token.',
     featureBullets: [
       'Bring your own Discord bot token',
       'Local LLM scoring',

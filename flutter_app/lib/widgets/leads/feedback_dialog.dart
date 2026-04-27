@@ -33,7 +33,9 @@ class FeedbackDialog extends StatelessWidget {
             leading: Icon(icon, color: color, size: 22),
             title: Text(labels[tag] ?? tag),
             dense: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             onTap: () => Navigator.of(context).pop(tag),
           );
         }).toList(),

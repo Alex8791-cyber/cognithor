@@ -90,17 +90,22 @@ class _CognithorJsonEditorState extends State<CognithorJsonEditor> {
           Text(widget.label, style: theme.textTheme.bodyMedium),
           if (widget.description != null) ...[
             const SizedBox(height: 2),
-            Text(widget.description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           TextField(
             controller: _ctrl,
             focusNode: _focusNode,
             maxLines: widget.rows,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(fontFamily: 'monospace', fontSize: 13),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontFamily: 'monospace',
+              fontSize: 13,
+            ),
             decoration: InputDecoration(
               errorText: _error,
               errorMaxLines: 2,
@@ -109,7 +114,9 @@ class _CognithorJsonEditorState extends State<CognithorJsonEditor> {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: _error != null ? CognithorTheme.red : theme.dividerColor,
+                  color: _error != null
+                      ? CognithorTheme.red
+                      : theme.dividerColor,
                 ),
               ),
             ),

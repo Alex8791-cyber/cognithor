@@ -45,11 +45,9 @@ void main() {
   testWidgets('paperclip opens popup menu with 4 entries', (tester) async {
     final bp = _mkBackendProvider('vllm');
     final cp = _mkChatProvider();
-    await tester.pumpWidget(_wrap(
-      ChatInput(onSend: (_) {}, onCancel: () {}),
-      bp,
-      cp,
-    ));
+    await tester.pumpWidget(
+      _wrap(ChatInput(onSend: (_) {}, onCancel: () {}), bp, cp),
+    );
 
     await tester.tap(find.byKey(const ValueKey('chat-input-paperclip')));
     await tester.pumpAndSettle();
@@ -60,14 +58,14 @@ void main() {
     expect(find.text('URL einfügen'), findsOneWidget);
   });
 
-  testWidgets('Video entry disabled when active backend != vllm', (tester) async {
+  testWidgets('Video entry disabled when active backend != vllm', (
+    tester,
+  ) async {
     final bp = _mkBackendProvider('ollama');
     final cp = _mkChatProvider();
-    await tester.pumpWidget(_wrap(
-      ChatInput(onSend: (_) {}, onCancel: () {}),
-      bp,
-      cp,
-    ));
+    await tester.pumpWidget(
+      _wrap(ChatInput(onSend: (_) {}, onCancel: () {}), bp, cp),
+    );
 
     await tester.tap(find.byKey(const ValueKey('chat-input-paperclip')));
     await tester.pumpAndSettle();
@@ -81,47 +79,45 @@ void main() {
     expect(videoItem.enabled, isFalse);
   });
 
-  testWidgets('URL dialog accepts valid video URL and sets pending attachment',
-      (tester) async {
-    final bp = _mkBackendProvider('vllm');
-    final cp = _mkChatProvider();
-    await tester.pumpWidget(_wrap(
-      ChatInput(onSend: (_) {}, onCancel: () {}),
-      bp,
-      cp,
-    ));
+  testWidgets(
+    'URL dialog accepts valid video URL and sets pending attachment',
+    (tester) async {
+      final bp = _mkBackendProvider('vllm');
+      final cp = _mkChatProvider();
+      await tester.pumpWidget(
+        _wrap(ChatInput(onSend: (_) {}, onCancel: () {}), bp, cp),
+      );
 
-    await tester.tap(find.byKey(const ValueKey('chat-input-paperclip')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('URL einfügen'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('chat-input-paperclip')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('URL einfügen'));
+      await tester.pumpAndSettle();
 
-    // Dialog should be open (title + menu entry both contain "URL einfügen")
-    expect(find.text('URL einfügen'), findsAtLeastNWidgets(1));
-    // Scope the TextField lookup to the dialog — the ChatInput's own
-    // TextField is also in the tree.
-    final dialogField = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(TextField),
-    );
-    expect(dialogField, findsOneWidget);
+      // Dialog should be open (title + menu entry both contain "URL einfügen")
+      expect(find.text('URL einfügen'), findsAtLeastNWidgets(1));
+      // Scope the TextField lookup to the dialog — the ChatInput's own
+      // TextField is also in the tree.
+      final dialogField = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      );
+      expect(dialogField, findsOneWidget);
 
-    await tester.enterText(dialogField, 'https://x.com/clip.mp4');
-    await tester.tap(find.text('Hinzufügen'));
-    await tester.pumpAndSettle();
+      await tester.enterText(dialogField, 'https://x.com/clip.mp4');
+      await tester.tap(find.text('Hinzufügen'));
+      await tester.pumpAndSettle();
 
-    expect(cp.pendingVideoAttachment, isNotNull);
-    expect(cp.pendingVideoAttachment!['url'], 'https://x.com/clip.mp4');
-  });
+      expect(cp.pendingVideoAttachment, isNotNull);
+      expect(cp.pendingVideoAttachment!['url'], 'https://x.com/clip.mp4');
+    },
+  );
 
   testWidgets('URL dialog rejects non-video URL with snackbar', (tester) async {
     final bp = _mkBackendProvider('vllm');
     final cp = _mkChatProvider();
-    await tester.pumpWidget(_wrap(
-      ChatInput(onSend: (_) {}, onCancel: () {}),
-      bp,
-      cp,
-    ));
+    await tester.pumpWidget(
+      _wrap(ChatInput(onSend: (_) {}, onCancel: () {}), bp, cp),
+    );
 
     await tester.tap(find.byKey(const ValueKey('chat-input-paperclip')));
     await tester.pumpAndSettle();
@@ -148,17 +144,26 @@ void main() {
     final source = File('lib/widgets/chat_input.dart').readAsStringSync();
 
     // Source must still allocate a TextEditingController for the URL input.
-    expect(source.contains('TextEditingController()'), isTrue,
-        reason: 'URL dialog must allocate a TextEditingController');
+    expect(
+      source.contains('TextEditingController()'),
+      isTrue,
+      reason: 'URL dialog must allocate a TextEditingController',
+    );
 
     // Scope the dispose check to the stateful URL-input dialog widget.
     final urlDialogStart = source.indexOf('_UrlInputDialogState');
-    expect(urlDialogStart, greaterThan(-1),
-        reason: '_UrlInputDialogState must own the controller lifecycle');
+    expect(
+      urlDialogStart,
+      greaterThan(-1),
+      reason: '_UrlInputDialogState must own the controller lifecycle',
+    );
 
     final tail = source.substring(urlDialogStart);
-    expect(tail.contains('controller.dispose()'), isTrue,
-        reason: 'Dialog must dispose its TextEditingController (Bug I2-r3)');
+    expect(
+      tail.contains('controller.dispose()'),
+      isTrue,
+      reason: 'Dialog must dispose its TextEditingController (Bug I2-r3)',
+    );
   });
 
   test('chat_input does not allocate FocusNode inline in build()', () {
@@ -167,13 +172,18 @@ void main() {
     // Find the build() method body. A robust way: find the first occurrence
     // of "Widget build(BuildContext context)" and scan forward.
     final buildStart = source.indexOf('Widget build(BuildContext context)');
-    expect(buildStart, greaterThan(-1),
-        reason: 'ChatInput must have a build() method');
+    expect(
+      buildStart,
+      greaterThan(-1),
+      reason: 'ChatInput must have a build() method',
+    );
 
     // Take everything from build() to the end of the method — rough, but
     // enough: the next top-level `Widget ` or end-of-class is the boundary.
     final rest = source.substring(buildStart);
-    final buildEnd = rest.indexOf('\n  }');  // state-class indent + closing brace
+    final buildEnd = rest.indexOf(
+      '\n  }',
+    ); // state-class indent + closing brace
     final buildBody = buildEnd == -1 ? rest : rest.substring(0, buildEnd);
 
     expect(

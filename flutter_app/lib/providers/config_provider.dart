@@ -225,10 +225,7 @@ class ConfigProvider extends ChangeNotifier {
       'blocked_commands': <String>[],
       'credential_patterns': <String>[],
     },
-    'tools': {
-      'computer_use_enabled': false,
-      'desktop_tools_enabled': false,
-    },
+    'tools': {'computer_use_enabled': false, 'desktop_tools_enabled': false},
     'browser': {
       'max_text_length': 50000,
       'max_js_length': 10000,
@@ -236,10 +233,7 @@ class ConfigProvider extends ChangeNotifier {
       'default_viewport_width': 1280,
       'default_viewport_height': 720,
     },
-    'calendar': {
-      'enabled': false,
-      'ics_path': '',
-    },
+    'calendar': {'enabled': false, 'ics_path': ''},
     'email': {
       'enabled': false,
       'imap_host': '',
@@ -301,11 +295,7 @@ class ConfigProvider extends ChangeNotifier {
       'http_request_timeout_seconds': 30,
       'http_request_rate_limit_seconds': 1,
     },
-    'logging': {
-      'level': 'INFO',
-      'json_logs': false,
-      'console': true,
-    },
+    'logging': {'level': 'INFO', 'json_logs': false, 'console': true},
     'database': {
       'backend': 'sqlite',
       'encryption_enabled': false,
@@ -324,14 +314,8 @@ class ConfigProvider extends ChangeNotifier {
       'channel': 'cli',
       'model': 'qwen3:8b',
     },
-    'plugins': {
-      'skills_dir': 'skills',
-      'auto_update': false,
-    },
-    'dashboard': {
-      'enabled': false,
-      'port': 9090,
-    },
+    'plugins': {'skills_dir': 'skills', 'auto_update': false},
+    'dashboard': {'enabled': false, 'port': 9090},
   };
 
   static Map<String, dynamic> _deepMerge(
@@ -469,32 +453,66 @@ class ConfigProvider extends ChangeNotifier {
 
       // Config sections
       for (final section in [
-        'ollama', 'models', 'gatekeeper', 'planner', 'memory', 'channels',
-        'sandbox', 'logging', 'security', 'heartbeat', 'plugins', 'dashboard',
-        'model_overrides', 'web', 'database', 'executor', 'tools', 'audit',
-        'improvement', 'prompt_evolution',
-        'browser', 'calendar', 'email', 'identity', 'personality', 'recovery',
-        'evolution', 'vault', 'social', 'kanban',
+        'ollama',
+        'models',
+        'gatekeeper',
+        'planner',
+        'memory',
+        'channels',
+        'sandbox',
+        'logging',
+        'security',
+        'heartbeat',
+        'plugins',
+        'dashboard',
+        'model_overrides',
+        'web',
+        'database',
+        'executor',
+        'tools',
+        'audit',
+        'improvement',
+        'prompt_evolution',
+        'browser',
+        'calendar',
+        'email',
+        'identity',
+        'personality',
+        'recovery',
+        'evolution',
+        'vault',
+        'social',
+        'kanban',
       ]) {
         if (_cfg.containsKey(section)) {
-          var sectionData = Map<String, dynamic>.from(_cfg[section] as Map<String, dynamic>);
+          var sectionData = Map<String, dynamic>.from(
+            _cfg[section] as Map<String, dynamic>,
+          );
           // Don't overwrite learning_goals — managed by Evolution Goals API
           if (section == 'evolution') {
             sectionData.remove('learning_goals');
           }
-          futures.add(_api!.patch('config/$section', sectionData)
-              .then((r) {
-            if (r.containsKey('error')) _sectionErrors[section] = r['error'].toString();
-          }));
+          futures.add(
+            _api!.patch('config/$section', sectionData).then((r) {
+              if (r.containsKey('error'))
+                _sectionErrors[section] = r['error'].toString();
+            }),
+          );
         }
       }
 
       // Top-level config fields
       final topLevel = <String, dynamic>{};
       for (final key in [
-        'owner_name', 'llm_backend_type', 'operation_mode',
-        'cost_tracking_enabled', 'daily_budget_usd', 'monthly_budget_usd',
-        'vision_model', 'vision_model_detail', 'language',
+        'owner_name',
+        'llm_backend_type',
+        'operation_mode',
+        'cost_tracking_enabled',
+        'daily_budget_usd',
+        'monthly_budget_usd',
+        'vision_model',
+        'vision_model_detail',
+        'language',
       ]) {
         if (_cfg.containsKey(key)) {
           final v = _cfg[key];
@@ -504,25 +522,33 @@ class ConfigProvider extends ChangeNotifier {
         }
       }
       // API keys: only send if not masked and non-empty
-      for (final key in _cfg.keys.where((k) => k.endsWith('_api_key') || k.endsWith('_base_url'))) {
+      for (final key in _cfg.keys.where(
+        (k) => k.endsWith('_api_key') || k.endsWith('_base_url'),
+      )) {
         final v = _cfg[key];
         if (v is String && v.isNotEmpty && v != '***') {
           topLevel[key] = v;
         }
       }
       if (topLevel.isNotEmpty) {
-        futures.add(_api!.patch('config', topLevel).then((r) {
-          if (r.containsKey('error')) _sectionErrors['general'] = r['error'].toString();
-        }));
+        futures.add(
+          _api!.patch('config', topLevel).then((r) {
+            if (r.containsKey('error'))
+              _sectionErrors['general'] = r['error'].toString();
+          }),
+        );
       }
 
       // Agents
       for (final agent in _agents) {
         final name = agent['name']?.toString() ?? '';
         if (name.isNotEmpty) {
-          futures.add(_api!.post('agents/$name', agent).then((r) {
-            if (r.containsKey('error')) _sectionErrors['agents'] = r['error'].toString();
-          }));
+          futures.add(
+            _api!.post('agents/$name', agent).then((r) {
+              if (r.containsKey('error'))
+                _sectionErrors['agents'] = r['error'].toString();
+            }),
+          );
         }
       }
 
@@ -530,36 +556,51 @@ class ConfigProvider extends ChangeNotifier {
       for (final binding in _bindings) {
         final name = binding['name']?.toString() ?? '';
         if (name.isNotEmpty) {
-          futures.add(_api!.post('bindings/$name', binding).then((r) {
-            if (r.containsKey('error')) _sectionErrors['bindings'] = r['error'].toString();
-          }));
+          futures.add(
+            _api!.post('bindings/$name', binding).then((r) {
+              if (r.containsKey('error'))
+                _sectionErrors['bindings'] = r['error'].toString();
+            }),
+          );
         }
       }
 
       // Prompts
       if (_prompts.isNotEmpty) {
-        futures.add(_api!.put('prompts', _prompts).then((r) {
-          if (r.containsKey('error')) _sectionErrors['prompts'] = r['error'].toString();
-        }));
+        futures.add(
+          _api!.put('prompts', _prompts).then((r) {
+            if (r.containsKey('error'))
+              _sectionErrors['prompts'] = r['error'].toString();
+          }),
+        );
       }
 
       // Cron jobs
-      futures.add(_api!.put('cron-jobs', {'jobs': _cronJobs}).then((r) {
-        if (r.containsKey('error')) _sectionErrors['cron'] = r['error'].toString();
-      }));
+      futures.add(
+        _api!.put('cron-jobs', {'jobs': _cronJobs}).then((r) {
+          if (r.containsKey('error'))
+            _sectionErrors['cron'] = r['error'].toString();
+        }),
+      );
 
       // MCP servers
       if (_mcpServers.isNotEmpty) {
-        futures.add(_api!.put('mcp-servers', _mcpServers).then((r) {
-          if (r.containsKey('error')) _sectionErrors['mcp'] = r['error'].toString();
-        }));
+        futures.add(
+          _api!.put('mcp-servers', _mcpServers).then((r) {
+            if (r.containsKey('error'))
+              _sectionErrors['mcp'] = r['error'].toString();
+          }),
+        );
       }
 
       // A2A
       if (_a2a.isNotEmpty) {
-        futures.add(_api!.put('a2a', _a2a).then((r) {
-          if (r.containsKey('error')) _sectionErrors['a2a'] = r['error'].toString();
-        }));
+        futures.add(
+          _api!.put('a2a', _a2a).then((r) {
+            if (r.containsKey('error'))
+              _sectionErrors['a2a'] = r['error'].toString();
+          }),
+        );
       }
 
       await Future.wait(futures);
@@ -728,9 +769,7 @@ class ConfigProvider extends ChangeNotifier {
     final list = m[key];
     if (list is List) {
       return list
-          .map((e) => e is Map<String, dynamic>
-              ? e
-              : <String, dynamic>{})
+          .map((e) => e is Map<String, dynamic> ? e : <String, dynamic>{})
           .toList();
     }
     return [];
@@ -739,9 +778,10 @@ class ConfigProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _toListDynamic(dynamic v) {
     if (v is List) {
       return v
-          .map((e) => e is Map
-              ? Map<String, dynamic>.from(e)
-              : <String, dynamic>{})
+          .map(
+            (e) =>
+                e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{},
+          )
           .toList();
     }
     return [];

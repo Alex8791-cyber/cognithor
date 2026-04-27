@@ -101,14 +101,13 @@ class _TraceDetailScreenState extends State<TraceDetailScreen> {
                           controller: _scrollController,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: events.length,
-                          itemBuilder: (ctx, i) =>
-                              EventRow(event: events[i], traceStartedAt: startedAt),
+                          itemBuilder: (ctx, i) => EventRow(
+                            event: events[i],
+                            traceStartedAt: startedAt,
+                          ),
                         ),
                 ),
-                Container(
-                  width: 1,
-                  color: const Color(0xFF1F2942),
-                ),
+                Container(width: 1, color: const Color(0xFF1F2942)),
                 StatsSidebar(stats: stats, meta: meta),
               ],
             ),

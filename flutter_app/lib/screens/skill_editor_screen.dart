@@ -109,10 +109,12 @@ class _SkillEditorScreenState extends State<SkillEditorScreen> {
     _descCtrl.text = data['description']?.toString() ?? '';
     _category = data['category']?.toString() ?? 'general';
     if (!_categories.contains(_category)) _category = 'general';
-    _keywordsCtrl.text =
-        _listToCommaString(data['trigger_keywords'] ?? data['keywords']);
-    _toolsCtrl.text =
-        _listToCommaString(data['required_tools'] ?? data['tools']);
+    _keywordsCtrl.text = _listToCommaString(
+      data['trigger_keywords'] ?? data['keywords'],
+    );
+    _toolsCtrl.text = _listToCommaString(
+      data['required_tools'] ?? data['tools'],
+    );
     _priorityCtrl.text = (data['priority'] ?? 5).toString();
     _modelCtrl.text = data['model_preference']?.toString() ?? '';
     _enabled = data['enabled'] as bool? ?? true;
@@ -346,7 +348,11 @@ class _SkillEditorScreenState extends State<SkillEditorScreen> {
               tint: CognithorTheme.orange,
               child: Row(
                 children: [
-                  Icon(Icons.lock_outline, color: CognithorTheme.orange, size: 20),
+                  Icon(
+                    Icons.lock_outline,
+                    color: CognithorTheme.orange,
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -584,9 +590,13 @@ class _SkillEditorScreenState extends State<SkillEditorScreen> {
                 label: Text(l.deleteSkill),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: CognithorTheme.red,
-                  side: BorderSide(color: CognithorTheme.red.withValues(alpha: 0.5)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  side: BorderSide(
+                    color: CognithorTheme.red.withValues(alpha: 0.5),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
@@ -630,9 +640,9 @@ class _SectionHeader extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: CognithorTheme.sectionSkills,
-                fontWeight: FontWeight.w600,
-              ),
+            color: CognithorTheme.sectionSkills,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -686,10 +696,7 @@ class _StatTile extends StatelessWidget {
             children: [
               Icon(icon, size: 14, color: CognithorTheme.textSecondary),
               const SizedBox(width: 4),
-              Text(
-                label,
-                style: theme.textTheme.bodySmall,
-              ),
+              Text(label, style: theme.textTheme.bodySmall),
             ],
           ),
           const SizedBox(height: 4),

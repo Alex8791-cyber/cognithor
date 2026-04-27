@@ -80,18 +80,24 @@ class ApiClient {
     return _request('GET', path);
   }
 
-  Future<Map<String, dynamic>> post(String path,
-      [Map<String, dynamic>? body]) async {
+  Future<Map<String, dynamic>> post(
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
     return _request('POST', path, body);
   }
 
-  Future<Map<String, dynamic>> patch(String path,
-      [Map<String, dynamic>? body]) async {
+  Future<Map<String, dynamic>> patch(
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
     return _request('PATCH', path, body);
   }
 
-  Future<Map<String, dynamic>> put(String path,
-      [Map<String, dynamic>? body]) async {
+  Future<Map<String, dynamic>> put(
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
     return _request('PUT', path, body);
   }
 
@@ -112,11 +118,9 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl/api/v1$normalized');
     final req = http.MultipartRequest('POST', uri);
     if (_token != null) req.headers['Authorization'] = 'Bearer $_token';
-    req.files.add(http.MultipartFile.fromBytes(
-      fieldName,
-      bytes,
-      filename: filename,
-    ));
+    req.files.add(
+      http.MultipartFile.fromBytes(fieldName, bytes, filename: filename),
+    );
     if (fields != null) req.fields.addAll(fields);
     final streamed = await req.send().timeout(const Duration(seconds: 120));
     final body = await streamed.stream.bytesToString();
@@ -125,21 +129,23 @@ class ApiClient {
           ? jsonDecode(body) as Map<String, dynamic>
           : <String, dynamic>{};
     }
-    return {'error': 'HTTP ${streamed.statusCode}', 'status': streamed.statusCode};
+    return {
+      'error': 'HTTP ${streamed.statusCode}',
+      'status': streamed.statusCode,
+    };
   }
 
   /// Raw bytes GET (for TTS audio).
-  Future<List<int>?> getBytes(String path,
-      {Map<String, dynamic>? body}) async {
+  Future<List<int>?> getBytes(String path, {Map<String, dynamic>? body}) async {
     final normalized = path.startsWith('/') ? path : '/$path';
     final uri = Uri.parse('$baseUrl/api/v1$normalized');
     final res = body != null
         ? await http
-            .post(uri, headers: _headers(), body: jsonEncode(body))
-            .timeout(const Duration(seconds: 60))
+              .post(uri, headers: _headers(), body: jsonEncode(body))
+              .timeout(const Duration(seconds: 60))
         : await http
-            .get(uri, headers: _headers())
-            .timeout(const Duration(seconds: 60));
+              .get(uri, headers: _headers())
+              .timeout(const Duration(seconds: 60));
     return res.statusCode == 200 ? res.bodyBytes : null;
   }
 
@@ -167,10 +173,7 @@ class ApiClient {
       if (res.body.isEmpty) return <String, dynamic>{};
       return jsonDecode(res.body) as Map<String, dynamic>;
     }
-    return {
-      'error': 'HTTP ${res.statusCode}',
-      'status': res.statusCode,
-    };
+    return {'error': 'HTTP ${res.statusCode}', 'status': res.statusCode};
   }
 
   // ---------------------------------------------------------------------------
@@ -204,11 +207,13 @@ class ApiClient {
       get('monitoring/events?n=$n');
   Future<Map<String, dynamic>> getMonitoringMetrics() =>
       get('monitoring/metrics');
-  Future<Map<String, dynamic>> getMonitoringMetric(String name,
-          {int n = 60}) =>
+  Future<Map<String, dynamic>> getMonitoringMetric(String name, {int n = 60}) =>
       get('monitoring/metrics/$name?n=$n');
-  Future<Map<String, dynamic>> getMonitoringAudit(
-      {String? action, String? severity, int limit = 100}) {
+  Future<Map<String, dynamic>> getMonitoringAudit({
+    String? action,
+    String? severity,
+    int limit = 100,
+  }) {
     final params = <String>['limit=$limit'];
     if (action != null) params.add('action=$action');
     if (severity != null) params.add('severity=$severity');
@@ -235,17 +240,22 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getMarketplaceFeatured({int n = 10}) =>
       get('marketplace/featured?n=$n');
-  Future<Map<String, dynamic>> getMarketplaceTrending(
-          {String window = '24h', int n = 10}) =>
-      get('marketplace/trending?window=$window&n=$n');
+  Future<Map<String, dynamic>> getMarketplaceTrending({
+    String window = '24h',
+    int n = 10,
+  }) => get('marketplace/trending?window=$window&n=$n');
   Future<Map<String, dynamic>> getMarketplaceCategories() =>
       get('marketplace/categories');
-  Future<Map<String, dynamic>> searchMarketplace(String q,
-          {int maxResults = 20}) =>
-      get('marketplace/search?q=${Uri.encodeComponent(q)}&max_results=$maxResults');
+  Future<Map<String, dynamic>> searchMarketplace(
+    String q, {
+    int maxResults = 20,
+  }) => get(
+    'marketplace/search?q=${Uri.encodeComponent(q)}&max_results=$maxResults',
+  );
   Future<Map<String, dynamic>> getMarketplaceStats() =>
       get('marketplace/stats');
-  Future<Map<String, dynamic>> getInstalledSkills() => get('skill-registry/list');
+  Future<Map<String, dynamic>> getInstalledSkills() =>
+      get('skill-registry/list');
   Future<Map<String, dynamic>> getSkillDetails(String id) => get('skills/$id');
   Future<Map<String, dynamic>> installSkill(String id) =>
       post('skills/$id/install', {});
@@ -262,14 +272,11 @@ class ApiClient {
       get('memory/graph/entities');
   Future<Map<String, dynamic>> getEntityRelations(String entityId) =>
       get('memory/graph/entities/$entityId/relations');
-  Future<Map<String, dynamic>> getHygieneStats() =>
-      get('memory/hygiene/stats');
-  Future<Map<String, dynamic>> scanHygiene() =>
-      post('memory/hygiene/scan', {});
+  Future<Map<String, dynamic>> getHygieneStats() => get('memory/hygiene/stats');
+  Future<Map<String, dynamic>> scanHygiene() => post('memory/hygiene/scan', {});
   Future<Map<String, dynamic>> getQuarantine() =>
       get('memory/hygiene/quarantine');
-  Future<Map<String, dynamic>> getMemoryIntegrity() =>
-      get('memory/integrity');
+  Future<Map<String, dynamic>> getMemoryIntegrity() => get('memory/integrity');
   Future<Map<String, dynamic>> getExplainabilityStats() =>
       get('explainability/stats');
   Future<Map<String, dynamic>> getExplainabilityTrails() =>
@@ -285,8 +292,7 @@ class ApiClient {
   Future<Map<String, dynamic>> getAuthStats() => get('auth/stats');
   Future<Map<String, dynamic>> getComplianceReport() =>
       get('compliance/report');
-  Future<Map<String, dynamic>> getComplianceStats() =>
-      get('compliance/stats');
+  Future<Map<String, dynamic>> getComplianceStats() => get('compliance/stats');
   Future<Map<String, dynamic>> getComplianceDecisions() =>
       get('compliance/decisions');
   Future<Map<String, dynamic>> getComplianceRemediations() =>
@@ -338,8 +344,7 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getCommands() => get('commands/list');
   Future<Map<String, dynamic>> getConnectors() => get('connectors/list');
-  Future<Map<String, dynamic>> getConnectorStats() =>
-      get('connectors/stats');
+  Future<Map<String, dynamic>> getConnectorStats() => get('connectors/stats');
 
   // ---------------------------------------------------------------------------
   // Circles & Isolation
@@ -351,8 +356,7 @@ class ApiClient {
   Future<Map<String, dynamic>> patchSandbox(Map<String, dynamic> body) =>
       patch('sandbox', body);
   Future<Map<String, dynamic>> getIsolationStats() => get('isolation/stats');
-  Future<Map<String, dynamic>> getIsolationQuotas() =>
-      get('isolation/quotas');
+  Future<Map<String, dynamic>> getIsolationQuotas() => get('isolation/quotas');
 
   // ---------------------------------------------------------------------------
   // i18n
@@ -368,8 +372,9 @@ class ApiClient {
   Future<Map<String, dynamic>> getWizards() => get('wizards');
   Future<Map<String, dynamic>> getWizard(String type) => get('wizards/$type');
   Future<Map<String, dynamic>> runWizard(
-          String type, Map<String, dynamic> values) =>
-      post('wizards/$type/run', values);
+    String type,
+    Map<String, dynamic> values,
+  ) => post('wizards/$type/run', values);
 
   // ---------------------------------------------------------------------------
   // Updater
@@ -391,8 +396,9 @@ class ApiClient {
   // ---------------------------------------------------------------------------
 
   Future<Map<String, dynamic>> patchConfigSection(
-          String section, Map<String, dynamic> body) =>
-      patch('config/$section', body);
+    String section,
+    Map<String, dynamic> body,
+  ) => patch('config/$section', body);
   // exportConfig() and importConfig() removed — no backend endpoints exist.
   // Config export/import is handled client-side in system_page.dart.
   // factoryReset() removed — no backend endpoint exists yet.
@@ -439,8 +445,9 @@ class ApiClient {
   Future<Map<String, dynamic>> createAgent(Map<String, dynamic> body) =>
       post('agents', body);
   Future<Map<String, dynamic>> updateAgent(
-          String name, Map<String, dynamic> body) =>
-      put('agents/$name', body);
+    String name,
+    Map<String, dynamic> body,
+  ) => put('agents/$name', body);
   Future<Map<String, dynamic>> deleteAgent(String name) =>
       delete('agents/$name');
 
@@ -449,8 +456,9 @@ class ApiClient {
   // ---------------------------------------------------------------------------
 
   Future<Map<String, dynamic>> createOrUpdateBinding(
-          String name, Map<String, dynamic> body) =>
-      post('bindings/$name', body);
+    String name,
+    Map<String, dynamic> body,
+  ) => post('bindings/$name', body);
 
   // ---------------------------------------------------------------------------
   // Locales
@@ -469,8 +477,9 @@ class ApiClient {
   Future<Map<String, dynamic>> getWorkflowDagRun(String runId) =>
       get('workflows/dag/runs/$runId');
   Future<Map<String, dynamic>> getWorkflowDagNodeDetail(
-          String runId, String nodeId) =>
-      get('workflows/dag/runs/$runId/nodes/$nodeId');
+    String runId,
+    String nodeId,
+  ) => get('workflows/dag/runs/$runId/nodes/$nodeId');
 
   // ---------------------------------------------------------------------------
   // System control
@@ -504,8 +513,8 @@ class ApiClient {
   Future<Map<String, dynamic>> getLearningDirectories() =>
       get('learning/directories');
   Future<Map<String, dynamic>> updateLearningDirectories(
-          List<Map<String, dynamic>> dirs) =>
-      post('learning/directories', {'directories': dirs});
+    List<Map<String, dynamic>> dirs,
+  ) => post('learning/directories', {'directories': dirs});
 
   // Q&A Knowledge Base
   Future<Map<String, dynamic>> getQAPairs({String? query, int limit = 50}) {
@@ -520,8 +529,7 @@ class ApiClient {
       post('learning/qa', qa);
   Future<Map<String, dynamic>> verifyQA(String id) =>
       post('learning/qa/$id/verify');
-  Future<Map<String, dynamic>> deleteQA(String id) =>
-      delete('learning/qa/$id');
+  Future<Map<String, dynamic>> deleteQA(String id) => delete('learning/qa/$id');
 
   // Lineage
   Future<Map<String, dynamic>> getEntityLineage(String entityId) =>
@@ -542,24 +550,31 @@ class ApiClient {
     String filename, {
     String? description,
     String priority = 'normal',
-  }) =>
-      uploadFile('learn/file', 'file', bytes, filename,
-          fields: {
-            if (description != null) 'description': description,
-            'priority': priority,
-          });
+  }) => uploadFile(
+    'learn/file',
+    'file',
+    bytes,
+    filename,
+    fields: {
+      if (description != null) 'description': description,
+      'priority': priority,
+    },
+  );
 
-  Future<Map<String, dynamic>> learnFromUrl(String url,
-          {String? description, String priority = 'normal'}) =>
-      post('learn/url', {
-        'url': url,
-        if (description != null) 'description': description,
-        'priority': priority,
-      });
+  Future<Map<String, dynamic>> learnFromUrl(
+    String url, {
+    String? description,
+    String priority = 'normal',
+  }) => post('learn/url', {
+    'url': url,
+    if (description != null) 'description': description,
+    'priority': priority,
+  });
 
-  Future<Map<String, dynamic>> learnFromYoutube(String url,
-          {String priority = 'normal'}) =>
-      post('learn/youtube', {'url': url, 'priority': priority});
+  Future<Map<String, dynamic>> learnFromYoutube(
+    String url, {
+    String priority = 'normal',
+  }) => post('learn/youtube', {'url': url, 'priority': priority});
 
   Future<Map<String, dynamic>> getLearnHistory() => get('learn/history');
   Future<Map<String, dynamic>> getLearnStats() => get('learn/stats');
@@ -579,9 +594,10 @@ class ApiClient {
 
   Future<Map<String, dynamic>> listSessions({int limit = 50}) =>
       get('sessions/list?limit=$limit');
-  Future<Map<String, dynamic>> getSessionHistory(String sessionId,
-          {int limit = 100}) =>
-      get('sessions/$sessionId/history?limit=$limit');
+  Future<Map<String, dynamic>> getSessionHistory(
+    String sessionId, {
+    int limit = 100,
+  }) => get('sessions/$sessionId/history?limit=$limit');
   Future<Map<String, dynamic>> createSession() => post('sessions/new', {});
   Future<Map<String, dynamic>> createIncognitoSession() =>
       post('sessions/new-incognito', {});
@@ -590,12 +606,14 @@ class ApiClient {
   Future<Map<String, dynamic>> renameSession(String sessionId, String title) =>
       patch('sessions/$sessionId', {'title': title});
   Future<Map<String, dynamic>> moveSessionToFolder(
-          String sessionId, String folder) =>
-      patch('sessions/$sessionId', {'folder': folder});
+    String sessionId,
+    String folder,
+  ) => patch('sessions/$sessionId', {'folder': folder});
   Future<Map<String, dynamic>> listFolders() => get('sessions/folders');
-  Future<Map<String, dynamic>> listSessionsByFolder(String folder,
-          {int limit = 50}) =>
-      get('sessions/by-folder/$folder?limit=$limit');
+  Future<Map<String, dynamic>> listSessionsByFolder(
+    String folder, {
+    int limit = 50,
+  }) => get('sessions/by-folder/$folder?limit=$limit');
   Future<Map<String, dynamic>> exportSession(String sessionId) =>
       get('sessions/$sessionId/export');
 
@@ -630,34 +648,44 @@ class ApiClient {
   Future<Map<String, dynamic>> getRedditLead(String id) => get('leads/$id');
 
   Future<Map<String, dynamic>> updateRedditLead(
-          String id, Map<String, dynamic> body) =>
-      patch('leads/$id', body);
+    String id,
+    Map<String, dynamic> body,
+  ) => patch('leads/$id', body);
 
-  Future<Map<String, dynamic>> replyToRedditLead(String id,
-          {String mode = 'clipboard'}) =>
-      post('leads/$id/reply', {'mode': mode});
+  Future<Map<String, dynamic>> replyToRedditLead(
+    String id, {
+    String mode = 'clipboard',
+  }) => post('leads/$id/reply', {'mode': mode});
 
   Future<Map<String, dynamic>> getRedditLeadStats() => get('leads/stats');
 
-  Future<Map<String, dynamic>> refineRedditLead(String id, {String hint = '', int variants = 0}) =>
-      post('leads/$id/refine', {'hint': hint, 'variants': variants});
+  Future<Map<String, dynamic>> refineRedditLead(
+    String id, {
+    String hint = '',
+    int variants = 0,
+  }) => post('leads/$id/refine', {'hint': hint, 'variants': variants});
 
   Future<Map<String, dynamic>> getRedditLeadPerformance(String id) =>
       get('leads/$id/performance');
 
-  Future<Map<String, dynamic>> setRedditLeadFeedback(String id, {required String tag, String note = ''}) =>
-      patch('leads/$id/feedback', {'tag': tag, 'note': note});
+  Future<Map<String, dynamic>> setRedditLeadFeedback(
+    String id, {
+    required String tag,
+    String note = '',
+  }) => patch('leads/$id/feedback', {'tag': tag, 'note': note});
 
-  Future<Map<String, dynamic>> discoverSubreddits([Map<String, dynamic>? body]) =>
-      post('leads/discover-subreddits', body ?? {});
+  Future<Map<String, dynamic>> discoverSubreddits([
+    Map<String, dynamic>? body,
+  ]) => post('leads/discover-subreddits', body ?? {});
 
   Future<Map<String, dynamic>> getRedditTemplates({String subreddit = ''}) {
     final params = subreddit.isNotEmpty ? '?subreddit=$subreddit' : '';
     return get('leads/templates$params');
   }
 
-  Future<Map<String, dynamic>> createRedditTemplate(Map<String, dynamic> body) =>
-      post('leads/templates', body);
+  Future<Map<String, dynamic>> createRedditTemplate(
+    Map<String, dynamic> body,
+  ) => post('leads/templates', body);
 
   Future<Map<String, dynamic>> deleteRedditTemplate(String id) =>
       delete('leads/templates/$id');
@@ -682,7 +710,6 @@ class ApiClient {
       'PUT' => http.put(uri, headers: h, body: encoded),
       'DELETE' => http.delete(uri, headers: h),
       _ => http.get(uri, headers: h),
-    }
-        .timeout(const Duration(seconds: 30));
+    }.timeout(const Duration(seconds: 30));
   }
 }

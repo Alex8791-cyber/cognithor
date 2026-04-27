@@ -22,9 +22,8 @@ class _KanbanConfigDialogState extends State<KanbanConfigDialog> {
   String _defaultAgent = 'jarvis';
 
   static const _priorities = ['low', 'medium', 'high', 'urgent'];
-  List<String> get _agents => widget.availableAgents.isNotEmpty
-      ? widget.availableAgents
-      : ['jarvis'];
+  List<String> get _agents =>
+      widget.availableAgents.isNotEmpty ? widget.availableAgents : ['jarvis'];
 
   @override
   Widget build(BuildContext context) {
@@ -91,9 +90,11 @@ class _KanbanConfigDialogState extends State<KanbanConfigDialog> {
                   child: DropdownButton<int>(
                     value: _maxAutoTasks,
                     isExpanded: true,
-                    items: [5, 10, 20, 50].map((v) =>
-                      DropdownMenuItem(value: v, child: Text('$v')),
-                    ).toList(),
+                    items: [5, 10, 20, 50]
+                        .map(
+                          (v) => DropdownMenuItem(value: v, child: Text('$v')),
+                        )
+                        .toList(),
                     onChanged: (v) => setState(() => _maxAutoTasks = v ?? 10),
                   ),
                 ),
@@ -105,9 +106,11 @@ class _KanbanConfigDialogState extends State<KanbanConfigDialog> {
                   child: DropdownButton<int>(
                     value: _maxSubtaskDepth,
                     isExpanded: true,
-                    items: [1, 2, 3, 4, 5].map((v) =>
-                      DropdownMenuItem(value: v, child: Text('$v')),
-                    ).toList(),
+                    items: [1, 2, 3, 4, 5]
+                        .map(
+                          (v) => DropdownMenuItem(value: v, child: Text('$v')),
+                        )
+                        .toList(),
                     onChanged: (v) => setState(() => _maxSubtaskDepth = v ?? 3),
                   ),
                 ),
@@ -122,20 +125,22 @@ class _KanbanConfigDialogState extends State<KanbanConfigDialog> {
                 title: Text(l.defaultPriority),
                 trailing: DropdownButton<String>(
                   value: _defaultPriority,
-                  items: _priorities.map((p) =>
-                    DropdownMenuItem(value: p, child: Text(p)),
-                  ).toList(),
-                  onChanged: (v) => setState(() => _defaultPriority = v ?? 'medium'),
+                  items: _priorities
+                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => _defaultPriority = v ?? 'medium'),
                 ),
               ),
               ListTile(
                 title: Text(l.defaultAgent),
                 trailing: DropdownButton<String>(
                   value: _defaultAgent,
-                  items: _agents.map((a) =>
-                    DropdownMenuItem(value: a, child: Text(a)),
-                  ).toList(),
-                  onChanged: (v) => setState(() => _defaultAgent = v ?? 'jarvis'),
+                  items: _agents
+                      .map((a) => DropdownMenuItem(value: a, child: Text(a)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => _defaultAgent = v ?? 'jarvis'),
                 ),
               ),
               ListTile(
@@ -145,9 +150,11 @@ class _KanbanConfigDialogState extends State<KanbanConfigDialog> {
                   child: DropdownButton<int>(
                     value: _archiveDays,
                     isExpanded: true,
-                    items: [7, 14, 30, 60, 90, 365].map((v) =>
-                      DropdownMenuItem(value: v, child: Text('$v')),
-                    ).toList(),
+                    items: [7, 14, 30, 60, 90, 365]
+                        .map(
+                          (v) => DropdownMenuItem(value: v, child: Text('$v')),
+                        )
+                        .toList(),
                     onChanged: (v) => setState(() => _archiveDays = v ?? 30),
                   ),
                 ),

@@ -12,7 +12,10 @@ class VaultPage extends StatelessWidget {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context);
     final encryptOn =
-        ((context.watch<ConfigProvider>().cfg['vault'] as Map<String, dynamic>? ?? {})['encrypt_files'] == true);
+        ((context.watch<ConfigProvider>().cfg['vault']
+                as Map<String, dynamic>? ??
+            {})['encrypt_files'] ==
+        true);
 
     return Consumer<ConfigProvider>(
       builder: (context, cfg, _) {
@@ -62,7 +65,9 @@ class VaultPage extends StatelessWidget {
                     child: Text(
                       encryptOn ? l.vaultEncryptOn : l.vaultEncryptOff,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: encryptOn ? Colors.green[300] : Colors.orange[300],
+                        color: encryptOn
+                            ? Colors.green[300]
+                            : Colors.orange[300],
                       ),
                     ),
                   ),

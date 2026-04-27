@@ -90,10 +90,7 @@ class ResearchProvider extends ChangeNotifier {
     _activeResult = null;
     notifyListeners();
     try {
-      final resp = await _api!.post(
-        '/api/v1/research/query',
-        {'query': query},
-      );
+      final resp = await _api!.post('/api/v1/research/query', {'query': query});
       _activeResearchId = resp['id'] as String?;
       if (_activeResearchId != null) {
         await _pollResult(_activeResearchId!);
@@ -162,10 +159,9 @@ class ResearchProvider extends ChangeNotifier {
   Future<String?> exportResearch(String id, String format) async {
     if (_api == null) return null;
     try {
-      final resp = await _api!.post(
-        '/api/v1/research/$id/export',
-        {'format': format},
-      );
+      final resp = await _api!.post('/api/v1/research/$id/export', {
+        'format': format,
+      });
       return resp['path'] as String?;
     } catch (_) {
       return null;

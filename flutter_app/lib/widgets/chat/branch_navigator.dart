@@ -58,7 +58,11 @@ class BranchNavigator extends StatelessWidget {
 }
 
 class _NavBtn extends StatelessWidget {
-  const _NavBtn({required this.icon, required this.enabled, required this.onTap});
+  const _NavBtn({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;

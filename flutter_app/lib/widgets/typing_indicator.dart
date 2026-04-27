@@ -76,10 +76,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
 
 /// Draws 3 sine waves at different frequencies for a holographic waveform effect.
 class WaveformPainter extends CustomPainter {
-  const WaveformPainter({
-    required this.time,
-    required this.color,
-  });
+  const WaveformPainter({required this.time, required this.color});
 
   final double time;
   final Color color;
@@ -94,7 +91,8 @@ class WaveformPainter extends CustomPainter {
 
       path.moveTo(0, size.height / 2);
       for (double x = 0; x <= size.width; x += 2) {
-        final y = size.height / 2 +
+        final y =
+            size.height / 2 +
             sin((x / size.width) * freq * pi + time * 3 + phase) * amp;
         path.lineTo(x, y);
       }

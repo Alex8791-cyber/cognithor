@@ -62,7 +62,9 @@ class _NavButton extends StatelessWidget {
         child: Icon(
           icon,
           size: 16,
-          color: enabled ? CognithorTheme.textSecondary : CognithorTheme.textTertiary,
+          color: enabled
+              ? CognithorTheme.textSecondary
+              : CognithorTheme.textTertiary,
         ),
       ),
     );

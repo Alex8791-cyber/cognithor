@@ -36,20 +36,15 @@ class _AnimatedCounterState extends State<AnimatedCounter>
     super.initState();
     _oldValue = widget.value.toDouble();
     _currentTarget = _oldValue;
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
+    _controller = AnimationController(vsync: this, duration: widget.duration);
     _animation = _buildTween(_oldValue, _currentTarget);
   }
 
   Animation<double> _buildTween(double begin, double end) {
-    return Tween<double>(begin: begin, end: end).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutQuart,
-      ),
-    );
+    return Tween<double>(
+      begin: begin,
+      end: end,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
   }
 
   @override

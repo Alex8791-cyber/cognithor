@@ -72,9 +72,11 @@ class _LeadsScreenState extends State<LeadsScreen> {
     final newLeads = provider.leads.where((l) => l.status == 'new').toList()
       ..sort((a, b) => b.intentScore.compareTo(a.intentScore));
     if (newLeads.isEmpty) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => LeadWizard(leads: newLeads)),
-    ).then((_) => provider.fetchLeads());
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(builder: (_) => LeadWizard(leads: newLeads)),
+        )
+        .then((_) => provider.fetchLeads());
   }
 
   void _archiveLead(String id) {
@@ -87,11 +89,17 @@ class _LeadsScreenState extends State<LeadsScreen> {
 
   Widget _buildUpsellSection(SourcesProvider sources) {
     final installed = sources.sources.map((s) => s.sourceId).toSet();
-    final lockedPacks = kKnownPacks.where((p) => !installed.contains(p.sourceId)).toList();
+    final lockedPacks = kKnownPacks
+        .where((p) => !installed.contains(p.sourceId))
+        .toList();
     if (lockedPacks.isEmpty) return const SizedBox.shrink();
 
-    final paidLocked = lockedPacks.where((p) => p.listPriceBadge != null).toList();
-    final freeLocked = lockedPacks.where((p) => p.listPriceBadge == null).toList();
+    final paidLocked = lockedPacks
+        .where((p) => p.listPriceBadge != null)
+        .toList();
+    final freeLocked = lockedPacks
+        .where((p) => p.listPriceBadge == null)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,14 +155,28 @@ class _LeadsScreenState extends State<LeadsScreen> {
             const SizedBox(width: 8),
             Text(
               pack.displayName,
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        _fakeLeadRow('Looking for a local LLM alternative to...', 92, pack.accentColor),
-        _fakeLeadRow('Anyone tried self-hosted AI agents for...', 87, pack.accentColor),
-        _fakeLeadRow('Switching from OpenAI to local — need...', 78, pack.accentColor),
+        _fakeLeadRow(
+          'Looking for a local LLM alternative to...',
+          92,
+          pack.accentColor,
+        ),
+        _fakeLeadRow(
+          'Anyone tried self-hosted AI agents for...',
+          87,
+          pack.accentColor,
+        ),
+        _fakeLeadRow(
+          'Switching from OpenAI to local — need...',
+          78,
+          pack.accentColor,
+        ),
       ],
     );
   }
@@ -167,7 +189,9 @@ class _LeadsScreenState extends State<LeadsScreen> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        ),
       ),
       child: Row(
         children: [
@@ -353,7 +377,9 @@ class _StatsBar extends StatelessWidget {
               onPressed: onProcessQueue,
               icon: const Icon(Icons.playlist_play, size: 18),
               label: Text(l.processQueue),
-              style: ElevatedButton.styleFrom(backgroundColor: CognithorTheme.accent),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: CognithorTheme.accent,
+              ),
             ),
         ],
       ),

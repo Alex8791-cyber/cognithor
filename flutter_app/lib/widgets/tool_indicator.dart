@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cognithor_ui/theme/cognithor_theme.dart';
 
 class ToolIndicator extends StatelessWidget {
-  const ToolIndicator({
-    super.key,
-    this.tool,
-    this.status = '',
-  });
+  const ToolIndicator({super.key, this.tool, this.status = ''});
 
   final String? tool;
   final String status;
@@ -16,9 +12,7 @@ class ToolIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Theme.of(context).dividerColor),
-        ),
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         children: [

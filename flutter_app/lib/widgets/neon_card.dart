@@ -38,14 +38,14 @@ class _NeonCardState extends State<NeonCard> {
     final bgColor = isDark
         ? color.withValues(alpha: isHovered ? 0.14 : 0.08)
         : isHovered
-            ? color.withValues(alpha: 0.08)
-            : Theme.of(context).cardColor;
+        ? color.withValues(alpha: 0.08)
+        : Theme.of(context).cardColor;
 
     final borderColor = isDark
         ? color.withValues(alpha: isHovered ? 0.50 : 0.22)
         : isHovered
-            ? color.withValues(alpha: 0.40)
-            : Theme.of(context).dividerColor;
+        ? color.withValues(alpha: 0.40)
+        : Theme.of(context).dividerColor;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -61,10 +61,7 @@ class _NeonCardState extends State<NeonCard> {
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(widget.borderRadius),
-              border: Border.all(
-                color: borderColor,
-                width: 1.0,
-              ),
+              border: Border.all(color: borderColor, width: 1.0),
               boxShadow: isHovered
                   ? [
                       BoxShadow(

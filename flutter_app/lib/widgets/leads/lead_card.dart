@@ -75,13 +75,16 @@ class LeadCard extends StatelessWidget {
               children: [
                 // Score badge
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: scoreColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: scoreColor.withValues(alpha: 0.4)),
+                      color: scoreColor.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Text(
                     '${lead.intentScore}',
@@ -104,8 +107,10 @@ class LeadCard extends StatelessWidget {
                 const Spacer(),
                 // Status chip
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: _statusColor(lead.status).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
@@ -132,7 +137,8 @@ class LeadCard extends StatelessWidget {
             const SizedBox(height: 4),
             // Meta row
             DefaultTextStyle(
-              style: theme.textTheme.bodySmall?.copyWith(
+              style:
+                  theme.textTheme.bodySmall?.copyWith(
                     color: CognithorTheme.textSecondary,
                     fontSize: 11,
                   ) ??
@@ -158,26 +164,33 @@ class LeadCard extends StatelessWidget {
                   if (lead.status == 'new')
                     TextButton.icon(
                       onPressed: onArchive,
-                      icon: Icon(Icons.archive_outlined,
-                          size: 14, color: CognithorTheme.textSecondary),
-                      label: Text(l.archiveLead,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: CognithorTheme.textSecondary)),
+                      icon: Icon(
+                        Icons.archive_outlined,
+                        size: 14,
+                        color: CognithorTheme.textSecondary,
+                      ),
+                      label: Text(
+                        l.archiveLead,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: CognithorTheme.textSecondary,
+                        ),
+                      ),
                       style: TextButton.styleFrom(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
                     ),
                   if (lead.effectiveReply.isNotEmpty)
                     TextButton.icon(
                       onPressed: onReply,
                       icon: Icon(Icons.reply, size: 14, color: scoreColor),
-                      label: Text(l.copyReply,
-                          style:
-                              TextStyle(fontSize: 11, color: scoreColor)),
+                      label: Text(
+                        l.copyReply,
+                        style: TextStyle(fontSize: 11, color: scoreColor),
+                      ),
                       style: TextButton.styleFrom(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
                     ),
                 ],
               ),

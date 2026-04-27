@@ -39,10 +39,16 @@ class RobotOfficePainter extends CustomPainter {
     final List<_DrawableEntity> entities = [];
 
     for (final r in robots) {
-      entities.add(_DrawableEntity(y: r.y, draw: () => _drawRobot(canvas, size, r)));
+      entities.add(
+        _DrawableEntity(y: r.y, draw: () => _drawRobot(canvas, size, r)),
+      );
     }
-    entities.add(_DrawableEntity(y: dog.y, draw: () => _drawPet(canvas, size, dog)));
-    entities.add(_DrawableEntity(y: cat.y, draw: () => _drawPet(canvas, size, cat)));
+    entities.add(
+      _DrawableEntity(y: dog.y, draw: () => _drawPet(canvas, size, dog)),
+    );
+    entities.add(
+      _DrawableEntity(y: cat.y, draw: () => _drawPet(canvas, size, cat)),
+    );
 
     entities.sort((a, b) => a.y.compareTo(b.y));
     for (final e in entities) {
@@ -163,7 +169,8 @@ class RobotOfficePainter extends CustomPainter {
       canvas.drawCircle(
         Offset(antennaWobble, -31),
         2.5,
-        Paint()..color = r.eyeColor.withValues(alpha: 0.8 + 0.2 * sin(elapsed * 3)),
+        Paint()
+          ..color = r.eyeColor.withValues(alpha: 0.8 + 0.2 * sin(elapsed * 3)),
       );
     }
 
@@ -188,7 +195,14 @@ class RobotOfficePainter extends CustomPainter {
 
     // Task message bubble (drawn un-flipped)
     if (r.msgTimer > 0) {
-      _drawMsgBubble(canvas, drawX, drawY - 36 * scale, r.taskMsg, r.color, scale);
+      _drawMsgBubble(
+        canvas,
+        drawX,
+        drawY - 36 * scale,
+        r.taskMsg,
+        r.color,
+        scale,
+      );
     }
 
     // Chat bubble (different style)
@@ -456,7 +470,10 @@ class RobotOfficePainter extends CustomPainter {
       ..lineTo(cx, cy + ph / 2 + 4 * scale)
       ..lineTo(cx + 3 * scale, cy + ph / 2)
       ..close();
-    canvas.drawPath(triPath, Paint()..color = const Color(0xFF2a2a50).withValues(alpha: 0.9));
+    canvas.drawPath(
+      triPath,
+      Paint()..color = const Color(0xFF2a2a50).withValues(alpha: 0.9),
+    );
 
     tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
   }
@@ -518,11 +535,7 @@ class RobotOfficePainter extends CustomPainter {
       Paint()..color = pet.color,
     );
     // Eyes
-    canvas.drawCircle(
-      const Offset(12, -7),
-      1.5,
-      Paint()..color = Colors.black,
-    );
+    canvas.drawCircle(const Offset(12, -7), 1.5, Paint()..color = Colors.black);
     // Nose
     canvas.drawCircle(
       const Offset(15, -5),
@@ -561,7 +574,9 @@ class RobotOfficePainter extends CustomPainter {
     );
     // Legs
     for (final lx in [-6.0, -2.0, 2.0, 6.0]) {
-      final legWobble = pet.petState != PetState.sleeping ? sin(pet.animPhase * 2 + lx) * 1.5 : 0.0;
+      final legWobble = pet.petState != PetState.sleeping
+          ? sin(pet.animPhase * 2 + lx) * 1.5
+          : 0.0;
       canvas.drawLine(
         Offset(lx, 5),
         Offset(lx + legWobble, 10),
@@ -693,9 +708,12 @@ class RobotOfficePainter extends CustomPainter {
     final tailPath = Path()
       ..moveTo(-9, -1)
       ..cubicTo(
-        -14, -3 + tailCurve * 5,
-        -16, -8 + tailCurve * 8,
-        -13, -12 + tailCurve * 4,
+        -14,
+        -3 + tailCurve * 5,
+        -16,
+        -8 + tailCurve * 8,
+        -13,
+        -12 + tailCurve * 4,
       );
     canvas.drawPath(
       tailPath,
@@ -708,7 +726,9 @@ class RobotOfficePainter extends CustomPainter {
 
     // Legs
     for (final lx in [-4.0, 0.0, 4.0, 7.0]) {
-      final legWobble = pet.petState != PetState.sleeping ? sin(pet.animPhase * 2 + lx) * 1 : 0.0;
+      final legWobble = pet.petState != PetState.sleeping
+          ? sin(pet.animPhase * 2 + lx) * 1
+          : 0.0;
       canvas.drawLine(
         Offset(lx, 4),
         Offset(lx + legWobble, 9),
@@ -723,11 +743,7 @@ class RobotOfficePainter extends CustomPainter {
     if (pet.petState == PetState.washingFace) {
       final pawX = 9 + sin(pet.animPhase * 4) * 3;
       final pawY = -5 + cos(pet.animPhase * 4) * 2;
-      canvas.drawCircle(
-        Offset(pawX, pawY),
-        2.5,
-        Paint()..color = pet.color,
-      );
+      canvas.drawCircle(Offset(pawX, pawY), 2.5, Paint()..color = pet.color);
     }
   }
 
@@ -784,7 +800,11 @@ class RobotOfficePainter extends CustomPainter {
           canvas.translate(px, py);
           canvas.rotate(p.rotation);
           canvas.drawRect(
-            Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.6),
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: p.size,
+              height: p.size * 0.6,
+            ),
             Paint()..color = p.color.withValues(alpha: alpha * 0.9),
           );
           canvas.restore();
@@ -821,8 +841,14 @@ class RobotOfficePainter extends CustomPainter {
             final tt = (p.progress - t * 0.03).clamp(0.0, 1.0);
             final midX = (p.startX + p.endX) / 2;
             final midY = min(p.startY, p.endY) - 0.08;
-            final trailX = (1 - tt) * (1 - tt) * p.startX + 2 * (1 - tt) * tt * midX + tt * tt * p.endX;
-            final trailY = (1 - tt) * (1 - tt) * p.startY + 2 * (1 - tt) * tt * midY + tt * tt * p.endY;
+            final trailX =
+                (1 - tt) * (1 - tt) * p.startX +
+                2 * (1 - tt) * tt * midX +
+                tt * tt * p.endX;
+            final trailY =
+                (1 - tt) * (1 - tt) * p.startY +
+                2 * (1 - tt) * tt * midY +
+                tt * tt * p.endY;
             final trailAlpha = alpha * (1.0 - t / 5.0);
             canvas.drawCircle(
               Offset(trailX * size.width, trailY * size.height),
@@ -835,7 +861,11 @@ class RobotOfficePainter extends CustomPainter {
           canvas.translate(px, py);
           canvas.rotate(p.rotation);
           canvas.drawRect(
-            Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.7),
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: p.size,
+              height: p.size * 0.7,
+            ),
             Paint()..color = p.color.withValues(alpha: alpha * 0.7),
           );
           canvas.restore();

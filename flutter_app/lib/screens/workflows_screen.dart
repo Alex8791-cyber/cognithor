@@ -140,11 +140,7 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
       ),
       body: TabBarView(
         controller: _tabCtrl,
-        children: [
-          _buildTemplatesTab(l),
-          _buildInstancesTab(),
-          _buildDagTab(),
-        ],
+        children: [_buildTemplatesTab(l), _buildInstancesTab(), _buildDagTab()],
       ),
     );
   }
@@ -198,8 +194,9 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
   Widget _buildCategoryCard(dynamic category) {
     final l = AppLocalizations.of(context);
     final name = (category is Map ? category['name'] : category).toString();
-    final description =
-        category is Map ? category['description']?.toString() ?? '' : '';
+    final description = category is Map
+        ? category['description']?.toString() ?? ''
+        : '';
     final templates = category is Map
         ? (category['templates'] as List?)?.length ?? 0
         : 0;
@@ -214,9 +211,18 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
           children: [
             Row(
               children: [
-                const Icon(Icons.category, size: 18, color: CognithorTheme.sectionAdmin),
+                const Icon(
+                  Icons.category,
+                  size: 18,
+                  color: CognithorTheme.sectionAdmin,
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(name, style: Theme.of(context).textTheme.titleMedium)),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
               ],
             ),
             if (description.isNotEmpty) ...[
@@ -250,7 +256,9 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
                       label: Text(l.startComponent),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                     ),
                   ),
@@ -323,11 +331,16 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.play_circle_outline, size: 18, color: CognithorTheme.sectionAdmin),
+                      const Icon(
+                        Icons.play_circle_outline,
+                        size: 18,
+                        color: CognithorTheme.sectionAdmin,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          (inst['template_id'] ?? inst['id'] ?? 'Instance $i').toString(),
+                          (inst['template_id'] ?? inst['id'] ?? 'Instance $i')
+                              .toString(),
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
@@ -336,20 +349,23 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
                         color: status == 'running'
                             ? CognithorTheme.accent
                             : status == 'complete'
-                                ? CognithorTheme.green
-                                : CognithorTheme.orange,
+                            ? CognithorTheme.green
+                            : CognithorTheme.orange,
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
-                      value: progress,
-                      color: CognithorTheme.accent,
-                      backgroundColor: Theme.of(context).dividerColor),
+                    value: progress,
+                    color: CognithorTheme.accent,
+                    backgroundColor: Theme.of(context).dividerColor,
+                  ),
                   const SizedBox(height: 4),
                   if (duration.isNotEmpty)
-                    Text('${l.duration}: $duration',
-                        style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      '${l.duration}: $duration',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                 ],
               ),
             ),
@@ -401,12 +417,12 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
 
     // Show the most recent DAG run as a graph
     final run = _dagRuns.first;
-    final steps = (run['steps'] as List?)
+    final steps =
+        (run['steps'] as List?)
             ?.map((e) => e as Map<String, dynamic>)
             .toList() ??
         [];
-    final nodeResults =
-        (run['node_results'] as Map<String, dynamic>?) ?? {};
+    final nodeResults = (run['node_results'] as Map<String, dynamic>?) ?? {};
 
     final nodes = <DagNode>[];
     final edges = <DagEdge>[];
@@ -414,17 +430,19 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
       final s = steps[i];
       final nodeId = (s['id'] ?? 'step$i').toString();
       final status = (s['status'] ?? '').toString().toLowerCase();
-      nodes.add(DagNode(
-        id: nodeId,
-        label: (s['name'] ?? 'Step $i').toString(),
-        status: status == 'running'
-            ? DagNodeStatus.running
-            : status == 'complete' || status == 'done'
-                ? DagNodeStatus.complete
-                : status == 'error'
-                    ? DagNodeStatus.error
-                    : DagNodeStatus.pending,
-      ));
+      nodes.add(
+        DagNode(
+          id: nodeId,
+          label: (s['name'] ?? 'Step $i').toString(),
+          status: status == 'running'
+              ? DagNodeStatus.running
+              : status == 'complete' || status == 'done'
+              ? DagNodeStatus.complete
+              : status == 'error'
+              ? DagNodeStatus.error
+              : DagNodeStatus.pending,
+        ),
+      );
       if (i > 0) {
         final prevId = (steps[i - 1]['id'] ?? 'step${i - 1}').toString();
         edges.add(DagEdge(from: prevId, to: nodeId));
@@ -457,10 +475,12 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
                           // Look up data from node_results or steps
                           final result =
                               nodeResults[node.id] as Map<String, dynamic>?;
-                          final step = steps.cast<Map<String, dynamic>?>().firstWhere(
-                            (s) => (s?['id'] ?? '').toString() == node.id,
-                            orElse: () => null,
-                          );
+                          final step = steps
+                              .cast<Map<String, dynamic>?>()
+                              .firstWhere(
+                                (s) => (s?['id'] ?? '').toString() == node.id,
+                                orElse: () => null,
+                              );
                           _selectedNodeData = <String, dynamic>{
                             'id': node.id,
                             'name': node.label,
@@ -505,9 +525,9 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
     await provider.startWorkflow(templateId.toString());
 
     if (mounted && provider.error == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.workflowStarted)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.workflowStarted)));
       _loadInstances();
     }
   }

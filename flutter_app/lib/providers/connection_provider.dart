@@ -35,7 +35,9 @@ class ConnectionProvider extends ChangeNotifier {
     try {
       // ignore: avoid_web_libraries_in_flutter
       final uri = Uri.base; // works on web: gives the page URL
-      if (uri.host.isNotEmpty && uri.host != 'localhost' && uri.host != '127.0.0.1') {
+      if (uri.host.isNotEmpty &&
+          uri.host != 'localhost' &&
+          uri.host != '127.0.0.1') {
         return '${uri.scheme}://${uri.host}:${uri.port}';
       }
     } catch (_) {}
@@ -98,11 +100,13 @@ class ConnectionProvider extends ChangeNotifier {
 
     try {
       // Health check with 10s timeout
-      final health = await _api!.get('/health').timeout(
-        const Duration(seconds: 10),
-        onTimeout: () =>
-            throw TimeoutException('Backend nicht erreichbar ($serverUrl)'),
-      );
+      final health = await _api!
+          .get('/health')
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () =>
+                throw TimeoutException('Backend nicht erreichbar ($serverUrl)'),
+          );
       if (health.containsKey('error')) {
         throw Exception(health['error']);
       }
@@ -161,9 +165,9 @@ class ConnectionProvider extends ChangeNotifier {
   Future<void> _checkHealth() async {
     if (_api == null) return;
     try {
-      final resp = await _api!.get('/health').timeout(
-            const Duration(seconds: 5),
-          );
+      final resp = await _api!
+          .get('/health')
+          .timeout(const Duration(seconds: 5));
       if (resp['status'] != 'ok' &&
           state == CognithorConnectionState.connected) {
         state = CognithorConnectionState.error;

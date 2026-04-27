@@ -55,7 +55,11 @@ class ChatNode {
 }
 
 class ForkPoint {
-  const ForkPoint({required this.nodeId, required this.childCount, this.activeChildIndex = 0});
+  const ForkPoint({
+    required this.nodeId,
+    required this.childCount,
+    this.activeChildIndex = 0,
+  });
 
   final String nodeId;
   final int childCount;

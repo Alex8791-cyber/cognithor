@@ -43,17 +43,11 @@ class CognithorListTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyLarge,
-                  ),
+                  Text(title, style: theme.textTheme.bodyLarge),
                   if (subtitle != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        subtitle!,
-                        style: theme.textTheme.bodySmall,
-                      ),
+                      child: Text(subtitle!, style: theme.textTheme.bodySmall),
                     ),
                 ],
               ),

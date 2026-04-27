@@ -63,7 +63,10 @@ class CognithorCodeBlock extends StatelessWidget {
                       ),
                     );
                   },
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                   padding: EdgeInsets.zero,
                   tooltip: AppLocalizations.of(context).copy,
                 ),

@@ -95,10 +95,7 @@ class ContextPanel extends StatelessWidget {
     if (_isCodeTool(activeTool!)) {
       return _CodeContent(statusText: statusText);
     }
-    return _GenericContent(
-      toolName: activeTool!,
-      statusText: statusText,
-    );
+    return _GenericContent(toolName: activeTool!, statusText: statusText);
   }
 
   static bool _isSearchTool(String tool) =>
@@ -185,8 +182,9 @@ class _SearchContentState extends State<_SearchContent>
             builder: (context, _) {
               return LinearProgressIndicator(
                 value: null,
-                backgroundColor:
-                    CognithorTheme.sectionChat.withValues(alpha: 0.08),
+                backgroundColor: CognithorTheme.sectionChat.withValues(
+                  alpha: 0.08,
+                ),
                 valueColor: AlwaysStoppedAnimation<Color>(
                   CognithorTheme.sectionChat.withValues(alpha: 0.6),
                 ),
@@ -267,10 +265,7 @@ class _CodeContent extends StatelessWidget {
 // ── Generic Tool Content ───────────────────────────────────────────────
 
 class _GenericContent extends StatelessWidget {
-  const _GenericContent({
-    required this.toolName,
-    required this.statusText,
-  });
+  const _GenericContent({required this.toolName, required this.statusText});
 
   final String toolName;
   final String statusText;

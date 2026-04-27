@@ -18,15 +18,17 @@ class CognithorDomainListField extends StatefulWidget {
   final String? placeholder;
 
   @override
-  State<CognithorDomainListField> createState() => _CognithorDomainListFieldState();
+  State<CognithorDomainListField> createState() =>
+      _CognithorDomainListFieldState();
 }
 
 class _CognithorDomainListFieldState extends State<CognithorDomainListField> {
   final _ctrl = TextEditingController();
   String? _error;
 
-  static final _domainRegex =
-      RegExp(r'^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$');
+  static final _domainRegex = RegExp(
+    r'^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$',
+  );
 
   String? _validate(String text) {
     if (text.startsWith('http://') || text.startsWith('https://')) {
@@ -74,9 +76,12 @@ class _CognithorDomainListFieldState extends State<CognithorDomainListField> {
           Text(widget.label, style: theme.textTheme.bodyMedium),
           if (widget.description != null) ...[
             const SizedBox(height: 2),
-            Text(widget.description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           Row(
@@ -89,7 +94,9 @@ class _CognithorDomainListFieldState extends State<CognithorDomainListField> {
                     errorText: _error,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                   ),
                   onSubmitted: (_) => _add(),
                   onChanged: (_) {
@@ -109,8 +116,10 @@ class _CognithorDomainListFieldState extends State<CognithorDomainListField> {
             return Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(6),
@@ -119,14 +128,20 @@ class _CognithorDomainListFieldState extends State<CognithorDomainListField> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(widget.value[i],
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(fontFamily: 'monospace')),
+                      child: Text(
+                        widget.value[i],
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
+                      ),
                     ),
                     InkWell(
                       onTap: () => _remove(i),
-                      child: Icon(Icons.close,
-                          size: 16, color: CognithorTheme.textSecondary),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: CognithorTheme.textSecondary,
+                      ),
                     ),
                   ],
                 ),

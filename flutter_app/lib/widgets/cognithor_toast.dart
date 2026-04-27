@@ -60,9 +60,10 @@ class _ToastWidgetState extends State<_ToastWidget>
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
     Future.delayed(widget.duration, _dismiss);
@@ -114,11 +115,15 @@ class _ToastWidgetState extends State<_ToastWidget>
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(CognithorTheme.cardRadius),
+                    borderRadius: BorderRadius.circular(
+                      CognithorTheme.cardRadius,
+                    ),
                     border: Border.all(color: Theme.of(context).dividerColor),
                     boxShadow: [
                       BoxShadow(

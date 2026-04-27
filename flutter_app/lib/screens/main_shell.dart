@@ -79,9 +79,14 @@ class _MainShellState extends State<MainShell> {
     final l = AppLocalizations.of(context);
     final themeProvider = context.watch<ThemeProvider>();
     final nav = context.watch<NavigationProvider>();
-    final leadsEngineEnabled = context.watch<SourcesProvider>().sources.isNotEmpty;
+    final leadsEngineEnabled = context
+        .watch<SourcesProvider>()
+        .sources
+        .isNotEmpty;
     final packsProvider = context.watch<PacksProvider>();
-    final researchPackLoaded = packsProvider.hasPackLoaded('cognithor-official/deep-research-analyst');
+    final researchPackLoaded = packsProvider.hasPackLoaded(
+      'cognithor-official/deep-research-analyst',
+    );
 
     final deepResearchPack = findKnownPackBySourceId('research')!;
 
@@ -165,25 +170,28 @@ class _MainShellState extends State<MainShell> {
         bindings: {
           const SingleActivator(LogicalKeyboardKey.keyK, control: true):
               _openSearch,
-          const SingleActivator(LogicalKeyboardKey.digit1, control: true):
-              () => _navigateTab(0),
-          const SingleActivator(LogicalKeyboardKey.digit2, control: true):
-              () => _navigateTab(1),
-          const SingleActivator(LogicalKeyboardKey.digit3, control: true):
-              () => _navigateTab(2),
-          const SingleActivator(LogicalKeyboardKey.digit4, control: true):
-              () => _navigateTab(3),
-          const SingleActivator(LogicalKeyboardKey.digit5, control: true):
-              () => _navigateTab(4),
-          const SingleActivator(LogicalKeyboardKey.digit6, control: true):
-              () => _navigateTab(5),
-          const SingleActivator(LogicalKeyboardKey.digit7, control: true):
-              () => _navigateTab(6),
+          const SingleActivator(LogicalKeyboardKey.digit1, control: true): () =>
+              _navigateTab(0),
+          const SingleActivator(LogicalKeyboardKey.digit2, control: true): () =>
+              _navigateTab(1),
+          const SingleActivator(LogicalKeyboardKey.digit3, control: true): () =>
+              _navigateTab(2),
+          const SingleActivator(LogicalKeyboardKey.digit4, control: true): () =>
+              _navigateTab(3),
+          const SingleActivator(LogicalKeyboardKey.digit5, control: true): () =>
+              _navigateTab(4),
+          const SingleActivator(LogicalKeyboardKey.digit6, control: true): () =>
+              _navigateTab(5),
+          const SingleActivator(LogicalKeyboardKey.digit7, control: true): () =>
+              _navigateTab(6),
           if (leadsEngineEnabled)
-            const SingleActivator(LogicalKeyboardKey.digit8, control: true):
-                () => _navigateTab(7),
-          const SingleActivator(LogicalKeyboardKey.digit9, control: true):
-              () => _navigateTab(leadsEngineEnabled ? 8 : 7),
+            const SingleActivator(
+              LogicalKeyboardKey.digit8,
+              control: true,
+            ): () =>
+                _navigateTab(7),
+          const SingleActivator(LogicalKeyboardKey.digit9, control: true): () =>
+              _navigateTab(leadsEngineEnabled ? 8 : 7),
         },
         child: Focus(
           autofocus: true,

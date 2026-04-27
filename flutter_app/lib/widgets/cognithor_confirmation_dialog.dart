@@ -39,7 +39,9 @@ class CognithorConfirmationDialog {
               backgroundColor: effectiveColor,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(CognithorTheme.buttonRadius),
+                borderRadius: BorderRadius.circular(
+                  CognithorTheme.buttonRadius,
+                ),
               ),
             ),
             child: Text(confirmLabel),

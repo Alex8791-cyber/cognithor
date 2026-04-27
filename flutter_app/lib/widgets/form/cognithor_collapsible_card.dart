@@ -20,7 +20,8 @@ class CognithorCollapsibleCard extends StatefulWidget {
   final IconData? icon;
 
   @override
-  State<CognithorCollapsibleCard> createState() => _CognithorCollapsibleCardState();
+  State<CognithorCollapsibleCard> createState() =>
+      _CognithorCollapsibleCardState();
 }
 
 class _CognithorCollapsibleCardState extends State<CognithorCollapsibleCard> {
@@ -56,9 +57,12 @@ class _CognithorCollapsibleCardState extends State<CognithorCollapsibleCard> {
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(CognithorTheme.cardRadius),
               topRight: const Radius.circular(CognithorTheme.cardRadius),
-              bottomLeft: Radius.circular(isOpen ? 0 : CognithorTheme.cardRadius),
-              bottomRight:
-                  Radius.circular(isOpen ? 0 : CognithorTheme.cardRadius),
+              bottomLeft: Radius.circular(
+                isOpen ? 0 : CognithorTheme.cardRadius,
+              ),
+              bottomRight: Radius.circular(
+                isOpen ? 0 : CognithorTheme.cardRadius,
+              ),
             ),
             onTap: widget.forceOpen
                 ? null
@@ -72,21 +76,29 @@ class _CognithorCollapsibleCardState extends State<CognithorCollapsibleCard> {
                     const SizedBox(width: 8),
                   ],
                   Expanded(
-                    child: Text(widget.title,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    child: Text(
+                      widget.title,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   if (widget.badge != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: CognithorTheme.accent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(widget.badge!,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: CognithorTheme.accent)),
+                      child: Text(
+                        widget.badge!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: CognithorTheme.accent,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                   ],

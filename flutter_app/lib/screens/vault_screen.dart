@@ -121,33 +121,30 @@ class _VaultScreenState extends State<VaultScreen> {
               else
                 ...provider.vaultAgents.map<Widget>((agent) {
                   final a = agent as Map<String, dynamic>;
-                  final name = a['agent']?.toString() ??
-                      a['name']?.toString() ??
-                      '';
-                  final entries =
-                      a['entry_count']?.toString() ?? '0';
-                  final lastAccessed =
-                      a['last_accessed']?.toString() ?? '';
+                  final name =
+                      a['agent']?.toString() ?? a['name']?.toString() ?? '';
+                  final entries = a['entry_count']?.toString() ?? '0';
+                  final lastAccessed = a['last_accessed']?.toString() ?? '';
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: NeonCard(
-                    tint: CognithorTheme.sectionAdmin,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    child: CognithorListTile(
-                      title: name,
-                      subtitle: lastAccessed.isNotEmpty
-                          ? '${l.totalEntries}: $entries  |  ${l.lastAccessed}: $lastAccessed'
-                          : '${l.totalEntries}: $entries',
-                      leading: Icon(
-                        Icons.person_outline,
-                        color: CognithorTheme.accent,
-                        size: 20,
+                      tint: CognithorTheme.sectionAdmin,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
                       ),
-                    ),
+                      child: CognithorListTile(
+                        title: name,
+                        subtitle: lastAccessed.isNotEmpty
+                            ? '${l.totalEntries}: $entries  |  ${l.lastAccessed}: $lastAccessed'
+                            : '${l.totalEntries}: $entries',
+                        leading: Icon(
+                          Icons.person_outline,
+                          color: CognithorTheme.accent,
+                          size: 20,
+                        ),
+                      ),
                     ),
                   );
                 }),

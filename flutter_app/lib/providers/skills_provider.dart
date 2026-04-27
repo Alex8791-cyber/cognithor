@@ -27,7 +27,10 @@ class SkillsProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final data = await _api!.getMarketplaceFeatured();
-      featured = data['featured'] as List<dynamic>? ?? data['skills'] as List<dynamic>? ?? [];
+      featured =
+          data['featured'] as List<dynamic>? ??
+          data['skills'] as List<dynamic>? ??
+          [];
     } catch (e) {
       error = e.toString();
     }
@@ -42,7 +45,10 @@ class SkillsProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final data = await _api!.getMarketplaceTrending();
-      trending = data['trending'] as List<dynamic>? ?? data['skills'] as List<dynamic>? ?? [];
+      trending =
+          data['trending'] as List<dynamic>? ??
+          data['skills'] as List<dynamic>? ??
+          [];
     } catch (e) {
       error = e.toString();
     }
@@ -88,7 +94,10 @@ class SkillsProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final data = await _api!.getInstalledSkills();
-      installed = data['installed'] as List<dynamic>? ?? data['skills'] as List<dynamic>? ?? [];
+      installed =
+          data['installed'] as List<dynamic>? ??
+          data['skills'] as List<dynamic>? ??
+          [];
     } catch (e) {
       error = e.toString();
     }

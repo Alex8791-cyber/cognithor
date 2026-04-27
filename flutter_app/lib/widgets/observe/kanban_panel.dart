@@ -51,8 +51,10 @@ class KanbanPanel extends StatelessWidget {
               children: [
                 // Column header with count badge
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -60,16 +62,21 @@ class KanbanPanel extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(col.key,
-                            style: TextStyle(
-                                color: color,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          col.key,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 1),
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
@@ -89,8 +96,7 @@ class KanbanPanel extends StatelessWidget {
                 const SizedBox(height: 6),
                 // Cards
                 ...col.value.map((item) {
-                  final name =
-                      (item['phase'] ?? item['name'] ?? '').toString();
+                  final name = (item['phase'] ?? item['name'] ?? '').toString();
                   final tool = (item['tool'] ?? '').toString();
                   return Container(
                     margin: const EdgeInsets.only(bottom: 4),
@@ -103,14 +109,21 @@ class KanbanPanel extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name,
-                            style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w500)),
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         if (tool.isNotEmpty)
-                          Text(tool,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: CognithorTheme.textSecondary)),
+                          Text(
+                            tool,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: CognithorTheme.textSecondary,
+                            ),
+                          ),
                       ],
                     ),
                   );

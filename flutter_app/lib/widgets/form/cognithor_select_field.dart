@@ -53,16 +53,21 @@ class CognithorSelectField extends StatelessWidget {
           Text(label, style: theme.textTheme.bodyMedium),
           if (description != null) ...[
             const SizedBox(height: 2),
-            Text(description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           InputDecorator(
             decoration: const InputDecoration(
               isDense: true,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -70,8 +75,12 @@ class CognithorSelectField extends StatelessWidget {
                 isExpanded: true,
                 isDense: true,
                 items: options
-                    .map((o) => DropdownMenuItem(
-                        value: o.value, child: Text(o.label)))
+                    .map(
+                      (o) => DropdownMenuItem(
+                        value: o.value,
+                        child: Text(o.label),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) {
                   if (v != null) onChanged(v);

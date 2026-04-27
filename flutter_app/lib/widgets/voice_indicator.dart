@@ -23,9 +23,10 @@ class _VoiceIndicatorState extends State<VoiceIndicator>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    _pulse = Tween<double>(begin: 1.0, end: 1.4).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulse = Tween<double>(
+      begin: 1.0,
+      end: 1.4,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     _updateAnimation();
   }
 
@@ -52,28 +53,28 @@ class _VoiceIndicatorState extends State<VoiceIndicator>
   }
 
   Color get _color => switch (widget.state) {
-        VoiceState.off => CognithorTheme.textSecondary,
-        VoiceState.listening => CognithorTheme.orange,
-        VoiceState.conversation => CognithorTheme.green,
-        VoiceState.processing => CognithorTheme.accent,
-        VoiceState.speaking => CognithorTheme.accent,
-      };
+    VoiceState.off => CognithorTheme.textSecondary,
+    VoiceState.listening => CognithorTheme.orange,
+    VoiceState.conversation => CognithorTheme.green,
+    VoiceState.processing => CognithorTheme.accent,
+    VoiceState.speaking => CognithorTheme.accent,
+  };
 
   String get _label => switch (widget.state) {
-        VoiceState.off => 'Off',
-        VoiceState.listening => 'Listening...',
-        VoiceState.conversation => 'Speak now',
-        VoiceState.processing => 'Processing...',
-        VoiceState.speaking => 'Speaking...',
-      };
+    VoiceState.off => 'Off',
+    VoiceState.listening => 'Listening...',
+    VoiceState.conversation => 'Speak now',
+    VoiceState.processing => 'Processing...',
+    VoiceState.speaking => 'Speaking...',
+  };
 
   IconData get _icon => switch (widget.state) {
-        VoiceState.off => Icons.mic_off,
-        VoiceState.listening => Icons.hearing,
-        VoiceState.conversation => Icons.mic,
-        VoiceState.processing => Icons.hourglass_top,
-        VoiceState.speaking => Icons.volume_up,
-      };
+    VoiceState.off => Icons.mic_off,
+    VoiceState.listening => Icons.hearing,
+    VoiceState.conversation => Icons.mic,
+    VoiceState.processing => Icons.hourglass_top,
+    VoiceState.speaking => Icons.volume_up,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -95,8 +96,7 @@ class _VoiceIndicatorState extends State<VoiceIndicator>
                 child: Icon(_icon, size: 16, color: _color),
               ),
               const SizedBox(width: 6),
-              Text(_label,
-                  style: TextStyle(color: _color, fontSize: 12)),
+              Text(_label, style: TextStyle(color: _color, fontSize: 12)),
             ],
           ),
         );

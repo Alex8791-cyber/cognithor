@@ -20,8 +20,8 @@ class MemoryPage extends StatelessWidget {
         final sumColor = (sum - 1.0).abs() < 0.02
             ? CognithorTheme.green
             : sum > 1.01
-                ? CognithorTheme.red
-                : CognithorTheme.orange;
+            ? CognithorTheme.red
+            : CognithorTheme.orange;
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -48,14 +48,20 @@ class MemoryPage extends StatelessWidget {
             const Divider(height: 32),
             Row(
               children: [
-                Text(AppLocalizations.of(context).searchWeights,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontSize: 16)),
+                Text(
+                  AppLocalizations.of(context).searchWeights,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 16),
+                ),
                 const Spacer(),
-                Text('Sum: ${sum.toStringAsFixed(2)}',
-                    style: TextStyle(color: sumColor, fontWeight: FontWeight.w600)),
+                Text(
+                  'Sum: ${sum.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: sumColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),

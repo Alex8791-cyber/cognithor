@@ -34,9 +34,12 @@ class CognithorToggleField extends StatelessWidget {
                     Text(label, style: theme.textTheme.bodyMedium),
                     if (description != null) ...[
                       const SizedBox(height: 2),
-                      Text(description!,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: CognithorTheme.textSecondary)),
+                      Text(
+                        description!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: CognithorTheme.textSecondary,
+                        ),
+                      ),
                     ],
                   ],
                 ),

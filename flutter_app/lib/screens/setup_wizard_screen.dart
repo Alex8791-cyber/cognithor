@@ -36,8 +36,9 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   bool _statusLoading = true;
 
   // Step 2 -- configuration
-  final _ollamaUrlController =
-      TextEditingController(text: 'http://localhost:11434');
+  final _ollamaUrlController = TextEditingController(
+    text: 'http://localhost:11434',
+  );
   final _apiKeyController = TextEditingController();
 
   // Connection test
@@ -83,8 +84,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   // -- Helpers ----------------------------------------------------------------
 
   Map<String, dynamic> _backendInfo(String key) {
-    final backends =
-        _backendStatus?['backends'] as Map<String, dynamic>? ?? {};
+    final backends = _backendStatus?['backends'] as Map<String, dynamic>? ?? {};
     return backends[key] as Map<String, dynamic>? ?? {};
   }
 
@@ -168,14 +168,16 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           setState(() {
             _testState = _TestState.error;
             _testMessage = l.apiKeyTooShort(
-                _selectedBackend == 'openai' ? 'OpenAI' : 'Anthropic');
+              _selectedBackend == 'openai' ? 'OpenAI' : 'Anthropic',
+            );
           });
           return;
         }
         setState(() {
           _testState = _TestState.success;
           _testMessage = l.apiKeySaved(
-              _selectedBackend == 'openai' ? 'OpenAI' : 'Anthropic');
+            _selectedBackend == 'openai' ? 'OpenAI' : 'Anthropic',
+          );
         });
       }
     } catch (e) {
@@ -210,7 +212,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
 
     if (_selectedBackend == 'ollama') {
       final ollamaUrl = _ollamaUrlController.text.trim();
-      final isLocal = ollamaUrl.contains('localhost') || ollamaUrl.contains('127.0.0.1');
+      final isLocal =
+          ollamaUrl.contains('localhost') || ollamaUrl.contains('127.0.0.1');
       await prefs.setString('jarvis_server_url', 'http://localhost:8741');
       await prefs.setString('ollama_url', ollamaUrl);
       await prefs.setString('ollama_mode', isLocal ? 'local' : 'remote');
@@ -237,7 +240,9 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 32),
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
                   child: Column(
                     children: [
                       _StepIndicator(current: _step),
@@ -276,23 +281,21 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         Text(
           'COGNITHOR',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontSize: 40,
-                fontWeight: FontWeight.w700,
-                color: CognithorTheme.accent,
-                letterSpacing: 6,
-              ),
+            fontSize: 40,
+            fontWeight: FontWeight.w700,
+            color: CognithorTheme.accent,
+            letterSpacing: 6,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
           l.wizardSubtitle,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: CognithorTheme.textSecondary),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: CognithorTheme.textSecondary),
         ),
         const SizedBox(height: 24),
-        Text(l.chooseBackend,
-            style: Theme.of(context).textTheme.titleMedium),
+        Text(l.chooseBackend, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 16),
 
         if (_statusLoading)
@@ -333,8 +336,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                         ? '${_modelsFor('ollama').length} models'
                         : l.notInstalled,
                     statusOk: _isAuthenticated('ollama'),
-                    onTap: () =>
-                        setState(() => _selectedBackend = 'ollama'),
+                    onTap: () => setState(() => _selectedBackend = 'ollama'),
                   ),
                   const SizedBox(height: 10),
 
@@ -349,8 +351,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                         ? l.keyConfigured
                         : l.noKey,
                     statusOk: _isAuthenticated('openai'),
-                    onTap: () =>
-                        setState(() => _selectedBackend = 'openai'),
+                    onTap: () => setState(() => _selectedBackend = 'openai'),
                   ),
                   const SizedBox(height: 10),
 
@@ -365,8 +366,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                         ? l.keyConfigured
                         : l.noKey,
                     statusOk: _isAuthenticated('anthropic'),
-                    onTap: () =>
-                        setState(() => _selectedBackend = 'anthropic'),
+                    onTap: () => setState(() => _selectedBackend = 'anthropic'),
                   ),
                   const SizedBox(height: 10),
 
@@ -374,7 +374,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                   _BackendCard(
                     icon: Icons.hub,
                     title: 'OpenRouter / Custom',
-                    subtitle: 'Any OpenAI-compatible API (OpenRouter, Together, Groq, etc.)',
+                    subtitle:
+                        'Any OpenAI-compatible API (OpenRouter, Together, Groq, etc.)',
                     tint: const Color(0xFF00BFA5),
                     selected: _selectedBackend == 'openrouter',
                     status: _isAuthenticated('openrouter')
@@ -415,15 +416,12 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           _selectedBackend == 'claude-code'
               ? l.claudeSubscription
               : _selectedBackend == 'ollama'
-                  ? l.ollamaConfiguration
-                  : l.cloudApiConfiguration,
+              ? l.ollamaConfiguration
+              : l.cloudApiConfiguration,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        Text(
-          _configHint(),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(_configHint(), style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 24),
 
         // Claude Code
@@ -434,7 +432,11 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle, color: CognithorTheme.green, size: 20),
+                  Icon(
+                    Icons.check_circle,
+                    color: CognithorTheme.green,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -446,8 +448,10 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Available models: opus, sonnet, haiku',
-                style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              'Available models: opus, sonnet, haiku',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ] else ...[
             GlassPanel(
               tint: CognithorTheme.red,
@@ -459,17 +463,18 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                     children: [
                       Icon(Icons.error, color: CognithorTheme.red, size: 20),
                       const SizedBox(width: 10),
-                      Text(l.notInstalled,
-                          style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        l.notInstalled,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '${l.installClaude}: npm install -g @anthropic-ai/claude-code',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(fontFamily: 'monospace'),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
                   ),
                 ],
               ),
@@ -481,10 +486,23 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         if (_selectedBackend == 'ollama') ...[
           SegmentedButton<String>(
             segments: const [
-              ButtonSegment(value: 'local', label: Text('Local'), icon: Icon(Icons.computer)),
-              ButtonSegment(value: 'remote', label: Text('Remote API'), icon: Icon(Icons.cloud)),
+              ButtonSegment(
+                value: 'local',
+                label: Text('Local'),
+                icon: Icon(Icons.computer),
+              ),
+              ButtonSegment(
+                value: 'remote',
+                label: Text('Remote API'),
+                icon: Icon(Icons.cloud),
+              ),
             ],
-            selected: {_ollamaUrlController.text.contains('localhost') || _ollamaUrlController.text.contains('127.0.0.1') ? 'local' : 'remote'},
+            selected: {
+              _ollamaUrlController.text.contains('localhost') ||
+                      _ollamaUrlController.text.contains('127.0.0.1')
+                  ? 'local'
+                  : 'remote',
+            },
             onSelectionChanged: (s) {
               setState(() {
                 if (s.first == 'local') {
@@ -528,9 +546,16 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           if (_isAuthenticated(_selectedBackend!))
             Row(
               children: [
-                Icon(Icons.check_circle_outline, color: CognithorTheme.green, size: 18),
+                Icon(
+                  Icons.check_circle_outline,
+                  color: CognithorTheme.green,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
-                Text('API key saved', style: TextStyle(color: CognithorTheme.green)),
+                Text(
+                  'API key saved',
+                  style: TextStyle(color: CognithorTheme.green),
+                ),
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: () => setState(() {}),
@@ -546,8 +571,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                 hintText: _selectedBackend == 'openai'
                     ? 'sk-...'
                     : _selectedBackend == 'anthropic'
-                        ? 'sk-ant-...'
-                        : 'sk-or-...',
+                    ? 'sk-ant-...'
+                    : 'sk-or-...',
                 prefixIcon: const Icon(Icons.key),
               ),
             ),
@@ -560,8 +585,9 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           width: double.infinity,
           height: 48,
           child: OutlinedButton.icon(
-            onPressed:
-                _testState == _TestState.testing ? null : _testConnection,
+            onPressed: _testState == _TestState.testing
+                ? null
+                : _testConnection,
             icon: _testState == _TestState.testing
                 ? const SizedBox(
                     width: 18,
@@ -667,19 +693,18 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         const SizedBox(height: 24),
         Text(
           l.youreAllSet,
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontSize: 28, fontWeight: FontWeight.w700),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
           '$backendLabel is configured. Cognithor will use it for planning and execution.',
           textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: CognithorTheme.textSecondary),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: CognithorTheme.textSecondary),
         ),
         const SizedBox(height: 8),
         if (_selectedBackend != 'claude-code')
@@ -688,12 +713,17 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                Icon(Icons.info_outline,
-                    color: CognithorTheme.accent, size: 18),
+                Icon(
+                  Icons.info_outline,
+                  color: CognithorTheme.accent,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(l.restartRequired,
-                      style: Theme.of(context).textTheme.bodySmall),
+                  child: Text(
+                    l.restartRequired,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
               ],
             ),
@@ -768,8 +798,9 @@ class _BackendCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: (selected ? tint : CognithorTheme.textTertiary)
-                  .withValues(alpha: 0.12),
+              color: (selected ? tint : CognithorTheme.textTertiary).withValues(
+                alpha: 0.12,
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -787,18 +818,20 @@ class _BackendCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         title,
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: selected ? tint : null,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: selected ? tint : null,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                     ),
                     if (badge != null) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: tint.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(8),
@@ -806,32 +839,37 @@ class _BackendCard extends StatelessWidget {
                         child: Text(
                           badge!,
                           style: TextStyle(
-                              color: tint,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700),
+                            color: tint,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(subtitle,
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(
-                      statusOk ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+                      statusOk
+                          ? Icons.check_circle_outline
+                          : Icons.radio_button_unchecked,
                       size: 14,
-                      color: statusOk ? CognithorTheme.green : CognithorTheme.textTertiary,
+                      color: statusOk
+                          ? CognithorTheme.green
+                          : CognithorTheme.textTertiary,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       status,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color:
-                                statusOk ? CognithorTheme.green : CognithorTheme.textTertiary,
-                          ),
+                        color: statusOk
+                            ? CognithorTheme.green
+                            : CognithorTheme.textTertiary,
+                      ),
                     ),
                   ],
                 ),
@@ -877,10 +915,12 @@ class _NeonButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              enabled ? CognithorTheme.accent : CognithorTheme.surface,
-          foregroundColor:
-              enabled ? CognithorTheme.bg : CognithorTheme.textTertiary,
+          backgroundColor: enabled
+              ? CognithorTheme.accent
+              : CognithorTheme.surface,
+          foregroundColor: enabled
+              ? CognithorTheme.bg
+              : CognithorTheme.textTertiary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(CognithorTheme.buttonRadius),
           ),

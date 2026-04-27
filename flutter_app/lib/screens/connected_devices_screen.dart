@@ -70,9 +70,9 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
     } catch (e) {
       setState(() => _pairing = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -105,16 +105,16 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
       await api.delete('/devices/$deviceId');
       if (!mounted) return;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.deviceRevoked)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.deviceRevoked)));
       }
       _loadDevices();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -150,10 +150,7 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
               if (result == true) _loadDevices();
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDevices,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadDevices),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -170,8 +167,10 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-              : _buildBody(l, theme),
+          ? Center(
+              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+            )
+          : _buildBody(l, theme),
     );
   }
 
@@ -191,7 +190,8 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _devices.length,
-                  itemBuilder: (ctx, i) => _buildDeviceCard(ctx, _devices[i], l, theme),
+                  itemBuilder: (ctx, i) =>
+                      _buildDeviceCard(ctx, _devices[i], l, theme),
                 ),
         ),
       ],
@@ -303,8 +303,7 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name.toString(),
-                        style: theme.textTheme.titleSmall),
+                    Text(name.toString(), style: theme.textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
                       '${l.deviceId}: ${id.toString().substring(0, (id.toString().length > 12 ? 12 : id.toString().length))}...',

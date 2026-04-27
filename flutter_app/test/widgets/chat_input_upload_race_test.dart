@@ -10,6 +10,7 @@
 /// an upload is active. The Send [IconButton] is visually disabled
 /// (progress indicator, null onPressed) while the upload runs.
 library;
+
 import 'dart:async';
 
 import 'package:cognithor_ui/l10n/generated/app_localizations.dart';
@@ -44,11 +45,7 @@ class _MockFilePicker extends FilePicker with MockPlatformInterfaceMixin {
     bool readSequential = false,
   }) async {
     return FilePickerResult([
-      PlatformFile(
-        name: 'dummy.mp4',
-        size: 1024,
-        path: '/tmp/dummy.mp4',
-      ),
+      PlatformFile(name: 'dummy.mp4', size: 1024, path: '/tmp/dummy.mp4'),
     ]);
   }
 }
@@ -88,8 +85,7 @@ Widget _wrap(Widget child, _StubChatProvider cp) {
         providers: [
           ChangeNotifierProvider<ChatProvider>.value(value: cp),
           ChangeNotifierProvider<LlmBackendProvider>.value(value: bp),
-          ChangeNotifierProvider<VoiceProvider>(
-              create: (_) => VoiceProvider()),
+          ChangeNotifierProvider<VoiceProvider>(create: (_) => VoiceProvider()),
         ],
         child: child,
       ),
@@ -103,61 +99,74 @@ void main() {
   });
 
   testWidgets(
-      'Send button is disabled with spinner while video upload is in progress',
-      (tester) async {
-    final cp = _StubChatProvider();
-    final sent = <String>[];
-    await tester.pumpWidget(
-      _wrap(ChatInput(onSend: sent.add, onCancel: () {}), cp),
-    );
+    'Send button is disabled with spinner while video upload is in progress',
+    (tester) async {
+      final cp = _StubChatProvider();
+      final sent = <String>[];
+      await tester.pumpWidget(
+        _wrap(ChatInput(onSend: sent.add, onCancel: () {}), cp),
+      );
 
-    // Precondition: Send icon visible, no progress indicator in the send slot.
-    expect(find.byIcon(Icons.send), findsOneWidget);
+      // Precondition: Send icon visible, no progress indicator in the send slot.
+      expect(find.byIcon(Icons.send), findsOneWidget);
 
-    // Trigger _pickVideo via the paperclip menu.
-    await tester.tap(find.byKey(const ValueKey('chat-input-paperclip')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Video hochladen'));
-    // Let the mock picker resolve + the widget rebuild, but keep
-    // sendVideo blocked on the Completer.
-    await tester.pump();
-    await tester.pump();
+      // Trigger _pickVideo via the paperclip menu.
+      await tester.tap(find.byKey(const ValueKey('chat-input-paperclip')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Video hochladen'));
+      // Let the mock picker resolve + the widget rebuild, but keep
+      // sendVideo blocked on the Completer.
+      await tester.pump();
+      await tester.pump();
 
-    expect(cp.sendVideoCalls, 1,
-        reason: 'sendVideo should have been invoked from _pickVideo');
+      expect(
+        cp.sendVideoCalls,
+        1,
+        reason: 'sendVideo should have been invoked from _pickVideo',
+      );
 
-    // The Send icon must now be replaced by a CircularProgressIndicator.
-    expect(find.byIcon(Icons.send), findsNothing,
-        reason: 'Send icon should be hidden while uploading');
-    // Two progress indicators total: one in the paperclip slot, one
-    // replacing the Send icon.
-    expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
+      // The Send icon must now be replaced by a CircularProgressIndicator.
+      expect(
+        find.byIcon(Icons.send),
+        findsNothing,
+        reason: 'Send icon should be hidden while uploading',
+      );
+      // Two progress indicators total: one in the paperclip slot, one
+      // replacing the Send icon.
+      expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
 
-    // Locate the IconButton that previously held the Send icon. It is
-    // the last IconButton in the row; its onPressed must now be null.
-    final sendButton =
-        tester.widgetList<IconButton>(find.byType(IconButton)).last;
-    expect(sendButton.onPressed, isNull,
-        reason: 'Send button onPressed must be null while uploading');
+      // Locate the IconButton that previously held the Send icon. It is
+      // the last IconButton in the row; its onPressed must now be null.
+      final sendButton = tester
+          .widgetList<IconButton>(find.byType(IconButton))
+          .last;
+      expect(
+        sendButton.onPressed,
+        isNull,
+        reason: 'Send button onPressed must be null while uploading',
+      );
 
-    // Simulate the user pressing Enter in the TextField (the bug path).
-    final textField = find.byType(TextField);
-    await tester.enterText(textField, 'hello');
-    await tester.testTextInput.receiveAction(TextInputAction.send);
-    await tester.pump();
+      // Simulate the user pressing Enter in the TextField (the bug path).
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'hello');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump();
 
-    expect(sent, isEmpty,
-        reason:
-            'onSend must not fire while upload is in progress (race guard)');
+      expect(
+        sent,
+        isEmpty,
+        reason: 'onSend must not fire while upload is in progress (race guard)',
+      );
 
-    // Release the upload so the widget tears down cleanly.
-    cp.uploadCompleter.complete();
-    await tester.pumpAndSettle();
-  });
+      // Release the upload so the widget tears down cleanly.
+      cp.uploadCompleter.complete();
+      await tester.pumpAndSettle();
+    },
+  );
 
-  testWidgets(
-      'after upload completes, user can send text normally again',
-      (tester) async {
+  testWidgets('after upload completes, user can send text normally again', (
+    tester,
+  ) async {
     final cp = _StubChatProvider();
     final sent = <String>[];
     await tester.pumpWidget(
@@ -173,8 +182,9 @@ void main() {
 
     // While uploading, pressing the Send IconButton must be a no-op
     // because its onPressed is null.
-    final sendButton =
-        tester.widgetList<IconButton>(find.byType(IconButton)).last;
+    final sendButton = tester
+        .widgetList<IconButton>(find.byType(IconButton))
+        .last;
     expect(sendButton.onPressed, isNull);
 
     // Release the upload — _isUploading should flip back to false.
@@ -189,7 +199,8 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.send);
     await tester.pump();
 
-    expect(sent, ['hello'],
-        reason: 'onSend should fire once the upload finishes and flag resets');
+    expect(sent, [
+      'hello',
+    ], reason: 'onSend should fire once the upload finishes and flag resets');
   });
 }

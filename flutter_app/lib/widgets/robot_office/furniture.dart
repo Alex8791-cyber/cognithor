@@ -9,7 +9,8 @@ class Furniture {
     required this.h,
   });
 
-  final String type; // desk, server, board, plant, coffee, flower, hanging_plant
+  final String
+  type; // desk, server, board, plant, coffee, flower, hanging_plant
   final double x;
   final double y;
   final double w;

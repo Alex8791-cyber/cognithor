@@ -21,7 +21,9 @@ class EvolutionConfigPage extends StatelessWidget {
           children: [
             SwitchListTile(
               title: const Text('Evolution Engine'),
-              subtitle: const Text('Enable autonomous learning during idle time'),
+              subtitle: const Text(
+                'Enable autonomous learning during idle time',
+              ),
               value: enabled,
               activeThumbColor: CognithorTheme.accent,
               onChanged: (v) => cfg.set('evolution.enabled', v),
@@ -29,14 +31,21 @@ class EvolutionConfigPage extends StatelessWidget {
             const Divider(height: 24),
             ListTile(
               title: const Text('Idle Threshold'),
-              subtitle: Text('Start learning after $idleMinutes minutes of inactivity'),
+              subtitle: Text(
+                'Start learning after $idleMinutes minutes of inactivity',
+              ),
               trailing: SizedBox(
                 width: 120,
                 child: DropdownButtonFormField<int>(
-                  initialValue: [1, 2, 5, 10, 15, 30].contains(idleMinutes) ? idleMinutes : 5,
+                  initialValue: [1, 2, 5, 10, 15, 30].contains(idleMinutes)
+                      ? idleMinutes
+                      : 5,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   items: const [
                     DropdownMenuItem(value: 1, child: Text('1 min')),
@@ -57,10 +66,15 @@ class EvolutionConfigPage extends StatelessWidget {
               trailing: SizedBox(
                 width: 120,
                 child: DropdownButtonFormField<int>(
-                  initialValue: [1, 3, 5, 10, 20, 50, 100].contains(maxCycles) ? maxCycles : 10,
+                  initialValue: [1, 3, 5, 10, 20, 50, 100].contains(maxCycles)
+                      ? maxCycles
+                      : 10,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   items: const [
                     DropdownMenuItem(value: 1, child: Text('1')),
@@ -78,7 +92,9 @@ class EvolutionConfigPage extends StatelessWidget {
             const SizedBox(height: 12),
             SwitchListTile(
               title: const Text('Deep Learning Plans'),
-              subtitle: const Text('Auto-promote complex goals to structured learning plans'),
+              subtitle: const Text(
+                'Auto-promote complex goals to structured learning plans',
+              ),
               value: deepLearning,
               activeThumbColor: CognithorTheme.accent,
               onChanged: (v) => cfg.set('evolution.deep_learning_enabled', v),

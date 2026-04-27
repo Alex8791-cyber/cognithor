@@ -86,7 +86,9 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 4,
-                  children: task.labels.map((l) => Chip(label: Text(l))).toList(),
+                  children: task.labels
+                      .map((l) => Chip(label: Text(l)))
+                      .toList(),
                 ),
               ],
               // Description
@@ -113,19 +115,24 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
               // Subtasks
               if (task.subtasks.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                Text(l.kanbanSubtasks(task.subtasks.length), style: theme.textTheme.titleMedium),
+                Text(
+                  l.kanbanSubtasks(task.subtasks.length),
+                  style: theme.textTheme.titleMedium,
+                ),
                 const SizedBox(height: 4),
-                ...task.subtasks.map((sub) => ListTile(
-                      leading: Icon(
-                        sub.status == 'done'
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                        color: sub.status == 'done' ? Colors.green : Colors.grey,
-                      ),
-                      title: Text(sub.title),
-                      subtitle: Text(sub.statusDisplay),
-                      dense: true,
-                    )),
+                ...task.subtasks.map(
+                  (sub) => ListTile(
+                    leading: Icon(
+                      sub.status == 'done'
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: sub.status == 'done' ? Colors.green : Colors.grey,
+                    ),
+                    title: Text(sub.title),
+                    subtitle: Text(sub.statusDisplay),
+                    dense: true,
+                  ),
+                ),
               ],
               // History
               const SizedBox(height: 16),
@@ -136,21 +143,37 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
               else if (_history.isEmpty)
                 Text(l.kanbanNoHistory)
               else
-                ..._history.map((h) => ListTile(
-                      leading: const Icon(Icons.history, size: 18),
-                      title: Text('${h["old_status"]} -> ${h["new_status"]}'),
-                      subtitle: Text('by ${h["changed_by"]} - ${h["changed_at"] ?? ""}'),
-                      dense: true,
-                    )),
+                ..._history.map(
+                  (h) => ListTile(
+                    leading: const Icon(Icons.history, size: 18),
+                    title: Text('${h["old_status"]} -> ${h["new_status"]}'),
+                    subtitle: Text(
+                      'by ${h["changed_by"]} - ${h["changed_at"] ?? ""}',
+                    ),
+                    dense: true,
+                  ),
+                ),
               // Metadata
               const SizedBox(height: 16),
               Text(l.kanbanMetadata, style: theme.textTheme.titleMedium),
               const SizedBox(height: 4),
-              Text(l.kanbanSource(task.source), style: theme.textTheme.bodySmall),
-              Text(l.kanbanCreated(task.createdAt), style: theme.textTheme.bodySmall),
-              Text(l.kanbanUpdated(task.updatedAt), style: theme.textTheme.bodySmall),
+              Text(
+                l.kanbanSource(task.source),
+                style: theme.textTheme.bodySmall,
+              ),
+              Text(
+                l.kanbanCreated(task.createdAt),
+                style: theme.textTheme.bodySmall,
+              ),
+              Text(
+                l.kanbanUpdated(task.updatedAt),
+                style: theme.textTheme.bodySmall,
+              ),
               if (task.completedAt.isNotEmpty)
-                Text(l.kanbanCompleted(task.completedAt), style: theme.textTheme.bodySmall),
+                Text(
+                  l.kanbanCompleted(task.completedAt),
+                  style: theme.textTheme.bodySmall,
+                ),
               const SizedBox(height: 32),
             ],
           ),

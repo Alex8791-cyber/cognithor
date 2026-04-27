@@ -35,7 +35,10 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _fetchEvents(_initialFetchCount, initial: true);
-    _pollTimer = Timer.periodic(_pollInterval, (_) => _fetchEvents(_pollFetchCount));
+    _pollTimer = Timer.periodic(
+      _pollInterval,
+      (_) => _fetchEvents(_pollFetchCount),
+    );
   }
 
   @override
@@ -47,7 +50,8 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
   }
 
   void _onScroll() {
-    final atBottom = _scrollController.hasClients &&
+    final atBottom =
+        _scrollController.hasClients &&
         _scrollController.offset >=
             _scrollController.position.maxScrollExtent - 40;
     if (atBottom != _isAtBottom) {
@@ -79,9 +83,11 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
       }
 
       // Sort by timestamp ascending so newest is at the bottom.
-      _events.sort((a, b) =>
-          (a['timestamp']?.toString() ?? '').compareTo(
-              b['timestamp']?.toString() ?? ''));
+      _events.sort(
+        (a, b) => (a['timestamp']?.toString() ?? '').compareTo(
+          b['timestamp']?.toString() ?? '',
+        ),
+      );
 
       // Trim oldest events if over cap.
       while (_events.length > _maxEvents) {
@@ -180,19 +186,40 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
             children: [
-              _FilterChip(label: 'All', active: _filter == 'ALL', onTap: () => setState(() => _filter = 'ALL')),
+              _FilterChip(
+                label: 'All',
+                active: _filter == 'ALL',
+                onTap: () => setState(() => _filter = 'ALL'),
+              ),
               const SizedBox(width: 8),
-              _FilterChip(label: 'Info', active: _filter == 'INFO', color: CognithorTheme.blue, onTap: () => setState(() => _filter = 'INFO')),
+              _FilterChip(
+                label: 'Info',
+                active: _filter == 'INFO',
+                color: CognithorTheme.blue,
+                onTap: () => setState(() => _filter = 'INFO'),
+              ),
               const SizedBox(width: 8),
-              _FilterChip(label: 'Warning', active: _filter == 'WARNING', color: CognithorTheme.orange, onTap: () => setState(() => _filter = 'WARNING')),
+              _FilterChip(
+                label: 'Warning',
+                active: _filter == 'WARNING',
+                color: CognithorTheme.orange,
+                onTap: () => setState(() => _filter = 'WARNING'),
+              ),
               const SizedBox(width: 8),
-              _FilterChip(label: 'Error', active: _filter == 'ERROR', color: CognithorTheme.red, onTap: () => setState(() => _filter = 'ERROR')),
+              _FilterChip(
+                label: 'Error',
+                active: _filter == 'ERROR',
+                color: CognithorTheme.red,
+                onTap: () => setState(() => _filter = 'ERROR'),
+              ),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 20),
                 tooltip: 'Clear',
                 onPressed: _clearLogs,
-                style: IconButton.styleFrom(foregroundColor: CognithorTheme.textSecondary),
+                style: IconButton.styleFrom(
+                  foregroundColor: CognithorTheme.textSecondary,
+                ),
               ),
             ],
           ),
@@ -206,10 +233,9 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
                   ? Center(
                       child: Text(
                         'No log entries',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: CognithorTheme.textSecondary),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: CognithorTheme.textSecondary,
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -222,8 +248,7 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
                             event['severity']?.toString() ?? 'INFO';
                         final message = event['message']?.toString() ?? '';
                         final name = event['name']?.toString() ?? '';
-                        final timestamp =
-                            event['timestamp']?.toString() ?? '';
+                        final timestamp = event['timestamp']?.toString() ?? '';
 
                         // Extract HH:MM:SS from timestamp.
                         final timeStr = _formatTime(timestamp);
@@ -249,11 +274,14 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
                               Container(
                                 width: 56,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 margin: const EdgeInsets.only(right: 8),
                                 decoration: BoxDecoration(
-                                  color: _severityColor(severity)
-                                      .withValues(alpha: 0.15),
+                                  color: _severityColor(
+                                    severity,
+                                  ).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -316,7 +344,9 @@ class _LiveLogsTabState extends State<LiveLogsTab> {
                         backgroundColor: CognithorTheme.accent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                       ),
                     ),
                   ),
@@ -367,7 +397,9 @@ class _FilterChip extends StatelessWidget {
           color: active ? chipColor.withValues(alpha: 0.2) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: active ? chipColor : CognithorTheme.textSecondary.withValues(alpha: 0.3),
+            color: active
+                ? chipColor
+                : CognithorTheme.textSecondary.withValues(alpha: 0.3),
           ),
         ),
         child: Text(

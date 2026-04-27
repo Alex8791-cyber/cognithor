@@ -12,22 +12,26 @@ LlmBackendProvider _mkProvider(VLLMStatus? s) {
 
 void main() {
   testWidgets('all four status cards are rendered', (tester) async {
-    final provider = _mkProvider(VLLMStatus(
-      hardwareOk: false,
-      hardwareInfo: null,
-      dockerOk: false,
-      imagePulled: false,
-      containerRunning: false,
-      currentModel: null,
-      lastError: null,
-    ));
-
-    await tester.pumpWidget(MaterialApp(
-      home: ChangeNotifierProvider<LlmBackendProvider>.value(
-        value: provider,
-        child: const VllmSetupScreen(),
+    final provider = _mkProvider(
+      VLLMStatus(
+        hardwareOk: false,
+        hardwareInfo: null,
+        dockerOk: false,
+        imagePulled: false,
+        containerRunning: false,
+        currentModel: null,
+        lastError: null,
       ),
-    ));
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<LlmBackendProvider>.value(
+          value: provider,
+          child: const VllmSetupScreen(),
+        ),
+      ),
+    );
 
     expect(find.byKey(const ValueKey('card-hardware')), findsOneWidget);
     expect(find.byKey(const ValueKey('card-docker')), findsOneWidget);
@@ -36,52 +40,60 @@ void main() {
   });
 
   testWidgets('hardware card shows GPU name when detected', (tester) async {
-    final provider = _mkProvider(VLLMStatus(
-      hardwareOk: true,
-      hardwareInfo: HardwareInfo(
-        gpuName: 'RTX 5090',
-        vramGb: 32,
-        computeCapability: '12.0',
+    final provider = _mkProvider(
+      VLLMStatus(
+        hardwareOk: true,
+        hardwareInfo: HardwareInfo(
+          gpuName: 'RTX 5090',
+          vramGb: 32,
+          computeCapability: '12.0',
+        ),
+        dockerOk: true,
+        imagePulled: false,
+        containerRunning: false,
+        currentModel: null,
+        lastError: null,
       ),
-      dockerOk: true,
-      imagePulled: false,
-      containerRunning: false,
-      currentModel: null,
-      lastError: null,
-    ));
+    );
 
-    await tester.pumpWidget(MaterialApp(
-      home: ChangeNotifierProvider<LlmBackendProvider>.value(
-        value: provider,
-        child: const VllmSetupScreen(),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<LlmBackendProvider>.value(
+          value: provider,
+          child: const VllmSetupScreen(),
+        ),
       ),
-    ));
+    );
 
     expect(find.textContaining('RTX 5090'), findsOneWidget);
     expect(find.textContaining('32 GB'), findsOneWidget);
   });
 
   testWidgets('image card shows pull button when pending', (tester) async {
-    final provider = _mkProvider(VLLMStatus(
-      hardwareOk: true,
-      hardwareInfo: HardwareInfo(
-        gpuName: 'RTX 5090',
-        vramGb: 32,
-        computeCapability: '12.0',
+    final provider = _mkProvider(
+      VLLMStatus(
+        hardwareOk: true,
+        hardwareInfo: HardwareInfo(
+          gpuName: 'RTX 5090',
+          vramGb: 32,
+          computeCapability: '12.0',
+        ),
+        dockerOk: true,
+        imagePulled: false,
+        containerRunning: false,
+        currentModel: null,
+        lastError: null,
       ),
-      dockerOk: true,
-      imagePulled: false,
-      containerRunning: false,
-      currentModel: null,
-      lastError: null,
-    ));
+    );
 
-    await tester.pumpWidget(MaterialApp(
-      home: ChangeNotifierProvider<LlmBackendProvider>.value(
-        value: provider,
-        child: const VllmSetupScreen(),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<LlmBackendProvider>.value(
+          value: provider,
+          child: const VllmSetupScreen(),
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Pull image'), findsOneWidget);
   });

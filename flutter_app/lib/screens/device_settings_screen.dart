@@ -96,8 +96,8 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                         conn.state == CognithorConnectionState.connected
                             ? 'Connected'
                             : conn.state == CognithorConnectionState.connecting
-                                ? 'Connecting...'
-                                : 'Disconnected',
+                            ? 'Connecting...'
+                            : 'Disconnected',
                         style: theme.textTheme.bodyLarge,
                       ),
                     ],
@@ -123,7 +123,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               child: SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               ),
                             )
                           : IconButton(
@@ -163,35 +165,47 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     title: 'Location',
                     subtitle: device.lastPosition != null
                         ? '${device.lastPosition!.latitude.toStringAsFixed(4)}, '
-                            '${device.lastPosition!.longitude.toStringAsFixed(4)}'
+                              '${device.lastPosition!.longitude.toStringAsFixed(4)}'
                         : 'Share location with Cognithor',
                     value: device.locationEnabled,
-                    onChanged: (v) =>
-                        _togglePermission(device, Permission.location, device.locationEnabled),
+                    onChanged: (v) => _togglePermission(
+                      device,
+                      Permission.location,
+                      device.locationEnabled,
+                    ),
                   ),
                   _PermissionTile(
                     icon: Icons.camera_alt,
                     title: 'Camera',
                     subtitle: 'Allow Cognithor to use the camera',
                     value: device.cameraEnabled,
-                    onChanged: (v) =>
-                        _togglePermission(device, Permission.camera, device.cameraEnabled),
+                    onChanged: (v) => _togglePermission(
+                      device,
+                      Permission.camera,
+                      device.cameraEnabled,
+                    ),
                   ),
                   _PermissionTile(
                     icon: Icons.mic,
                     title: 'Microphone',
                     subtitle: 'Allow voice commands',
                     value: device.microphoneEnabled,
-                    onChanged: (v) =>
-                        _togglePermission(device, Permission.microphone, device.microphoneEnabled),
+                    onChanged: (v) => _togglePermission(
+                      device,
+                      Permission.microphone,
+                      device.microphoneEnabled,
+                    ),
                   ),
                   _PermissionTile(
                     icon: Icons.photo_library,
                     title: 'Photo Library',
                     subtitle: 'Allow access to photos',
                     value: device.photosEnabled,
-                    onChanged: (v) =>
-                        _togglePermission(device, Permission.photos, device.photosEnabled),
+                    onChanged: (v) => _togglePermission(
+                      device,
+                      Permission.photos,
+                      device.photosEnabled,
+                    ),
                   ),
                 ],
               ),
@@ -252,9 +266,9 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8, left: 4),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }

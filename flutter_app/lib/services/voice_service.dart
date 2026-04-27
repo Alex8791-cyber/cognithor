@@ -331,8 +331,7 @@ class VoiceService extends ChangeNotifier {
 
     final matrix = List.generate(
       a.length + 1,
-      (i) => List.generate(
-          b.length + 1, (j) => i == 0 ? j : (j == 0 ? i : 0)),
+      (i) => List.generate(b.length + 1, (j) => i == 0 ? j : (j == 0 ? i : 0)),
     );
 
     for (var i = 1; i <= a.length; i++) {

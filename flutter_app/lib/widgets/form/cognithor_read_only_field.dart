@@ -24,9 +24,12 @@ class CognithorReadOnlyField extends StatelessWidget {
           Text(label, style: theme.textTheme.bodyMedium),
           if (description != null) ...[
             const SizedBox(height: 2),
-            Text(description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           Container(
@@ -37,9 +40,12 @@ class CognithorReadOnlyField extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: theme.dividerColor),
             ),
-            child: Text(value,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ),
         ],
       ),

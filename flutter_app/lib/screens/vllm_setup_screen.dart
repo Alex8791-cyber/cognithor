@@ -112,13 +112,14 @@ class _StatusCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
@@ -200,8 +201,9 @@ class _ImageCardState extends State<_ImageCard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Pull failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Pull failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _pulling = false);
@@ -217,24 +219,24 @@ class _ImageCardState extends State<_ImageCard> {
       subtitle: pulled
           ? 'vllm/vllm-openai:v0.19.1 ready'
           : _pulling
-              ? 'Downloading${_layer != null ? " layer ${_layer!.length >= 12 ? _layer!.substring(0, 12) : _layer!}..." : "…"}'
-              : 'Pull required (~10 GB, one-time)',
+          ? 'Downloading${_layer != null ? " layer ${_layer!.length >= 12 ? _layer!.substring(0, 12) : _layer!}..." : "…"}'
+          : 'Pull required (~10 GB, one-time)',
       state: pulled
           ? _CardState.ok
           : _pulling
-              ? _CardState.pending
-              : _CardState.todo,
+          ? _CardState.pending
+          : _CardState.todo,
       action: pulled
           ? null
           : _pulling
-              ? SizedBox(
-                  width: 100,
-                  child: LinearProgressIndicator(value: _progress),
-                )
-              : FilledButton.tonal(
-                  onPressed: _pull,
-                  child: const Text('Pull image'),
-                ),
+          ? SizedBox(
+              width: 100,
+              child: LinearProgressIndicator(value: _progress),
+            )
+          : FilledButton.tonal(
+              onPressed: _pull,
+              child: const Text('Pull image'),
+            ),
     );
   }
 }
@@ -295,10 +297,7 @@ class _ModelCardState extends State<_ModelCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Model',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+            const Text('Model', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             DropdownButton<String>(
               value: _selected,

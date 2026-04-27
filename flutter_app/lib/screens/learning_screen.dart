@@ -103,8 +103,7 @@ class _LearningScreenState extends State<LearningScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _parseList(
-      Map<String, dynamic> data, String key) {
+  List<Map<String, dynamic>> _parseList(Map<String, dynamic> data, String key) {
     return (data[key] as List?)
             ?.map((e) => e as Map<String, dynamic>)
             .toList() ??
@@ -161,52 +160,48 @@ class _LearningScreenState extends State<LearningScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!,
-                          style: TextStyle(color: CognithorTheme.red)),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _loadAll,
-                        child: Text(l.retry),
-                      ),
-                    ],
-                  ),
-                )
-              : Column(
-                  children: [
-                    CognithorTabBar(
-                      tabs: [
-                        l.dashboard,
-                        l.knowledgeGaps,
-                        l.explorationQueue,
-                        l.qaKnowledgeBase,
-                        l.lineage,
-                      ],
-                      icons: const [
-                        Icons.dashboard,
-                        Icons.help_outline,
-                        Icons.explore,
-                        Icons.quiz,
-                        Icons.account_tree,
-                      ],
-                      selectedIndex: _tabIndex,
-                      onChanged: (i) => setState(() => _tabIndex = i),
-                    ),
-                    Expanded(
-                      child: switch (_tabIndex) {
-                        0 => _buildOverview(l),
-                        1 => _buildGaps(l),
-                        2 => _buildQueue(l),
-                        3 => _buildQA(l),
-                        4 => _buildLineage(l),
-                        _ => const SizedBox.shrink(),
-                      },
-                    ),
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, style: TextStyle(color: CognithorTheme.red)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(onPressed: _loadAll, child: Text(l.retry)),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                CognithorTabBar(
+                  tabs: [
+                    l.dashboard,
+                    l.knowledgeGaps,
+                    l.explorationQueue,
+                    l.qaKnowledgeBase,
+                    l.lineage,
                   ],
+                  icons: const [
+                    Icons.dashboard,
+                    Icons.help_outline,
+                    Icons.explore,
+                    Icons.quiz,
+                    Icons.account_tree,
+                  ],
+                  selectedIndex: _tabIndex,
+                  onChanged: (i) => setState(() => _tabIndex = i),
                 ),
+                Expanded(
+                  child: switch (_tabIndex) {
+                    0 => _buildOverview(l),
+                    1 => _buildGaps(l),
+                    2 => _buildQueue(l),
+                    3 => _buildQA(l),
+                    4 => _buildLineage(l),
+                    _ => const SizedBox.shrink(),
+                  },
+                ),
+              ],
+            ),
     );
   }
 
@@ -261,16 +256,17 @@ class _LearningScreenState extends State<LearningScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.show_chart, size: 18, color: CognithorTheme.sectionDashboard),
+                  const Icon(
+                    Icons.show_chart,
+                    size: 18,
+                    color: CognithorTheme.sectionDashboard,
+                  ),
                   const SizedBox(width: 8),
                   Text(l.learningTitle, style: theme.textTheme.titleMedium),
                 ],
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: _buildActivityChart(theme),
-              ),
+              SizedBox(height: 200, child: _buildActivityChart(theme)),
             ],
           ),
         ),
@@ -284,54 +280,60 @@ class _LearningScreenState extends State<LearningScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.history, size: 18, color: CognithorTheme.sectionDashboard),
+                  const Icon(
+                    Icons.history,
+                    size: 18,
+                    color: CognithorTheme.sectionDashboard,
+                  ),
                   const SizedBox(width: 8),
                   Text(l.confidenceHistory, style: theme.textTheme.titleMedium),
                 ],
               ),
               const SizedBox(height: 8),
               _confidenceHistory.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(CognithorTheme.spacing),
-                  child: Text(l.noData,
-                      style: theme.textTheme.bodySmall),
-                )
-              : Column(
-                  children: _confidenceHistory.take(10).map((entry) {
-                    final entity =
-                        (entry['entity'] ?? entry['entity_id'] ?? '')
+                  ? Padding(
+                      padding: const EdgeInsets.all(CognithorTheme.spacing),
+                      child: Text(l.noData, style: theme.textTheme.bodySmall),
+                    )
+                  : Column(
+                      children: _confidenceHistory.take(10).map((entry) {
+                        final entity =
+                            (entry['entity'] ?? entry['entity_id'] ?? '')
+                                .toString();
+                        final oldConf = (entry['old_confidence'] ?? 0)
                             .toString();
-                    final oldConf =
-                        (entry['old_confidence'] ?? 0).toString();
-                    final newConf =
-                        (entry['new_confidence'] ?? 0).toString();
-                    final increased = (entry['new_confidence'] ?? 0) >
-                        (entry['old_confidence'] ?? 0);
+                        final newConf = (entry['new_confidence'] ?? 0)
+                            .toString();
+                        final increased =
+                            (entry['new_confidence'] ?? 0) >
+                            (entry['old_confidence'] ?? 0);
 
-                    return ListTile(
-                      dense: true,
-                      leading: Icon(
-                        increased
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward,
-                        color: increased
-                            ? CognithorTheme.green
-                            : CognithorTheme.red,
-                        size: 18,
-                      ),
-                      title: Text(entity,
-                          style: theme.textTheme.bodyMedium),
-                      subtitle: Text(
-                        '$oldConf -> $newConf',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      trailing: Text(
-                        (entry['timestamp'] ?? '').toString(),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    );
-                  }).toList(),
-                ),
+                        return ListTile(
+                          dense: true,
+                          leading: Icon(
+                            increased
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
+                            color: increased
+                                ? CognithorTheme.green
+                                : CognithorTheme.red,
+                            size: 18,
+                          ),
+                          title: Text(
+                            entity,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          subtitle: Text(
+                            '$oldConf -> $newConf',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          trailing: Text(
+                            (entry['timestamp'] ?? '').toString(),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        );
+                      }).toList(),
+                    ),
             ],
           ),
         ),
@@ -345,7 +347,11 @@ class _LearningScreenState extends State<LearningScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.folder_open, size: 18, color: CognithorTheme.sectionDashboard),
+                  const Icon(
+                    Icons.folder_open,
+                    size: 18,
+                    color: CognithorTheme.sectionDashboard,
+                  ),
                   const SizedBox(width: 8),
                   Text(l.watchDirectories, style: theme.textTheme.titleMedium),
                 ],
@@ -357,8 +363,10 @@ class _LearningScreenState extends State<LearningScreen> {
                   child: Text(l.noData, style: theme.textTheme.bodySmall),
                 )
               else
-                ...List.generate(_directories.length, (i) =>
-                    _buildDirectoryRow(theme, l, i)),
+                ...List.generate(
+                  _directories.length,
+                  (i) => _buildDirectoryRow(theme, l, i),
+                ),
             ],
           ),
         ),
@@ -366,17 +374,14 @@ class _LearningScreenState extends State<LearningScreen> {
     );
   }
 
-  Widget _buildDirectoryRow(
-      ThemeData theme, AppLocalizations l, int index) {
+  Widget _buildDirectoryRow(ThemeData theme, AppLocalizations l, int index) {
     final dir = _directories[index];
     final path = (dir['path'] ?? '').toString();
     final enabled = dir['enabled'] == true;
     final exists = dir['exists'] == true;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: CognithorTheme.spacingSm,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: CognithorTheme.spacingSm),
       child: Row(
         children: [
           Tooltip(
@@ -404,9 +409,9 @@ class _LearningScreenState extends State<LearningScreen> {
     // Build spots from stats or use placeholder structure
     final dataPoints =
         (_stats?['activity_chart'] as List?)
-                ?.whereType<Map<String, dynamic>>()
-                .toList() ??
-            [];
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        [];
 
     if (dataPoints.isEmpty) {
       return Center(
@@ -429,21 +434,16 @@ class _LearningScreenState extends State<LearningScreen> {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: 1,
-          getDrawingHorizontalLine: (_) => FlLine(
-            color: theme.dividerColor,
-            strokeWidth: 0.5,
-          ),
+          getDrawingHorizontalLine: (_) =>
+              FlLine(color: theme.dividerColor, strokeWidth: 0.5),
         ),
         titlesData: const FlTitlesData(
           leftTitles: AxisTitles(
             sideTitles: SideTitles(showTitles: true, reservedSize: 32),
           ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles:
-              AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
         lineBarsData: [
@@ -483,10 +483,8 @@ class _LearningScreenState extends State<LearningScreen> {
         return _GapCard(
           gap: gap,
           l: l,
-          onDismiss: () =>
-              _dismissGap((gap['id'] ?? '').toString()),
-          onExplore: () =>
-              _exploreGap((gap['id'] ?? '').toString()),
+          onDismiss: () => _dismissGap((gap['id'] ?? '').toString()),
+          onExplore: () => _exploreGap((gap['id'] ?? '').toString()),
         );
       },
     );
@@ -498,10 +496,7 @@ class _LearningScreenState extends State<LearningScreen> {
 
   Widget _buildQueue(AppLocalizations l) {
     if (_queue.isEmpty) {
-      return CognithorEmptyState(
-        icon: Icons.explore_off,
-        title: l.noTasks,
-      );
+      return CognithorEmptyState(icon: Icons.explore_off, title: l.noTasks);
     }
 
     final theme = Theme.of(context);
@@ -512,10 +507,8 @@ class _LearningScreenState extends State<LearningScreen> {
       itemBuilder: (context, index) {
         final task = _queue[index];
         final query = (task['query'] ?? '').toString();
-        final sources = (task['sources'] as List?)
-                ?.map((s) => s.toString())
-                .toList() ??
-            [];
+        final sources =
+            (task['sources'] as List?)?.map((s) => s.toString()).toList() ?? [];
         final priority = (task['priority'] ?? 'normal').toString();
         final status = (task['status'] ?? 'pending').toString();
 
@@ -535,49 +528,47 @@ class _LearningScreenState extends State<LearningScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: NeonCard(
-          tint: CognithorTheme.sectionDashboard,
-          glowOnHover: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      query,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  CognithorStatusBadge(
-                    label: status,
-                    color: statusColor,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  CognithorStatusBadge(
-                    label: '${l.priority}: $priority',
-                    color: priorityColor,
-                    icon: Icons.flag,
-                  ),
-                  if (sources.isNotEmpty) ...[
-                    const SizedBox(width: 8),
+            tint: CognithorTheme.sectionDashboard,
+            glowOnHover: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
                     Expanded(
                       child: Text(
-                        sources.join(', '),
-                        style: theme.textTheme.bodySmall,
-                        overflow: TextOverflow.ellipsis,
+                        query,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    CognithorStatusBadge(label: status, color: statusColor),
                   ],
-                ],
-              ),
-            ],
-          ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    CognithorStatusBadge(
+                      label: '${l.priority}: $priority',
+                      color: priorityColor,
+                      icon: Icons.flag,
+                    ),
+                    if (sources.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          sources.join(', '),
+                          style: theme.textTheme.bodySmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -591,8 +582,7 @@ class _LearningScreenState extends State<LearningScreen> {
     setState(() => _qaSearch = query);
     try {
       final api = context.read<ConnectionProvider>().api;
-      final result = await api.getQAPairs(
-          query: query.isEmpty ? null : query);
+      final result = await api.getQAPairs(query: query.isEmpty ? null : query);
       if (!mounted) return;
       setState(() => _qaPairs = _parseList(result, 'pairs'));
     } catch (_) {}
@@ -708,107 +698,106 @@ class _LearningScreenState extends State<LearningScreen> {
                       itemCount: _qaPairs.length,
                       itemBuilder: (context, index) {
                         final qa = _qaPairs[index];
-                        final question =
-                            (qa['question'] ?? '').toString();
+                        final question = (qa['question'] ?? '').toString();
                         final answer = (qa['answer'] ?? '').toString();
                         final topic = (qa['topic'] ?? '').toString();
-                        final conf =
-                            ((qa['confidence'] ?? 0) as num).toDouble();
-                        final source =
-                            (qa['source'] ?? '').toString();
+                        final conf = ((qa['confidence'] ?? 0) as num)
+                            .toDouble();
+                        final source = (qa['source'] ?? '').toString();
                         final isVerified = qa['verified'] == true;
                         final id = (qa['id'] ?? '').toString();
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: NeonCard(
-                          tint: CognithorTheme.sectionDashboard,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                question,
-                                style: theme.textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(answer,
-                                  style: theme.textTheme.bodySmall),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  if (topic.isNotEmpty)
-                                    CognithorStatusBadge(
-                                      label: topic,
-                                      color: CognithorTheme.accent,
-                                    ),
-                                  if (isVerified) ...[
-                                    const SizedBox(width: 8),
-                                    CognithorStatusBadge(
-                                      label: l.verified,
-                                      color: CognithorTheme.green,
-                                      icon: Icons.check,
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                  if (source.isNotEmpty)
-                                    Text(
-                                      '${l.source}: $source',
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              // Confidence bar
-                              Row(
-                                children: [
-                                  SizedBox(
-                                    width: 80,
-                                    child: Text(l.confidence,
-                                        style: theme.textTheme.bodySmall),
+                            tint: CognithorTheme.sectionDashboard,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  question,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  Expanded(
-                                    child: ClipRRect(
-                                      borderRadius:
-                                          BorderRadius.circular(4),
-                                      child: LinearProgressIndicator(
-                                        value: conf.clamp(0.0, 1.0),
-                                        backgroundColor:
-                                            theme.dividerColor,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(answer, style: theme.textTheme.bodySmall),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    if (topic.isNotEmpty)
+                                      CognithorStatusBadge(
+                                        label: topic,
                                         color: CognithorTheme.accent,
-                                        minHeight: 6,
+                                      ),
+                                    if (isVerified) ...[
+                                      const SizedBox(width: 8),
+                                      CognithorStatusBadge(
+                                        label: l.verified,
+                                        color: CognithorTheme.green,
+                                        icon: Icons.check,
+                                      ),
+                                    ],
+                                    const Spacer(),
+                                    if (source.isNotEmpty)
+                                      Text(
+                                        '${l.source}: $source',
+                                        style: theme.textTheme.bodySmall,
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                // Confidence bar
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 80,
+                                      child: Text(
+                                        l.confidence,
+                                        style: theme.textTheme.bodySmall,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${(conf * 100).toInt()}%',
-                                    style: theme.textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (!isVerified)
-                                    TextButton.icon(
-                                      onPressed: () => _verifyQA(id),
-                                      icon: const Icon(
-                                          Icons.thumb_up, size: 16),
-                                      label: Text(l.verify),
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: LinearProgressIndicator(
+                                          value: conf.clamp(0.0, 1.0),
+                                          backgroundColor: theme.dividerColor,
+                                          color: CognithorTheme.accent,
+                                          minHeight: 6,
+                                        ),
+                                      ),
                                     ),
-                                  const SizedBox(width: 8),
-                                  TextButton.icon(
-                                    onPressed: () => _deleteQA(id),
-                                    icon: const Icon(Icons.delete,
-                                        size: 16),
-                                    label: Text(l.delete),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${(conf * 100).toInt()}%',
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (!isVerified)
+                                      TextButton.icon(
+                                        onPressed: () => _verifyQA(id),
+                                        icon: const Icon(
+                                          Icons.thumb_up,
+                                          size: 16,
+                                        ),
+                                        label: Text(l.verify),
+                                      ),
+                                    const SizedBox(width: 8),
+                                    TextButton.icon(
+                                      onPressed: () => _deleteQA(id),
+                                      icon: const Icon(Icons.delete, size: 16),
+                                      label: Text(l.delete),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -891,8 +880,8 @@ class _LearningScreenState extends State<LearningScreen> {
                     border: const OutlineInputBorder(),
                     isDense: true,
                   ),
-                  onSubmitted: (value) => _loadLineage(
-                      entityId: value.isEmpty ? null : value),
+                  onSubmitted: (value) =>
+                      _loadLineage(entityId: value.isEmpty ? null : value),
                 ),
               ),
               const SizedBox(width: 8),
@@ -905,9 +894,8 @@ class _LearningScreenState extends State<LearningScreen> {
                       SnackBar(content: Text(l.explorationComplete)),
                     );
                     _loadLineage(
-                        entityId: _lineageFilter.isEmpty
-                            ? null
-                            : _lineageFilter);
+                      entityId: _lineageFilter.isEmpty ? null : _lineageFilter,
+                    );
                   }
                 },
                 icon: const Icon(Icons.play_arrow, size: 16),
@@ -944,15 +932,11 @@ class _LearningScreenState extends State<LearningScreen> {
                   itemCount: _lineageEntries.length,
                   itemBuilder: (context, index) {
                     final entry = _lineageEntries[index];
-                    final entity =
-                        (entry['entity'] ?? entry['entity_id'] ?? '')
-                            .toString();
-                    final action =
-                        (entry['action'] ?? '').toString();
-                    final sourceType =
-                        (entry['source_type'] ?? '').toString();
-                    final ts =
-                        (entry['timestamp'] ?? '').toString();
+                    final entity = (entry['entity'] ?? entry['entity_id'] ?? '')
+                        .toString();
+                    final action = (entry['action'] ?? '').toString();
+                    final sourceType = (entry['source_type'] ?? '').toString();
+                    final ts = (entry['timestamp'] ?? '').toString();
 
                     final actionLabel = switch (action) {
                       'created' => l.created,
@@ -962,23 +946,19 @@ class _LearningScreenState extends State<LearningScreen> {
                     };
 
                     return Padding(
-                      padding:
-                          const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Timeline dot + line
                           Column(
                             children: [
                               Icon(
                                 _lineageActionIcon(action),
-                                color:
-                                    _lineageActionColor(action),
+                                color: _lineageActionColor(action),
                                 size: 20,
                               ),
-                              if (index <
-                                  _lineageEntries.length - 1)
+                              if (index < _lineageEntries.length - 1)
                                 Container(
                                   width: 2,
                                   height: 32,
@@ -995,42 +975,32 @@ class _LearningScreenState extends State<LearningScreen> {
                                   Icon(
                                     _sourceTypeIcon(sourceType),
                                     size: 16,
-                                    color:
-                                        CognithorTheme.textSecondary,
+                                    color: CognithorTheme.textSecondary,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment
-                                              .start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           entity,
-                                          style: theme
-                                              .textTheme.bodyMedium
+                                          style: theme.textTheme.bodyMedium
                                               ?.copyWith(
-                                            fontWeight:
-                                                FontWeight.w600,
-                                          ),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                         ),
                                         Text(
                                           actionLabel,
                                           style: TextStyle(
-                                            color:
-                                                _lineageActionColor(
-                                                    action),
+                                            color: _lineageActionColor(action),
                                             fontSize: 12,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  Text(
-                                    ts,
-                                    style:
-                                        theme.textTheme.bodySmall,
-                                  ),
+                                  Text(ts, style: theme.textTheme.bodySmall),
                                 ],
                               ),
                             ),
@@ -1089,105 +1059,104 @@ class _GapCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Question and status
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  question,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    question,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              CognithorStatusBadge(label: status, color: statusColor),
+                const SizedBox(width: 8),
+                CognithorStatusBadge(label: status, color: statusColor),
+              ],
+            ),
+            if (topic.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(topic, style: theme.textTheme.bodySmall),
             ],
-          ),
-          if (topic.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(topic, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 12),
+
+            // Importance bar
+            Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: Text(l.importance, style: theme.textTheme.bodySmall),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: importance.clamp(0.0, 1.0),
+                      backgroundColor: theme.dividerColor,
+                      color: CognithorTheme.accent,
+                      minHeight: 6,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${(importance * 100).toInt()}%',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // Curiosity score bar
+            Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: Text(l.curiosity, style: theme.textTheme.bodySmall),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: curiosityScore.clamp(0.0, 1.0),
+                      backgroundColor: theme.dividerColor,
+                      color: CognithorTheme.orange,
+                      minHeight: 6,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${(curiosityScore * 100).toInt()}%',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: onDismiss,
+                  icon: const Icon(Icons.close, size: 16),
+                  label: Text(l.dismiss),
+                ),
+                const SizedBox(width: 8),
+                NeonGlow(
+                  color: CognithorTheme.sectionDashboard,
+                  intensity: 0.2,
+                  blurRadius: 8,
+                  child: ElevatedButton.icon(
+                    onPressed: onExplore,
+                    icon: const Icon(Icons.explore, size: 16),
+                    label: Text(l.explore),
+                  ),
+                ),
+              ],
+            ),
           ],
-          const SizedBox(height: 12),
-
-          // Importance bar
-          Row(
-            children: [
-              SizedBox(
-                width: 80,
-                child: Text(l.importance,
-                    style: theme.textTheme.bodySmall),
-              ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: importance.clamp(0.0, 1.0),
-                    backgroundColor: theme.dividerColor,
-                    color: CognithorTheme.accent,
-                    minHeight: 6,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${(importance * 100).toInt()}%',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-
-          // Curiosity score bar
-          Row(
-            children: [
-              SizedBox(
-                width: 80,
-                child:
-                    Text(l.curiosity, style: theme.textTheme.bodySmall),
-              ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: curiosityScore.clamp(0.0, 1.0),
-                    backgroundColor: theme.dividerColor,
-                    color: CognithorTheme.orange,
-                    minHeight: 6,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${(curiosityScore * 100).toInt()}%',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Actions
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                onPressed: onDismiss,
-                icon: const Icon(Icons.close, size: 16),
-                label: Text(l.dismiss),
-              ),
-              const SizedBox(width: 8),
-              NeonGlow(
-                color: CognithorTheme.sectionDashboard,
-                intensity: 0.2,
-                blurRadius: 8,
-                child: ElevatedButton.icon(
-                  onPressed: onExplore,
-                  icon: const Icon(Icons.explore, size: 16),
-                  label: Text(l.explore),
-                ),
-              ),
-            ],
-          ),
-        ],
         ),
       ),
     );

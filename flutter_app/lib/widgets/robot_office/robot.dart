@@ -43,8 +43,8 @@ class Robot {
     this.msgTimer = 0,
     this.emoji = '',
     this.emojiTimer = 0,
-  })  : targetX = targetX ?? x,
-        targetY = targetY ?? y;
+  }) : targetX = targetX ?? x,
+       targetY = targetY ?? y;
 
   final String id;
   final String name;

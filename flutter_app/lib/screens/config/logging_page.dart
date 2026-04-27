@@ -18,9 +18,7 @@ class LoggingPage extends StatelessWidget {
             CognithorSelectField.fromStrings(
               label: 'Log Level',
               value: (log['level'] ?? 'INFO').toString(),
-              options: const [
-                'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
-              ],
+              options: const ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
               onChanged: (v) => cfg.set('logging.level', v),
             ),
             CognithorToggleField(

@@ -20,18 +20,43 @@ void main() {
 
   testWidgets('list → tap card → detail view shows events', (tester) async {
     final svc = _MockTraceService();
-    when(() => svc.listTraces(status: any(named: 'status'), limit: any(named: 'limit')))
-        .thenAnswer((_) async => [
-              const CrewTraceMeta(traceId: 'abc-1', status: TraceStatus.running, nTasks: 1, totalTokens: 50, agentCount: 1, nFailedGuardrails: 0),
-            ]);
+    when(
+      () => svc.listTraces(
+        status: any(named: 'status'),
+        limit: any(named: 'limit'),
+      ),
+    ).thenAnswer(
+      (_) async => [
+        const CrewTraceMeta(
+          traceId: 'abc-1',
+          status: TraceStatus.running,
+          nTasks: 1,
+          totalTokens: 50,
+          agentCount: 1,
+          nFailedGuardrails: 0,
+        ),
+      ],
+    );
     when(() => svc.subscribeToLifecycle(any())).thenAnswer((_) {});
     when(() => svc.unsubscribeFromLifecycle()).thenAnswer((_) {});
-    when(() => svc.fetchTrace('abc-1')).thenAnswer((_) async => [
-          const CrewEvent(traceId: 'abc-1', eventType: 'crew_kickoff_started', details: {'n_tasks': 1}),
-        ]);
-    when(() => svc.fetchTraceStats('abc-1')).thenAnswer((_) async => const CrewTraceStats(
-          totalTokens: 50, agentBreakdown: {'researcher': 50}, guardrailPass: 1, guardrailFail: 0, guardrailRetries: 0,
-        ));
+    when(() => svc.fetchTrace('abc-1')).thenAnswer(
+      (_) async => [
+        const CrewEvent(
+          traceId: 'abc-1',
+          eventType: 'crew_kickoff_started',
+          details: {'n_tasks': 1},
+        ),
+      ],
+    );
+    when(() => svc.fetchTraceStats('abc-1')).thenAnswer(
+      (_) async => const CrewTraceStats(
+        totalTokens: 50,
+        agentBreakdown: {'researcher': 50},
+        guardrailPass: 1,
+        guardrailFail: 0,
+        guardrailRetries: 0,
+      ),
+    );
     when(() => svc.subscribeToTrace(any(), any())).thenAnswer((_) {});
     when(() => svc.unsubscribeFromTrace(any())).thenAnswer((_) {});
 

@@ -20,17 +20,19 @@ class LiveDagPanel extends StatelessWidget {
     for (var i = 0; i < entries.length; i++) {
       final e = entries[i];
       final status = (e['status'] ?? '').toString().toLowerCase();
-      nodes.add(DagNode(
-        id: 'n$i',
-        label: (e['phase'] ?? e['name'] ?? 'Step $i').toString(),
-        status: status == 'running'
-            ? DagNodeStatus.running
-            : status == 'complete' || status == 'done'
-                ? DagNodeStatus.complete
-                : status == 'error'
-                    ? DagNodeStatus.error
-                    : DagNodeStatus.pending,
-      ));
+      nodes.add(
+        DagNode(
+          id: 'n$i',
+          label: (e['phase'] ?? e['name'] ?? 'Step $i').toString(),
+          status: status == 'running'
+              ? DagNodeStatus.running
+              : status == 'complete' || status == 'done'
+              ? DagNodeStatus.complete
+              : status == 'error'
+              ? DagNodeStatus.error
+              : DagNodeStatus.pending,
+        ),
+      );
       if (i > 0) {
         edges.add(DagEdge(from: 'n${i - 1}', to: 'n$i'));
       }

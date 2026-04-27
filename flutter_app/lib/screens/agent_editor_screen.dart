@@ -91,7 +91,11 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
           builder: (ctx, setState) {
             final filtered = search.isEmpty
                 ? models
-                : models.where((m) => m.toLowerCase().contains(search.toLowerCase())).toList();
+                : models
+                      .where(
+                        (m) => m.toLowerCase().contains(search.toLowerCase()),
+                      )
+                      .toList();
             return AlertDialog(
               title: Text(l.selectModel),
               content: SizedBox(
@@ -119,11 +123,18 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
                             selected: isCurrent,
                             selectedColor: CognithorTheme.sectionAdmin,
                             leading: Icon(
-                              isCurrent ? Icons.check_circle : Icons.circle_outlined,
+                              isCurrent
+                                  ? Icons.check_circle
+                                  : Icons.circle_outlined,
                               size: 18,
-                              color: isCurrent ? CognithorTheme.sectionAdmin : null,
+                              color: isCurrent
+                                  ? CognithorTheme.sectionAdmin
+                                  : null,
                             ),
-                            title: Text(name, style: const TextStyle(fontSize: 13)),
+                            title: Text(
+                              name,
+                              style: const TextStyle(fontSize: 13),
+                            ),
                             onTap: () => Navigator.pop(ctx, name),
                           );
                         },
@@ -185,10 +196,8 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
     _modelCtrl.text = data['preferred_model']?.toString() ?? '';
     _priorityCtrl.text = (data['priority'] ?? 0).toString();
     _systemPromptCtrl.text = data['system_prompt']?.toString() ?? '';
-    _allowedToolsCtrl.text =
-        _listToCommaString(data['allowed_tools']);
-    _blockedToolsCtrl.text =
-        _listToCommaString(data['blocked_tools']);
+    _allowedToolsCtrl.text = _listToCommaString(data['allowed_tools']);
+    _blockedToolsCtrl.text = _listToCommaString(data['blocked_tools']);
     _sandboxTimeoutCtrl.text = (data['sandbox_timeout'] ?? 30).toString();
 
     final lang = data['language']?.toString() ?? 'en';
@@ -279,7 +288,11 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
     final l = AppLocalizations.of(context);
 
     if (widget.agentName == 'jarvis') {
-      CognithorToast.show(context, l.cannotDeleteDefault, type: ToastType.error);
+      CognithorToast.show(
+        context,
+        l.cannotDeleteDefault,
+        type: ToastType.error,
+      );
       return;
     }
 
@@ -367,8 +380,8 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
           title: Text(
             _isEditing
                 ? (_displayNameCtrl.text.isNotEmpty
-                    ? _displayNameCtrl.text
-                    : l.editAgent)
+                      ? _displayNameCtrl.text
+                      : l.editAgent)
                 : l.newAgent,
           ),
           actions: [
@@ -483,14 +496,16 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
                             if (_modelCtrl.text.isNotEmpty)
                               IconButton(
                                 icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () => setState(() => _modelCtrl.clear()),
+                                onPressed: () =>
+                                    setState(() => _modelCtrl.clear()),
                                 tooltip: 'Use global default',
                               ),
                             const Icon(Icons.arrow_drop_down),
                           ],
                         ),
                         hintText: 'Uses global model setting',
-                        helperText: 'Leave empty to use the model from Settings > Models',
+                        helperText:
+                            'Leave empty to use the model from Settings > Models',
                       ),
                     ),
                   ),
@@ -532,8 +547,7 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
                         controller: _priorityCtrl,
                         decoration: InputDecoration(
                           labelText: l.priority,
-                          prefixIcon:
-                              const Icon(Icons.low_priority, size: 20),
+                          prefixIcon: const Icon(Icons.low_priority, size: 20),
                         ),
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -572,10 +586,7 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
           const SizedBox(height: 24),
 
           // -- System Prompt Section --
-          _SectionHeader(
-            title: l.systemPrompt,
-            icon: Icons.terminal,
-          ),
+          _SectionHeader(title: l.systemPrompt, icon: Icons.terminal),
           const SizedBox(height: 8),
           NeonCard(
             tint: CognithorTheme.sectionAdmin,
@@ -599,10 +610,7 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
           const SizedBox(height: 24),
 
           // -- Tools Section --
-          _SectionHeader(
-            title: l.allowedTools,
-            icon: Icons.build_outlined,
-          ),
+          _SectionHeader(title: l.allowedTools, icon: Icons.build_outlined),
           const SizedBox(height: 8),
           NeonCard(
             tint: CognithorTheme.sectionAdmin,
@@ -633,10 +641,7 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
           const SizedBox(height: 24),
 
           // -- Sandbox Section --
-          _SectionHeader(
-            title: l.sandboxTimeout,
-            icon: Icons.security,
-          ),
+          _SectionHeader(title: l.sandboxTimeout, icon: Icons.security),
           const SizedBox(height: 8),
           NeonCard(
             tint: CognithorTheme.sectionAdmin,
@@ -651,9 +656,7 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
                       prefixIcon: const Icon(Icons.timer, size: 20),
                     ),
                     keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -665,10 +668,7 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
                       prefixIcon: const Icon(Icons.wifi),
                     ),
                     items: _networkOptions.map((opt) {
-                      return DropdownMenuItem(
-                        value: opt,
-                        child: Text(opt),
-                      );
+                      return DropdownMenuItem(value: opt, child: Text(opt));
                     }).toList(),
                     onChanged: (v) {
                       setState(() {
@@ -693,9 +693,12 @@ class _AgentEditorScreenState extends State<AgentEditorScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: CognithorTheme.red,
                   side: BorderSide(
-                      color: CognithorTheme.red.withValues(alpha: 0.5)),
+                    color: CognithorTheme.red.withValues(alpha: 0.5),
+                  ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
@@ -738,9 +741,9 @@ class _SectionHeader extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: CognithorTheme.sectionAdmin,
-                fontWeight: FontWeight.w600,
-              ),
+            color: CognithorTheme.sectionAdmin,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );

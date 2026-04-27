@@ -5,11 +5,7 @@ class KanbanCard extends StatelessWidget {
   final KanbanTask task;
   final Color columnColor;
 
-  const KanbanCard({
-    super.key,
-    required this.task,
-    required this.columnColor,
-  });
+  const KanbanCard({super.key, required this.task, required this.columnColor});
 
   static const _priorityIcons = {
     'urgent': Icons.priority_high,
@@ -34,15 +30,9 @@ class KanbanCard extends StatelessWidget {
       feedback: Material(
         elevation: 8,
         borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 220,
-          child: _buildCard(theme, dragging: true),
-        ),
+        child: SizedBox(width: 220, child: _buildCard(theme, dragging: true)),
       ),
-      childWhenDragging: Opacity(
-        opacity: 0.3,
-        child: _buildCard(theme),
-      ),
+      childWhenDragging: Opacity(opacity: 0.3, child: _buildCard(theme)),
       child: _buildCard(theme),
     );
   }
@@ -52,12 +42,20 @@ class KanbanCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border(
-          left: BorderSide(color: columnColor, width: 3),
-        ),
+        border: Border(left: BorderSide(color: columnColor, width: 3)),
         boxShadow: dragging
-            ? [BoxShadow(color: columnColor.withValues(alpha: 0.3), blurRadius: 12)]
-            : [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 2)],
+            ? [
+                BoxShadow(
+                  color: columnColor.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 2,
+                ),
+              ],
       ),
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -90,8 +88,11 @@ class KanbanCard extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.smart_toy_outlined, size: 12,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.smart_toy_outlined,
+                  size: 12,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   task.assignedAgent,
@@ -110,7 +111,10 @@ class KanbanCard extends StatelessWidget {
               runSpacing: 2,
               children: task.labels.take(3).map((label) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: columnColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
@@ -127,8 +131,11 @@ class KanbanCard extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.account_tree_outlined, size: 12,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                Icon(
+                  Icons.account_tree_outlined,
+                  size: 12,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   '${task.subtasks.where((s) => s.status == "done").length}/${task.subtasks.length}',

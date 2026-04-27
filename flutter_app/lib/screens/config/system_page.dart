@@ -83,9 +83,7 @@ class SystemConfigPage extends StatelessWidget {
                 if (context.mounted) {
                   CognithorToast.show(
                     context,
-                    launched
-                        ? l.exportConfig
-                        : l.copiedToClipboard,
+                    launched ? l.exportConfig : l.copiedToClipboard,
                     type: ToastType.success,
                   );
                 }
@@ -143,7 +141,10 @@ class SystemConfigPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             // Runtime info
-            Text(l.runtimeInfo, style: theme.textTheme.titleLarge?.copyWith(fontSize: 16)),
+            Text(
+              l.runtimeInfo,
+              style: theme.textTheme.titleLarge?.copyWith(fontSize: 16),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -155,11 +156,31 @@ class SystemConfigPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _infoRow(theme, 'Version', (cfg.cfg['version'] ?? '-').toString()),
-                  _infoRow(theme, 'Owner', (cfg.cfg['owner_name'] ?? '-').toString()),
-                  _infoRow(theme, 'Mode', (cfg.cfg['operation_mode'] ?? '-').toString()),
-                  _infoRow(theme, 'Backend', (cfg.cfg['llm_backend_type'] ?? '-').toString()),
-                  _infoRow(theme, 'Language', (cfg.cfg['language'] ?? '-').toString()),
+                  _infoRow(
+                    theme,
+                    'Version',
+                    (cfg.cfg['version'] ?? '-').toString(),
+                  ),
+                  _infoRow(
+                    theme,
+                    'Owner',
+                    (cfg.cfg['owner_name'] ?? '-').toString(),
+                  ),
+                  _infoRow(
+                    theme,
+                    'Mode',
+                    (cfg.cfg['operation_mode'] ?? '-').toString(),
+                  ),
+                  _infoRow(
+                    theme,
+                    'Backend',
+                    (cfg.cfg['llm_backend_type'] ?? '-').toString(),
+                  ),
+                  _infoRow(
+                    theme,
+                    'Language',
+                    (cfg.cfg['language'] ?? '-').toString(),
+                  ),
                 ],
               ),
             ),
@@ -226,9 +247,12 @@ class _ActionCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(description, style: theme.textTheme.bodySmall),
               ],

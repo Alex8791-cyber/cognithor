@@ -86,205 +86,233 @@ class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
     return SizedBox(
       width: screenWidth * (screenWidth > 400 ? 0.80 : 0.85),
       child: Drawer(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(16)),
-      ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.history,
-                    color: CognithorTheme.sectionChat,
-                    size: CognithorTheme.iconSizeMd,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l.chatHistory,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: CognithorTheme.sectionChat,
-                      ),
-                    ),
-                  ),
-                  if (widget.isIncognito && widget.onExitIncognito != null)
-                    IconButton(
-                      icon: const Icon(Icons.visibility, color: Colors.purple),
-                      tooltip: 'Inkognito beenden',
-                      onPressed: widget.onExitIncognito,
-                    )
-                  else if (widget.onNewIncognitoChat != null)
-                    IconButton(
-                      icon: const Icon(Icons.visibility_off),
-                      tooltip: 'Inkognito Chat',
-                      onPressed: widget.onNewIncognitoChat,
-                    ),
-                  FilledButton.icon(
-                    onPressed: widget.onNewChat,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text(l.newChat),
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          CognithorTheme.sectionChat.withValues(alpha: 0.15),
-                      foregroundColor: CognithorTheme.sectionChat,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(CognithorTheme.buttonRadius),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const Divider(height: 1),
-
-            // Search bar
-            if (widget.onSearchChanged != null)
+        backgroundColor: theme.scaffoldBackgroundColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(right: Radius.circular(16)),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
               Padding(
-                padding: const EdgeInsets.all(12),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Chats durchsuchen...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              widget.onSearchChanged!('');
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  onChanged: (query) {
-                    widget.onSearchChanged!(query);
-                    setState(() {});
-                  },
+                padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.history,
+                      color: CognithorTheme.sectionChat,
+                      size: CognithorTheme.iconSizeMd,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.chatHistory,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: CognithorTheme.sectionChat,
+                        ),
+                      ),
+                    ),
+                    if (widget.isIncognito && widget.onExitIncognito != null)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.visibility,
+                          color: Colors.purple,
+                        ),
+                        tooltip: 'Inkognito beenden',
+                        onPressed: widget.onExitIncognito,
+                      )
+                    else if (widget.onNewIncognitoChat != null)
+                      IconButton(
+                        icon: const Icon(Icons.visibility_off),
+                        tooltip: 'Inkognito Chat',
+                        onPressed: widget.onNewIncognitoChat,
+                      ),
+                    FilledButton.icon(
+                      onPressed: widget.onNewChat,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(l.newChat),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CognithorTheme.sectionChat.withValues(
+                          alpha: 0.15,
+                        ),
+                        foregroundColor: CognithorTheme.sectionChat,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            CognithorTheme.buttonRadius,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
-            // Sessions list — search results or grouped by project
-            Expanded(
-              child: hasSearchResults
-                  ? ListView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      children: widget.searchResults.map((r) => ListTile(
-                        dense: true,
-                        title: Text(
-                          r['session_title'] as String? ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              const Divider(height: 1),
+
+              // Search bar
+              if (widget.onSearchChanged != null)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Chats durchsuchen...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                widget.onSearchChanged!('');
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    onChanged: (query) {
+                      widget.onSearchChanged!(query);
+                      setState(() {});
+                    },
+                  ),
+                ),
+
+              // Sessions list — search results or grouped by project
+              Expanded(
+                child: hasSearchResults
+                    ? ListView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
-                        subtitle: Text(
-                          r['content'] as String? ?? '',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        onTap: () {
-                          final sid = r['session_id'] as String?;
-                          if (sid != null) {
-                            widget.onSelectSession(sid);
-                            Navigator.of(context).pop();
-                          }
-                        },
-                      )).toList(),
-                    )
-                  : widget.sessions.isEmpty
-                      ? Center(
-                          child: Text(
-                            l.noMessages,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.textTheme.bodySmall?.color,
-                            ),
-                          ),
-                        )
-                      : ListView(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          children: [
-                            for (final folderName in sortedFolders)
-                              ExpansionTile(
+                        children: widget.searchResults
+                            .map(
+                              (r) => ListTile(
+                                dense: true,
                                 title: Text(
-                                  folderName.isEmpty ? l.noFolder : folderName,
-                                  style: TextStyle(
-                                    fontSize: 13,
+                                  r['session_title'] as String? ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                   ),
                                 ),
-                                initiallyExpanded: folderName == 'Allgemein' || folderName.isEmpty,
-                                dense: true,
-                                tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-                                children: grouped[folderName]!.map((s) {
-                                  final sessionId = s['session_id']?.toString() ??
-                                      s['id']?.toString() ??
-                                      '';
-                                  final isActive = sessionId == widget.activeSessionId;
-                                  final isIncognito = s['incognito'] == true;
-                                  return ListTile(
-                                    dense: true,
-                                    selected: isActive,
-                                    leading: isIncognito
-                                        ? const Icon(Icons.visibility_off, size: 16, color: Colors.purple)
-                                        : null,
-                                    title: Text(
-                                      (s['title'] as String?)?.isNotEmpty == true
-                                          ? s['title'] as String
-                                          : l.untitledChat,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      '${s['message_count'] ?? 0} Nachrichten',
-                                      style: const TextStyle(fontSize: 11),
-                                    ),
-                                    onTap: () {
-                                      widget.onSelectSession(sessionId);
-                                      Navigator.of(context).pop();
-                                    },
-                                    onLongPress: () => _showSessionMenu(context, s),
-                                  );
-                                }).toList(),
+                                subtitle: Text(
+                                  r['content'] as String? ?? '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                onTap: () {
+                                  final sid = r['session_id'] as String?;
+                                  if (sid != null) {
+                                    widget.onSelectSession(sid);
+                                    Navigator.of(context).pop();
+                                  }
+                                },
                               ),
-                          ],
+                            )
+                            .toList(),
+                      )
+                    : widget.sessions.isEmpty
+                    ? Center(
+                        child: Text(
+                          l.noMessages,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.textTheme.bodySmall?.color,
+                          ),
                         ),
-            ),
-          ],
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        children: [
+                          for (final folderName in sortedFolders)
+                            ExpansionTile(
+                              title: Text(
+                                folderName.isEmpty ? l.noFolder : folderName,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
+                              ),
+                              initiallyExpanded:
+                                  folderName == 'Allgemein' ||
+                                  folderName.isEmpty,
+                              dense: true,
+                              tilePadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              children: grouped[folderName]!.map((s) {
+                                final sessionId =
+                                    s['session_id']?.toString() ??
+                                    s['id']?.toString() ??
+                                    '';
+                                final isActive =
+                                    sessionId == widget.activeSessionId;
+                                final isIncognito = s['incognito'] == true;
+                                return ListTile(
+                                  dense: true,
+                                  selected: isActive,
+                                  leading: isIncognito
+                                      ? const Icon(
+                                          Icons.visibility_off,
+                                          size: 16,
+                                          color: Colors.purple,
+                                        )
+                                      : null,
+                                  title: Text(
+                                    (s['title'] as String?)?.isNotEmpty == true
+                                        ? s['title'] as String
+                                        : l.untitledChat,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isActive
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${s['message_count'] ?? 0} Nachrichten',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                  onTap: () {
+                                    widget.onSelectSession(sessionId);
+                                    Navigator.of(context).pop();
+                                  },
+                                  onLongPress: () =>
+                                      _showSessionMenu(context, s),
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
   void _showSessionMenu(BuildContext context, Map<String, dynamic> session) {
     final l = AppLocalizations.of(context);
-    final sessionId = session['session_id']?.toString() ??
-        session['id']?.toString() ??
-        '';
+    final sessionId =
+        session['session_id']?.toString() ?? session['id']?.toString() ?? '';
 
     showModalBottomSheet<String>(
       context: context,
@@ -309,8 +337,15 @@ class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline, size: 18, color: CognithorTheme.red),
-              title: Text(l.delete, style: TextStyle(color: CognithorTheme.red)),
+              leading: Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: CognithorTheme.red,
+              ),
+              title: Text(
+                l.delete,
+                style: TextStyle(color: CognithorTheme.red),
+              ),
               onTap: () async {
                 Navigator.of(ctx).pop();
                 final confirmed = await CognithorConfirmationDialog.show(
@@ -348,8 +383,11 @@ class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
           borderRadius: BorderRadius.circular(CognithorTheme.cardRadius),
           side: BorderSide(color: Theme.of(context).dividerColor),
         ),
-        icon: const Icon(Icons.edit, color: CognithorTheme.sectionChat,
-            size: CognithorTheme.iconSizeLg),
+        icon: const Icon(
+          Icons.edit,
+          color: CognithorTheme.sectionChat,
+          size: CognithorTheme.iconSizeLg,
+        ),
         title: Text(l.editTitle),
         content: TextField(
           controller: controller,
@@ -371,7 +409,9 @@ class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
               backgroundColor: CognithorTheme.sectionChat,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(CognithorTheme.buttonRadius),
+                borderRadius: BorderRadius.circular(
+                  CognithorTheme.buttonRadius,
+                ),
               ),
             ),
             child: Text(l.save),
@@ -438,8 +478,11 @@ class _MoveToFolderDialogState extends State<_MoveToFolderDialog> {
         borderRadius: BorderRadius.circular(CognithorTheme.cardRadius),
         side: BorderSide(color: theme.dividerColor),
       ),
-      icon: const Icon(Icons.folder_outlined, color: CognithorTheme.sectionChat,
-          size: CognithorTheme.iconSizeLg),
+      icon: const Icon(
+        Icons.folder_outlined,
+        color: CognithorTheme.sectionChat,
+        size: CognithorTheme.iconSizeLg,
+      ),
       title: Text(l.moveToFolder),
       content: SizedBox(
         width: 280,
@@ -461,15 +504,17 @@ class _MoveToFolderDialogState extends State<_MoveToFolderDialog> {
             // Existing folders
             ...widget.folders
                 .where((f) => f != widget.currentFolder)
-                .map((folder) => ListTile(
-                      leading: const Icon(Icons.folder, size: 20),
-                      title: Text(folder),
-                      dense: true,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      onTap: () => Navigator.of(context).pop(folder),
-                    )),
+                .map(
+                  (folder) => ListTile(
+                    leading: const Icon(Icons.folder, size: 20),
+                    title: Text(folder),
+                    dense: true,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    onTap: () => Navigator.of(context).pop(folder),
+                  ),
+                ),
 
             const Divider(),
 
@@ -493,10 +538,15 @@ class _MoveToFolderDialogState extends State<_MoveToFolderDialog> {
               )
             else
               ListTile(
-                leading: const Icon(Icons.create_new_folder,
-                    size: 20, color: CognithorTheme.sectionChat),
-                title: Text(l.newFolder,
-                    style: const TextStyle(color: CognithorTheme.sectionChat)),
+                leading: const Icon(
+                  Icons.create_new_folder,
+                  size: 20,
+                  color: CognithorTheme.sectionChat,
+                ),
+                title: Text(
+                  l.newFolder,
+                  style: const TextStyle(color: CognithorTheme.sectionChat),
+                ),
                 dense: true,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),

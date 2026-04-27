@@ -70,11 +70,12 @@ class CronPage extends StatelessWidget {
             const Divider(height: 32),
             Row(
               children: [
-                Text(AppLocalizations.of(context).cronJobs,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontSize: 16)),
+                Text(
+                  AppLocalizations.of(context).cronJobs,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 16),
+                ),
                 const Spacer(),
                 IconButton(
                   icon: Icon(Icons.add, color: CognithorTheme.accent),
@@ -98,36 +99,40 @@ class CronPage extends StatelessWidget {
                   CognithorTextField(
                     label: 'Name',
                     value: (job['name'] ?? '').toString(),
-                    onChanged: (v) => cfg.updateCronJob(
-                        i, {...job, 'name': v}),
+                    onChanged: (v) => cfg.updateCronJob(i, {...job, 'name': v}),
                   ),
                   CognithorTextField(
                     label: 'Schedule (cron)',
                     value: (job['schedule'] ?? '').toString(),
-                    onChanged: (v) => cfg.updateCronJob(
-                        i, {...job, 'schedule': v}),
+                    onChanged: (v) =>
+                        cfg.updateCronJob(i, {...job, 'schedule': v}),
                     mono: true,
                   ),
                   CognithorTextField(
                     label: 'Command',
                     value: (job['command'] ?? '').toString(),
-                    onChanged: (v) => cfg.updateCronJob(
-                        i, {...job, 'command': v}),
+                    onChanged: (v) =>
+                        cfg.updateCronJob(i, {...job, 'command': v}),
                   ),
                   CognithorToggleField(
                     label: 'Enabled',
                     value: job['enabled'] == true,
-                    onChanged: (v) => cfg.updateCronJob(
-                        i, {...job, 'enabled': v}),
+                    onChanged: (v) =>
+                        cfg.updateCronJob(i, {...job, 'enabled': v}),
                   ),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed: () => cfg.removeCronJob(i),
-                      icon: Icon(Icons.delete,
-                          size: 16, color: CognithorTheme.red),
-                      label: Text(AppLocalizations.of(context).remove,
-                          style: TextStyle(color: CognithorTheme.red)),
+                      icon: Icon(
+                        Icons.delete,
+                        size: 16,
+                        color: CognithorTheme.red,
+                      ),
+                      label: Text(
+                        AppLocalizations.of(context).remove,
+                        style: TextStyle(color: CognithorTheme.red),
+                      ),
                     ),
                   ),
                 ],

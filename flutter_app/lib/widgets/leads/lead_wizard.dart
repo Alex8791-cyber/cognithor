@@ -28,12 +28,15 @@ class _LeadWizardState extends State<LeadWizard> {
 
   RedditLead get _currentLead => widget.leads[_currentIndex];
   bool get _isDone => _currentIndex >= widget.leads.length;
-  double get _progress => widget.leads.isEmpty ? 1.0 : (_currentIndex / widget.leads.length);
+  double get _progress =>
+      widget.leads.isEmpty ? 1.0 : (_currentIndex / widget.leads.length);
 
   @override
   void initState() {
     super.initState();
-    _replyCtrl = TextEditingController(text: widget.leads.isNotEmpty ? widget.leads[0].effectiveReply : '');
+    _replyCtrl = TextEditingController(
+      text: widget.leads.isNotEmpty ? widget.leads[0].effectiveReply : '',
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) => _preloadAhead());
   }
 
@@ -79,7 +82,8 @@ class _LeadWizardState extends State<LeadWizard> {
     setState(() => _posting = false);
     if (ok) {
       _repliedCount++;
-      if (mounted) CognithorToast.show(context, 'Reply posted', type: ToastType.success);
+      if (mounted)
+        CognithorToast.show(context, 'Reply posted', type: ToastType.success);
       _advance();
     }
   }
@@ -90,7 +94,10 @@ class _LeadWizardState extends State<LeadWizard> {
   }
 
   Future<void> _archive() async {
-    await context.read<RedditLeadsProvider>().updateLead(_currentLead.id, status: 'archived');
+    await context.read<RedditLeadsProvider>().updateLead(
+      _currentLead.id,
+      status: 'archived',
+    );
     _archivedCount++;
     _advance();
   }
@@ -124,7 +131,10 @@ class _LeadWizardState extends State<LeadWizard> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
-          child: LinearProgressIndicator(value: _progress, color: CognithorTheme.accent),
+          child: LinearProgressIndicator(
+            value: _progress,
+            color: CognithorTheme.accent,
+          ),
         ),
       ),
       body: KeyboardListener(
@@ -134,8 +144,10 @@ class _LeadWizardState extends State<LeadWizard> {
           if (event is KeyDownEvent && !_replyFocusNode.hasFocus) {
             if (event.logicalKey == LogicalKeyboardKey.keyA) _archive();
             if (event.logicalKey == LogicalKeyboardKey.keyS) _skip();
-            if (event.logicalKey == LogicalKeyboardKey.keyR && !_posting) _reply();
-            if (event.logicalKey == LogicalKeyboardKey.keyI) setState(() => _showRefine = !_showRefine);
+            if (event.logicalKey == LogicalKeyboardKey.keyR && !_posting)
+              _reply();
+            if (event.logicalKey == LogicalKeyboardKey.keyI)
+              setState(() => _showRefine = !_showRefine);
           }
         },
         child: Column(
@@ -143,89 +155,107 @@ class _LeadWizardState extends State<LeadWizard> {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 150),
-                transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                transitionBuilder: (child, anim) =>
+                    FadeTransition(opacity: anim, child: child),
                 child: ListView(
-          key: ValueKey<int>(_currentIndex),
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Score + subreddit
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: CognithorTheme.accent.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text('${lead.intentScore}/100',
-                      style: TextStyle(color: CognithorTheme.accent, fontWeight: FontWeight.w800, fontSize: 18)),
-                ),
-                const SizedBox(width: 12),
-                Text('r/${lead.subreddit}', style: theme.textTheme.titleSmall),
-                const Spacer(),
-                Text(lead.timeAgo, style: theme.textTheme.bodySmall),
-              ],
-            ),
-            const SizedBox(height: 12),
+                  key: ValueKey<int>(_currentIndex),
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Score + subreddit
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: CognithorTheme.accent.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${lead.intentScore}/100',
+                            style: TextStyle(
+                              color: CognithorTheme.accent,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'r/${lead.subreddit}',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const Spacer(),
+                        Text(lead.timeAgo, style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
 
-            // Title + body
-            Text(lead.title, style: theme.textTheme.titleMedium),
-            if (lead.body.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(lead.body, style: theme.textTheme.bodyMedium),
-            ],
-            const SizedBox(height: 8),
-            if (lead.scoreReason.isNotEmpty)
-              Text('Reason: ${lead.scoreReason}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: CognithorTheme.textSecondary)),
-            const Divider(height: 24),
+                    // Title + body
+                    Text(lead.title, style: theme.textTheme.titleMedium),
+                    if (lead.body.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(lead.body, style: theme.textTheme.bodyMedium),
+                    ],
+                    const SizedBox(height: 8),
+                    if (lead.scoreReason.isNotEmpty)
+                      Text(
+                        'Reason: ${lead.scoreReason}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: CognithorTheme.textSecondary,
+                        ),
+                      ),
+                    const Divider(height: 24),
 
-            // Reply editor
-            TextField(
-              controller: _replyCtrl,
-              focusNode: _replyFocusNode,
-              maxLines: 6,
-              decoration: InputDecoration(
-                labelText: l.editReply,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
+                    // Reply editor
+                    TextField(
+                      controller: _replyCtrl,
+                      focusNode: _replyFocusNode,
+                      maxLines: 6,
+                      decoration: InputDecoration(
+                        labelText: l.editReply,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
 
-            // Tool buttons
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => setState(() => _showRefine = !_showRefine),
-                  icon: const Icon(Icons.auto_fix_high, size: 16),
-                  label: Text(l.improve),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _pickTemplate,
-                  icon: const Icon(Icons.description, size: 16),
-                  label: Text(l.useTemplate),
-                ),
-              ],
-            ),
+                    // Tool buttons
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              setState(() => _showRefine = !_showRefine),
+                          icon: const Icon(Icons.auto_fix_high, size: 16),
+                          label: Text(l.improve),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _pickTemplate,
+                          icon: const Icon(Icons.description, size: 16),
+                          label: Text(l.useTemplate),
+                        ),
+                      ],
+                    ),
 
-            // Refine panel
-            if (_showRefine) ...[
-              const SizedBox(height: 12),
-              RefinePanel(
-                leadId: lead.id,
-                currentDraft: _replyCtrl.text,
-                onAccept: (text) {
-                  setState(() {
-                    _replyCtrl.text = text;
-                    _showRefine = false;
-                  });
-                },
-              ),
-            ],
-            const SizedBox(height: 24),
-          ],
+                    // Refine panel
+                    if (_showRefine) ...[
+                      const SizedBox(height: 12),
+                      RefinePanel(
+                        leadId: lead.id,
+                        currentDraft: _replyCtrl.text,
+                        onAccept: (text) {
+                          setState(() {
+                            _replyCtrl.text = text;
+                            _showRefine = false;
+                          });
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ),
@@ -234,7 +264,9 @@ class _LeadWizardState extends State<LeadWizard> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
-                border: Border(top: BorderSide(color: theme.dividerColor, width: 0.5)),
+                border: Border(
+                  top: BorderSide(color: theme.dividerColor, width: 0.5),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -243,8 +275,15 @@ class _LeadWizardState extends State<LeadWizard> {
                     children: [
                       TextButton.icon(
                         onPressed: _archive,
-                        icon: Icon(Icons.archive, size: 16, color: CognithorTheme.textSecondary),
-                        label: Text(l.archiveLead, style: TextStyle(color: CognithorTheme.textSecondary)),
+                        icon: Icon(
+                          Icons.archive,
+                          size: 16,
+                          color: CognithorTheme.textSecondary,
+                        ),
+                        label: Text(
+                          l.archiveLead,
+                          style: TextStyle(color: CognithorTheme.textSecondary),
+                        ),
                       ),
                       const Spacer(),
                       OutlinedButton.icon(
@@ -256,15 +295,26 @@ class _LeadWizardState extends State<LeadWizard> {
                       ElevatedButton.icon(
                         onPressed: _posting ? null : _reply,
                         icon: _posting
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Icon(Icons.reply, size: 16),
                         label: Text(l.postReply),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('Shortcuts: A=Archive  S=Skip  I=Improve  R=Reply',
-                      style: theme.textTheme.bodySmall?.copyWith(color: CognithorTheme.textSecondary, fontSize: 10)),
+                  Text(
+                    'Shortcuts: A=Archive  S=Skip  I=Improve  R=Reply',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: CognithorTheme.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -286,11 +336,7 @@ class _LeadWizardState extends State<LeadWizard> {
             Text(l.wizardComplete, style: theme.textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
-              l.wizardSummary(
-                _repliedCount,
-                _skippedCount,
-                _archivedCount,
-              ),
+              l.wizardSummary(_repliedCount, _skippedCount, _archivedCount),
               style: theme.textTheme.bodyLarge,
             ),
             const SizedBox(height: 32),

@@ -117,11 +117,12 @@ class _ObservePanelState extends State<ObservePanel>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                Text(AppLocalizations.of(context).observe,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontSize: 16)),
+                Text(
+                  AppLocalizations.of(context).observe,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 16),
+                ),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close, size: 18),
@@ -138,9 +139,7 @@ class _ObservePanelState extends State<ObservePanel>
             decoration: BoxDecoration(
               color: status.color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: status.color.withValues(alpha: 0.25),
-              ),
+              border: Border.all(color: status.color.withValues(alpha: 0.25)),
             ),
             child: Row(
               children: [
@@ -221,11 +220,10 @@ class _ObservePanelState extends State<ObservePanel>
                 KanbanPanel(entries: widget.pipelineState),
                 LiveDagPanel(entries: widget.pipelineState),
                 widget.planDetail != null
-                    ? PlanDetailPanel(
-                        plan: widget.planDetail!,
-                        onClose: () {},
-                      )
-                    : Center(child: Text(AppLocalizations.of(context).noPlanData)),
+                    ? PlanDetailPanel(plan: widget.planDetail!, onClose: () {})
+                    : Center(
+                        child: Text(AppLocalizations.of(context).noPlanData),
+                      ),
               ],
             ),
           ),

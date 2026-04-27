@@ -142,7 +142,8 @@ class WebPage extends StatelessWidget {
                 CognithorNumberField(
                   label: 'Rate Limit Wait (s)',
                   value: (web['ddg_ratelimit_wait_seconds'] as num?) ?? 30,
-                  onChanged: (v) => cfg.set('web.ddg_ratelimit_wait_seconds', v),
+                  onChanged: (v) =>
+                      cfg.set('web.ddg_ratelimit_wait_seconds', v),
                   min: 0,
                   decimal: true,
                 ),
@@ -160,20 +161,24 @@ class WebPage extends StatelessWidget {
               children: [
                 CognithorNumberField(
                   label: 'Max Body Bytes',
-                  value: (web['http_request_max_body_bytes'] as num?) ?? 1048576,
-                  onChanged: (v) => cfg.set('web.http_request_max_body_bytes', v),
+                  value:
+                      (web['http_request_max_body_bytes'] as num?) ?? 1048576,
+                  onChanged: (v) =>
+                      cfg.set('web.http_request_max_body_bytes', v),
                   min: 1000,
                 ),
                 CognithorNumberField(
                   label: 'Timeout (s)',
                   value: (web['http_request_timeout_seconds'] as num?) ?? 30,
-                  onChanged: (v) => cfg.set('web.http_request_timeout_seconds', v),
+                  onChanged: (v) =>
+                      cfg.set('web.http_request_timeout_seconds', v),
                   min: 1,
                 ),
                 CognithorNumberField(
                   label: 'Rate Limit (s)',
                   value: (web['http_request_rate_limit_seconds'] as num?) ?? 1,
-                  onChanged: (v) => cfg.set('web.http_request_rate_limit_seconds', v),
+                  onChanged: (v) =>
+                      cfg.set('web.http_request_rate_limit_seconds', v),
                   min: 0,
                   decimal: true,
                 ),

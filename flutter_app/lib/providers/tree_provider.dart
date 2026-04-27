@@ -20,7 +20,8 @@ class TreeProvider extends ChangeNotifier {
   final Map<String, ChatNode> nodes = {};
   List<String> activePath = []; // Node IDs from root to current leaf
   Map<String, int> forkPoints = {}; // nodeId -> childCount
-  Map<String, int> activeChildAtFork = {}; // nodeId -> which child is active (0-based)
+  Map<String, int> activeChildAtFork =
+      {}; // nodeId -> which child is active (0-based)
 
   bool get hasTree => nodes.isNotEmpty;
   bool get hasBranches => forkPoints.isNotEmpty;
@@ -85,10 +86,9 @@ class TreeProvider extends ChangeNotifier {
     if (conversationId == null) return;
 
     // Find the children of the fork node
-    final children = nodes.values
-        .where((n) => n.parentId == forkNodeId)
-        .toList()
-      ..sort((a, b) => a.branchIndex.compareTo(b.branchIndex));
+    final children =
+        nodes.values.where((n) => n.parentId == forkNodeId).toList()
+          ..sort((a, b) => a.branchIndex.compareTo(b.branchIndex));
 
     if (newChildIndex < 0 || newChildIndex >= children.length) return;
 
@@ -177,9 +177,7 @@ class TreeProvider extends ChangeNotifier {
     activeChildAtFork.clear();
     final activeSet = activePath.toSet();
     for (final forkId in forkPoints.keys) {
-      final children = nodes.values
-          .where((n) => n.parentId == forkId)
-          .toList()
+      final children = nodes.values.where((n) => n.parentId == forkId).toList()
         ..sort((a, b) => a.branchIndex.compareTo(b.branchIndex));
       for (var i = 0; i < children.length; i++) {
         if (activeSet.contains(children[i].id)) {

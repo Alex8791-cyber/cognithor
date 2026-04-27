@@ -80,8 +80,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
         final layout = _layoutFor(constraints.maxWidth);
         return switch (layout) {
           _Layout.mobile => _buildMobile(context),
-          _Layout.tablet =>
-            _buildSideLayout(context, expanded: _tabletHovered),
+          _Layout.tablet => _buildSideLayout(context, expanded: _tabletHovered),
           _Layout.desktop => _buildSideLayout(context, expanded: true),
         };
       },
@@ -145,16 +144,18 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                             Text(
                               item.label,
                               style: TextStyle(
-                                fontSize: MediaQuery.of(context).size.width > 400 ? 12 : 10,
+                                fontSize:
+                                    MediaQuery.of(context).size.width > 400
+                                    ? 12
+                                    : 10,
                                 fontWeight: selected
                                     ? FontWeight.w600
                                     : FontWeight.normal,
                                 color: selected
                                     ? sectionColor
-                                    : Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.color,
+                                    : Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall?.color,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -195,8 +196,9 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     final railWidth = expanded ? nav.sidebarWidth : 64.0;
 
     final railBg = isDark ? CognithorTheme.surface : const Color(0xFFF8F8FC);
-    final borderColor =
-        isDark ? CognithorTheme.border : const Color(0xFFE0E0E8);
+    final borderColor = isDark
+        ? CognithorTheme.border
+        : const Color(0xFFE0E0E8);
 
     return Scaffold(
       body: Row(
@@ -222,9 +224,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               child: Column(
                 children: [
                   // ── Logo / brand area ──
-                  _BreathingLogo(
-                    expanded: expanded && nav.sidebarWidth > 80,
-                  ),
+                  _BreathingLogo(expanded: expanded && nav.sidebarWidth > 80),
 
                   const SizedBox(height: 8),
 
@@ -335,9 +335,10 @@ class _BreathingLogoState extends State<_BreathingLogo>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
-    _scaleAnim = Tween<double>(begin: 0.98, end: 1.02).animate(
-      CurvedAnimation(parent: _breathCtrl, curve: Curves.easeInOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 0.98,
+      end: 1.02,
+    ).animate(CurvedAnimation(parent: _breathCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -361,10 +362,7 @@ class _BreathingLogoState extends State<_BreathingLogo>
           AnimatedBuilder(
             animation: _scaleAnim,
             builder: (context, child) {
-              return Transform.scale(
-                scale: _scaleAnim.value,
-                child: child,
-              );
+              return Transform.scale(scale: _scaleAnim.value, child: child);
             },
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
@@ -395,7 +393,11 @@ class _BreathingLogoState extends State<_BreathingLogo>
                     ],
                   ),
                   child: const Center(
-                    child: Icon(Icons.psychology, color: Colors.white, size: 22),
+                    child: Icon(
+                      Icons.psychology,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
               ),
@@ -458,8 +460,8 @@ class _RailNavItemState extends State<_RailNavItem> {
     final bgColor = selected
         ? sectionColor.withValues(alpha: 0.28)
         : _hovered
-            ? sectionColor.withValues(alpha: 0.14)
-            : Colors.transparent;
+        ? sectionColor.withValues(alpha: 0.14)
+        : Colors.transparent;
 
     final iconColor = selected
         ? sectionColor
@@ -533,8 +535,9 @@ class _RailNavItemState extends State<_RailNavItem> {
                         widget.item.label,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight:
-                              selected ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           color: labelColor,
                         ),
                         maxLines: 1,
@@ -639,4 +642,3 @@ class _RailActionButtonState extends State<_RailActionButton> {
     );
   }
 }
-

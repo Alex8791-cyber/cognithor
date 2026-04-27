@@ -116,16 +116,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (_error != null && _dashboard == null) {
-      return _DashboardErrorState(
-        error: _error!,
-        onRetry: _loadData,
-      );
+      return _DashboardErrorState(error: _error!, onRetry: _loadData);
     }
 
     final cpuValue = _toDouble(_dashboard?['cpu_usage']);
     final memValue = _toDouble(_dashboard?['memory_usage']);
     final rtValue = _toDouble(_dashboard?['response_time_ms']);
-    final tokenValue = _toDouble(_dashboard?['total_tokens'] ?? _dashboard?['tool_executions']);
+    final tokenValue = _toDouble(
+      _dashboard?['total_tokens'] ?? _dashboard?['tool_executions'],
+    );
 
     // Normalize for gauge (0-1 range)
     final cpuNorm = (cpuValue / 100).clamp(0.0, 1.0);
@@ -170,7 +169,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             gatekeeperTask: ro.gatekeeperTask,
                             agentTasks: {
                               for (final a in ro.agents)
-                                if (a.currentTask.isNotEmpty) a.name: a.currentTask,
+                                if (a.currentTask.isNotEmpty)
+                                  a.name: a.currentTask,
                             },
                             kanbanCounts: ro.kanbanCounts,
                             kanbanTasks: ro.kanbanTasks,
@@ -206,9 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Positioned(
                           top: 8,
                           right: 8,
-                          child: _PipModeButton(
-                            onTap: () => pip.show(),
-                          ),
+                          child: _PipModeButton(onTap: () => pip.show()),
                         ),
                       ],
                     ),
@@ -266,7 +264,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -299,10 +296,7 @@ class _DashboardLoadingState extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _DashboardErrorState extends StatelessWidget {
-  const _DashboardErrorState({
-    required this.error,
-    required this.onRetry,
-  });
+  const _DashboardErrorState({required this.error, required this.onRetry});
 
   final String error;
   final VoidCallback onRetry;
@@ -350,10 +344,7 @@ class _EventTicker extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(CognithorTheme.spacingSm),
-          child: Text(
-            l.noEvents,
-            style: theme.textTheme.bodySmall,
-          ),
+          child: Text(l.noEvents, style: theme.textTheme.bodySmall),
         ),
       );
     }
@@ -375,9 +366,7 @@ class _EventTicker extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(CognithorTheme.chipRadius),
-              border: Border.all(
-                color: color.withValues(alpha: 0.40),
-              ),
+              border: Border.all(color: color.withValues(alpha: 0.40)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -440,8 +429,9 @@ class _RobotStatusOverlay extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: (isDark ? Colors.black : Colors.white)
-                .withValues(alpha: isDark ? 0.45 : 0.55),
+            color: (isDark ? Colors.black : Colors.white).withValues(
+              alpha: isDark ? 0.45 : 0.55,
+            ),
             border: Border(
               top: BorderSide(
                 color: Colors.white.withValues(alpha: isDark ? 0.06 : 0.2),

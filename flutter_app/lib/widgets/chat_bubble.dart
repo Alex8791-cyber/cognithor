@@ -33,14 +33,16 @@ class ChatBubble extends StatelessWidget {
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * (MediaQuery.of(context).size.width > 400 ? 0.85 : 0.78),
+          maxWidth:
+              MediaQuery.of(context).size.width *
+              (MediaQuery.of(context).size.width > 400 ? 0.85 : 0.78),
         ),
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: isUser
             ? _buildUserBubble(context)
             : isSystem
-                ? _buildSystemBubble(context)
-                : _buildAssistantBubble(context),
+            ? _buildSystemBubble(context)
+            : _buildAssistantBubble(context),
       ),
     );
   }
@@ -134,12 +136,10 @@ class ChatBubble extends StatelessWidget {
   }
 
   // ── Video Preview ────────────────────────────────────────────────────
-  Widget _buildVideoPreview(
-      BuildContext context, Map<String, dynamic> meta) {
+  Widget _buildVideoPreview(BuildContext context, Map<String, dynamic> meta) {
     final filename = meta['filename'] as String? ?? 'video';
     final durationSec = (meta['duration_sec'] as num?)?.toDouble() ?? 0.0;
-    final sampling =
-        meta['sampling'] as Map<String, dynamic>? ?? const {};
+    final sampling = meta['sampling'] as Map<String, dynamic>? ?? const {};
     final thumbUrl = meta['thumb_url'] as String?;
 
     final samplingLabel = sampling.containsKey('fps')
@@ -162,15 +162,13 @@ class ChatBubble extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .primary
-                .withValues(alpha: 0.15),
+            color: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.15),
             border: Border.all(
-              color: Theme.of(context)
-                  .colorScheme
-                  .primary
-                  .withValues(alpha: 0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.4),
             ),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -209,14 +207,15 @@ class ChatBubble extends StatelessWidget {
                   children: [
                     Text(
                       filename,
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '$durationLabel \u00B7 $samplingLabel',
                       style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade400),
+                        fontSize: 11,
+                        color: Colors.grey.shade400,
+                      ),
                     ),
                   ],
                 ),
@@ -232,14 +231,14 @@ class ChatBubble extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.orange.withValues(alpha: 0.15),
               border: const Border(
-                  left: BorderSide(color: Colors.orange, width: 3)),
+                left: BorderSide(color: Colors.orange, width: 3),
+              ),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               'Video ${(durationSec / 60).round()} min \u2014 nur 32 Frames werden gesampled. '
               'Zerlege in 5-Min-Clips f\u00FCr mehr Detail.',
-              style:
-                  const TextStyle(fontSize: 11, color: Colors.orange),
+              style: const TextStyle(fontSize: 11, color: Colors.orange),
             ),
           ),
       ],
@@ -326,7 +325,9 @@ class ChatBubble extends StatelessWidget {
                 Flexible(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -356,10 +357,12 @@ class ChatBubble extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 4, left: 6),
             child: DefaultTextStyle(
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: CognithorTheme.textSecondary.withValues(alpha: 0.6),
-                fontSize: 10,
-              ) ?? const TextStyle(fontSize: 10),
+              style:
+                  theme.textTheme.labelSmall?.copyWith(
+                    color: CognithorTheme.textSecondary.withValues(alpha: 0.6),
+                    fontSize: 10,
+                  ) ??
+                  const TextStyle(fontSize: 10),
               child: Wrap(
                 spacing: 10,
                 children: [
@@ -374,7 +377,9 @@ class ChatBubble extends StatelessWidget {
                       '${metadata['output_tokens'] ?? 0} out tokens',
                     ),
                   if ((metadata['duration_ms'] as int? ?? 0) > 0)
-                    Text('${((metadata['duration_ms'] as int) / 1000).toStringAsFixed(1)}s'),
+                    Text(
+                      '${((metadata['duration_ms'] as int) / 1000).toStringAsFixed(1)}s',
+                    ),
                 ],
               ),
             ),

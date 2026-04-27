@@ -147,10 +147,15 @@ class _IdentityScreenState extends State<IdentityScreen> {
       );
     }
 
-    final isFrozen = (_state!['is_frozen'] ?? _state!['frozen']) as bool? ?? false;
-    final energy = (_state!['somatic_energy'] ?? _state!['energy'] ?? 0).toString();
-    final interactions = (_state!['total_interactions'] ?? _state!['interactions'] ?? 0).toString();
-    final memories = (_state!['vector_store_count'] ?? _state!['memories'] ?? 0).toString();
+    final isFrozen =
+        (_state!['is_frozen'] ?? _state!['frozen']) as bool? ?? false;
+    final energy = (_state!['somatic_energy'] ?? _state!['energy'] ?? 0)
+        .toString();
+    final interactions =
+        (_state!['total_interactions'] ?? _state!['interactions'] ?? 0)
+            .toString();
+    final memories = (_state!['vector_store_count'] ?? _state!['memories'] ?? 0)
+        .toString();
     final characterStrength = (_state!['character_strength'] ?? 0).toString();
     final anchors = _state!['genesis_anchors'] as List<dynamic>? ?? [];
 
@@ -224,7 +229,11 @@ class _IdentityScreenState extends State<IdentityScreen> {
               if (isFrozen)
                 OutlinedButton.icon(
                   onPressed: () => _performAction('unfreeze'),
-                  icon: Icon(Icons.lock_open, size: 18, color: CognithorTheme.green),
+                  icon: Icon(
+                    Icons.lock_open,
+                    size: 18,
+                    color: CognithorTheme.green,
+                  ),
                   label: Text(l.identityUnfreeze),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: CognithorTheme.green,
@@ -234,7 +243,11 @@ class _IdentityScreenState extends State<IdentityScreen> {
               else
                 OutlinedButton.icon(
                   onPressed: () => _performAction('freeze'),
-                  icon: Icon(Icons.ac_unit, size: 18, color: CognithorTheme.orange),
+                  icon: Icon(
+                    Icons.ac_unit,
+                    size: 18,
+                    color: CognithorTheme.orange,
+                  ),
                   label: Text(l.identityFreeze),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: CognithorTheme.orange,
@@ -243,7 +256,11 @@ class _IdentityScreenState extends State<IdentityScreen> {
                 ),
               OutlinedButton.icon(
                 onPressed: _confirmReset,
-                icon: Icon(Icons.restart_alt, size: 18, color: CognithorTheme.red),
+                icon: Icon(
+                  Icons.restart_alt,
+                  size: 18,
+                  color: CognithorTheme.red,
+                ),
                 label: Text(l.identityReset),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: CognithorTheme.red,

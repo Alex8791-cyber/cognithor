@@ -29,10 +29,7 @@ class CognithorToggle extends StatelessWidget {
               if (subtitle != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    subtitle!,
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  child: Text(subtitle!, style: theme.textTheme.bodySmall),
                 ),
             ],
           ),

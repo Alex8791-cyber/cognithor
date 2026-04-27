@@ -59,7 +59,8 @@ class KanbanTask {
       completedAt: json['completed_at'] as String? ?? '',
       createdBy: json['created_by'] as String? ?? 'user',
       resultSummary: json['result_summary'] as String? ?? '',
-      subtasks: (json['subtasks'] as List<dynamic>?)
+      subtasks:
+          (json['subtasks'] as List<dynamic>?)
               ?.map((s) => KanbanTask.fromJson(s as Map<String, dynamic>))
               .toList() ??
           [],
@@ -67,13 +68,13 @@ class KanbanTask {
   }
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'description': description,
-        'priority': priority,
-        'assigned_agent': assignedAgent,
-        'labels': labels,
-        'parent_id': parentId,
-      };
+    'title': title,
+    'description': description,
+    'priority': priority,
+    'assigned_agent': assignedAgent,
+    'labels': labels,
+    'parent_id': parentId,
+  };
 
   String get statusDisplay {
     switch (status) {
@@ -112,14 +113,20 @@ class KanbanStats {
   factory KanbanStats.fromJson(Map<String, dynamic> json) {
     return KanbanStats(
       total: json['total'] as int? ?? 0,
-      byStatus: (json['by_status'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as int)) ??
+      byStatus:
+          (json['by_status'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, v as int),
+          ) ??
           {},
-      byAgent: (json['by_agent'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as int)) ??
+      byAgent:
+          (json['by_agent'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, v as int),
+          ) ??
           {},
-      bySource: (json['by_source'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as int)) ??
+      bySource:
+          (json['by_source'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, v as int),
+          ) ??
           {},
     );
   }
@@ -151,7 +158,13 @@ class KanbanProvider extends ChangeNotifier {
   /// Tasks grouped by status for the board columns.
   Map<String, List<KanbanTask>> get tasksByStatus {
     final map = <String, List<KanbanTask>>{};
-    for (final status in ['todo', 'in_progress', 'verifying', 'done', 'blocked']) {
+    for (final status in [
+      'todo',
+      'in_progress',
+      'verifying',
+      'done',
+      'blocked',
+    ]) {
       map[status] = _tasks.where((t) => t.status == status).toList();
     }
     return map;
@@ -186,8 +199,13 @@ class KanbanProvider extends ChangeNotifier {
 
       if (!_isError(resp)) {
         // Backend returns {"tasks": [...]} or the list directly
-        final items = resp['tasks'] as List<dynamic>? ?? resp['items'] as List<dynamic>? ?? [];
-        _tasks = items.map((j) => KanbanTask.fromJson(j as Map<String, dynamic>)).toList();
+        final items =
+            resp['tasks'] as List<dynamic>? ??
+            resp['items'] as List<dynamic>? ??
+            [];
+        _tasks = items
+            .map((j) => KanbanTask.fromJson(j as Map<String, dynamic>))
+            .toList();
       } else {
         _error = 'Failed to load tasks: ${resp['error']}';
       }
@@ -238,7 +256,11 @@ class KanbanProvider extends ChangeNotifier {
     return null;
   }
 
-  Future<bool> moveTask(String taskId, String newStatus, {int sortOrder = 0}) async {
+  Future<bool> moveTask(
+    String taskId,
+    String newStatus, {
+    int sortOrder = 0,
+  }) async {
     if (_api == null) return false;
     // Optimistic update
     final idx = _tasks.indexWhere((t) => t.id == taskId);
@@ -323,7 +345,10 @@ class KanbanProvider extends ChangeNotifier {
     switch (action) {
       case 'created':
         if (msg['task'] != null) {
-          _tasks.insert(0, KanbanTask.fromJson(msg['task'] as Map<String, dynamic>));
+          _tasks.insert(
+            0,
+            KanbanTask.fromJson(msg['task'] as Map<String, dynamic>),
+          );
         }
         break;
       case 'updated':

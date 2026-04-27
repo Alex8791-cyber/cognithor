@@ -18,10 +18,7 @@ import 'package:cognithor_ui/widgets/robot_office/robot_office_widget.dart';
 /// Wrap this around the main app content so the PiP floats above everything,
 /// including bottom navigation and app bars.
 class RobotOfficePip extends StatefulWidget {
-  const RobotOfficePip({
-    super.key,
-    required this.child,
-  });
+  const RobotOfficePip({super.key, required this.child});
 
   /// The main app content underneath the overlay.
   final Widget child;
@@ -145,10 +142,7 @@ class _RobotOfficePipState extends State<RobotOfficePip>
     return Stack(
       children: [
         widget.child,
-        if (_minimized)
-          _buildMinimizedBubble()
-        else
-          _buildPipWindow(),
+        if (_minimized) _buildMinimizedBubble() else _buildPipWindow(),
       ],
     );
   }
@@ -176,10 +170,7 @@ class _RobotOfficePipState extends State<RobotOfficePip>
           listenable: _pulseController,
           builder: (context, animChild) {
             final scale = 1.0 + _pulseController.value * 0.08;
-            return Transform.scale(
-              scale: scale,
-              child: animChild,
-            );
+            return Transform.scale(scale: scale, child: animChild);
           },
           child: Container(
             width: _bubbleSize,
@@ -279,9 +270,7 @@ class _RobotOfficePipState extends State<RobotOfficePip>
                   // Glass reflection overlay — looks like viewing through a window
                   Positioned.fill(
                     child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: GlassReflectionPainter(),
-                      ),
+                      child: CustomPaint(painter: GlassReflectionPainter()),
                     ),
                   ),
 
@@ -374,9 +363,7 @@ class _PipControlBar extends StatelessWidget {
                 onTap: onMinimize,
               ),
               _ControlButton(
-                icon: isExpanded
-                    ? Icons.close_fullscreen
-                    : Icons.open_in_full,
+                icon: isExpanded ? Icons.close_fullscreen : Icons.open_in_full,
                 tooltip: isExpanded ? l.shrink : l.expandLabel,
                 onTap: onExpand,
               ),
@@ -443,4 +430,3 @@ class _ControlButtonState extends State<_ControlButton> {
     );
   }
 }
-

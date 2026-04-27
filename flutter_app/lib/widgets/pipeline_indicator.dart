@@ -10,28 +10,29 @@ class PipelineIndicator extends StatelessWidget {
   static const _phaseOrder = ['plan', 'gate', 'execute', 'replan', 'complete'];
 
   Color _phaseColor(String status) => switch (status) {
-        'start' => CognithorTheme.accent,
-        'done' => CognithorTheme.green,
-        'error' => CognithorTheme.red,
-        _ => CognithorTheme.textTertiary,
-      };
+    'start' => CognithorTheme.accent,
+    'done' => CognithorTheme.green,
+    'error' => CognithorTheme.red,
+    _ => CognithorTheme.textTertiary,
+  };
 
   IconData _phaseIcon(String phase) => switch (phase) {
-        'plan' => Icons.psychology,
-        'gate' => Icons.shield,
-        'execute' => Icons.build,
-        'replan' => Icons.replay,
-        'complete' => Icons.check_circle,
-        _ => Icons.circle,
-      };
+    'plan' => Icons.psychology,
+    'gate' => Icons.shield,
+    'execute' => Icons.build,
+    'replan' => Icons.replay,
+    'complete' => Icons.check_circle,
+    _ => Icons.circle,
+  };
 
   @override
   Widget build(BuildContext context) {
     final phaseMap = {for (final p in phases) p.phase: p};
 
     // Build the ordered list of visible phases
-    final visiblePhases =
-        _phaseOrder.where((name) => phaseMap.containsKey(name)).toList();
+    final visiblePhases = _phaseOrder
+        .where((name) => phaseMap.containsKey(name))
+        .toList();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -127,8 +128,7 @@ class _PhaseChipState extends State<_PhaseChip>
     super.didUpdateWidget(oldWidget);
     if (widget.phase.status == 'start' && !_glowController.isAnimating) {
       _glowController.repeat(reverse: true);
-    } else if (widget.phase.status != 'start' &&
-        _glowController.isAnimating) {
+    } else if (widget.phase.status != 'start' && _glowController.isAnimating) {
       _glowController.stop();
       _glowController.value = 1.0;
     }
@@ -153,17 +153,20 @@ class _PhaseChipState extends State<_PhaseChip>
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: color.withAlpha(
-                isActive ? (25 * _glowAnimation.value).round() : 20),
+              isActive ? (25 * _glowAnimation.value).round() : 20,
+            ),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: color.withAlpha(
-                  isActive ? (80 * _glowAnimation.value).round() : 50),
+                isActive ? (80 * _glowAnimation.value).round() : 50,
+              ),
             ),
             boxShadow: isActive
                 ? [
                     BoxShadow(
                       color: color.withAlpha(
-                          (40 * _glowAnimation.value).round()),
+                        (40 * _glowAnimation.value).round(),
+                      ),
                       blurRadius: 8,
                       spreadRadius: 1,
                     ),
@@ -193,10 +196,7 @@ class _PhaseChipState extends State<_PhaseChip>
                 const SizedBox(width: 4),
                 Text(
                   '${widget.phase.elapsedMs}ms',
-                  style: TextStyle(
-                    color: color.withAlpha(150),
-                    fontSize: 10,
-                  ),
+                  style: TextStyle(color: color.withAlpha(150), fontSize: 10),
                 ),
               ],
             ],

@@ -22,9 +22,39 @@ void main() {
     });
 
     test('parses status string into enum', () {
-      expect(CrewTraceMeta.fromJson({'trace_id': 'a', 'status': 'completed', 'n_tasks': 1, 'total_tokens': 0, 'agent_count': 1, 'n_failed_guardrails': 0}).status, TraceStatus.completed);
-      expect(CrewTraceMeta.fromJson({'trace_id': 'a', 'status': 'failed', 'n_tasks': 1, 'total_tokens': 0, 'agent_count': 1, 'n_failed_guardrails': 0}).status, TraceStatus.failed);
-      expect(CrewTraceMeta.fromJson({'trace_id': 'a', 'status': 'unknown', 'n_tasks': 1, 'total_tokens': 0, 'agent_count': 1, 'n_failed_guardrails': 0}).status, TraceStatus.running);
+      expect(
+        CrewTraceMeta.fromJson({
+          'trace_id': 'a',
+          'status': 'completed',
+          'n_tasks': 1,
+          'total_tokens': 0,
+          'agent_count': 1,
+          'n_failed_guardrails': 0,
+        }).status,
+        TraceStatus.completed,
+      );
+      expect(
+        CrewTraceMeta.fromJson({
+          'trace_id': 'a',
+          'status': 'failed',
+          'n_tasks': 1,
+          'total_tokens': 0,
+          'agent_count': 1,
+          'n_failed_guardrails': 0,
+        }).status,
+        TraceStatus.failed,
+      );
+      expect(
+        CrewTraceMeta.fromJson({
+          'trace_id': 'a',
+          'status': 'unknown',
+          'n_tasks': 1,
+          'total_tokens': 0,
+          'agent_count': 1,
+          'n_failed_guardrails': 0,
+        }).status,
+        TraceStatus.running,
+      );
     });
   });
 

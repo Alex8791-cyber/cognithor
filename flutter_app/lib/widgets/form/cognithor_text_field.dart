@@ -33,7 +33,8 @@ class CognithorTextField extends StatefulWidget {
 }
 
 class _CognithorTextFieldState extends State<CognithorTextField> {
-  static const _maskedDisplay = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'; // 24 bullets
+  static const _maskedDisplay =
+      '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'; // 24 bullets
 
   late final TextEditingController _ctrl;
   bool _obscured = true;
@@ -88,24 +89,33 @@ class _CognithorTextFieldState extends State<CognithorTextField> {
               if (widget.isSecret && widget.value == '***') ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: CognithorTheme.green.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(AppLocalizations.of(context).saved,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: CognithorTheme.green, fontSize: 10)),
+                  child: Text(
+                    AppLocalizations.of(context).saved,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: CognithorTheme.green,
+                      fontSize: 10,
+                    ),
+                  ),
                 ),
               ],
             ],
           ),
           if (widget.description != null) ...[
             const SizedBox(height: 2),
-            Text(widget.description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           TextField(
@@ -119,15 +129,16 @@ class _CognithorTextFieldState extends State<CognithorTextField> {
               }
             },
             style: widget.mono
-                ? theme.textTheme.bodyMedium
-                    ?.copyWith(fontFamily: 'monospace')
+                ? theme.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace')
                 : null,
             decoration: InputDecoration(
               hintText: widget.placeholder,
               errorText: widget.error,
               isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               // Hide eye button when value is backend-masked (not revealable)
               suffixIcon: widget.isPassword && !_isMasked
                   ? IconButton(

@@ -15,7 +15,6 @@ class AtlPage extends StatefulWidget {
 }
 
 class _AtlPageState extends State<AtlPage> {
-
   Map<String, dynamic> _atl(ConfigProvider cfg) {
     final raw = cfg.cfg['atl'];
     if (raw is Map<String, dynamic>) return raw;
@@ -57,8 +56,7 @@ class _AtlPageState extends State<AtlPage> {
                 min: 5,
                 max: 60,
                 step: 5,
-                onChanged: (v) =>
-                    cfg.set('atl.interval_minutes', v.round()),
+                onChanged: (v) => cfg.set('atl.interval_minutes', v.round()),
               ),
 
               // ── Max Actions ──
@@ -102,8 +100,8 @@ class _AtlPageState extends State<AtlPage> {
                     ? 'ATL pauses between $quietStart and $quietEnd.'
                     : 'No quiet hours configured — ATL runs 24/7.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -113,8 +111,7 @@ class _AtlPageState extends State<AtlPage> {
                     child: _TimePickerField(
                       label: 'Start',
                       value: quietStart,
-                      onChanged: (v) =>
-                          cfg.set('atl.quiet_hours_start', v),
+                      onChanged: (v) => cfg.set('atl.quiet_hours_start', v),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -122,8 +119,7 @@ class _AtlPageState extends State<AtlPage> {
                     child: _TimePickerField(
                       label: 'End',
                       value: quietEnd,
-                      onChanged: (v) =>
-                          cfg.set('atl.quiet_hours_end', v),
+                      onChanged: (v) => cfg.set('atl.quiet_hours_end', v),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -145,16 +141,13 @@ class _AtlPageState extends State<AtlPage> {
               CognithorTextField(
                 label: 'Notification Channel',
                 value: (atl['notification_channel'] ?? '').toString(),
-                onChanged: (v) =>
-                    cfg.set('atl.notification_channel', v),
+                onChanged: (v) => cfg.set('atl.notification_channel', v),
               ),
               CognithorSelectField.fromStrings(
                 label: 'Notification Level',
-                value:
-                    (atl['notification_level'] ?? 'important').toString(),
+                value: (atl['notification_level'] ?? 'important').toString(),
                 options: const ['all', 'important', 'critical'],
-                onChanged: (v) =>
-                    cfg.set('atl.notification_level', v),
+                onChanged: (v) => cfg.set('atl.notification_level', v),
               ),
             ],
           ],
@@ -201,9 +194,9 @@ class _TimePickerField extends StatelessWidget {
           initialTime: parsed ?? const TimeOfDay(hour: 23, minute: 0),
           builder: (context, child) {
             return MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                alwaysUse24HourFormat: true,
-              ),
+              data: MediaQuery.of(
+                context,
+              ).copyWith(alwaysUse24HourFormat: true),
               child: child!,
             );
           },

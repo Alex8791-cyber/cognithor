@@ -3,11 +3,7 @@ import 'package:cognithor_ui/theme/cognithor_theme.dart';
 
 /// Detail panel shown when a DAG node is tapped.
 class DagNodeDetail extends StatelessWidget {
-  const DagNodeDetail({
-    super.key,
-    required this.nodeData,
-    this.onClose,
-  });
+  const DagNodeDetail({super.key, required this.nodeData, this.onClose});
 
   final Map<String, dynamic> nodeData;
   final VoidCallback? onClose;
@@ -39,7 +35,10 @@ class DagNodeDetail extends StatelessWidget {
               Expanded(
                 child: Text(
                   (nodeData['name'] ?? nodeData['id'] ?? 'Node').toString(),
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               if (onClose != null)
@@ -55,13 +54,16 @@ class DagNodeDetail extends StatelessWidget {
           _row('Status', status),
           _row('Duration', '${duration}ms'),
           if (retries is int && retries > 0) _row('Retries', '$retries'),
-          if (nodeData['type'] != null) _row('Type', nodeData['type'].toString()),
+          if (nodeData['type'] != null)
+            _row('Type', nodeData['type'].toString()),
           if (nodeData['tool_name'] != null)
             _row('Tool', nodeData['tool_name'].toString()),
           if (output.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Text('Output:',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+            const Text(
+              'Output:',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 4),
             Container(
               constraints: const BoxConstraints(maxHeight: 120),
@@ -87,8 +89,9 @@ class DagNodeDetail extends StatelessWidget {
               decoration: BoxDecoration(
                 color: CognithorTheme.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
-                border:
-                    Border.all(color: CognithorTheme.red.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: CognithorTheme.red.withValues(alpha: 0.3),
+                ),
               ),
               child: Text(
                 error,
@@ -108,9 +111,13 @@ class DagNodeDetail extends StatelessWidget {
         children: [
           SizedBox(
             width: 70,
-            child: Text(label,
-                style:
-                    TextStyle(fontSize: 11, color: CognithorTheme.textSecondary)),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 11))),
         ],
@@ -121,7 +128,9 @@ class DagNodeDetail extends StatelessWidget {
   Widget _statusIcon(String status) {
     final (IconData icon, Color color) = switch (status.toLowerCase()) {
       'running' => (Icons.play_circle, CognithorTheme.accent),
-      'complete' || 'done' || 'success' => (Icons.check_circle, CognithorTheme.green),
+      'complete' ||
+      'done' ||
+      'success' => (Icons.check_circle, CognithorTheme.green),
       'error' || 'failure' => (Icons.error, CognithorTheme.red),
       'skipped' => (Icons.skip_next, CognithorTheme.textSecondary),
       _ => (Icons.pending, CognithorTheme.textTertiary),

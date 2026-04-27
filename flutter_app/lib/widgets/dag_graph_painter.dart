@@ -4,7 +4,11 @@ import 'package:cognithor_ui/theme/cognithor_theme.dart';
 enum DagNodeStatus { pending, running, complete, error }
 
 class DagNode {
-  DagNode({required this.id, required this.label, this.status = DagNodeStatus.pending});
+  DagNode({
+    required this.id,
+    required this.label,
+    this.status = DagNodeStatus.pending,
+  });
   final String id;
   final String label;
   final DagNodeStatus status;
@@ -128,11 +132,7 @@ class DagGraphPainter extends CustomPainter {
 
       final path = Path()
         ..moveTo(from.x, from.y + 15)
-        ..cubicTo(
-          from.x, from.y + 30,
-          to.x, to.y - 30,
-          to.x, to.y - 15,
-        );
+        ..cubicTo(from.x, from.y + 30, to.x, to.y - 30, to.x, to.y - 15);
       canvas.drawPath(path, edgePaint);
 
       // Arrow head
@@ -163,7 +163,7 @@ class DagGraphPainter extends CustomPainter {
 
     final queue = <String>[
       for (final n in nodes)
-        if (inDegree[n.id] == 0) n.id
+        if (inDegree[n.id] == 0) n.id,
     ];
     final layers = <List<DagNode>>[];
     final nodeMap = {for (final n in nodes) n.id: n};
@@ -248,11 +248,7 @@ class DagGraphPainter extends CustomPainter {
 
     // Pulsing effect for running nodes
     if (node.status == DagNodeStatus.running) {
-      canvas.drawCircle(
-        Offset(node.x, node.y),
-        6,
-        Paint()..color = color,
-      );
+      canvas.drawCircle(Offset(node.x, node.y), 6, Paint()..color = color);
     }
 
     // Label
@@ -260,7 +256,9 @@ class DagGraphPainter extends CustomPainter {
       text: TextSpan(
         text: node.label,
         style: TextStyle(
-          color: brightness == Brightness.dark ? CognithorTheme.textPrimary : const Color(0xFF1A1A2E),
+          color: brightness == Brightness.dark
+              ? CognithorTheme.textPrimary
+              : const Color(0xFF1A1A2E),
           fontSize: 10,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
         ),

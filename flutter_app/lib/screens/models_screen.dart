@@ -90,9 +90,12 @@ class _ModelsScreenState extends State<ModelsScreen> {
     final available = rawAvailable is List ? rawAvailable : [];
 
     final stats = admin.modelStats ?? {};
-    final totalModels = stats['total_models']?.toString() ?? available.length.toString();
+    final totalModels =
+        stats['total_models']?.toString() ?? available.length.toString();
     final providersList = stats['providers'];
-    final providerCount = providersList is List ? providersList.length.toString() : '-';
+    final providerCount = providersList is List
+        ? providersList.length.toString()
+        : '-';
     final capsList = stats['capabilities'];
     final capCount = capsList is List ? capsList.length.toString() : '-';
 
@@ -148,24 +151,35 @@ class _ModelsScreenState extends State<ModelsScreen> {
           const SizedBox(height: 8),
           CognithorSection(title: l.availableModels),
           if (available.isEmpty)
-            CognithorEmptyState(
-              icon: Icons.model_training,
-              title: l.noModels,
-            ),
+            CognithorEmptyState(icon: Icons.model_training, title: l.noModels),
           ...available.map<Widget>((m) {
             // Available models may be strings or Maps
-            final name = m is String ? m : (m is Map ? m['name']?.toString() ?? '' : m.toString());
+            final name = m is String
+                ? m
+                : (m is Map ? m['name']?.toString() ?? '' : m.toString());
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: NeonCard(
                 tint: CognithorTheme.sectionAdmin,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.model_training, size: 16, color: CognithorTheme.sectionAdmin),
+                    const Icon(
+                      Icons.model_training,
+                      size: 16,
+                      color: CognithorTheme.sectionAdmin,
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(name, style: Theme.of(context).textTheme.bodyMedium)),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -176,7 +190,9 @@ class _ModelsScreenState extends State<ModelsScreen> {
             const SizedBox(height: 8),
             Text(
               '${available.length} models available from ${cfg.cfg['llm_backend_type'] ?? 'backend'}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: CognithorTheme.textSecondary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
             ),
           ],
 
@@ -209,7 +225,8 @@ class _ModelsScreenState extends State<ModelsScreen> {
           ),
 
           // Warnings (from model stats)
-          if (stats['warnings'] is List && (stats['warnings'] as List).isNotEmpty) ...[
+          if (stats['warnings'] is List &&
+              (stats['warnings'] as List).isNotEmpty) ...[
             const SizedBox(height: 16),
             CognithorSection(title: l.modelWarnings),
             ...(stats['warnings'] as List).map<Widget>((w) {
@@ -219,12 +236,19 @@ class _ModelsScreenState extends State<ModelsScreen> {
                   tint: CognithorTheme.orange,
                   child: Row(
                     children: [
-                      Icon(Icons.warning_amber, color: CognithorTheme.orange, size: 20),
+                      Icon(
+                        Icons.warning_amber,
+                        color: CognithorTheme.orange,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           w.toString(),
-                          style: TextStyle(color: CognithorTheme.orange, fontSize: 13),
+                          style: TextStyle(
+                            color: CognithorTheme.orange,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -256,10 +280,9 @@ class _ConfiguredModelCard extends StatelessWidget {
 
   void _showModelPicker(BuildContext context) {
     final currentName = model['name']?.toString() ?? '';
-    final models = availableModels
-        .map((m) => m is String ? m : m.toString())
-        .toList()
-      ..sort();
+    final models =
+        availableModels.map((m) => m is String ? m : m.toString()).toList()
+          ..sort();
 
     showDialog<String>(
       context: context,
@@ -269,7 +292,11 @@ class _ConfiguredModelCard extends StatelessWidget {
           builder: (ctx, setState) {
             final filtered = search == null || search!.isEmpty
                 ? models
-                : models.where((m) => m.toLowerCase().contains(search!.toLowerCase())).toList();
+                : models
+                      .where(
+                        (m) => m.toLowerCase().contains(search!.toLowerCase()),
+                      )
+                      .toList();
 
             final ml = AppLocalizations.of(ctx);
             return AlertDialog(
@@ -299,11 +326,18 @@ class _ConfiguredModelCard extends StatelessWidget {
                             selected: isSelected,
                             selectedColor: CognithorTheme.sectionAdmin,
                             leading: Icon(
-                              isSelected ? Icons.check_circle : Icons.circle_outlined,
+                              isSelected
+                                  ? Icons.check_circle
+                                  : Icons.circle_outlined,
                               size: 18,
-                              color: isSelected ? CognithorTheme.sectionAdmin : null,
+                              color: isSelected
+                                  ? CognithorTheme.sectionAdmin
+                                  : null,
                             ),
-                            title: Text(name, style: const TextStyle(fontSize: 13)),
+                            title: Text(
+                              name,
+                              style: const TextStyle(fontSize: 13),
+                            ),
                             onTap: () => Navigator.pop(ctx, name),
                           );
                         },
@@ -336,9 +370,11 @@ class _ConfiguredModelCard extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(ok
-                ? '$label: $modelName'
-                : AppLocalizations.of(context).saveFailed),
+            content: Text(
+              ok
+                  ? '$label: $modelName'
+                  : AppLocalizations.of(context).saveFailed,
+            ),
             backgroundColor: ok ? CognithorTheme.green : CognithorTheme.red,
           ),
         );
@@ -356,7 +392,9 @@ class _ConfiguredModelCard extends StatelessWidget {
       child: NeonCard(
         tint: CognithorTheme.sectionAdmin,
         glowOnHover: true,
-        onTap: availableModels.isNotEmpty ? () => _showModelPicker(context) : null,
+        onTap: availableModels.isNotEmpty
+            ? () => _showModelPicker(context)
+            : null,
         child: Row(
           children: [
             Icon(icon, size: 18, color: CognithorTheme.sectionAdmin),
@@ -367,13 +405,20 @@ class _ConfiguredModelCard extends StatelessWidget {
                 children: [
                   Text(label, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 2),
-                  Text(name, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: CognithorTheme.textSecondary,
-                  )),
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: CognithorTheme.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.swap_horiz, size: 20, color: CognithorTheme.textSecondary),
+            Icon(
+              Icons.swap_horiz,
+              size: 20,
+              color: CognithorTheme.textSecondary,
+            ),
           ],
         ),
       ),

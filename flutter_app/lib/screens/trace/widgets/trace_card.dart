@@ -58,7 +58,9 @@ class TraceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      meta.traceId.length > 24 ? '${meta.traceId.substring(0, 24)}…' : meta.traceId,
+                      meta.traceId.length > 24
+                          ? '${meta.traceId.substring(0, 24)}…'
+                          : meta.traceId,
                       style: const TextStyle(
                         color: Color(0xFFE8ECF4),
                         fontFamily: 'JetBrainsMono',

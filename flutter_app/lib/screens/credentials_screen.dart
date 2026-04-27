@@ -40,8 +40,7 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
       final list = result['credentials'] as List? ?? [];
       if (!mounted) return;
       setState(() {
-        _credentials =
-            list.map((e) => e as Map<String, dynamic>).toList();
+        _credentials = list.map((e) => e as Map<String, dynamic>).toList();
         _loading = false;
       });
     } catch (e) {
@@ -112,61 +111,69 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? CognithorEmptyState(
-                  icon: Icons.error_outline,
-                  title: l.errorLabel,
-                  subtitle: _error,
-                  action: ElevatedButton(
-                      onPressed: _load, child: Text(l.retry)),
-                )
-              : _credentials.isEmpty
-                  ? CognithorEmptyState(
-                      icon: Icons.vpn_key_off,
-                      title: l.noCredentials,
-                      subtitle: l.addCredential,
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _credentials.length,
-                      itemBuilder: (context, i) {
-                        final c = _credentials[i];
-                        final service =
-                            (c['service'] ?? '').toString();
-                        final key = (c['key'] ?? '').toString();
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: NeonCard(
-                            tint: CognithorTheme.sectionAdmin,
-                            glowOnHover: true,
-                            child: Row(
-                              children: [
-                                const Icon(Icons.vpn_key, size: 18, color: CognithorTheme.sectionAdmin),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(service, style: Theme.of(context).textTheme.titleMedium),
-                                      const SizedBox(height: 4),
-                                      Text(key,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(fontFamily: 'monospace')),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete,
-                                      size: 18, color: CognithorTheme.red),
-                                  onPressed: () => _delete(service, key),
-                                ),
-                              ],
-                            ),
+          ? CognithorEmptyState(
+              icon: Icons.error_outline,
+              title: l.errorLabel,
+              subtitle: _error,
+              action: ElevatedButton(onPressed: _load, child: Text(l.retry)),
+            )
+          : _credentials.isEmpty
+          ? CognithorEmptyState(
+              icon: Icons.vpn_key_off,
+              title: l.noCredentials,
+              subtitle: l.addCredential,
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _credentials.length,
+              itemBuilder: (context, i) {
+                final c = _credentials[i];
+                final service = (c['service'] ?? '').toString();
+                final key = (c['key'] ?? '').toString();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: NeonCard(
+                    tint: CognithorTheme.sectionAdmin,
+                    glowOnHover: true,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.vpn_key,
+                          size: 18,
+                          color: CognithorTheme.sectionAdmin,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                service,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                key,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(fontFamily: 'monospace'),
+                              ),
+                            ],
                           ),
-                        );
-                      },
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete,
+                            size: 18,
+                            color: CognithorTheme.red,
+                          ),
+                          onPressed: () => _delete(service, key),
+                        ),
+                      ],
                     ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -217,9 +224,7 @@ class _AddCredentialDialogState extends State<_AddCredentialDialog> {
           const SizedBox(height: 8),
           TextField(
             controller: _value,
-            decoration: InputDecoration(
-              labelText: l.value,
-            ),
+            decoration: InputDecoration(labelText: l.value),
             obscureText: true,
           ),
         ],

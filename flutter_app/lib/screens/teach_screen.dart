@@ -81,9 +81,11 @@ class _TeachScreenState extends State<TeachScreen> {
       final res = await api.getLearnQueue();
       if (mounted) {
         setState(() {
-          _queue = (res['queue'] as List<dynamic>?)
-              ?.map((e) => e as Map<String, dynamic>)
-              .toList() ?? [];
+          _queue =
+              (res['queue'] as List<dynamic>?)
+                  ?.map((e) => e as Map<String, dynamic>)
+                  .toList() ??
+              [];
         });
       }
     } catch (_) {}
@@ -97,7 +99,15 @@ class _TeachScreenState extends State<TeachScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: [
-        'pdf', 'docx', 'txt', 'md', 'png', 'jpg', 'jpeg', 'csv', 'json',
+        'pdf',
+        'docx',
+        'txt',
+        'md',
+        'png',
+        'jpg',
+        'jpeg',
+        'csv',
+        'json',
       ],
       withData: true,
     );
@@ -121,7 +131,11 @@ class _TeachScreenState extends State<TeachScreen> {
     });
     try {
       final api = context.read<ConnectionProvider>().api;
-      final res = await api.learnFromFile(_selectedFileBytes!, _selectedFilename!, priority: _priority);
+      final res = await api.learnFromFile(
+        _selectedFileBytes!,
+        _selectedFilename!,
+        priority: _priority,
+      );
       if (res.containsKey('error')) {
         setState(() {
           _fileResult = res['error'] as String;
@@ -283,17 +297,28 @@ class _TeachScreenState extends State<TeachScreen> {
           // Queue section
           if (_queue.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Text(l.deepLearningQueue, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l.deepLearningQueue,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
-            ..._queue.map((item) => ListTile(
-              dense: true,
-              leading: const Icon(Icons.hourglass_top, size: 18),
-              title: Text(item['source']?.toString() ?? '', overflow: TextOverflow.ellipsis),
-              trailing: Chip(
-                label: Text(item['priority']?.toString() ?? '', style: const TextStyle(fontSize: 10)),
-                visualDensity: VisualDensity.compact,
+            ..._queue.map(
+              (item) => ListTile(
+                dense: true,
+                leading: const Icon(Icons.hourglass_top, size: 18),
+                title: Text(
+                  item['source']?.toString() ?? '',
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Chip(
+                  label: Text(
+                    item['priority']?.toString() ?? '',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
-            )),
+            ),
           ],
 
           const SizedBox(height: CognithorTheme.spacingLg),
@@ -317,112 +342,121 @@ class _TeachScreenState extends State<TeachScreen> {
       tint: CognithorTheme.sectionDashboard,
       padding: const EdgeInsets.all(CognithorTheme.spacing),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.cloud_upload, color: CognithorTheme.sectionDashboard),
-                const SizedBox(width: 8),
-                Text(l.uploadFile, style: theme.textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: CognithorTheme.spacing),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.cloud_upload,
+                color: CognithorTheme.sectionDashboard,
+              ),
+              const SizedBox(width: 8),
+              Text(l.uploadFile, style: theme.textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: CognithorTheme.spacing),
 
-            // Drop zone
-            GestureDetector(
-              onTap: _fileUploading ? null : _pickFile,
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: colorScheme.outline.withValues(alpha: 0.4),
-                    width: 1.5,
-                    strokeAlign: BorderSide.strokeAlignInside,
-                  ),
-                  borderRadius: BorderRadius.circular(CognithorTheme.cardRadius),
+          // Drop zone
+          GestureDetector(
+            onTap: _fileUploading ? null : _pickFile,
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: colorScheme.outline.withValues(alpha: 0.4),
+                  width: 1.5,
+                  strokeAlign: BorderSide.strokeAlignInside,
                 ),
-                child: Center(
-                  child: _fileUploading
-                      ? const CircularProgressIndicator()
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.cloud_upload_outlined,
-                              size: 36,
+                borderRadius: BorderRadius.circular(CognithorTheme.cardRadius),
+              ),
+              child: Center(
+                child: _fileUploading
+                    ? const CircularProgressIndicator()
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.cloud_upload_outlined,
+                            size: 36,
+                            color: CognithorTheme.textSecondary,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            l.dropFilesHere,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: CognithorTheme.textSecondary,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              l.dropFilesHere,
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: CognithorTheme.textSecondary,
-                              ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'PDF, DOCX, TXT, MD, PNG, JPG, CSV, JSON',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: CognithorTheme.textTertiary,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'PDF, DOCX, TXT, MD, PNG, JPG, CSV, JSON',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: CognithorTheme.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
+                          ),
+                        ],
+                      ),
               ),
             ),
+          ),
 
-            if (_selectedFilename != null) ...[
-              const SizedBox(height: CognithorTheme.spacingSm),
-              Row(
-                children: [
-                  const Icon(Icons.insert_drive_file, size: 16),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      _selectedFilename!,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
+          if (_selectedFilename != null) ...[
+            const SizedBox(height: CognithorTheme.spacingSm),
+            Row(
+              children: [
+                const Icon(Icons.insert_drive_file, size: 16),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _selectedFilename!,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.tonal(
+                  onPressed: _fileUploading ? null : _uploadFile,
+                  child: Text(l.uploadFile),
+                ),
+              ],
+            ),
+            const SizedBox(height: CognithorTheme.spacingSm),
+            Row(
+              children: [
+                Text(l.learnPriority, style: theme.textTheme.bodySmall),
+                const SizedBox(width: 8),
+                DropdownButton<String>(
+                  value: _priority,
+                  items: [
+                    DropdownMenuItem(value: 'low', child: Text(l.priorityLow)),
+                    DropdownMenuItem(
+                      value: 'normal',
+                      child: Text(l.priorityNormal),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.tonal(
-                    onPressed: _fileUploading ? null : _uploadFile,
-                    child: Text(l.uploadFile),
-                  ),
-                ],
-              ),
-              const SizedBox(height: CognithorTheme.spacingSm),
-              Row(
-                children: [
-                  Text(l.learnPriority, style: theme.textTheme.bodySmall),
-                  const SizedBox(width: 8),
-                  DropdownButton<String>(
-                    value: _priority,
-                    items: [
-                      DropdownMenuItem(value: 'low', child: Text(l.priorityLow)),
-                      DropdownMenuItem(value: 'normal', child: Text(l.priorityNormal)),
-                      DropdownMenuItem(value: 'high', child: Text(l.priorityHigh)),
-                    ],
-                    onChanged: (v) => setState(() => _priority = v ?? 'normal'),
-                  ),
-                ],
-              ),
-            ],
-
-            // Result
-            if (_fileResult != null) ...[
-              const SizedBox(height: CognithorTheme.spacingSm),
-              _buildResultBadge(
-                _fileSuccess!,
-                _fileSuccess!
-                    ? l.chunksLearned(_fileResult!)
-                    : '${l.learnFailed}: $_fileResult',
-              ),
-            ],
+                    DropdownMenuItem(
+                      value: 'high',
+                      child: Text(l.priorityHigh),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _priority = v ?? 'normal'),
+                ),
+              ],
+            ),
           ],
-        ),
+
+          // Result
+          if (_fileResult != null) ...[
+            const SizedBox(height: CognithorTheme.spacingSm),
+            _buildResultBadge(
+              _fileSuccess!,
+              _fileSuccess!
+                  ? l.chunksLearned(_fileResult!)
+                  : '${l.learnFailed}: $_fileResult',
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -437,31 +471,31 @@ class _TeachScreenState extends State<TeachScreen> {
       tint: CognithorTheme.sectionDashboard,
       padding: const EdgeInsets.all(CognithorTheme.spacing),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.link, color: CognithorTheme.sectionDashboard),
-                const SizedBox(width: 8),
-                Text(l.learnFromUrl, style: theme.textTheme.titleMedium),
-              ],
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.link, color: CognithorTheme.sectionDashboard),
+              const SizedBox(width: 8),
+              Text(l.learnFromUrl, style: theme.textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: CognithorTheme.spacing),
+          TextField(
+            controller: _urlController,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.link, size: 20),
+              hintText: l.enterUrl,
+              border: const OutlineInputBorder(),
             ),
-            const SizedBox(height: CognithorTheme.spacing),
-            TextField(
-              controller: _urlController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.link, size: 20),
-                hintText: l.enterUrl,
-                border: const OutlineInputBorder(),
-              ),
-              onSubmitted: (_) => _learnFromUrl(),
-            ),
-            const SizedBox(height: CognithorTheme.spacingSm),
-            NeonGlow(
-              color: CognithorTheme.sectionDashboard,
-              intensity: 0.2,
-              blurRadius: 8,
-              child: FilledButton.icon(
+            onSubmitted: (_) => _learnFromUrl(),
+          ),
+          const SizedBox(height: CognithorTheme.spacingSm),
+          NeonGlow(
+            color: CognithorTheme.sectionDashboard,
+            intensity: 0.2,
+            blurRadius: 8,
+            child: FilledButton.icon(
               onPressed: _urlProcessing ? null : _learnFromUrl,
               icon: _urlProcessing
                   ? const SizedBox(
@@ -474,36 +508,39 @@ class _TeachScreenState extends State<TeachScreen> {
                 _urlProcessing ? l.processingContent : l.learnFromUrl,
               ),
             ),
-            ),
-            const SizedBox(height: CognithorTheme.spacingSm),
-            Row(
-              children: [
-                Text(l.learnPriority, style: theme.textTheme.bodySmall),
-                const SizedBox(width: 8),
-                DropdownButton<String>(
-                  value: _priority,
-                  items: [
-                    DropdownMenuItem(value: 'low', child: Text(l.priorityLow)),
-                    DropdownMenuItem(value: 'normal', child: Text(l.priorityNormal)),
-                    DropdownMenuItem(value: 'high', child: Text(l.priorityHigh)),
-                  ],
-                  onChanged: (v) => setState(() => _priority = v ?? 'normal'),
-                ),
-              ],
-            ),
-
-            // Result
-            if (_urlResult != null) ...[
-              const SizedBox(height: CognithorTheme.spacingSm),
-              _buildResultBadge(
-                _urlSuccess!,
-                _urlSuccess!
-                    ? l.chunksLearned(_urlResult!)
-                    : '${l.learnFailed}: $_urlResult',
+          ),
+          const SizedBox(height: CognithorTheme.spacingSm),
+          Row(
+            children: [
+              Text(l.learnPriority, style: theme.textTheme.bodySmall),
+              const SizedBox(width: 8),
+              DropdownButton<String>(
+                value: _priority,
+                items: [
+                  DropdownMenuItem(value: 'low', child: Text(l.priorityLow)),
+                  DropdownMenuItem(
+                    value: 'normal',
+                    child: Text(l.priorityNormal),
+                  ),
+                  DropdownMenuItem(value: 'high', child: Text(l.priorityHigh)),
+                ],
+                onChanged: (v) => setState(() => _priority = v ?? 'normal'),
               ),
             ],
+          ),
+
+          // Result
+          if (_urlResult != null) ...[
+            const SizedBox(height: CognithorTheme.spacingSm),
+            _buildResultBadge(
+              _urlSuccess!,
+              _urlSuccess!
+                  ? l.chunksLearned(_urlResult!)
+                  : '${l.learnFailed}: $_urlResult',
+            ),
           ],
-        ),
+        ],
+      ),
     );
   }
 
@@ -518,72 +555,76 @@ class _TeachScreenState extends State<TeachScreen> {
       tint: CognithorTheme.sectionDashboard,
       padding: const EdgeInsets.all(CognithorTheme.spacing),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.play_circle, color: CognithorTheme.sectionDashboard),
-                const SizedBox(width: 8),
-                Text(l.learnFromYoutube, style: theme.textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: CognithorTheme.spacing),
-            TextField(
-              controller: _youtubeController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.play_circle_outline, size: 20),
-                hintText: l.enterYoutubeUrl,
-                border: const OutlineInputBorder(),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.play_circle,
+                color: CognithorTheme.sectionDashboard,
               ),
-              onSubmitted: (_) => _learnFromYoutube(),
+              const SizedBox(width: 8),
+              Text(l.learnFromYoutube, style: theme.textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: CognithorTheme.spacing),
+          TextField(
+            controller: _youtubeController,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.play_circle_outline, size: 20),
+              hintText: l.enterYoutubeUrl,
+              border: const OutlineInputBorder(),
             ),
-            const SizedBox(height: CognithorTheme.spacingSm),
-            FilledButton.icon(
-              onPressed: _youtubeProcessing ? null : _learnFromYoutube,
-              icon: _youtubeProcessing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.school),
-              label: Text(
-                _youtubeProcessing
-                    ? l.processingContent
-                    : l.learnFromYoutube,
-              ),
+            onSubmitted: (_) => _learnFromYoutube(),
+          ),
+          const SizedBox(height: CognithorTheme.spacingSm),
+          FilledButton.icon(
+            onPressed: _youtubeProcessing ? null : _learnFromYoutube,
+            icon: _youtubeProcessing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.school),
+            label: Text(
+              _youtubeProcessing ? l.processingContent : l.learnFromYoutube,
             ),
-            const SizedBox(height: CognithorTheme.spacingSm),
-            Row(
-              children: [
-                Text(l.learnPriority, style: theme.textTheme.bodySmall),
-                const SizedBox(width: 8),
-                DropdownButton<String>(
-                  value: _priority,
-                  items: [
-                    DropdownMenuItem(value: 'low', child: Text(l.priorityLow)),
-                    DropdownMenuItem(value: 'normal', child: Text(l.priorityNormal)),
-                    DropdownMenuItem(value: 'high', child: Text(l.priorityHigh)),
-                  ],
-                  onChanged: (v) => setState(() => _priority = v ?? 'normal'),
-                ),
-              ],
-            ),
-
-            // Result
-            if (_youtubeResult != null) ...[
-              const SizedBox(height: CognithorTheme.spacingSm),
-              _buildResultBadge(
-                _youtubeSuccess!,
-                _youtubeSuccess!
-                    ? (_youtubeResult!.contains('(')
-                        ? '${l.learnSuccess} $_youtubeResult'
-                        : l.chunksLearned(_youtubeResult!))
-                    : '${l.learnFailed}: $_youtubeResult',
+          ),
+          const SizedBox(height: CognithorTheme.spacingSm),
+          Row(
+            children: [
+              Text(l.learnPriority, style: theme.textTheme.bodySmall),
+              const SizedBox(width: 8),
+              DropdownButton<String>(
+                value: _priority,
+                items: [
+                  DropdownMenuItem(value: 'low', child: Text(l.priorityLow)),
+                  DropdownMenuItem(
+                    value: 'normal',
+                    child: Text(l.priorityNormal),
+                  ),
+                  DropdownMenuItem(value: 'high', child: Text(l.priorityHigh)),
+                ],
+                onChanged: (v) => setState(() => _priority = v ?? 'normal'),
               ),
             ],
+          ),
+
+          // Result
+          if (_youtubeResult != null) ...[
+            const SizedBox(height: CognithorTheme.spacingSm),
+            _buildResultBadge(
+              _youtubeSuccess!,
+              _youtubeSuccess!
+                  ? (_youtubeResult!.contains('(')
+                        ? '${l.learnSuccess} $_youtubeResult'
+                        : l.chunksLearned(_youtubeResult!))
+                  : '${l.learnFailed}: $_youtubeResult',
+            ),
           ],
-        ),
+        ],
+      ),
     );
   }
 
@@ -596,9 +637,7 @@ class _TeachScreenState extends State<TeachScreen> {
 
     final filtered = _historyFilter == 'all'
         ? _history
-        : _history
-            .where((h) => h['source'] == _historyFilter)
-            .toList();
+        : _history.where((h) => h['source'] == _historyFilter).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,12 +719,10 @@ class _TeachScreenState extends State<TeachScreen> {
 
     return ListTile(
       leading: Icon(icon, color: CognithorTheme.textSecondary),
-      title: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: ts != null ? Text(ts, style: const TextStyle(fontSize: 12)) : null,
+      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: ts != null
+          ? Text(ts, style: const TextStyle(fontSize: 12))
+          : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -719,8 +756,9 @@ class _TeachScreenState extends State<TeachScreen> {
         vertical: CognithorTheme.spacingXs,
       ),
       decoration: BoxDecoration(
-        color: (success ? CognithorTheme.green : CognithorTheme.red)
-            .withValues(alpha: 0.12),
+        color: (success ? CognithorTheme.green : CognithorTheme.red).withValues(
+          alpha: 0.12,
+        ),
         borderRadius: BorderRadius.circular(CognithorTheme.buttonRadius),
       ),
       child: Row(

@@ -17,11 +17,12 @@ class BindingsConfigPage extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(AppLocalizations.of(context).bindingsTitle,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontSize: 16)),
+                Text(
+                  AppLocalizations.of(context).bindingsTitle,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 16),
+                ),
                 const Spacer(),
                 IconButton(
                   icon: Icon(Icons.add, color: CognithorTheme.accent),
@@ -45,8 +46,7 @@ class BindingsConfigPage extends StatelessWidget {
                   CognithorTextField(
                     label: 'Name',
                     value: (b['name'] ?? '').toString(),
-                    onChanged: (v) =>
-                        cfg.updateBinding(i, {...b, 'name': v}),
+                    onChanged: (v) => cfg.updateBinding(i, {...b, 'name': v}),
                   ),
                   CognithorTextField(
                     label: 'Channel Filter',
@@ -65,8 +65,7 @@ class BindingsConfigPage extends StatelessWidget {
                   CognithorTextField(
                     label: 'Target Agent',
                     value: (b['target'] ?? '').toString(),
-                    onChanged: (v) =>
-                        cfg.updateBinding(i, {...b, 'target': v}),
+                    onChanged: (v) => cfg.updateBinding(i, {...b, 'target': v}),
                   ),
                   CognithorToggleField(
                     label: 'Enabled',
@@ -78,10 +77,15 @@ class BindingsConfigPage extends StatelessWidget {
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed: () => cfg.removeBinding(i),
-                      icon: Icon(Icons.delete,
-                          size: 16, color: CognithorTheme.red),
-                      label: Text(AppLocalizations.of(context).remove,
-                          style: TextStyle(color: CognithorTheme.red)),
+                      icon: Icon(
+                        Icons.delete,
+                        size: 16,
+                        color: CognithorTheme.red,
+                      ),
+                      label: Text(
+                        AppLocalizations.of(context).remove,
+                        style: TextStyle(color: CognithorTheme.red),
+                      ),
                     ),
                   ),
                 ],

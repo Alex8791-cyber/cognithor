@@ -65,13 +65,16 @@ class _CognithorSliderFieldState extends State<CognithorSliderField> {
                   child: TextField(
                     controller: _ctrl,
                     autofocus: true,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     style: theme.textTheme.bodySmall,
                     decoration: const InputDecoration(
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
                     ),
                     onSubmitted: (text) {
                       final v = double.tryParse(text);
@@ -89,8 +92,10 @@ class _CognithorSliderFieldState extends State<CognithorSliderField> {
                     setState(() => _editing = true);
                   },
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
                       borderRadius: BorderRadius.circular(4),
@@ -98,8 +103,9 @@ class _CognithorSliderFieldState extends State<CognithorSliderField> {
                     ),
                     child: Text(
                       clamped.toStringAsFixed(2),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontFamily: 'monospace'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
                 ),
@@ -107,9 +113,12 @@ class _CognithorSliderFieldState extends State<CognithorSliderField> {
           ),
           if (widget.description != null) ...[
             const SizedBox(height: 2),
-            Text(widget.description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           Slider(
             value: clamped,

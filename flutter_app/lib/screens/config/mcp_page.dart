@@ -30,11 +30,12 @@ class McpPage extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(AppLocalizations.of(context).mcpServers,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontSize: 16)),
+                Text(
+                  AppLocalizations.of(context).mcpServers,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 16),
+                ),
                 const Spacer(),
                 IconButton(
                   icon: Icon(Icons.add, color: CognithorTheme.accent),
@@ -55,9 +56,7 @@ class McpPage extends StatelessWidget {
             const SizedBox(height: 8),
             ...List.generate(servers.length, (i) {
               final raw = servers[i];
-              final s = raw is Map<String, dynamic>
-                  ? raw
-                  : <String, dynamic>{};
+              final s = raw is Map<String, dynamic> ? raw : <String, dynamic>{};
               return CognithorCollapsibleCard(
                 title: (s['name'] ?? 'Server $i').toString(),
                 icon: Icons.dns,
@@ -103,9 +102,15 @@ class McpPage extends StatelessWidget {
                         servers.removeAt(i);
                         cfg.notify();
                       },
-                      icon: Icon(Icons.delete, size: 16, color: CognithorTheme.red),
-                      label: Text(AppLocalizations.of(context).remove,
-                          style: TextStyle(color: CognithorTheme.red)),
+                      icon: Icon(
+                        Icons.delete,
+                        size: 16,
+                        color: CognithorTheme.red,
+                      ),
+                      label: Text(
+                        AppLocalizations.of(context).remove,
+                        style: TextStyle(color: CognithorTheme.red),
+                      ),
                     ),
                   ),
                 ],

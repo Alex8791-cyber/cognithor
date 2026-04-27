@@ -93,9 +93,7 @@ class _SkillsScreenState extends State<SkillsScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Expanded(
-                  child: _buildTabContent(provider, l),
-                ),
+                Expanded(child: _buildTabContent(provider, l)),
               ],
             ),
             // FAB: New Skill (only on Installed tab)
@@ -144,23 +142,22 @@ class _SkillsScreenState extends State<SkillsScreen> {
 
     return switch (_tabIndex) {
       0 => _buildSkillGrid(
-          _searchQuery.isNotEmpty
-              ? _filterSkills(provider.searchResults.isNotEmpty
-                  ? provider.searchResults
-                  : provider.featured)
-              : provider.featured,
-          l,
-          isInstalled: false,
-        ),
+        _searchQuery.isNotEmpty
+            ? _filterSkills(
+                provider.searchResults.isNotEmpty
+                    ? provider.searchResults
+                    : provider.featured,
+              )
+            : provider.featured,
+        l,
+        isInstalled: false,
+      ),
       1 => _buildSkillGrid(
-          _filterSkills(provider.trending),
-          l,
-          isInstalled: false,
-        ),
-      2 => _buildInstalledList(
-          _filterSkills(provider.installed),
-          l,
-        ),
+        _filterSkills(provider.trending),
+        l,
+        isInstalled: false,
+      ),
+      2 => _buildInstalledList(_filterSkills(provider.installed), l),
       _ => const SizedBox.shrink(),
     };
   }
@@ -249,11 +246,9 @@ class _SkillsScreenState extends State<SkillsScreen> {
   }
 
   Future<void> _openNewSkill() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const SkillEditorScreen(),
-      ),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const SkillEditorScreen()));
     if (result == true && mounted) {
       context.read<SkillsProvider>().loadInstalled();
     }
@@ -263,9 +258,7 @@ class _SkillsScreenState extends State<SkillsScreen> {
     final slug = skill['slug']?.toString() ?? skill['id']?.toString() ?? '';
     if (slug.isEmpty) return;
     final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => SkillEditorScreen(slug: slug),
-      ),
+      MaterialPageRoute(builder: (_) => SkillEditorScreen(slug: slug)),
     );
     if (result == true && mounted) {
       context.read<SkillsProvider>().loadInstalled();
@@ -434,7 +427,11 @@ class _SkillCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
-              Icon(Icons.download, size: 14, color: CognithorTheme.textSecondary),
+              Icon(
+                Icons.download,
+                size: 14,
+                color: CognithorTheme.textSecondary,
+              ),
               const SizedBox(width: 2),
               Text(downloadCount, style: theme.textTheme.bodySmall),
               const Spacer(),

@@ -17,7 +17,8 @@ class ConnectionGuard extends StatelessWidget {
     return Consumer<ConnectionProvider>(
       builder: (context, conn, _) {
         // Always block on version mismatch, even before first connect.
-        final showOverlay = conn.versionMismatch ||
+        final showOverlay =
+            conn.versionMismatch ||
             (conn.wasConnected &&
                 (conn.state == CognithorConnectionState.error ||
                     conn.state == CognithorConnectionState.disconnected));
@@ -100,8 +101,7 @@ class _ConnectionLostOverlay extends StatelessWidget {
                     'pip install --upgrade cognithor',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -114,8 +114,7 @@ class _ConnectionLostOverlay extends StatelessWidget {
                   Text(
                     errorMessage ?? AppLocalizations.of(context).connectionLost,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -129,8 +128,7 @@ class _ConnectionLostOverlay extends StatelessWidget {
                   Text(
                     AppLocalizations.of(context).connectionRestoring,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: 16),

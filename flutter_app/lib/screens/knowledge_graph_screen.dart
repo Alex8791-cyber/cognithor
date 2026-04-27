@@ -6,7 +6,6 @@ import 'package:cognithor_ui/providers/connection_provider.dart';
 import 'package:cognithor_ui/theme/cognithor_theme.dart';
 import 'package:cognithor_ui/widgets/neon_card.dart';
 
-
 class KnowledgeGraphScreen extends StatefulWidget {
   const KnowledgeGraphScreen({super.key});
 
@@ -50,11 +49,13 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
       final api = context.read<ConnectionProvider>().api;
       final result = await api.getMemoryGraphEntities();
       setState(() {
-        _entities = (result['entities'] as List?)
+        _entities =
+            (result['entities'] as List?)
                 ?.map((e) => e as Map<String, dynamic>)
                 .toList() ??
             [];
-        _relations = (result['relations'] as List?)
+        _relations =
+            (result['relations'] as List?)
                 ?.map((e) => e as Map<String, dynamic>)
                 .toList() ??
             [];
@@ -132,8 +133,8 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
       for (final e in entities) {
         final id = (e['id'] ?? '').toString();
         final center = Offset(size.width / 2, size.height / 2);
-        forces[id] = (forces[id] ?? Offset.zero) +
-            (center - positions[id]!) * 0.01;
+        forces[id] =
+            (forces[id] ?? Offset.zero) + (center - positions[id]!) * 0.01;
       }
 
       // Apply with damping
@@ -166,7 +167,8 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
       final id = entity['id']?.toString() ?? '';
       final result = await api.getEntityRelations(id);
       setState(() {
-        _selectedRelations = (result['relations'] as List?)
+        _selectedRelations =
+            (result['relations'] as List?)
                 ?.map((e) => e as Map<String, dynamic>)
                 .toList() ??
             [];
@@ -182,8 +184,12 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       list = list
-          .where((e) =>
-              (e['name'] ?? e['label'] ?? '').toString().toLowerCase().contains(q))
+          .where(
+            (e) => (e['name'] ?? e['label'] ?? '')
+                .toString()
+                .toLowerCase()
+                .contains(q),
+          )
           .toList();
     }
     return list;
@@ -201,131 +207,139 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, style: TextStyle(color: CognithorTheme.red)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(onPressed: _loadGraph, child: Text(l.retry)),
+                ],
+              ),
+            )
+          : Row(
+              children: [
+                // Graph area
+                Expanded(
+                  flex: 3,
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_error!, style: TextStyle(color: CognithorTheme.red)),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                          onPressed: _loadGraph, child: Text(l.retry)),
-                    ],
-                  ),
-                )
-              : Row(
-                  children: [
-                    // Graph area
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        children: [
-                          // Toolbar
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    decoration: InputDecoration(
-                                      hintText: l.searchEntities,
-                                      prefixIcon: const Icon(Icons.search),
-                                      isDense: true,
-                                      contentPadding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8),
-                                    ),
-                                    onChanged: (v) {
-                                      setState(() => _searchQuery = v);
-                                      _invalidateLayout();
-                                    },
+                      // Toolbar
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  hintText: l.searchEntities,
+                                  prefixIcon: const Icon(Icons.search),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                DropdownButton<String>(
-                                  value: _typeFilter,
-                                  items: [
-                                    DropdownMenuItem(
-                                        value: 'all', child: Text(l.allTypes)),
-                                    ..._typeColors.keys.map((t) =>
-                                        DropdownMenuItem(
-                                            value: t,
-                                            child: Text(t))),
-                                  ],
-                                  onChanged: (v) {
-                                    setState(() => _typeFilter = v ?? 'all');
-                                    _invalidateLayout();
-                                  },
+                                onChanged: (v) {
+                                  setState(() => _searchQuery = v);
+                                  _invalidateLayout();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            DropdownButton<String>(
+                              value: _typeFilter,
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'all',
+                                  child: Text(l.allTypes),
+                                ),
+                                ..._typeColors.keys.map(
+                                  (t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t),
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
-                          // Legend
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
-                            child: Wrap(
-                              spacing: 12,
-                              children: _typeColors.entries
-                                  .map((e) => Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 10,
-                                            height: 10,
-                                            decoration: BoxDecoration(
-                                              color: e.value,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(e.key,
-                                              style: theme.textTheme.bodySmall),
-                                        ],
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                          // Canvas
-                          Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final canvasSize = Size(
-                                  constraints.maxWidth,
-                                  constraints.maxHeight,
-                                );
-                                _computeLayout(canvasSize);
-                                return GestureDetector(
-                                  onTapDown: (details) {
-                                    _onTapGraph(details.localPosition);
-                                  },
-                                  child: CustomPaint(
-                                    size: canvasSize,
-                                    painter: _ForceGraphPainter(
-                                      entities: _filteredEntities,
-                                      relations: _relations,
-                                      positions: _nodePositions,
-                                      typeColors: _typeColors,
-                                      brightness: theme.brightness,
-                                    ),
-                                  ),
-                                );
+                              onChanged: (v) {
+                                setState(() => _typeFilter = v ?? 'all');
+                                _invalidateLayout();
                               },
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Detail panel
-                    if (_selectedEntity != null)
-                      SizedBox(
-                        width: 280,
-                        child: NeonCard(
-                          tint: CognithorTheme.sectionAdmin,
-                          borderRadius: 0,
-                          child: _buildDetailPanel(theme),
+                          ],
                         ),
                       ),
-                  ],
+                      // Legend
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Wrap(
+                          spacing: 12,
+                          children: _typeColors.entries
+                              .map(
+                                (e) => Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: e.value,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      e.key,
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                      // Canvas
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final canvasSize = Size(
+                              constraints.maxWidth,
+                              constraints.maxHeight,
+                            );
+                            _computeLayout(canvasSize);
+                            return GestureDetector(
+                              onTapDown: (details) {
+                                _onTapGraph(details.localPosition);
+                              },
+                              child: CustomPaint(
+                                size: canvasSize,
+                                painter: _ForceGraphPainter(
+                                  entities: _filteredEntities,
+                                  relations: _relations,
+                                  positions: _nodePositions,
+                                  typeColors: _typeColors,
+                                  brightness: theme.brightness,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                // Detail panel
+                if (_selectedEntity != null)
+                  SizedBox(
+                    width: 280,
+                    child: NeonCard(
+                      tint: CognithorTheme.sectionAdmin,
+                      borderRadius: 0,
+                      child: _buildDetailPanel(theme),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 
@@ -373,37 +387,50 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
         ),
         const SizedBox(height: 8),
         _detailRow(theme, 'ID', (e['id'] ?? '-').toString()),
-        _detailRow(theme, l.entityTypes, (e['type'] ?? l.unknownLabel).toString()),
         _detailRow(
-            theme, l.confidence, (e['confidence'] ?? '-').toString()),
+          theme,
+          l.entityTypes,
+          (e['type'] ?? l.unknownLabel).toString(),
+        ),
+        _detailRow(theme, l.confidence, (e['confidence'] ?? '-').toString()),
         if (e['attributes'] is Map) ...[
           const SizedBox(height: 12),
-          Text(l.attributes, style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600)),
+          Text(
+            l.attributes,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 4),
-          ...(e['attributes'] as Map).entries.map((kv) =>
-              _detailRow(theme, kv.key.toString(), kv.value.toString())),
+          ...(e['attributes'] as Map).entries.map(
+            (kv) => _detailRow(theme, kv.key.toString(), kv.value.toString()),
+          ),
         ],
         if (_selectedRelations.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Text('${l.relations} (${_selectedRelations.length})',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600)),
+          Text(
+            '${l.relations} (${_selectedRelations.length})',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 4),
-          ..._selectedRelations.map((r) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '${r['type'] ?? 'relates'} -> ${r['target_name'] ?? r['target_id'] ?? '?'}',
-                    style: theme.textTheme.bodySmall,
-                  ),
+          ..._selectedRelations.map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(6),
                 ),
-              )),
+                child: Text(
+                  '${r['type'] ?? 'relates'} -> ${r['target_name'] ?? r['target_id'] ?? '?'}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ),
+          ),
         ],
       ],
     );
@@ -416,8 +443,9 @@ class _KnowledgeGraphScreenState extends State<KnowledgeGraphScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-              width: 80,
-              child: Text(label, style: theme.textTheme.bodySmall)),
+            width: 80,
+            child: Text(label, style: theme.textTheme.bodySmall),
+          ),
           Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
         ],
       ),
@@ -446,8 +474,11 @@ class _ForceGraphPainter extends CustomPainter {
 
     // Draw edges
     final edgePaint = Paint()
-      ..color = (brightness == Brightness.dark ? CognithorTheme.textPrimary : CognithorTheme.textTertiary)
-          .withValues(alpha: 0.1)
+      ..color =
+          (brightness == Brightness.dark
+                  ? CognithorTheme.textPrimary
+                  : CognithorTheme.textTertiary)
+              .withValues(alpha: 0.1)
       ..strokeWidth = 1;
 
     for (final rel in relations) {
@@ -470,19 +501,22 @@ class _ForceGraphPainter extends CustomPainter {
       // Node circle
       canvas.drawCircle(pos, 8, Paint()..color = color.withValues(alpha: 0.3));
       canvas.drawCircle(
-          pos,
-          8,
-          Paint()
-            ..color = color
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
+        pos,
+        8,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
 
       // Label
       final tp = TextPainter(
         text: TextSpan(
           text: name.length > 12 ? '${name.substring(0, 12)}...' : name,
           style: TextStyle(
-            color: brightness == Brightness.dark ? CognithorTheme.textSecondary : CognithorTheme.textTertiary,
+            color: brightness == Brightness.dark
+                ? CognithorTheme.textSecondary
+                : CognithorTheme.textTertiary,
             fontSize: 9,
           ),
         ),

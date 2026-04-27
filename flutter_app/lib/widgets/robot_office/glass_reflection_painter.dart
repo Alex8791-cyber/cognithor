@@ -15,7 +15,10 @@ class GlassReflectionPainter extends CustomPainter {
         ],
         stops: const [0.3, 0.5, 0.7],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), reflectionPaint);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      reflectionPaint,
+    );
 
     final highlightPaint = Paint()
       ..shader = RadialGradient(
@@ -26,7 +29,10 @@ class GlassReflectionPainter extends CustomPainter {
           Colors.white.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width * 0.4, size.height * 0.4), highlightPaint);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width * 0.4, size.height * 0.4),
+      highlightPaint,
+    );
   }
 
   @override

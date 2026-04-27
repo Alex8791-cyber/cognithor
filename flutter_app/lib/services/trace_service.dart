@@ -18,15 +18,20 @@ class TraceService {
   /// Single optional callback invoked on each `crew_lifecycle` frame.
   void Function(CrewEvent)? _lifecycleCallback;
 
-  TraceService({required ApiClient apiClient, required WebSocketService wsService})
-      : _api = apiClient,
-        _ws = wsService {
+  TraceService({
+    required ApiClient apiClient,
+    required WebSocketService wsService,
+  }) : _api = apiClient,
+       _ws = wsService {
     _ws.on(WsType.crewLifecycle, _handleLifecycleFrame);
     _ws.on(WsType.crewEvent, _handleEventFrame);
   }
 
   /// GET /api/crew/traces — returns list of meta cards.
-  Future<List<CrewTraceMeta>> listTraces({String? status, int limit = 50}) async {
+  Future<List<CrewTraceMeta>> listTraces({
+    String? status,
+    int limit = 50,
+  }) async {
     final qs = <String>[];
     if (status != null) qs.add('status=$status');
     qs.add('limit=$limit');

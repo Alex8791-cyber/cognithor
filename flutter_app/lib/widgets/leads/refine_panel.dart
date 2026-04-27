@@ -34,7 +34,11 @@ class _RefinePanelState extends State<RefinePanel> {
   }
 
   Future<void> _refine() async {
-    setState(() { _refining = true; _refinedText = null; _variants = []; });
+    setState(() {
+      _refining = true;
+      _refinedText = null;
+      _variants = [];
+    });
     final result = await context.read<RedditLeadsProvider>().refineLead(
       widget.leadId,
       hint: _hintCtrl.text,
@@ -46,14 +50,22 @@ class _RefinePanelState extends State<RefinePanel> {
   }
 
   Future<void> _generateVariants() async {
-    setState(() { _refining = true; _variants = []; _refinedText = null; _selectedVariant = -1; });
+    setState(() {
+      _refining = true;
+      _variants = [];
+      _refinedText = null;
+      _selectedVariant = -1;
+    });
     final result = await context.read<RedditLeadsProvider>().refineLead(
       widget.leadId,
       variants: 3,
     );
     setState(() {
       _refining = false;
-      _variants = (result['variants'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+      _variants =
+          (result['variants'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
     });
   }
 
@@ -74,7 +86,10 @@ class _RefinePanelState extends State<RefinePanel> {
                 decoration: const InputDecoration(
                   hintText: 'e.g. "make it shorter", "more technical"',
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   border: OutlineInputBorder(),
                 ),
                 style: const TextStyle(fontSize: 12),
@@ -84,7 +99,11 @@ class _RefinePanelState extends State<RefinePanel> {
             ElevatedButton(
               onPressed: _refining ? null : _refine,
               child: _refining
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : Text(l.improve),
             ),
             const SizedBox(width: 4),
@@ -103,12 +122,19 @@ class _RefinePanelState extends State<RefinePanel> {
             decoration: BoxDecoration(
               color: CognithorTheme.green.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: CognithorTheme.green.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: CognithorTheme.green.withValues(alpha: 0.2),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Improved:', style: theme.textTheme.labelSmall?.copyWith(color: CognithorTheme.green)),
+                Text(
+                  'Improved:',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: CognithorTheme.green,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(_refinedText!, style: theme.textTheme.bodySmall),
                 const SizedBox(height: 8),
@@ -118,7 +144,9 @@ class _RefinePanelState extends State<RefinePanel> {
                     onPressed: () => widget.onAccept(_refinedText!),
                     icon: const Icon(Icons.check, size: 16),
                     label: const Text('Accept'),
-                    style: ElevatedButton.styleFrom(backgroundColor: CognithorTheme.green),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: CognithorTheme.green,
+                    ),
                   ),
                 ),
               ],
@@ -138,10 +166,14 @@ class _RefinePanelState extends State<RefinePanel> {
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isSelected ? CognithorTheme.accent.withValues(alpha: 0.1) : null,
+                  color: isSelected
+                      ? CognithorTheme.accent.withValues(alpha: 0.1)
+                      : null,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? CognithorTheme.accent : CognithorTheme.textSecondary.withValues(alpha: 0.2),
+                    color: isSelected
+                        ? CognithorTheme.accent
+                        : CognithorTheme.textSecondary.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Column(
@@ -149,10 +181,17 @@ class _RefinePanelState extends State<RefinePanel> {
                   children: [
                     Text(
                       v['style']?.toString().toUpperCase() ?? '',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: CognithorTheme.accent),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: CognithorTheme.accent,
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    Text(v['text']?.toString() ?? '', style: theme.textTheme.bodySmall),
+                    Text(
+                      v['text']?.toString() ?? '',
+                      style: theme.textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
@@ -162,7 +201,9 @@ class _RefinePanelState extends State<RefinePanel> {
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
-                onPressed: () => widget.onAccept(_variants[_selectedVariant]['text']?.toString() ?? ''),
+                onPressed: () => widget.onAccept(
+                  _variants[_selectedVariant]['text']?.toString() ?? '',
+                ),
                 icon: const Icon(Icons.check, size: 16),
                 label: const Text('Use this variant'),
               ),

@@ -33,7 +33,10 @@ class _BudgetPageState extends State<BudgetPage> {
   }
 
   Future<void> _loadAll() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final api = context.read<ConnectionProvider>().api;
       final results = await Future.wait([
@@ -55,7 +58,10 @@ class _BudgetPageState extends State<BudgetPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = e.toString(); });
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -64,7 +70,9 @@ class _BudgetPageState extends State<BudgetPage> {
       final api = context.read<ConnectionProvider>().api;
       final data = await api.get('system/resources');
       if (!mounted) return;
-      setState(() { _resourceData = data; });
+      setState(() {
+        _resourceData = data;
+      });
     } catch (_) {}
   }
 
@@ -106,7 +114,10 @@ class _BudgetPageState extends State<BudgetPage> {
           children: [
             Icon(Icons.error_outline, size: 48, color: CognithorTheme.red),
             const SizedBox(height: 16),
-            Text(_error!, style: TextStyle(color: CognithorTheme.textSecondary)),
+            Text(
+              _error!,
+              style: TextStyle(color: CognithorTheme.textSecondary),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadAll,
@@ -157,8 +168,11 @@ class _BudgetPageState extends State<BudgetPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.account_balance_wallet,
-                    size: 20, color: CognithorTheme.accent),
+                Icon(
+                  Icons.account_balance_wallet,
+                  size: 20,
+                  color: CognithorTheme.accent,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'Cost Overview',
@@ -211,8 +225,7 @@ class _BudgetPageState extends State<BudgetPage> {
         (_budgetData?['agents_week'] as Map<String, dynamic>?) ?? {};
     final agentsMonth =
         (_budgetData?['agents_month'] as Map<String, dynamic>?) ?? {};
-    final budgets =
-        (_budgetData?['budgets'] as Map<String, dynamic>?) ?? {};
+    final budgets = (_budgetData?['budgets'] as Map<String, dynamic>?) ?? {};
 
     // Collect all agent names
     final names = <String>{
@@ -220,8 +233,7 @@ class _BudgetPageState extends State<BudgetPage> {
       ...agentsWeek.keys,
       ...agentsMonth.keys,
       ...budgets.keys,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
 
     if (names.isEmpty) {
       return Card(
@@ -277,17 +289,26 @@ class _BudgetPageState extends State<BudgetPage> {
                 statusIcon = Icons.check_circle;
               }
 
-              return DataRow(cells: [
-                DataCell(Text(name,
-                    style: const TextStyle(fontWeight: FontWeight.w500))),
-                DataCell(Text(_fmtCost(agentsToday[name]))),
-                DataCell(Text(_fmtCost(agentsWeek[name]))),
-                DataCell(Text(_fmtCost(agentsMonth[name]))),
-                DataCell(Text(
-                    limit != null ? _fmtCost(limit) : '--',
-                    style: TextStyle(color: CognithorTheme.textSecondary))),
-                DataCell(Icon(statusIcon, color: statusColor, size: 18)),
-              ]);
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      name,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  DataCell(Text(_fmtCost(agentsToday[name]))),
+                  DataCell(Text(_fmtCost(agentsWeek[name]))),
+                  DataCell(Text(_fmtCost(agentsMonth[name]))),
+                  DataCell(
+                    Text(
+                      limit != null ? _fmtCost(limit) : '--',
+                      style: TextStyle(color: CognithorTheme.textSecondary),
+                    ),
+                  ),
+                  DataCell(Icon(statusIcon, color: statusColor, size: 18)),
+                ],
+              );
             }).toList(),
           ),
         ),
@@ -299,17 +320,14 @@ class _BudgetPageState extends State<BudgetPage> {
 
   Widget _buildResourceBars() {
     final cpu = (_resourceData?['cpu_percent'] as num?)?.toDouble() ?? 0;
-    final ramUsed =
-        (_resourceData?['ram_used_gb'] as num?)?.toDouble() ?? 0;
-    final ramTotal =
-        (_resourceData?['ram_total_gb'] as num?)?.toDouble() ?? 1;
+    final ramUsed = (_resourceData?['ram_used_gb'] as num?)?.toDouble() ?? 0;
+    final ramTotal = (_resourceData?['ram_total_gb'] as num?)?.toDouble() ?? 1;
     final ramPct = (_resourceData?['ram_percent'] as num?)?.toDouble() ?? 0;
-    final gpuUtil =
-        (_resourceData?['gpu_util_percent'] as num?)?.toDouble();
-    final gpuVramUsed =
-        (_resourceData?['gpu_vram_used_gb'] as num?)?.toDouble();
-    final gpuVramTotal =
-        (_resourceData?['gpu_vram_total_gb'] as num?)?.toDouble();
+    final gpuUtil = (_resourceData?['gpu_util_percent'] as num?)?.toDouble();
+    final gpuVramUsed = (_resourceData?['gpu_vram_used_gb'] as num?)
+        ?.toDouble();
+    final gpuVramTotal = (_resourceData?['gpu_vram_total_gb'] as num?)
+        ?.toDouble();
 
     return Card(
       child: Padding(
@@ -319,8 +337,11 @@ class _BudgetPageState extends State<BudgetPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.monitor_heart,
-                    size: 20, color: CognithorTheme.accent),
+                Icon(
+                  Icons.monitor_heart,
+                  size: 20,
+                  color: CognithorTheme.accent,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'System Resources',
@@ -420,17 +441,13 @@ class _BudgetPageState extends State<BudgetPage> {
     final isIdle = _evolutionData?['is_idle'] as bool? ?? true;
     final cyclesToday = _evolutionData?['cycles_today'] as int? ?? 0;
     final totalCycles = _evolutionData?['total_cycles'] as int? ?? 0;
-    final skillsCreated =
-        _evolutionData?['total_skills_created'] as int? ?? 0;
-    final recent =
-        (_evolutionData?['recent_results'] as List<dynamic>?) ?? [];
+    final skillsCreated = _evolutionData?['total_skills_created'] as int? ?? 0;
+    final recent = (_evolutionData?['recent_results'] as List<dynamic>?) ?? [];
 
     final statusColor = running
         ? (isIdle ? CognithorTheme.orange : CognithorTheme.green)
         : CognithorTheme.textSecondary;
-    final statusLabel = running
-        ? (isIdle ? 'Idle' : 'Running')
-        : 'Stopped';
+    final statusLabel = running ? (isIdle ? 'Idle' : 'Running') : 'Stopped';
 
     return Card(
       child: Padding(
@@ -440,8 +457,11 @@ class _BudgetPageState extends State<BudgetPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.auto_awesome,
-                    size: 20, color: CognithorTheme.accent),
+                Icon(
+                  Icons.auto_awesome,
+                  size: 20,
+                  color: CognithorTheme.accent,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'Evolution Engine',
@@ -449,8 +469,10 @@ class _BudgetPageState extends State<BudgetPage> {
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -489,7 +511,9 @@ class _BudgetPageState extends State<BudgetPage> {
               ),
               const SizedBox(height: 8),
               ...recent.take(5).map((r) {
-                final entry = r is Map<String, dynamic> ? r : <String, dynamic>{};
+                final entry = r is Map<String, dynamic>
+                    ? r
+                    : <String, dynamic>{};
                 final name = entry['skill_name'] ?? entry['name'] ?? '?';
                 final success = entry['success'] as bool? ?? false;
                 return Padding(
@@ -528,18 +552,12 @@ class _BudgetPageState extends State<BudgetPage> {
         children: [
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: CognithorTheme.textSecondary,
-            ),
+            style: TextStyle(fontSize: 11, color: CognithorTheme.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],

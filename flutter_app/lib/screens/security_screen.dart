@@ -49,7 +49,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      context.read<SecurityProvider>().setApi(context.read<ConnectionProvider>().api);
+      context.read<SecurityProvider>().setApi(
+        context.read<ConnectionProvider>().api,
+      );
       _loadAll();
     }
   }
@@ -100,12 +102,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       );
     }
 
-    final tabs = [
-      l.complianceTitle,
-      l.rolesAccess,
-      l.redTeam,
-      l.auditLog,
-    ];
+    final tabs = [l.complianceTitle, l.rolesAccess, l.redTeam, l.auditLog];
     final icons = [
       Icons.verified_user,
       Icons.people,
@@ -204,9 +201,16 @@ class _SecurityScreenState extends State<SecurityScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.bar_chart, size: 18, color: CognithorTheme.sectionAdmin),
+                  const Icon(
+                    Icons.bar_chart,
+                    size: 18,
+                    color: CognithorTheme.sectionAdmin,
+                  ),
                   const SizedBox(width: 8),
-                  Text(l.approvalRate, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    l.approvalRate,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -276,7 +280,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
   Widget _buildRolesTab(AppLocalizations l, SecurityProvider sec) {
     final rolesData = sec.roles ?? {};
-    final rolesList = rolesData['roles'] is List ? rolesData['roles'] as List : [];
+    final rolesList = rolesData['roles'] is List
+        ? rolesData['roles'] as List
+        : [];
     final authData = sec.authStats ?? {};
 
     return ListView(
@@ -308,13 +314,12 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
         CognithorSection(title: l.rolesTitle),
         if (rolesList.isEmpty)
-          CognithorEmptyState(
-            icon: Icons.people_outline,
-            title: l.noData,
-          ),
+          CognithorEmptyState(icon: Icons.people_outline, title: l.noData),
         ...rolesList.whereType<Map<String, dynamic>>().map<Widget>((r) {
           final name = r['name']?.toString() ?? '';
-          final perms = r['permissions'] is List ? r['permissions'] as List : [];
+          final perms = r['permissions'] is List
+              ? r['permissions'] as List
+              : [];
           return _RoleCard(name: name, permissions: perms);
         }),
       ],
@@ -344,10 +349,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
               Row(
                 children: [
                   CognithorStatusBadge(
-                    label: available
-                        ? l.enabled
-                        : l.scanNotAvailable,
-                    color: available ? CognithorTheme.green : CognithorTheme.red,
+                    label: available ? l.enabled : l.scanNotAvailable,
+                    color: available
+                        ? CognithorTheme.green
+                        : CognithorTheme.red,
                     icon: available ? Icons.check_circle : Icons.cancel,
                   ),
                 ],
@@ -369,9 +374,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
           blurRadius: 8,
           child: ElevatedButton.icon(
             onPressed: available
-                ? () => context
-                    .read<SecurityProvider>()
-                    .runRedteamScan({'scope': 'full'})
+                ? () => context.read<SecurityProvider>().runRedteamScan({
+                    'scope': 'full',
+                  })
                 : null,
             icon: const Icon(Icons.play_arrow),
             label: Text(l.runScan),
@@ -393,9 +398,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         width: 140,
                         child: Text(
                           e.key,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w500),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -442,26 +446,17 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     ),
                   ),
                   items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l.allSeverities),
-                    ),
+                    DropdownMenuItem(value: null, child: Text(l.allSeverities)),
                     DropdownMenuItem(
                       value: 'critical',
                       child: Text(l.critical),
                     ),
-                    DropdownMenuItem(
-                      value: 'error',
-                      child: Text(l.errorLabel),
-                    ),
+                    DropdownMenuItem(value: 'error', child: Text(l.errorLabel)),
                     DropdownMenuItem(
                       value: 'warning',
                       child: Text(l.warningLabel),
                     ),
-                    DropdownMenuItem(
-                      value: 'info',
-                      child: Text(l.infoLabel),
-                    ),
+                    DropdownMenuItem(value: 'info', child: Text(l.infoLabel)),
                   ],
                   onChanged: (v) {
                     setState(() => _severityFilter = v);
@@ -509,10 +504,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: entries.length,
                   itemBuilder: (context, index) {
-                    final entry =
-                        entries[index] is Map<String, dynamic>
-                            ? entries[index] as Map<String, dynamic>
-                            : <String, dynamic>{};
+                    final entry = entries[index] is Map<String, dynamic>
+                        ? entries[index] as Map<String, dynamic>
+                        : <String, dynamic>{};
                     final action = entry['action']?.toString() ?? '';
                     final actor = entry['actor']?.toString() ?? '';
                     final ts = entry['timestamp']?.toString() ?? '';
@@ -590,9 +584,18 @@ class _RoleCardState extends State<_RoleCard> {
           children: [
             Row(
               children: [
-                const Icon(Icons.shield, size: 18, color: CognithorTheme.sectionAdmin),
+                const Icon(
+                  Icons.shield,
+                  size: 18,
+                  color: CognithorTheme.sectionAdmin,
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(widget.name, style: Theme.of(context).textTheme.titleMedium)),
+                Expanded(
+                  child: Text(
+                    widget.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
                 CognithorChip(
                   label: '${widget.permissions.length} ${l.permissions}',
                   color: CognithorTheme.accent,
@@ -612,9 +615,7 @@ class _RoleCardState extends State<_RoleCard> {
                 spacing: 6,
                 runSpacing: 6,
                 children: widget.permissions
-                    .map<Widget>(
-                      (p) => CognithorChip(label: p.toString()),
-                    )
+                    .map<Widget>((p) => CognithorChip(label: p.toString()))
                     .toList(),
               ),
             ],

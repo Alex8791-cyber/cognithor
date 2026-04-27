@@ -41,23 +41,33 @@ class CommandBar extends StatelessWidget {
               GestureDetector(
                 onTap: onSearchTap,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.14)),
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.search,
-                          size: 14, color: CognithorTheme.textSecondary),
+                      Icon(
+                        Icons.search,
+                        size: 14,
+                        color: CognithorTheme.textSecondary,
+                      ),
                       const SizedBox(width: 6),
-                      Text(AppLocalizations.of(context).globalSearch,
-                          style: TextStyle(
-                              color: CognithorTheme.textSecondary, fontSize: 12)),
+                      Text(
+                        AppLocalizations.of(context).globalSearch,
+                        style: TextStyle(
+                          color: CognithorTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -72,15 +82,20 @@ class CommandBar extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                      color: CognithorTheme.green.withValues(alpha: 0.6),
-                      blurRadius: 10),
+                    color: CognithorTheme.green.withValues(alpha: 0.6),
+                    blurRadius: 10,
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Text(AppLocalizations.of(context).running,
-                style: TextStyle(
-                    color: CognithorTheme.textSecondary, fontSize: 11)),
+            Text(
+              AppLocalizations.of(context).running,
+              style: TextStyle(
+                color: CognithorTheme.textSecondary,
+                fontSize: 11,
+              ),
+            ),
           ],
         ),
       ),

@@ -85,8 +85,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? _buildError(l, theme)
-                : _buildQrDisplay(l, theme),
+            ? _buildError(l, theme)
+            : _buildQrDisplay(l, theme),
       ),
     );
   }
@@ -144,8 +144,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     children: [
                       const Icon(Icons.key, size: 18),
                       const SizedBox(width: 8),
-                      Text('Device: $_deviceId',
-                          style: theme.textTheme.bodySmall),
+                      Text(
+                        'Device: $_deviceId',
+                        style: theme.textTheme.bodySmall,
+                      ),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: _copyPayload,
@@ -211,8 +213,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           CircleAvatar(
             radius: 12,
             backgroundColor: CognithorTheme.accent.withValues(alpha: 0.2),
-            child: Text(num,
-                style: TextStyle(fontSize: 11, color: CognithorTheme.accent)),
+            child: Text(
+              num,
+              style: TextStyle(fontSize: 11, color: CognithorTheme.accent),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),

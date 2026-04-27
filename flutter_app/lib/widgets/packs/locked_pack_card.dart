@@ -47,16 +47,24 @@ class LockedPackCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       pack.displayName,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  Icon(Icons.lock_outline, size: 18, color: theme.colorScheme.outline),
+                  Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: theme.colorScheme.outline,
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               Text(
                 pack.tagline,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -67,7 +75,14 @@ class LockedPackCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('> ', style: TextStyle(color: pack.accentColor, fontFamily: 'monospace', fontSize: 12)),
+                      Text(
+                        '> ',
+                        style: TextStyle(
+                          color: pack.accentColor,
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
                       Expanded(
                         child: Text(
                           b,

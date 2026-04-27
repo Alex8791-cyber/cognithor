@@ -5,21 +5,21 @@ import 'package:cognithor_ui/services/api_client.dart';
 /// A single Reddit lead.
 class RedditLead {
   RedditLead.fromJson(Map<String, dynamic> json)
-      : id = json['id']?.toString() ?? '',
-        postId = json['post_id']?.toString() ?? '',
-        subreddit = json['subreddit']?.toString() ?? '',
-        title = json['title']?.toString() ?? '',
-        body = json['body']?.toString() ?? '',
-        url = json['url']?.toString() ?? '',
-        author = json['author']?.toString() ?? '',
-        intentScore = (json['intent_score'] as num?)?.toInt() ?? 0,
-        scoreReason = json['score_reason']?.toString() ?? '',
-        replyDraft = json['reply_draft']?.toString() ?? '',
-        replyFinal = json['reply_final']?.toString() ?? '',
-        status = json['status']?.toString() ?? 'new',
-        upvotes = (json['upvotes'] as num?)?.toInt() ?? 0,
-        numComments = (json['num_comments'] as num?)?.toInt() ?? 0,
-        detectedAt = (json['detected_at'] as num?)?.toDouble() ?? 0;
+    : id = json['id']?.toString() ?? '',
+      postId = json['post_id']?.toString() ?? '',
+      subreddit = json['subreddit']?.toString() ?? '',
+      title = json['title']?.toString() ?? '',
+      body = json['body']?.toString() ?? '',
+      url = json['url']?.toString() ?? '',
+      author = json['author']?.toString() ?? '',
+      intentScore = (json['intent_score'] as num?)?.toInt() ?? 0,
+      scoreReason = json['score_reason']?.toString() ?? '',
+      replyDraft = json['reply_draft']?.toString() ?? '',
+      replyFinal = json['reply_final']?.toString() ?? '',
+      status = json['status']?.toString() ?? 'new',
+      upvotes = (json['upvotes'] as num?)?.toInt() ?? 0,
+      numComments = (json['num_comments'] as num?)?.toInt() ?? 0,
+      detectedAt = (json['detected_at'] as num?)?.toDouble() ?? 0;
 
   final String id;
   final String postId;
@@ -41,7 +41,8 @@ class RedditLead {
 
   String get timeAgo {
     final diff = DateTime.now().difference(
-        DateTime.fromMillisecondsSinceEpoch((detectedAt * 1000).toInt()));
+      DateTime.fromMillisecondsSinceEpoch((detectedAt * 1000).toInt()),
+    );
     if (diff.inDays > 0) return '${diff.inDays}d ago';
     if (diff.inHours > 0) return '${diff.inHours}h ago';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
@@ -56,7 +57,8 @@ class RedditLeadsProvider extends ChangeNotifier {
 
   List<RedditLead> _leads = [];
   final Set<String> _preloadedIds = <String>{};
-  final Map<String, Map<String, dynamic>> _performanceCache = <String, Map<String, dynamic>>{};
+  final Map<String, Map<String, dynamic>> _performanceCache =
+      <String, Map<String, dynamic>>{};
   Map<String, dynamic> _stats = {};
   bool _loading = false;
   bool _scanning = false;
@@ -166,7 +168,11 @@ class RedditLeadsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateLead(String id, {String? status, String? replyFinal}) async {
+  Future<bool> updateLead(
+    String id, {
+    String? status,
+    String? replyFinal,
+  }) async {
     if (_api == null) return false;
     try {
       final body = <String, dynamic>{};
@@ -193,7 +199,11 @@ class RedditLeadsProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<Map<String, dynamic>> refineLead(String id, {String hint = '', int variants = 0}) async {
+  Future<Map<String, dynamic>> refineLead(
+    String id, {
+    String hint = '',
+    int variants = 0,
+  }) async {
     if (_api == null) return {};
     try {
       return await _api!.refineRedditLead(id, hint: hint, variants: variants);
@@ -229,9 +239,14 @@ class RedditLeadsProvider extends ChangeNotifier {
     }
   }
 
-  Map<String, dynamic>? getCachedPerformance(String id) => _performanceCache[id];
+  Map<String, dynamic>? getCachedPerformance(String id) =>
+      _performanceCache[id];
 
-  Future<bool> setFeedback(String id, {required String tag, String note = ''}) async {
+  Future<bool> setFeedback(
+    String id, {
+    required String tag,
+    String note = '',
+  }) async {
     if (_api == null) return false;
     try {
       await _api!.setRedditLeadFeedback(id, tag: tag, note: note);
@@ -245,17 +260,23 @@ class RedditLeadsProvider extends ChangeNotifier {
     if (_api == null) return [];
     try {
       final resp = await _api!.discoverSubreddits();
-      return (resp['suggestions'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+      return (resp['suggestions'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
     } catch (_) {
       return [];
     }
   }
 
-  Future<List<Map<String, dynamic>>> getTemplates({String subreddit = ''}) async {
+  Future<List<Map<String, dynamic>>> getTemplates({
+    String subreddit = '',
+  }) async {
     if (_api == null) return [];
     try {
       final resp = await _api!.getRedditTemplates(subreddit: subreddit);
-      return (resp['templates'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+      return (resp['templates'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
     } catch (_) {
       return [];
     }

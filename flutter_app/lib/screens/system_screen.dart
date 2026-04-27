@@ -86,39 +86,40 @@ class _SystemScreenState extends State<SystemScreen> {
               child: CognithorLoadingSkeleton(count: 6, height: 24),
             )
           : _error != null
-              ? CognithorEmptyState(
-                  icon: Icons.error_outline,
-                  title: l.errorLabel,
-                  subtitle: _error,
-                  action: ElevatedButton.icon(
-                    onPressed: _load,
-                    icon: const Icon(Icons.refresh),
-                    label: Text(l.retry),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(CognithorTheme.spacing),
-                    children: [
-                      _buildSystemInfo(l),
-                      const SizedBox(height: CognithorTheme.spacing),
-                      _buildChannels(l),
-                      const SizedBox(height: CognithorTheme.spacing),
-                      _buildCommands(l),
-                      const SizedBox(height: CognithorTheme.spacing),
-                      _buildConnectors(l),
-                      const SizedBox(height: CognithorTheme.spacingLg),
-                      _buildDangerZone(l),
-                    ],
-                  ),
-                ),
+          ? CognithorEmptyState(
+              icon: Icons.error_outline,
+              title: l.errorLabel,
+              subtitle: _error,
+              action: ElevatedButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+                label: Text(l.retry),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(CognithorTheme.spacing),
+                children: [
+                  _buildSystemInfo(l),
+                  const SizedBox(height: CognithorTheme.spacing),
+                  _buildChannels(l),
+                  const SizedBox(height: CognithorTheme.spacing),
+                  _buildCommands(l),
+                  const SizedBox(height: CognithorTheme.spacing),
+                  _buildConnectors(l),
+                  const SizedBox(height: CognithorTheme.spacingLg),
+                  _buildDangerZone(l),
+                ],
+              ),
+            ),
     );
   }
 
   Widget _buildSystemInfo(AppLocalizations l) {
     final runtime = _status?['runtime'] as Map<String, dynamic>? ?? {};
-    final uptime = (_status?['uptime_seconds'] ?? runtime['uptime_seconds'] ?? 0) as num;
+    final uptime =
+        (_status?['uptime_seconds'] ?? runtime['uptime_seconds'] ?? 0) as num;
     final version = context.read<ConnectionProvider>().backendVersion ?? '?';
     final owner = _status?['owner']?.toString() ?? '-';
     final backend = _status?['llm_backend']?.toString() ?? '-';
@@ -158,8 +159,10 @@ class _SystemScreenState extends State<SystemScreen> {
             children: [
               const Icon(Icons.settings, size: CognithorTheme.iconSizeSm),
               const SizedBox(width: CognithorTheme.spacingSm),
-              Text('Config: $configVersion',
-                  style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                'Config: $configVersion',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ],
           ),
         ),
@@ -168,8 +171,7 @@ class _SystemScreenState extends State<SystemScreen> {
   }
 
   Widget _buildChannels(AppLocalizations l) {
-    final channels =
-        (_status?['active_channels'] as List?) ?? [];
+    final channels = (_status?['active_channels'] as List?) ?? [];
     if (channels.isEmpty) {
       return CognithorEmptyState(
         icon: Icons.podcasts,
@@ -186,7 +188,10 @@ class _SystemScreenState extends State<SystemScreen> {
           final name = ch.toString();
           return CognithorListTile(
             title: name,
-            leading: const Icon(Icons.podcasts, size: CognithorTheme.iconSizeMd),
+            leading: const Icon(
+              Icons.podcasts,
+              size: CognithorTheme.iconSizeMd,
+            ),
             trailing: CognithorStatusBadge(
               label: l.enabled,
               color: CognithorTheme.success,
@@ -214,8 +219,10 @@ class _SystemScreenState extends State<SystemScreen> {
             final name = (cmd is Map ? cmd['name'] : cmd).toString();
             return CognithorListTile(
               title: name,
-              leading:
-                  const Icon(Icons.terminal, size: CognithorTheme.iconSizeMd),
+              leading: const Icon(
+                Icons.terminal,
+                size: CognithorTheme.iconSizeMd,
+              ),
             );
           }),
       ],
@@ -267,10 +274,9 @@ class _SystemScreenState extends State<SystemScreen> {
               const SizedBox(width: CognithorTheme.spacingSm),
               Text(
                 l.dangerZone,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(color: CognithorTheme.error),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: CognithorTheme.error),
               ),
             ],
           ),
@@ -283,9 +289,9 @@ class _SystemScreenState extends State<SystemScreen> {
                     final api = context.read<ConnectionProvider>().api;
                     await api.reloadConfig();
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.reload)),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(l.reload)));
                     }
                   },
                   icon: const Icon(Icons.refresh),

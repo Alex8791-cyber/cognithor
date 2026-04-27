@@ -34,8 +34,8 @@ class ProvidersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ConfigProvider>(
       builder: (context, cfg, _) {
-        final currentBackend =
-            (cfg.cfg['llm_backend_type'] ?? 'ollama').toString();
+        final currentBackend = (cfg.cfg['llm_backend_type'] ?? 'ollama')
+            .toString();
 
         // Sort: active provider first, rest in original order.
         final sorted = List<(String, String, IconData)>.from(_providers)
@@ -117,7 +117,11 @@ class _CurrentBackendCardState extends State<_CurrentBackendCard> {
     try {
       final conn = context.read<ConnectionProvider>();
       final result = await conn.api.getBackendStatus();
-      if (mounted) setState(() { _status = result; _loading = false; });
+      if (mounted)
+        setState(() {
+          _status = result;
+          _loading = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -149,17 +153,24 @@ class _CurrentBackendCardState extends State<_CurrentBackendCard> {
         children: [
           Row(
             children: [
-              Icon(icon,
-                  color: isConnected ? CognithorTheme.green : CognithorTheme.accent,
-                  size: 28),
+              Icon(
+                icon,
+                color: isConnected
+                    ? CognithorTheme.green
+                    : CognithorTheme.accent,
+                size: 28,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      label,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
@@ -175,8 +186,8 @@ class _CurrentBackendCardState extends State<_CurrentBackendCard> {
                           _loading
                               ? '...'
                               : isConnected
-                                  ? l.connected
-                                  : l.notInstalled,
+                              ? l.connected
+                              : l.notInstalled,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: isConnected
                                 ? CognithorTheme.green
@@ -195,42 +206,58 @@ class _CurrentBackendCardState extends State<_CurrentBackendCard> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: CognithorTheme.accent,
                   side: BorderSide(
-                      color: CognithorTheme.accent.withValues(alpha: 0.4)),
+                    color: CognithorTheme.accent.withValues(alpha: 0.4),
+                  ),
                 ),
               ),
             ],
           ),
           // Show active models for current backend
-          Builder(builder: (context) {
-            final cfg = context.watch<ConfigProvider>();
-            final models = cfg.cfg['models'] as Map<String, dynamic>? ?? {};
-            final plannerModel = (models['planner'] as Map<String, dynamic>?)?['name']?.toString() ?? '';
-            final executorModel = (models['executor'] as Map<String, dynamic>?)?['name']?.toString() ?? '';
-            if (plannerModel.isEmpty && executorModel.isEmpty) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 4,
-                children: [
-                  if (plannerModel.isNotEmpty)
-                    Chip(
-                      avatar: const Icon(Icons.architecture, size: 14),
-                      label: Text(plannerModel, style: const TextStyle(fontSize: 11)),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  if (executorModel.isNotEmpty)
-                    Chip(
-                      avatar: const Icon(Icons.play_arrow, size: 14),
-                      label: Text(executorModel, style: const TextStyle(fontSize: 11)),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                ],
-              ),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final cfg = context.watch<ConfigProvider>();
+              final models = cfg.cfg['models'] as Map<String, dynamic>? ?? {};
+              final plannerModel =
+                  (models['planner'] as Map<String, dynamic>?)?['name']
+                      ?.toString() ??
+                  '';
+              final executorModel =
+                  (models['executor'] as Map<String, dynamic>?)?['name']
+                      ?.toString() ??
+                  '';
+              if (plannerModel.isEmpty && executorModel.isEmpty)
+                return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    if (plannerModel.isNotEmpty)
+                      Chip(
+                        avatar: const Icon(Icons.architecture, size: 14),
+                        label: Text(
+                          plannerModel,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    if (executorModel.isNotEmpty)
+                      Chip(
+                        avatar: const Icon(Icons.play_arrow, size: 14),
+                        label: Text(
+                          executorModel,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -264,7 +291,11 @@ class _BackendSwitchDialogState extends State<_BackendSwitchDialog> {
     try {
       final conn = context.read<ConnectionProvider>();
       final result = await conn.api.getBackendStatus();
-      if (mounted) setState(() { _status = result; _loading = false; });
+      if (mounted)
+        setState(() {
+          _status = result;
+          _loading = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -294,50 +325,62 @@ class _BackendSwitchDialogState extends State<_BackendSwitchDialog> {
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: options.map((o) {
-                  final (key, label, icon, tint) = o;
-                  final auth = _isAuth(key);
-                  final isSel = _selected == key;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: NeonCard(
-                      tint: isSel ? tint : null,
-                      glowOnHover: true,
-                      onTap: () => setState(() => _selected = key),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      child: Row(
-                        children: [
-                          Icon(icon,
-                              color: isSel ? tint : CognithorTheme.textSecondary,
-                              size: 22),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(label,
-                                style: TextStyle(
-                                    fontWeight:
-                                        isSel ? FontWeight.w700 : null)),
-                          ),
-                          Icon(
-                            auth ? Icons.check_circle : Icons.cancel,
-                            size: 16,
-                            color: auth
-                                ? CognithorTheme.green
-                                : CognithorTheme.red,
-                          ),
-                          if (isSel)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: Icon(Icons.check_circle,
-                                  color: tint, size: 20),
+                  mainAxisSize: MainAxisSize.min,
+                  children: options.map((o) {
+                    final (key, label, icon, tint) = o;
+                    final auth = _isAuth(key);
+                    final isSel = _selected == key;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: NeonCard(
+                        tint: isSel ? tint : null,
+                        glowOnHover: true,
+                        onTap: () => setState(() => _selected = key),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              icon,
+                              color: isSel
+                                  ? tint
+                                  : CognithorTheme.textSecondary,
+                              size: 22,
                             ),
-                        ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontWeight: isSel ? FontWeight.w700 : null,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              auth ? Icons.check_circle : Icons.cancel,
+                              size: 16,
+                              color: auth
+                                  ? CognithorTheme.green
+                                  : CognithorTheme.red,
+                            ),
+                            if (isSel)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Icon(
+                                  Icons.check_circle,
+                                  color: tint,
+                                  size: 20,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              )),
+                    );
+                  }).toList(),
+                ),
+              ),
       ),
       actions: [
         TextButton(
@@ -354,7 +397,6 @@ class _BackendSwitchDialogState extends State<_BackendSwitchDialog> {
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Individual provider card

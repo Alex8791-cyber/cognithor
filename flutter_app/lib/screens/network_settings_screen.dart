@@ -72,9 +72,9 @@ class _NetworkSettingsScreenState extends State<NetworkSettingsScreen> {
       });
       if (mounted) {
         final msg = res['message'] ?? 'Saved';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg.toString())));
         setState(() {
           _bindHost = res['bind_host'] as String?;
           final active = res['active_ips'];
@@ -86,9 +86,9 @@ class _NetworkSettingsScreenState extends State<NetworkSettingsScreen> {
     } catch (e) {
       setState(() => _saving = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -179,8 +179,10 @@ class _NetworkSettingsScreenState extends State<NetworkSettingsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-              : _buildBody(l, theme),
+          ? Center(
+              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+            )
+          : _buildBody(l, theme),
     );
   }
 

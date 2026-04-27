@@ -15,14 +15,21 @@ void main() {
       );
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(body: EventRow(event: event, traceStartedAt: '2026-04-26T10:00:00Z')),
+          home: Scaffold(
+            body: EventRow(
+              event: event,
+              traceStartedAt: '2026-04-26T10:00:00Z',
+            ),
+          ),
         ),
       );
       expect(find.textContaining('researcher'), findsOneWidget);
       expect(find.textContaining('crew_task_started'), findsOneWidget);
     });
 
-    testWidgets('renders task_completed with token + duration badges', (tester) async {
+    testWidgets('renders task_completed with token + duration badges', (
+      tester,
+    ) async {
       const event = CrewEvent(
         traceId: 'a',
         eventType: 'crew_task_completed',
@@ -31,7 +38,12 @@ void main() {
       );
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(body: EventRow(event: event, traceStartedAt: '2026-04-26T10:00:00Z')),
+          home: Scaffold(
+            body: EventRow(
+              event: event,
+              traceStartedAt: '2026-04-26T10:00:00Z',
+            ),
+          ),
         ),
       );
       expect(find.textContaining('1234'), findsOneWidget);

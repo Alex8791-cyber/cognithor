@@ -43,7 +43,10 @@ class _TreeSidebarState extends State<TreeSidebar> {
                 children: [
                   // Header
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: cs.surface,
                       border: Border(
@@ -109,13 +112,13 @@ class _TreeSidebarState extends State<TreeSidebar> {
             child: GestureDetector(
               onHorizontalDragUpdate: (details) {
                 setState(() {
-                  _width = (_width + details.delta.dx).clamp(_minWidth, _maxWidth);
+                  _width = (_width + details.delta.dx).clamp(
+                    _minWidth,
+                    _maxWidth,
+                  );
                 });
               },
-              child: Container(
-                width: 6,
-                color: Colors.transparent,
-              ),
+              child: Container(width: 6, color: Colors.transparent),
             ),
           ),
         ),
@@ -124,21 +127,23 @@ class _TreeSidebarState extends State<TreeSidebar> {
   }
 
   List<ChatNode> _getRoots(TreeProvider tree) {
-    return tree.nodes.values
-        .where((n) => n.parentId == null)
-        .toList()
+    return tree.nodes.values.where((n) => n.parentId == null).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
-  Widget _buildNode(BuildContext context, TreeProvider tree, ChatNode node, int depth) {
+  Widget _buildNode(
+    BuildContext context,
+    TreeProvider tree,
+    ChatNode node,
+    int depth,
+  ) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isActive = tree.activePath.contains(node.id);
     final isFork = tree.isForkPoint(node.id);
-    final children = tree.nodes.values
-        .where((n) => n.parentId == node.id)
-        .toList()
-      ..sort((a, b) => a.branchIndex.compareTo(b.branchIndex));
+    final children =
+        tree.nodes.values.where((n) => n.parentId == node.id).toList()
+          ..sort((a, b) => a.branchIndex.compareTo(b.branchIndex));
 
     final displayText = node.text.length > 40
         ? '${node.text.substring(0, 40)}...'
@@ -197,7 +202,9 @@ class _TreeSidebarState extends State<TreeSidebar> {
                         color: isActive
                             ? cs.onSurface
                             : cs.onSurface.withValues(alpha: 0.7),
-                        fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+                        fontWeight: isActive
+                            ? FontWeight.w500
+                            : FontWeight.normal,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -206,7 +213,10 @@ class _TreeSidebarState extends State<TreeSidebar> {
                   if (isFork) ...[
                     const SizedBox(width: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
@@ -226,7 +236,8 @@ class _TreeSidebarState extends State<TreeSidebar> {
             ),
           ),
         ),
-        for (final child in children) _buildNode(context, tree, child, depth + 1),
+        for (final child in children)
+          _buildNode(context, tree, child, depth + 1),
       ],
     );
   }

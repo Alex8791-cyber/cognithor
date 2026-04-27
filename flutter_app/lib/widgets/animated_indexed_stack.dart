@@ -38,10 +38,7 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
   void initState() {
     super.initState();
     _displayIndex = widget.index;
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
+    _controller = AnimationController(vsync: this, duration: widget.duration);
 
     _buildAnimations();
     // Start fully visible.
@@ -88,10 +85,7 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
       opacity: _fadeIn,
       child: SlideTransition(
         position: _slideIn,
-        child: IndexedStack(
-          index: _displayIndex,
-          children: widget.children,
-        ),
+        child: IndexedStack(index: _displayIndex, children: widget.children),
       ),
     );
   }

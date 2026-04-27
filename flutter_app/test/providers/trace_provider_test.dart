@@ -28,10 +28,23 @@ void main() {
     });
 
     test('loadTraces sets traces from service', () async {
-      when(() => svc.listTraces(status: any(named: 'status'), limit: any(named: 'limit')))
-          .thenAnswer((_) async => [
-            const CrewTraceMeta(traceId: 'a', status: TraceStatus.running, nTasks: 1, totalTokens: 0, agentCount: 1, nFailedGuardrails: 0),
-          ]);
+      when(
+        () => svc.listTraces(
+          status: any(named: 'status'),
+          limit: any(named: 'limit'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          const CrewTraceMeta(
+            traceId: 'a',
+            status: TraceStatus.running,
+            nTasks: 1,
+            totalTokens: 0,
+            agentCount: 1,
+            nFailedGuardrails: 0,
+          ),
+        ],
+      );
 
       await provider.loadTraces();
       expect(provider.traces.length, 1);
@@ -40,12 +53,20 @@ void main() {
     });
 
     test('pinTrace fetches events + subscribes', () async {
-      when(() => svc.fetchTrace(any())).thenAnswer((_) async => [
-        const CrewEvent(traceId: 'a', eventType: 'crew_kickoff_started'),
-      ]);
-      when(() => svc.fetchTraceStats(any())).thenAnswer((_) async => const CrewTraceStats(
-            totalTokens: 0, agentBreakdown: {}, guardrailPass: 0, guardrailFail: 0, guardrailRetries: 0,
-          ));
+      when(() => svc.fetchTrace(any())).thenAnswer(
+        (_) async => [
+          const CrewEvent(traceId: 'a', eventType: 'crew_kickoff_started'),
+        ],
+      );
+      when(() => svc.fetchTraceStats(any())).thenAnswer(
+        (_) async => const CrewTraceStats(
+          totalTokens: 0,
+          agentBreakdown: {},
+          guardrailPass: 0,
+          guardrailFail: 0,
+          guardrailRetries: 0,
+        ),
+      );
       when(() => svc.subscribeToTrace(any(), any())).thenAnswer((_) {});
 
       await provider.pinTrace('a');
@@ -56,9 +77,15 @@ void main() {
 
     test('unpinTrace clears state + unsubscribes', () async {
       when(() => svc.fetchTrace(any())).thenAnswer((_) async => []);
-      when(() => svc.fetchTraceStats(any())).thenAnswer((_) async => const CrewTraceStats(
-            totalTokens: 0, agentBreakdown: {}, guardrailPass: 0, guardrailFail: 0, guardrailRetries: 0,
-          ));
+      when(() => svc.fetchTraceStats(any())).thenAnswer(
+        (_) async => const CrewTraceStats(
+          totalTokens: 0,
+          agentBreakdown: {},
+          guardrailPass: 0,
+          guardrailFail: 0,
+          guardrailRetries: 0,
+        ),
+      );
       when(() => svc.subscribeToTrace(any(), any())).thenAnswer((_) {});
       when(() => svc.unsubscribeFromTrace(any())).thenAnswer((_) {});
 

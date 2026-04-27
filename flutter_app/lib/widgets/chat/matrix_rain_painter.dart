@@ -63,8 +63,8 @@ class MatrixRainPainter extends CustomPainter {
     for (int col = 0; col < cols; col++) {
       final speed = _columnSpeeds[col];
       final offset = _columnOffsets[col];
-      final currentRow =
-          ((time * speed * 0.5 * rows + offset) % (rows + 12)).floor();
+      final currentRow = ((time * speed * 0.5 * rows + offset) % (rows + 12))
+          .floor();
 
       for (int row = 0; row < rows; row++) {
         final distFromHead = currentRow - row;
@@ -93,6 +93,5 @@ class MatrixRainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(MatrixRainPainter oldDelegate) =>
-      oldDelegate.time != time;
+  bool shouldRepaint(MatrixRainPainter oldDelegate) => oldDelegate.time != time;
 }

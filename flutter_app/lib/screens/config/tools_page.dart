@@ -31,7 +31,11 @@ class ToolsPage extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber, color: CognithorTheme.orange, size: 20),
+                  Icon(
+                    Icons.warning_amber,
+                    color: CognithorTheme.orange,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(

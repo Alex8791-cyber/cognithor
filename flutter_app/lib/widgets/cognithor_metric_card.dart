@@ -35,15 +35,14 @@ class CognithorMetricCard extends StatelessWidget {
           Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: CognithorTheme.iconSizeMd, color: effectiveColor),
+                Icon(
+                  icon,
+                  size: CognithorTheme.iconSizeMd,
+                  color: effectiveColor,
+                ),
                 const SizedBox(width: CognithorTheme.spacingSm),
               ],
-              Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
+              Expanded(child: Text(title, style: theme.textTheme.bodySmall)),
               if (trend != null) _buildTrend(),
             ],
           ),
@@ -78,7 +77,11 @@ class CognithorMetricCard extends StatelessWidget {
         const SizedBox(width: 2),
         Text(
           '${trend!.abs().toStringAsFixed(1)}%',
-          style: TextStyle(color: trendColor, fontSize: 12, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: trendColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );

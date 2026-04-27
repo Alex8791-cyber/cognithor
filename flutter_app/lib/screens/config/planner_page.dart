@@ -10,12 +10,9 @@ class PlannerPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ConfigProvider>(
       builder: (context, cfg, _) {
-        final planner =
-            cfg.cfg['planner'] as Map<String, dynamic>? ?? {};
-        final gk =
-            cfg.cfg['gatekeeper'] as Map<String, dynamic>? ?? {};
-        final sb =
-            cfg.cfg['sandbox'] as Map<String, dynamic>? ?? {};
+        final planner = cfg.cfg['planner'] as Map<String, dynamic>? ?? {};
+        final gk = cfg.cfg['gatekeeper'] as Map<String, dynamic>? ?? {};
+        final sb = cfg.cfg['sandbox'] as Map<String, dynamic>? ?? {};
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -40,18 +37,15 @@ class PlannerPage extends StatelessWidget {
                 ),
                 CognithorSliderField(
                   label: 'Temperature',
-                  value:
-                      (planner['temperature'] as num?)?.toDouble() ?? 0.7,
+                  value: (planner['temperature'] as num?)?.toDouble() ?? 0.7,
                   onChanged: (v) => cfg.set('planner.temperature', v),
                   max: 2.0,
                   step: 0.05,
                 ),
                 CognithorNumberField(
                   label: 'Response Token Budget',
-                  value:
-                      (planner['response_token_budget'] as num?) ?? 4000,
-                  onChanged: (v) =>
-                      cfg.set('planner.response_token_budget', v),
+                  value: (planner['response_token_budget'] as num?) ?? 4000,
+                  onChanged: (v) => cfg.set('planner.response_token_budget', v),
                   min: 256,
                   max: 128000,
                 ),
@@ -70,8 +64,7 @@ class PlannerPage extends StatelessWidget {
                   label: 'Default Risk Level',
                   value: (gk['default_risk_level'] ?? 'orange').toString(),
                   options: const ['green', 'yellow', 'orange', 'red'],
-                  onChanged: (v) =>
-                      cfg.set('gatekeeper.default_risk_level', v),
+                  onChanged: (v) => cfg.set('gatekeeper.default_risk_level', v),
                 ),
                 CognithorNumberField(
                   label: 'Max Blocked Retries',
@@ -90,7 +83,10 @@ class PlannerPage extends StatelessWidget {
                   label: 'Level',
                   value: (sb['level'] ?? 'process').toString(),
                   options: const [
-                    'process', 'namespace', 'container', 'jobobject'
+                    'process',
+                    'namespace',
+                    'container',
+                    'jobobject',
                   ],
                   onChanged: (v) => cfg.set('sandbox.level', v),
                 ),

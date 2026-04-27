@@ -53,8 +53,12 @@ class ExecutorPage extends StatelessWidget {
               max: 20,
             ),
             const Divider(height: 32),
-            Text(AppLocalizations.of(context).toolSpecificTimeouts,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16)),
+            Text(
+              AppLocalizations.of(context).toolSpecificTimeouts,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontSize: 16),
+            ),
             const SizedBox(height: 12),
             CognithorNumberField(
               label: 'Image Analysis Timeout',

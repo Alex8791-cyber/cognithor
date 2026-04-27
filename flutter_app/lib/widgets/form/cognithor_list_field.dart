@@ -55,9 +55,12 @@ class _CognithorListFieldState extends State<CognithorListField> {
           Text(widget.label, style: theme.textTheme.bodyMedium),
           if (widget.description != null) ...[
             const SizedBox(height: 2),
-            Text(widget.description!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: CognithorTheme.textSecondary)),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: CognithorTheme.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           Row(
@@ -69,7 +72,9 @@ class _CognithorListFieldState extends State<CognithorListField> {
                     hintText: widget.placeholder ?? 'Add item...',
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                   ),
                   onSubmitted: (_) => _add(),
                 ),
@@ -87,8 +92,10 @@ class _CognithorListFieldState extends State<CognithorListField> {
             return Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(6),
@@ -97,14 +104,20 @@ class _CognithorListFieldState extends State<CognithorListField> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(widget.value[i],
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(fontFamily: 'monospace')),
+                      child: Text(
+                        widget.value[i],
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
+                      ),
                     ),
                     InkWell(
                       onTap: () => _remove(i),
-                      child: Icon(Icons.close,
-                          size: 16, color: CognithorTheme.textSecondary),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: CognithorTheme.textSecondary,
+                      ),
                     ),
                   ],
                 ),

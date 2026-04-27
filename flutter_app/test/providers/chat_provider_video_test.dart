@@ -5,8 +5,7 @@ void main() {
   group('handlePastedTextForVideoUrl', () {
     test('recognizes mp4 URL and populates pendingVideoAttachment', () {
       final p = ChatProvider();
-      final ok =
-          p.handlePastedTextForVideoUrl('https://example.com/clip.mp4');
+      final ok = p.handlePastedTextForVideoUrl('https://example.com/clip.mp4');
       expect(ok, isTrue);
       expect(p.pendingVideoAttachment, isNotNull);
       expect(p.pendingVideoAttachment!['url'], 'https://example.com/clip.mp4');
@@ -26,15 +25,15 @@ void main() {
     test('rejects non-video URL', () {
       final p = ChatProvider();
       expect(
-          p.handlePastedTextForVideoUrl('https://example.com/page.html'),
-          isFalse);
+        p.handlePastedTextForVideoUrl('https://example.com/page.html'),
+        isFalse,
+      );
       expect(p.pendingVideoAttachment, isNull);
     });
 
     test('rejects plain text', () {
       final p = ChatProvider();
-      expect(
-          p.handlePastedTextForVideoUrl('just typing a sentence'), isFalse);
+      expect(p.handlePastedTextForVideoUrl('just typing a sentence'), isFalse);
     });
 
     test('case-insensitive extension match', () {
@@ -71,7 +70,10 @@ void main() {
       );
       expect(ok, isTrue);
       expect(p.pendingVideoAttachment!['filename'], 'clip.mov');
-      expect(p.pendingVideoAttachment!['url'], 'https://x.com/clip.mov?x=1#frag');
+      expect(
+        p.pendingVideoAttachment!['url'],
+        'https://x.com/clip.mov?x=1#frag',
+      );
     });
   });
 }

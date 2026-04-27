@@ -8,7 +8,12 @@ enum PgePhase { idle, planning, gating, executing, streaming }
 
 /// Info about a single configured agent.
 class AgentInfo {
-  AgentInfo({required this.name, this.displayName, this.isWorking = false, this.currentTask = ''});
+  AgentInfo({
+    required this.name,
+    this.displayName,
+    this.isWorking = false,
+    this.currentTask = '',
+  });
   final String name;
   final String? displayName;
   bool isWorking;
@@ -67,11 +72,7 @@ class RobotOfficeProvider extends ChangeNotifier {
 
   Future<void> _poll() async {
     if (_api == null) return;
-    await Future.wait([
-      _pollMetrics(),
-      _pollAgents(),
-      _pollKanban(),
-    ]);
+    await Future.wait([_pollMetrics(), _pollAgents(), _pollKanban()]);
     notifyListeners();
   }
 
@@ -80,7 +81,8 @@ class RobotOfficeProvider extends ChangeNotifier {
       final res = await _api!.get('monitoring/dashboard');
       final sys = res['system'] as Map<String, dynamic>? ?? {};
       metrics.cpu = ((sys['cpu_percent'] as num?) ?? 0).toDouble() / 100.0;
-      metrics.memory = ((sys['memory_percent'] as num?) ?? 0).toDouble() / 100.0;
+      metrics.memory =
+          ((sys['memory_percent'] as num?) ?? 0).toDouble() / 100.0;
       metrics.load = ((metrics.cpu + metrics.memory) / 2).clamp(0.0, 1.0);
     } catch (_) {}
   }
@@ -89,13 +91,16 @@ class RobotOfficeProvider extends ChangeNotifier {
     try {
       final res = await _api!.get('agents');
       final list = res['agents'] as List<dynamic>? ?? [];
-      agents = list.map((a) {
-        final m = a as Map<String, dynamic>;
-        return AgentInfo(
-          name: m['name']?.toString() ?? '',
-          displayName: m['display_name']?.toString(),
-        );
-      }).where((a) => a.name.isNotEmpty).toList();
+      agents = list
+          .map((a) {
+            final m = a as Map<String, dynamic>;
+            return AgentInfo(
+              name: m['name']?.toString() ?? '',
+              displayName: m['display_name']?.toString(),
+            );
+          })
+          .where((a) => a.name.isNotEmpty)
+          .toList();
     } catch (_) {}
   }
 
@@ -170,7 +175,8 @@ class RobotOfficeProvider extends ChangeNotifier {
       pgePhase = PgePhase.planning;
     } else if (phase == 'gate') {
       pgePhase = PgePhase.gating;
-      gatekeeperTask = 'Reviewing: ${_truncate(msg['tool']?.toString() ?? '', 25)}';
+      gatekeeperTask =
+          'Reviewing: ${_truncate(msg['tool']?.toString() ?? '', 25)}';
     } else if (phase == 'execute') {
       pgePhase = PgePhase.executing;
     } else if (phase == 'complete' || action == 'end') {

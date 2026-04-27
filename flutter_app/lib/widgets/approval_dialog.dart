@@ -40,7 +40,9 @@ class _ApprovalDialogState extends State<ApprovalDialog> {
     try {
       // Call REST endpoint directly via the connection provider's API client.
       final api = context.read<ConnectionProvider>().api;
-      debugPrint('[APPROVAL] posting REST request_id=$reqId approved=$approved');
+      debugPrint(
+        '[APPROVAL] posting REST request_id=$reqId approved=$approved',
+      );
       final resp = await api.post('approval_response', {
         'request_id': reqId,
         'approved': approved,
@@ -53,8 +55,8 @@ class _ApprovalDialogState extends State<ApprovalDialog> {
         // disappears.
         setState(() {
           _lastClickStatus = approved
-            ? AppLocalizations.of(context).actionApproved
-            : AppLocalizations.of(context).actionRejected;
+              ? AppLocalizations.of(context).actionApproved
+              : AppLocalizations.of(context).actionRejected;
         });
         if (!mounted) return;
         context.read<ChatProvider>().clearPendingApproval();
@@ -121,10 +123,7 @@ class _ApprovalDialogState extends State<ApprovalDialog> {
             ),
             child: SelectableText(
               widget.request.params.toString(),
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 12,
-              ),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
             ),
           ),
           if (widget.request.reason.isNotEmpty) ...[

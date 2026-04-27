@@ -17,11 +17,31 @@ void main() {
 
   testWidgets('renders trace cards from provider state', (tester) async {
     final svc = _MockTraceService();
-    when(() => svc.listTraces(status: any(named: 'status'), limit: any(named: 'limit')))
-        .thenAnswer((_) async => [
-          CrewTraceMeta(traceId: 'trace-1', status: TraceStatus.running, nTasks: 2, totalTokens: 100, agentCount: 1, nFailedGuardrails: 0),
-          CrewTraceMeta(traceId: 'trace-2', status: TraceStatus.completed, nTasks: 4, totalTokens: 500, agentCount: 2, nFailedGuardrails: 1),
-        ]);
+    when(
+      () => svc.listTraces(
+        status: any(named: 'status'),
+        limit: any(named: 'limit'),
+      ),
+    ).thenAnswer(
+      (_) async => [
+        CrewTraceMeta(
+          traceId: 'trace-1',
+          status: TraceStatus.running,
+          nTasks: 2,
+          totalTokens: 100,
+          agentCount: 1,
+          nFailedGuardrails: 0,
+        ),
+        CrewTraceMeta(
+          traceId: 'trace-2',
+          status: TraceStatus.completed,
+          nTasks: 4,
+          totalTokens: 500,
+          agentCount: 2,
+          nFailedGuardrails: 1,
+        ),
+      ],
+    );
     when(() => svc.subscribeToLifecycle(any())).thenAnswer((_) {});
     when(() => svc.unsubscribeFromLifecycle()).thenAnswer((_) {});
 

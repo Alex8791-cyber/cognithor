@@ -60,7 +60,10 @@ class _PreFlightCardState extends State<PreFlightCard> {
             const SizedBox(width: 6),
             Text(
               'Plan gestartet: ${widget.goal}',
-              style: TextStyle(fontSize: 12, color: CognithorTheme.textSecondary),
+              style: TextStyle(
+                fontSize: 12,
+                color: CognithorTheme.textSecondary,
+              ),
             ),
           ],
         ),
@@ -77,7 +80,9 @@ class _PreFlightCardState extends State<PreFlightCard> {
       decoration: BoxDecoration(
         color: CognithorTheme.accent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: CognithorTheme.accent.withValues(alpha: 0.25)),
+        border: Border.all(
+          color: CognithorTheme.accent.withValues(alpha: 0.25),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,7 +94,10 @@ class _PreFlightCardState extends State<PreFlightCard> {
               Expanded(
                 child: Text(
                   '${widget.steps.length} Schritte: $stepsSummary',
-                  style: TextStyle(fontSize: 12, color: CognithorTheme.textSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: CognithorTheme.textSecondary,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -106,13 +114,18 @@ class _PreFlightCardState extends State<PreFlightCard> {
           ),
           if (_expanded) ...[
             const SizedBox(height: 6),
-            ...widget.steps.map((s) => Padding(
-              padding: const EdgeInsets.only(left: 22, bottom: 2),
-              child: Text(
-                '${s['tool']}: ${s['rationale'] ?? ''}',
-                style: TextStyle(fontSize: 11, color: CognithorTheme.textTertiary),
+            ...widget.steps.map(
+              (s) => Padding(
+                padding: const EdgeInsets.only(left: 22, bottom: 2),
+                child: Text(
+                  '${s['tool']}: ${s['rationale'] ?? ''}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: CognithorTheme.textTertiary,
+                  ),
+                ),
               ),
-            )),
+            ),
           ],
           const SizedBox(height: 6),
           Row(
@@ -131,11 +144,16 @@ class _PreFlightCardState extends State<PreFlightCard> {
                   widget.onCancel?.call();
                 },
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   minimumSize: Size.zero,
                 ),
-                child: Text('Abbrechen',
-                    style: TextStyle(fontSize: 11, color: CognithorTheme.red)),
+                child: Text(
+                  'Abbrechen',
+                  style: TextStyle(fontSize: 11, color: CognithorTheme.red),
+                ),
               ),
             ],
           ),

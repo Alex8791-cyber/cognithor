@@ -94,7 +94,11 @@ class _ChatInputState extends State<ChatInput> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).uploadError(e.toString()))),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).uploadError(e.toString()),
+            ),
+          ),
         );
       }
     } finally {
@@ -152,10 +156,28 @@ class _ChatInputState extends State<ChatInput> {
         withData: true,
         type: FileType.custom,
         allowedExtensions: [
-          'pdf', 'txt', 'md', 'csv', 'json', 'xml', 'yaml', 'yml',
-          'doc', 'docx', 'xls', 'xlsx', 'pptx',
-          'py', 'js', 'ts', 'dart', 'html', 'css',
-          'zip', 'tar', 'gz',
+          'pdf',
+          'txt',
+          'md',
+          'csv',
+          'json',
+          'xml',
+          'yaml',
+          'yml',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+          'pptx',
+          'py',
+          'js',
+          'ts',
+          'dart',
+          'html',
+          'css',
+          'zip',
+          'tar',
+          'gz',
         ],
       );
       if (result == null) return;
@@ -174,7 +196,11 @@ class _ChatInputState extends State<ChatInput> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).uploadError(e.toString()))),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).uploadError(e.toString()),
+            ),
+          ),
         );
       }
     } finally {
@@ -229,9 +255,7 @@ class _ChatInputState extends State<ChatInput> {
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(color: Theme.of(context).dividerColor),
-        ),
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         children: [
@@ -248,7 +272,10 @@ class _ChatInputState extends State<ChatInput> {
           else
             PopupMenuButton<String>(
               key: const ValueKey('chat-input-paperclip'),
-              icon: Icon(Icons.attach_file, color: CognithorTheme.textSecondary),
+              icon: Icon(
+                Icons.attach_file,
+                color: CognithorTheme.textSecondary,
+              ),
               iconSize: 22,
               tooltip: l.attachFile,
               enabled: !widget.isProcessing,
@@ -269,8 +296,7 @@ class _ChatInputState extends State<ChatInput> {
                 }
               },
               itemBuilder: (context) {
-                final activeBackend =
-                    context.read<LlmBackendProvider>().active;
+                final activeBackend = context.read<LlmBackendProvider>().active;
                 final vllmActive = activeBackend == 'vllm';
                 return [
                   const PopupMenuItem<String>(
@@ -291,7 +317,11 @@ class _ChatInputState extends State<ChatInput> {
                           if (!vllmActive)
                             const Padding(
                               padding: EdgeInsets.only(left: 6),
-                              child: Icon(Icons.lock, size: 14, color: Colors.grey),
+                              child: Icon(
+                                Icons.lock,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
                             ),
                         ],
                       ),

@@ -6,7 +6,8 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint, kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show ChangeNotifier, debugPrint, kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:cognithor_ui/services/websocket_service.dart';
 
@@ -24,8 +25,10 @@ class ChatMessage {
     DateTime? timestamp,
     this.metadata = const {},
     this.agentName,
-  })  : id = id ?? 'msg_${DateTime.now().millisecondsSinceEpoch}_${_msgCounter++}',
-        timestamp = timestamp ?? DateTime.now();
+  }) : id =
+           id ??
+           'msg_${DateTime.now().millisecondsSinceEpoch}_${_msgCounter++}',
+       timestamp = timestamp ?? DateTime.now();
 
   static int _msgCounter = 0;
 
@@ -96,8 +99,10 @@ void _log(String msg) {
 }
 
 class ChatProvider extends ChangeNotifier {
-  ChatProvider({this.apiBaseUrl = 'http://localhost:8741', http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+  ChatProvider({
+    this.apiBaseUrl = 'http://localhost:8741',
+    http.Client? httpClient,
+  }) : _http = httpClient ?? http.Client();
 
   /// REST base URL used for media upload (e.g. `http://localhost:8741`).
   final String apiBaseUrl;
@@ -167,11 +172,15 @@ class ChatProvider extends ChangeNotifier {
     final videoMeta = _pendingVideoAttachment;
     _pendingVideoAttachment = null;
 
-    messages.add(ChatMessage(
-      role: MessageRole.user,
-      text: text,
-      metadata: videoMeta != null ? {'video_attachment': videoMeta} : const {},
-    ));
+    messages.add(
+      ChatMessage(
+        role: MessageRole.user,
+        text: text,
+        metadata: videoMeta != null
+            ? {'video_attachment': videoMeta}
+            : const {},
+      ),
+    );
 
     if (_ws != null) {
       _ws!.sendMessage(
@@ -209,14 +218,14 @@ class ChatProvider extends ChangeNotifier {
       final bytes = await File(localPath).readAsBytes();
       final request = http.MultipartRequest('POST', uri)
         ..files.add(
-            http.MultipartFile.fromBytes('file', bytes, filename: filename));
+          http.MultipartFile.fromBytes('file', bytes, filename: filename),
+        );
       final streamed = await _http.send(request);
       resp = await http.Response.fromStream(streamed);
     }
 
     if (resp.statusCode != 200) {
-      throw Exception(
-          'Upload failed: HTTP ${resp.statusCode} — ${resp.body}');
+      throw Exception('Upload failed: HTTP ${resp.statusCode} — ${resp.body}');
     }
     final body = jsonDecode(resp.body) as Map<String, dynamic>;
 
@@ -280,10 +289,9 @@ class ChatProvider extends ChangeNotifier {
           messages[index + 1].role == MessageRole.assistant) {
         oldAssistantText = messages[index + 1].text;
       }
-      userMsg.versions.add(MessageVersion(
-        userText: userMsg.text,
-        assistantText: oldAssistantText,
-      ));
+      userMsg.versions.add(
+        MessageVersion(userText: userMsg.text, assistantText: oldAssistantText),
+      );
     }
 
     // Cancel any in-progress streaming
@@ -391,8 +399,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void sendAudio(String base64, {String mime = 'audio/webm'}) {
-    messages.add(
-        ChatMessage(role: MessageRole.user, text: '[Voice message]'));
+    messages.add(ChatMessage(role: MessageRole.user, text: '[Voice message]'));
     _ws?.sendAudio(base64, mimeType: mime);
     notifyListeners();
   }
@@ -413,7 +420,9 @@ class ChatProvider extends ChangeNotifier {
   Future<void> respondApproval(bool approved) async {
     if (pendingApproval == null) return;
     final requestId = pendingApproval!.requestId;
-    _log('[Chat] respondApproval CALLED: id=$requestId, approved=$approved, ws=${_ws != null}');
+    _log(
+      '[Chat] respondApproval CALLED: id=$requestId, approved=$approved, ws=${_ws != null}',
+    );
 
     // ALWAYS use REST for approval — the WebSocket path has proven unreliable.
     // The REST endpoint directly resolves the pending future on the backend.
@@ -438,7 +447,9 @@ class ChatProvider extends ChangeNotifier {
 
     // REST failed — try WebSocket as last resort
     if (_ws == null) {
-      _log('[Chat] ERROR: respondApproval called but _ws is null! id=$requestId');
+      _log(
+        '[Chat] ERROR: respondApproval called but _ws is null! id=$requestId',
+      );
       lastError = 'No connection to backend. Please check your connection.';
       notifyListeners();
       return;
@@ -464,7 +475,8 @@ class ChatProvider extends ChangeNotifier {
 
     if (!ok) {
       _log('[Chat] respondApproval FINAL FAILURE: id=$requestId');
-      lastError = 'Approval could not be sent (connection lost). Please try again.';
+      lastError =
+          'Approval could not be sent (connection lost). Please try again.';
       // Keep pendingApproval so the user can retry.
       notifyListeners();
       return;
@@ -522,10 +534,9 @@ class ChatProvider extends ChangeNotifier {
         'assistant' => MessageRole.assistant,
         _ => MessageRole.system,
       };
-      messages.add(ChatMessage(
-        role: role,
-        text: msg['content']?.toString() ?? '',
-      ));
+      messages.add(
+        ChatMessage(role: role, text: msg['content']?.toString() ?? ''),
+      );
     }
     notifyListeners();
   }
@@ -570,8 +581,12 @@ class ChatProvider extends ChangeNotifier {
   // Agent log helper
   // ---------------------------------------------------------------------------
 
-  void _logAgent(String phase, String? tool, String message,
-      {String status = 'active'}) {
+  void _logAgent(
+    String phase,
+    String? tool,
+    String message, {
+    String status = 'active',
+  }) {
     agentLog.add({
       'phase': phase,
       if (tool != null) 'tool': tool,
@@ -607,15 +622,25 @@ class ChatProvider extends ChangeNotifier {
 
   void _onAssistantMessage(Map<String, dynamic> msg) {
     final text = msg['text'] as String? ?? '';
-    _log('[Chat] _onAssistantMessage: "${text.length > 100 ? '${text.substring(0, 100)}...' : text}"');
+    _log(
+      '[Chat] _onAssistantMessage: "${text.length > 100 ? '${text.substring(0, 100)}...' : text}"',
+    );
     // If we were streaming, finalize the buffer instead.
     if (isStreaming) {
       _finalizeStream();
     }
     if (text.isNotEmpty) {
       final meta = msg['metadata'] as Map<String, dynamic>? ?? {};
-      final agent = msg['agent_name'] as String? ?? meta['agent_name'] as String?;
-      messages.add(ChatMessage(role: MessageRole.assistant, text: text, metadata: meta, agentName: agent));
+      final agent =
+          msg['agent_name'] as String? ?? meta['agent_name'] as String?;
+      messages.add(
+        ChatMessage(
+          role: MessageRole.assistant,
+          text: text,
+          metadata: meta,
+          agentName: agent,
+        ),
+      );
 
       // If this is a response to an edited message, store in version history
       if (_editingUserIndex != null &&
@@ -654,10 +679,12 @@ class ChatProvider extends ChangeNotifier {
 
   void _finalizeStream() {
     if (_streamBuffer.isNotEmpty) {
-      messages.add(ChatMessage(
-        role: MessageRole.assistant,
-        text: _streamBuffer.toString(),
-      ));
+      messages.add(
+        ChatMessage(
+          role: MessageRole.assistant,
+          text: _streamBuffer.toString(),
+        ),
+      );
       _streamBuffer.clear();
     }
     isStreaming = false;
@@ -679,7 +706,9 @@ class ChatProvider extends ChangeNotifier {
 
   void _onToolResult(Map<String, dynamic> msg) {
     final result = msg['result']?.toString() ?? '';
-    final summary = result.length > 80 ? '${result.substring(0, 80)}...' : result;
+    final summary = result.length > 80
+        ? '${result.substring(0, 80)}...'
+        : result;
     _logAgent('execute', activeTool, 'Tool result: $summary', status: 'done');
     activeTool = null;
     notifyListeners();
@@ -717,7 +746,11 @@ class ChatProvider extends ChangeNotifier {
       try {
         preFlightData = json.decode(text) as Map<String, dynamic>;
       } catch (_) {
-        preFlightData = {'goal': text, 'steps': <Map<String, dynamic>>[], 'timeout': 3};
+        preFlightData = {
+          'goal': text,
+          'steps': <Map<String, dynamic>>[],
+          'timeout': 3,
+        };
       }
       notifyListeners();
       return;
@@ -725,16 +758,18 @@ class ChatProvider extends ChangeNotifier {
 
     // Detect delegation status and add a system message for visibility
     if (text.startsWith('Delegation:')) {
-      messages.add(ChatMessage(
-        role: MessageRole.system,
-        text: text,
-        agentName: 'delegation',
-      ));
+      messages.add(
+        ChatMessage(
+          role: MessageRole.system,
+          text: text,
+          agentName: 'delegation',
+        ),
+      );
     }
 
     statusText = text;
     if (statusText.isNotEmpty) {
-      isWaitingForResponse = false;  // Backend responded, show status instead
+      isWaitingForResponse = false; // Backend responded, show status instead
       _logAgent('info', null, statusText);
     }
     notifyListeners();
@@ -801,10 +836,7 @@ class ChatProvider extends ChangeNotifier {
     final feedbackId = msg['feedback_id'] as String? ?? '';
     final question = msg['question'] as String? ?? '';
     _log('[Chat] _onFeedbackFollowup: feedbackId=$feedbackId');
-    pendingFeedbackFollowup = {
-      'feedback_id': feedbackId,
-      'question': question,
-    };
+    pendingFeedbackFollowup = {'feedback_id': feedbackId, 'question': question};
     notifyListeners();
   }
 }

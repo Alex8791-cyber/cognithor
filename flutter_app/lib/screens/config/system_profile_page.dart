@@ -124,7 +124,10 @@ class _SystemProfilePageState extends State<SystemProfilePage> {
           children: [
             Icon(Icons.error_outline, size: 48, color: CognithorTheme.red),
             const SizedBox(height: 16),
-            Text(_error!, style: TextStyle(color: CognithorTheme.textSecondary)),
+            Text(
+              _error!,
+              style: TextStyle(color: CognithorTheme.textSecondary),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _load,
@@ -150,7 +153,8 @@ class _SystemProfilePageState extends State<SystemProfilePage> {
         const SizedBox(height: 16),
         // Detection results
         ...results.entries.map(
-            (e) => _buildDetectionTile(e.key, e.value as Map<String, dynamic>)),
+          (e) => _buildDetectionTile(e.key, e.value as Map<String, dynamic>),
+        ),
         const SizedBox(height: 24),
         // Rescan button
         Center(
@@ -172,7 +176,10 @@ class _SystemProfilePageState extends State<SystemProfilePage> {
   }
 
   Widget _buildHeaderCard(
-      AppLocalizations l, String tier, String recommendedMode) {
+    AppLocalizations l,
+    String tier,
+    String recommendedMode,
+  ) {
     final color = _tierColor(tier);
 
     return Card(
@@ -194,13 +201,17 @@ class _SystemProfilePageState extends State<SystemProfilePage> {
                   ),
                   const SizedBox(height: 6),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: color.withValues(alpha: 0.4), width: 1),
+                        color: color.withValues(alpha: 0.4),
+                        width: 1,
+                      ),
                     ),
                     child: Text(
                       tier.toUpperCase(),
@@ -293,7 +304,8 @@ class _SystemProfilePageState extends State<SystemProfilePage> {
                 ),
               ]
             : rawData.entries
-                .map((e) => ListTile(
+                  .map(
+                    (e) => ListTile(
                       dense: true,
                       visualDensity: VisualDensity.compact,
                       title: Text(
@@ -308,8 +320,9 @@ class _SystemProfilePageState extends State<SystemProfilePage> {
                         '${e.value}',
                         style: const TextStyle(fontSize: 12),
                       ),
-                    ))
-                .toList(),
+                    ),
+                  )
+                  .toList(),
       ),
     );
   }

@@ -71,8 +71,10 @@ class ResearchHistoryList extends StatelessWidget {
           onDismissed: (_) => onDelete(item.id),
           child: ListTile(
             onTap: () => onSelect(item.id),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
             title: Text(
               item.query,
               maxLines: 2,
@@ -113,8 +115,7 @@ class ResearchHistoryList extends StatelessWidget {
               ],
             ),
             trailing: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: confColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),

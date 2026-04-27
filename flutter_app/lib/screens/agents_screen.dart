@@ -208,11 +208,13 @@ class _AgentCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.smart_toy, size: 18, color: CognithorTheme.sectionAdmin),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(name, style: theme.textTheme.titleMedium),
+                const Icon(
+                  Icons.smart_toy,
+                  size: 18,
+                  color: CognithorTheme.sectionAdmin,
                 ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(name, style: theme.textTheme.titleMedium)),
                 Switch(
                   value: enabled,
                   activeTrackColor: CognithorTheme.sectionAdmin,
@@ -230,7 +232,11 @@ class _AgentCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.delete_outline, size: 18, color: CognithorTheme.red),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: CognithorTheme.red,
+                  ),
                   onPressed: onDelete,
                   tooltip: l.delete,
                   padding: EdgeInsets.zero,
@@ -309,10 +315,7 @@ class _AgentCard extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '$label: $value',
-          style: TextStyle(
-            color: CognithorTheme.textSecondary,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: CognithorTheme.textSecondary, fontSize: 12),
         ),
       ],
     );

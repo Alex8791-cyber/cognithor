@@ -85,10 +85,7 @@ class _GradientBackgroundState extends State<GradientBackground>
 // ── Gradient Painter ──────────────────────────────────────────────────────
 
 class _GradientPainter extends CustomPainter {
-  _GradientPainter({
-    required this.angle,
-    required this.isDark,
-  });
+  _GradientPainter({required this.angle, required this.isDark});
 
   final double angle;
   final bool isDark;
@@ -111,14 +108,15 @@ class _GradientPainter extends CustomPainter {
       size.height * 0.2 + math.sin(angle) * size.height * 0.05,
     );
     final paint1 = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          accentColor.withValues(alpha: 0.05),
-          accentColor.withValues(alpha: 0.0),
-        ],
-      ).createShader(
-        Rect.fromCircle(center: center1, radius: size.width * 0.6),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              accentColor.withValues(alpha: 0.05),
+              accentColor.withValues(alpha: 0.0),
+            ],
+          ).createShader(
+            Rect.fromCircle(center: center1, radius: size.width * 0.6),
+          );
     canvas.drawRect(Offset.zero & size, paint1);
 
     // Bottom-left glow — counter-orbits.
@@ -127,14 +125,15 @@ class _GradientPainter extends CustomPainter {
       size.height * 0.8 + math.sin(angle + math.pi) * size.height * 0.05,
     );
     final paint2 = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          accentColor.withValues(alpha: 0.03),
-          accentColor.withValues(alpha: 0.0),
-        ],
-      ).createShader(
-        Rect.fromCircle(center: center2, radius: size.width * 0.5),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              accentColor.withValues(alpha: 0.03),
+              accentColor.withValues(alpha: 0.0),
+            ],
+          ).createShader(
+            Rect.fromCircle(center: center2, radius: size.width * 0.5),
+          );
     canvas.drawRect(Offset.zero & size, paint2);
   }
 
@@ -147,13 +146,8 @@ class _GradientPainter extends CustomPainter {
     );
     final paint = Paint()
       ..shader = RadialGradient(
-        colors: [
-          blue.withValues(alpha: 0.04),
-          blue.withValues(alpha: 0.0),
-        ],
-      ).createShader(
-        Rect.fromCircle(center: center, radius: size.width * 0.7),
-      );
+        colors: [blue.withValues(alpha: 0.04), blue.withValues(alpha: 0.0)],
+      ).createShader(Rect.fromCircle(center: center, radius: size.width * 0.7));
     canvas.drawRect(Offset.zero & size, paint);
   }
 
@@ -199,10 +193,7 @@ class _Particle {
 }
 
 class _ParticlePainter extends CustomPainter {
-  _ParticlePainter({
-    required this.time,
-    required this.color,
-  });
+  _ParticlePainter({required this.time, required this.color});
 
   /// Elapsed time in seconds.
   final double time;
@@ -238,9 +229,11 @@ class _ParticlePainter extends CustomPainter {
     final paint = Paint()..color = color.withValues(alpha: 0.05);
 
     for (final p in _particles!) {
-      final x = (p.baseX + math.sin(time * p.speedX + p.phaseX) * p.driftX) *
+      final x =
+          (p.baseX + math.sin(time * p.speedX + p.phaseX) * p.driftX) *
           size.width;
-      final y = (p.baseY + math.cos(time * p.speedY + p.phaseY) * p.driftY) *
+      final y =
+          (p.baseY + math.cos(time * p.speedY + p.phaseY) * p.driftY) *
           size.height;
       canvas.drawCircle(Offset(x, y), p.radius, paint);
     }

@@ -45,10 +45,9 @@ class _LlmBackendsScreenState extends State<LlmBackendsScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(ctx)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.2),
+                      color: Theme.of(
+                        ctx,
+                      ).colorScheme.primary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text('Active', style: TextStyle(fontSize: 11)),
@@ -56,9 +55,9 @@ class _LlmBackendsScreenState extends State<LlmBackendsScreen> {
                 : const Icon(Icons.chevron_right),
             onTap: () {
               if (b.name == 'vllm') {
-                Navigator.of(ctx).push(MaterialPageRoute(
-                  builder: (_) => const VllmSetupScreen(),
-                ));
+                Navigator.of(ctx).push(
+                  MaterialPageRoute(builder: (_) => const VllmSetupScreen()),
+                );
               }
             },
           );

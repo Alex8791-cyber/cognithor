@@ -23,7 +23,11 @@ class ScheduledPanel extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.schedule, size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                Icon(
+                  Icons.schedule,
+                  size: 48,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   l.noScheduledTasks,
@@ -53,13 +57,23 @@ class ScheduledPanel extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               if (enabled.isNotEmpty) ...[
-                _sectionHeader(theme, l.activeJobs, enabled.length, Colors.green),
+                _sectionHeader(
+                  theme,
+                  l.activeJobs,
+                  enabled.length,
+                  Colors.green,
+                ),
                 const SizedBox(height: 8),
                 ...enabled.map((j) => _CronJobCard(job: j)),
               ],
               if (paused.isNotEmpty) ...[
                 const SizedBox(height: 20),
-                _sectionHeader(theme, l.pausedJobs, paused.length, Colors.orange),
+                _sectionHeader(
+                  theme,
+                  l.pausedJobs,
+                  paused.length,
+                  Colors.orange,
+                ),
                 const SizedBox(height: 8),
                 ...paused.map((j) => _CronJobCard(job: j)),
               ],
@@ -79,7 +93,12 @@ class ScheduledPanel extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
-        Text(label, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -87,7 +106,14 @@ class ScheduledPanel extends StatelessWidget {
             color: color.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text('$count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+          child: Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
         ),
       ],
     );
@@ -116,7 +142,9 @@ class _CronJobCard extends StatelessWidget {
                 Icon(
                   _iconForAction(job.name),
                   size: 20,
-                  color: job.enabled ? CognithorTheme.accent : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  color: job.enabled
+                      ? CognithorTheme.accent
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -124,14 +152,17 @@ class _CronJobCard extends StatelessWidget {
                     job.name.replaceAll('_', ' ').toUpperCase(),
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: job.enabled ? null : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: job.enabled
+                          ? null
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ),
                 // Pause/Resume toggle
                 Switch(
                   value: job.enabled,
-                  onChanged: (_) => context.read<CronProvider>().toggleJob(job.name),
+                  onChanged: (_) =>
+                      context.read<CronProvider>().toggleJob(job.name),
                   activeThumbColor: CognithorTheme.accent,
                 ),
               ],
@@ -140,7 +171,11 @@ class _CronJobCard extends StatelessWidget {
             // Schedule + next run
             Row(
               children: [
-                Icon(Icons.access_time, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   job.scheduleLabel,
@@ -150,7 +185,11 @@ class _CronJobCard extends StatelessWidget {
                 ),
                 if (job.nextRun != null) ...[
                   const SizedBox(width: 12),
-                  Icon(Icons.play_arrow, size: 14, color: Colors.green.withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.play_arrow,
+                    size: 14,
+                    color: Colors.green.withValues(alpha: 0.6),
+                  ),
                   const SizedBox(width: 2),
                   Text(
                     '${l.nextRun}: ${_formatNextRun(job.nextRun!)}',
@@ -165,7 +204,9 @@ class _CronJobCard extends StatelessWidget {
             const SizedBox(height: 4),
             // Prompt preview
             Text(
-              job.prompt.length > 80 ? '${job.prompt.substring(0, 80)}...' : job.prompt,
+              job.prompt.length > 80
+                  ? '${job.prompt.substring(0, 80)}...'
+                  : job.prompt,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 fontSize: 11,
@@ -180,7 +221,8 @@ class _CronJobCard extends StatelessWidget {
               children: [
                 _tag(theme, job.channel, Icons.send, Colors.blue),
                 _tag(theme, job.model, Icons.psychology, Colors.purple),
-                if (job.agent.isNotEmpty) _tag(theme, job.agent, Icons.smart_toy, Colors.teal),
+                if (job.agent.isNotEmpty)
+                  _tag(theme, job.agent, Icons.smart_toy, Colors.teal),
               ],
             ),
           ],
@@ -201,16 +243,21 @@ class _CronJobCard extends StatelessWidget {
         children: [
           Icon(icon, size: 10, color: color.withValues(alpha: 0.7)),
           const SizedBox(width: 3),
-          Text(label, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8))),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8)),
+          ),
         ],
       ),
     );
   }
 
   IconData _iconForAction(String name) {
-    if (name.contains('briefing') || name.contains('morning')) return Icons.wb_sunny;
+    if (name.contains('briefing') || name.contains('morning'))
+      return Icons.wb_sunny;
     if (name.contains('review')) return Icons.rate_review;
-    if (name.contains('memory') || name.contains('maintenance')) return Icons.memory;
+    if (name.contains('memory') || name.contains('maintenance'))
+      return Icons.memory;
     if (name.contains('scan') || name.contains('reddit')) return Icons.radar;
     if (name.contains('backup')) return Icons.backup;
     return Icons.schedule;

@@ -7,7 +7,14 @@ import 'package:cognithor_ui/widgets/kanban/kanban_column.dart';
 class KanbanBoard extends StatelessWidget {
   const KanbanBoard({super.key});
 
-  static const _columnOrder = ['todo', 'in_progress', 'pending_review', 'verifying', 'done', 'blocked'];
+  static const _columnOrder = [
+    'todo',
+    'in_progress',
+    'pending_review',
+    'verifying',
+    'done',
+    'blocked',
+  ];
 
   static const _columnColors = {
     'todo': Colors.grey,

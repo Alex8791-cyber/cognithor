@@ -5,11 +5,7 @@ import 'package:cognithor_ui/widgets/cognithor_progress_bar.dart';
 
 /// Shows plan details when plan_detail WS message arrives.
 class PlanDetailPanel extends StatelessWidget {
-  const PlanDetailPanel({
-    super.key,
-    required this.plan,
-    required this.onClose,
-  });
+  const PlanDetailPanel({super.key, required this.plan, required this.onClose});
 
   final Map<String, dynamic> plan;
   final VoidCallback onClose;
@@ -21,7 +17,9 @@ class PlanDetailPanel extends StatelessWidget {
     final confidence = (plan['confidence'] as num?)?.toDouble() ?? 0.0;
     final steps = (plan['steps'] as List?) ?? [];
     final iteration = plan['iteration'] ?? 1;
-    final confColor = confidence > 0.7 ? CognithorTheme.success : CognithorTheme.warning;
+    final confColor = confidence > 0.7
+        ? CognithorTheme.success
+        : CognithorTheme.warning;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -111,11 +109,7 @@ class PlanDetailPanel extends StatelessWidget {
             }),
           ],
           const SizedBox(height: 6),
-          CognithorProgressBar(
-            value: confidence,
-            color: confColor,
-            height: 4,
-          ),
+          CognithorProgressBar(value: confidence, color: confColor, height: 4),
         ],
       ),
     );

@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cognithor_ui/theme/cognithor_theme.dart';
 
 class PerformanceBadge extends StatelessWidget {
-  const PerformanceBadge({super.key, required this.score, this.compact = false});
+  const PerformanceBadge({
+    super.key,
+    required this.score,
+    this.compact = false,
+  });
 
   final int score;
   final bool compact;

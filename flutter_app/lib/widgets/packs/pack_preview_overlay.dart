@@ -24,12 +24,7 @@ class PackPreviewOverlay extends StatelessWidget {
     final theme = Theme.of(context);
     return Stack(
       children: [
-        IgnorePointer(
-          child: Opacity(
-            opacity: 0.35,
-            child: child,
-          ),
-        ),
+        IgnorePointer(child: Opacity(opacity: 0.35, child: child)),
         Positioned.fill(
           child: Center(
             child: Container(
@@ -38,7 +33,9 @@ class PackPreviewOverlay extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: pack.accentColor.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: pack.accentColor.withValues(alpha: 0.4),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: pack.accentColor.withValues(alpha: 0.1),
@@ -56,7 +53,11 @@ class PackPreviewOverlay extends StatelessWidget {
                       color: pack.accentColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.lock_outline, color: pack.accentColor, size: 32),
+                    child: Icon(
+                      Icons.lock_outline,
+                      color: pack.accentColor,
+                      size: 32,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -114,7 +115,10 @@ class PackPreviewOverlay extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: pack.accentColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ],

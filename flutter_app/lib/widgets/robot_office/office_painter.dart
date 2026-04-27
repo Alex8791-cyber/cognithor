@@ -233,8 +233,7 @@ class OfficePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant OfficePainter old) =>
-      true; // animation-driven — always repaint
+  bool shouldRepaint(covariant OfficePainter old) => true; // animation-driven — always repaint
 
   // ── Helpers ────────────────────────────────────────────────────────
 
@@ -249,12 +248,18 @@ class OfficePainter extends CustomPainter {
     return 1.0 - (h - 17) / 3.0; // dusk transition
   }
 
-  Color _wallColor() => _isDark ? const Color(0xFF1a1a2e) : const Color(0xFFe8e8f0);
-  Color _floorBase() => _isDark ? const Color(0xFF2E2E3E) : const Color(0xFFD8D0C8);
-  Color _floorAlt() => _isDark ? const Color(0xFF343448) : const Color(0xFFE0D8D0);
-  Color _furnitureDark() => _isDark ? const Color(0xFF2c2c44) : const Color(0xFFb8b8c8);
-  Color _furnitureLight() => _isDark ? const Color(0xFF3a3a56) : const Color(0xFFcacad8);
-  Color _textCol() => _isDark ? CognithorTheme.textPrimary : const Color(0xFF1A1A2E);
+  Color _wallColor() =>
+      _isDark ? const Color(0xFF1a1a2e) : const Color(0xFFe8e8f0);
+  Color _floorBase() =>
+      _isDark ? const Color(0xFF2E2E3E) : const Color(0xFFD8D0C8);
+  Color _floorAlt() =>
+      _isDark ? const Color(0xFF343448) : const Color(0xFFE0D8D0);
+  Color _furnitureDark() =>
+      _isDark ? const Color(0xFF2c2c44) : const Color(0xFFb8b8c8);
+  Color _furnitureLight() =>
+      _isDark ? const Color(0xFF3a3a56) : const Color(0xFFcacad8);
+  Color _textCol() =>
+      _isDark ? CognithorTheme.textPrimary : const Color(0xFF1A1A2E);
 
   double _osc(double speed, [double phase = 0]) => sin(time * speed + phase);
 
@@ -263,14 +268,10 @@ class OfficePainter extends CustomPainter {
   void _drawCeiling(Canvas canvas, Size s) {
     final rect = Rect.fromLTWH(0, 0, s.width, s.height * 0.18);
     final paint = Paint()
-      ..shader = ui.Gradient.linear(
-        rect.topCenter,
-        rect.bottomCenter,
-        [
-          _isDark ? const Color(0xFF12122a) : const Color(0xFFd8d8e8),
-          _wallColor(),
-        ],
-      );
+      ..shader = ui.Gradient.linear(rect.topCenter, rect.bottomCenter, [
+        _isDark ? const Color(0xFF12122a) : const Color(0xFFd8d8e8),
+        _wallColor(),
+      ]);
     canvas.drawRect(rect, paint);
   }
 
@@ -281,11 +282,10 @@ class OfficePainter extends CustomPainter {
     final wallBottom = s.height * 0.45;
     final rect = Rect.fromLTWH(0, wallTop, s.width, wallBottom - wallTop);
     final paint = Paint()
-      ..shader = ui.Gradient.linear(
-        rect.topCenter,
-        rect.bottomCenter,
-        [_wallColor(), _wallColor().withValues(alpha: 0.95)],
-      );
+      ..shader = ui.Gradient.linear(rect.topCenter, rect.bottomCenter, [
+        _wallColor(),
+        _wallColor().withValues(alpha: 0.95),
+      ]);
     canvas.drawRect(rect, paint);
 
     // subtle baseboard
@@ -378,7 +378,14 @@ class OfficePainter extends CustomPainter {
     );
   }
 
-  void _drawSun(Canvas canvas, double wx, double wy, double ww, double wh, double hour) {
+  void _drawSun(
+    Canvas canvas,
+    double wx,
+    double wy,
+    double ww,
+    double wh,
+    double hour,
+  ) {
     // Sun position — arc across window
     double t;
     if (hour < 12) {
@@ -392,14 +399,10 @@ class OfficePainter extends CustomPainter {
 
     // Glow
     final glowPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(sunX, sunY),
-        sunR * 4,
-        [
-          const Color(0x66FFD700),
-          const Color(0x00FFD700),
-        ],
-      );
+      ..shader = ui.Gradient.radial(Offset(sunX, sunY), sunR * 4, [
+        const Color(0x66FFD700),
+        const Color(0x00FFD700),
+      ]);
     canvas.drawCircle(Offset(sunX, sunY), sunR * 4, glowPaint);
 
     // Sun body
@@ -425,21 +428,24 @@ class OfficePainter extends CustomPainter {
     }
   }
 
-  void _drawMoon(Canvas canvas, double wx, double wy, double ww, double wh, double hour) {
+  void _drawMoon(
+    Canvas canvas,
+    double wx,
+    double wy,
+    double ww,
+    double wh,
+    double hour,
+  ) {
     final moonX = wx + ww * 0.65;
     final moonY = wy + wh * 0.30;
     final moonR = ww * 0.055;
 
     // Moon glow
     final glowPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(moonX, moonY),
-        moonR * 5,
-        [
-          const Color(0x33C0C0FF),
-          const Color(0x00C0C0FF),
-        ],
-      );
+      ..shader = ui.Gradient.radial(Offset(moonX, moonY), moonR * 5, [
+        const Color(0x33C0C0FF),
+        const Color(0x00C0C0FF),
+      ]);
     canvas.drawCircle(Offset(moonX, moonY), moonR * 5, glowPaint);
 
     // Moon body (crescent via clipping with offset circle)
@@ -510,11 +516,17 @@ class OfficePainter extends CustomPainter {
 
     // Gold neon glow
     final glowPaint = Paint()
-      ..color = const Color(0xFFFFD700).withValues(alpha: 0.20 + 0.08 * _osc(1.5))
+      ..color = const Color(
+        0xFFFFD700,
+      ).withValues(alpha: 0.20 + 0.08 * _osc(1.5))
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(sx, sy), width: s.width * 0.18, height: 22),
+        Rect.fromCenter(
+          center: Offset(sx, sy),
+          width: s.width * 0.18,
+          height: 22,
+        ),
         const Radius.circular(4),
       ),
       glowPaint,
@@ -523,10 +535,15 @@ class OfficePainter extends CustomPainter {
     // Sign background
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(sx, sy), width: s.width * 0.18, height: 22),
+        Rect.fromCenter(
+          center: Offset(sx, sy),
+          width: s.width * 0.18,
+          height: 22,
+        ),
         const Radius.circular(4),
       ),
-      Paint()..color = (_isDark ? const Color(0xFF1a1a2e) : const Color(0xFFd0d0dc)),
+      Paint()
+        ..color = (_isDark ? const Color(0xFF1a1a2e) : const Color(0xFFd0d0dc)),
     );
 
     // Text
@@ -555,11 +572,17 @@ class OfficePainter extends CustomPainter {
 
     // Board
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(bx, by, bw, bh), const Radius.circular(3)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(bx, by, bw, bh),
+        const Radius.circular(3),
+      ),
       Paint()..color = Colors.white.withValues(alpha: _isDark ? 0.9 : 1.0),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(bx, by, bw, bh), const Radius.circular(3)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(bx, by, bw, bh),
+        const Radius.circular(3),
+      ),
       Paint()
         ..color = const Color(0xFF888888)
         ..style = PaintingStyle.stroke
@@ -571,8 +594,14 @@ class OfficePainter extends CustomPainter {
       ..color = const Color(0xFF3366CC)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
-    canvas.drawRect(Rect.fromLTWH(bx + bw * 0.1, by + bh * 0.15, bw * 0.25, bh * 0.25), pen);
-    canvas.drawRect(Rect.fromLTWH(bx + bw * 0.55, by + bh * 0.15, bw * 0.25, bh * 0.25), pen);
+    canvas.drawRect(
+      Rect.fromLTWH(bx + bw * 0.1, by + bh * 0.15, bw * 0.25, bh * 0.25),
+      pen,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(bx + bw * 0.55, by + bh * 0.15, bw * 0.25, bh * 0.25),
+      pen,
+    );
     canvas.drawLine(
       Offset(bx + bw * 0.35, by + bh * 0.275),
       Offset(bx + bw * 0.55, by + bh * 0.275),
@@ -609,8 +638,12 @@ class OfficePainter extends CustomPainter {
 
     // Board background
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(bx, by, bw, bh), const Radius.circular(3)),
-      Paint()..color = _isDark ? const Color(0xFF2a2a44) : const Color(0xFFe0e0e8),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(bx, by, bw, bh),
+        const Radius.circular(3),
+      ),
+      Paint()
+        ..color = _isDark ? const Color(0xFF2a2a44) : const Color(0xFFe0e0e8),
     );
 
     // ── "Sprint Board" header strip ──
@@ -641,7 +674,11 @@ class OfficePainter extends CustomPainter {
     final colHeaderY = by + headerH;
     final colHeaderH = bh * 0.10;
     final headers = ['To Do', 'WIP', 'Done'];
-    final headerColors = [CognithorTheme.orange, CognithorTheme.accent, CognithorTheme.green];
+    final headerColors = [
+      CognithorTheme.orange,
+      CognithorTheme.accent,
+      CognithorTheme.green,
+    ];
     // Map activePhase (0-4) to kanban columns: 0-1 = To Do, 2-3 = WIP, 4 = Done
     final highlightCol = activePhase <= 1 ? 0 : (activePhase <= 3 ? 1 : 2);
     for (int c = 0; c < 3; c++) {
@@ -649,19 +686,32 @@ class OfficePainter extends CustomPainter {
       final isActive = c == highlightCol && activePhase > 0;
       canvas.drawRect(
         Rect.fromLTWH(hx, colHeaderY, colW, colHeaderH),
-        Paint()..color = headerColors[c].withValues(alpha: isActive ? 0.55 : 0.25),
+        Paint()
+          ..color = headerColors[c].withValues(alpha: isActive ? 0.55 : 0.25),
       );
       // Active column glow highlight
       if (isActive) {
         canvas.drawRect(
-          Rect.fromLTWH(hx, colHeaderY + colHeaderH, colW, bh - headerH - colHeaderH),
-          Paint()..color = headerColors[c].withValues(alpha: 0.08 + 0.04 * _osc(2.0)),
+          Rect.fromLTWH(
+            hx,
+            colHeaderY + colHeaderH,
+            colW,
+            bh - headerH - colHeaderH,
+          ),
+          Paint()
+            ..color = headerColors[c].withValues(
+              alpha: 0.08 + 0.04 * _osc(2.0),
+            ),
         );
       }
       final tp = TextPainter(
         text: TextSpan(
           text: headers[c],
-          style: TextStyle(color: _textCol(), fontSize: 4.5, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: _textCol(),
+            fontSize: 4.5,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -682,8 +732,8 @@ class OfficePainter extends CustomPainter {
       final statusKeys = c == 0
           ? ['backlog']
           : c == 1
-              ? ['in_progress']
-              : ['done', 'verifying'];
+          ? ['in_progress']
+          : ['done', 'verifying'];
       // Also include 'blocked' in column 1 (WIP)
       final dotStatusColors = <String, Color>{
         'backlog': const Color(0xFF9CA3AF),
@@ -730,14 +780,20 @@ class OfficePainter extends CustomPainter {
         )..layout();
         overflowTp.paint(
           canvas,
-          Offset(hx + colW * 0.25 + 2 * dotSpacingX, dotStartY + (maxDots ~/ 2 - 1) * dotSpacingY - 1),
+          Offset(
+            hx + colW * 0.25 + 2 * dotSpacingX,
+            dotStartY + (maxDots ~/ 2 - 1) * dotSpacingY - 1,
+          ),
         );
       }
     }
 
     // Border
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(bx, by, bw, bh), const Radius.circular(3)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(bx, by, bw, bh),
+        const Radius.circular(3),
+      ),
       Paint()
         ..color = _furnitureDark()
         ..style = PaintingStyle.stroke
@@ -773,7 +829,11 @@ class OfficePainter extends CustomPainter {
           ? const Color(0xFFFFE0A0) // warm yellow at night or high load
           : Colors.white;
       canvas.drawOval(
-        Rect.fromCenter(center: Offset(lx, ly + 10), width: lw * 1.3, height: 30),
+        Rect.fromCenter(
+          center: Offset(lx, ly + 10),
+          width: lw * 1.3,
+          height: 30,
+        ),
         Paint()
           ..color = glowColor.withValues(alpha: glowAlpha)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15),
@@ -781,10 +841,17 @@ class OfficePainter extends CustomPainter {
 
       // Warm light strip on fixture — visible at night or under high load
       if (nightIntensity > 0.1 || systemLoad > 0.2) {
-        final stripAlpha = ((nightIntensity + systemLoad) * 0.6).clamp(0.0, 1.0);
+        final stripAlpha = ((nightIntensity + systemLoad) * 0.6).clamp(
+          0.0,
+          1.0,
+        );
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset(lx, ly + 1), width: lw * 0.9, height: 3),
+            Rect.fromCenter(
+              center: Offset(lx, ly + 1),
+              width: lw * 0.9,
+              height: 3,
+            ),
             const Radius.circular(1.5),
           ),
           Paint()
@@ -802,12 +869,14 @@ class OfficePainter extends CustomPainter {
 
     // Base floor gradient — warm light gray laminate
     final floorPaint = Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(0, floorTop),
-        Offset(0, s.height),
-        [_floorBase(), _floorAlt()],
-      );
-    canvas.drawRect(Rect.fromLTWH(0, floorTop, s.width, floorHeight), floorPaint);
+      ..shader = ui.Gradient.linear(Offset(0, floorTop), Offset(0, s.height), [
+        _floorBase(),
+        _floorAlt(),
+      ]);
+    canvas.drawRect(
+      Rect.fromLTWH(0, floorTop, s.width, floorHeight),
+      floorPaint,
+    );
 
     // Laminate plank pattern (horizontal long planks)
     final plankH = s.height * 0.035;
@@ -829,11 +898,7 @@ class OfficePainter extends CustomPainter {
       final plankW = s.width / 4;
       final offset = (r.isOdd ? plankW * 0.5 : 0.0);
       for (double jx = offset; jx < s.width; jx += plankW) {
-        canvas.drawLine(
-          Offset(jx, py),
-          Offset(jx, py + plankH),
-          plankGap,
-        );
+        canvas.drawLine(Offset(jx, py), Offset(jx, py + plankH), plankGap);
       }
 
       // Subtle wood-grain direction lines within planks
@@ -873,7 +938,9 @@ class OfficePainter extends CustomPainter {
         Rect.fromCenter(center: Offset(cx, cy), width: cw, height: ch),
         const Radius.circular(3),
       ),
-      Paint()..color = (_isDark ? const Color(0xFF3D2B2B) : const Color(0xFFC4A882)).withValues(alpha: 0.6),
+      Paint()
+        ..color = (_isDark ? const Color(0xFF3D2B2B) : const Color(0xFFC4A882))
+            .withValues(alpha: 0.6),
     );
     // Rug border pattern
     canvas.drawRRect(
@@ -882,18 +949,24 @@ class OfficePainter extends CustomPainter {
         const Radius.circular(2),
       ),
       Paint()
-        ..color = (_isDark ? const Color(0xFF5C3A3A) : const Color(0xFFB8956E)).withValues(alpha: 0.4)
+        ..color = (_isDark ? const Color(0xFF5C3A3A) : const Color(0xFFB8956E))
+            .withValues(alpha: 0.4)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
     // Inner rug pattern line
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cx, cy), width: cw - 10, height: ch - 10),
+        Rect.fromCenter(
+          center: Offset(cx, cy),
+          width: cw - 10,
+          height: ch - 10,
+        ),
         const Radius.circular(1),
       ),
       Paint()
-        ..color = (_isDark ? const Color(0xFF6B4444) : const Color(0xFFA07850)).withValues(alpha: 0.3)
+        ..color = (_isDark ? const Color(0xFF6B4444) : const Color(0xFFA07850))
+            .withValues(alpha: 0.3)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.8,
     );
@@ -909,7 +982,10 @@ class OfficePainter extends CustomPainter {
 
     // Cable from desk2 to server
     final path = Path();
-    path.moveTo(s.width * _desk2.dx + s.width * 0.06, s.height * _desk2.dy + s.height * 0.05);
+    path.moveTo(
+      s.width * _desk2.dx + s.width * 0.06,
+      s.height * _desk2.dy + s.height * 0.05,
+    );
     path.quadraticBezierTo(
       s.width * 0.75,
       s.height * 0.55,
@@ -920,7 +996,10 @@ class OfficePainter extends CustomPainter {
 
     // Cable from desk1 to desk2 (back row)
     final path2 = Path();
-    path2.moveTo(s.width * _desk1.dx + s.width * 0.06, s.height * _desk1.dy + s.height * 0.05);
+    path2.moveTo(
+      s.width * _desk1.dx + s.width * 0.06,
+      s.height * _desk1.dy + s.height * 0.05,
+    );
     path2.quadraticBezierTo(
       s.width * 0.32,
       s.height * 0.58,
@@ -931,7 +1010,10 @@ class OfficePainter extends CustomPainter {
 
     // Cable from desk5 to server (front row connection)
     final path3 = Path();
-    path3.moveTo(s.width * _desk5.dx + s.width * 0.06, s.height * _desk5.dy + s.height * 0.05);
+    path3.moveTo(
+      s.width * _desk5.dx + s.width * 0.06,
+      s.height * _desk5.dy + s.height * 0.05,
+    );
     path3.quadraticBezierTo(
       s.width * 0.80,
       s.height * 0.62,
@@ -982,7 +1064,12 @@ class OfficePainter extends CustomPainter {
     );
     // Back-right
     canvas.drawRect(
-      Rect.fromLTWH(dx + dw / 2 - 7 - legW + 0.5, dy + dh, legW - 0.5, legH * 0.3),
+      Rect.fromLTWH(
+        dx + dw / 2 - 7 - legW + 0.5,
+        dy + dh,
+        legW - 0.5,
+        legH * 0.3,
+      ),
       legPaint,
     );
 
@@ -998,7 +1085,11 @@ class OfficePainter extends CustomPainter {
         ..shader = ui.Gradient.linear(
           Offset(dx - dw / 2, dy),
           Offset(dx + dw / 2, dy + dh),
-          [oakTop, oakTop.withValues(alpha: 0.85), oakEdge.withValues(alpha: 0.6)],
+          [
+            oakTop,
+            oakTop.withValues(alpha: 0.85),
+            oakEdge.withValues(alpha: 0.6),
+          ],
           [0.0, 0.7, 1.0],
         ),
     );
@@ -1047,7 +1138,12 @@ class OfficePainter extends CustomPainter {
     // Outer monitor frame (bezel)
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(monX - bezel, monY - bezel, monW + bezel * 2, monH + bezel * 2),
+        Rect.fromLTWH(
+          monX - bezel,
+          monY - bezel,
+          monW + bezel * 2,
+          monH + bezel * 2,
+        ),
         const Radius.circular(3),
       ),
       Paint()..color = const Color(0xFF222233),
@@ -1072,7 +1168,10 @@ class OfficePainter extends CustomPainter {
     canvas.drawCircle(
       Offset(dx, monY - bezel / 2 - 0.5),
       0.7,
-      Paint()..color = const Color(0xFF00E676).withValues(alpha: 0.3 + 0.2 * _osc(1.5, index * 3.0)),
+      Paint()
+        ..color = const Color(
+          0xFF00E676,
+        ).withValues(alpha: 0.3 + 0.2 * _osc(1.5, index * 3.0)),
     );
 
     // Animated screen content — colored code lines / UI mockup
@@ -1097,7 +1196,9 @@ class OfficePainter extends CustomPainter {
           Offset(monX + 3 + indent, adjustedY),
           Offset(monX + 3 + indent + lineW, adjustedY),
           Paint()
-            ..color = codeColors[colorIdx].withValues(alpha: 0.45 + 0.15 * _osc(3, l + index * 5.0))
+            ..color = codeColors[colorIdx].withValues(
+              alpha: 0.45 + 0.15 * _osc(3, l + index * 5.0),
+            )
             ..strokeWidth = 1.0,
         );
         // Second segment on same line (different color for syntax highlighting)
@@ -1127,7 +1228,8 @@ class OfficePainter extends CustomPainter {
       ),
       Paint()
         ..color = CognithorTheme.accent.withValues(
-            alpha: 0.03 + nightBoost + 0.02 * _osc(2, index.toDouble()))
+          alpha: 0.03 + nightBoost + 0.02 * _osc(2, index.toDouble()),
+        )
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, 5 + nightBoost * 25),
     );
 
@@ -1166,7 +1268,10 @@ class OfficePainter extends CustomPainter {
       final cx = dx + dw * 0.3;
       final cy = dy + 2;
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(cx, cy, 5, 7), const Radius.circular(1)),
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(cx, cy, 5, 7),
+          const Radius.circular(1),
+        ),
         Paint()..color = const Color(0xFFDDDDDD),
       );
       // Coffee surface
@@ -1187,7 +1292,11 @@ class OfficePainter extends CustomPainter {
       );
     } else if (index == 1 || index == 4) {
       // Post-it notes stack
-      final colors = [const Color(0xFFFFEB3B), const Color(0xFFFF80AB), const Color(0xFF80D8FF)];
+      final colors = [
+        const Color(0xFFFFEB3B),
+        const Color(0xFFFF80AB),
+        const Color(0xFF80D8FF),
+      ];
       for (int n = 0; n < 3; n++) {
         canvas.drawRect(
           Rect.fromLTWH(dx + dw * 0.25 + n * 2, dy + 2 + n * 1.2, 7, 7),
@@ -1231,12 +1340,18 @@ class OfficePainter extends CustomPainter {
 
     // Rack body
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(rx, ry, rw, rh), const Radius.circular(3)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(rx, ry, rw, rh),
+        const Radius.circular(3),
+      ),
       Paint()..color = const Color(0xFF2a2a44),
     );
     // Rack border
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(rx, ry, rw, rh), const Radius.circular(3)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(rx, ry, rw, rh),
+        const Radius.circular(3),
+      ),
       Paint()
         ..color = const Color(0xFF444466)
         ..style = PaintingStyle.stroke
@@ -1266,7 +1381,10 @@ class OfficePainter extends CustomPainter {
         canvas.drawCircle(
           Offset(rx + 8 + led * 5, sy + sh / 2),
           1.8,
-          Paint()..color = on ? baseColors[led].withValues(alpha: 0.9) : const Color(0xFF333350),
+          Paint()
+            ..color = on
+                ? baseColors[led].withValues(alpha: 0.9)
+                : const Color(0xFF333350),
         );
         // LED glow
         if (on) {
@@ -1366,7 +1484,8 @@ class OfficePainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx + cw / 2 - 4, cy - ch * 0.1),
       2,
-      Paint()..color = CognithorTheme.green.withValues(alpha: 0.6 + 0.4 * _osc(2)),
+      Paint()
+        ..color = CognithorTheme.green.withValues(alpha: 0.6 + 0.4 * _osc(2)),
     );
 
     // Steam particles
@@ -1406,10 +1525,7 @@ class OfficePainter extends CustomPainter {
     potPath.lineTo(px + potW * 0.35, py + potH);
     potPath.lineTo(px + potW / 2, py);
     potPath.close();
-    canvas.drawPath(
-      potPath,
-      Paint()..color = const Color(0xFFC67B5C),
-    );
+    canvas.drawPath(potPath, Paint()..color = const Color(0xFFC67B5C));
     // Pot rim
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -1466,13 +1582,33 @@ class OfficePainter extends CustomPainter {
     // Flowers ON desk surfaces (positioned at desk top edge)
     final flowers = [
       // On desk 1 (right side of desk)
-      _FlowerInfo(s.width * (_desk1.dx + 0.08), s.height * (_desk1.dy - 0.02), const Color(0xFFE53935), 0),
+      _FlowerInfo(
+        s.width * (_desk1.dx + 0.08),
+        s.height * (_desk1.dy - 0.02),
+        const Color(0xFFE53935),
+        0,
+      ),
       // On desk 3 (left side)
-      _FlowerInfo(s.width * (_desk3.dx + 0.02), s.height * (_desk3.dy - 0.02), const Color(0xFF9C27B0), 1),
+      _FlowerInfo(
+        s.width * (_desk3.dx + 0.02),
+        s.height * (_desk3.dy - 0.02),
+        const Color(0xFF9C27B0),
+        1,
+      ),
       // On desk 5 (right side)
-      _FlowerInfo(s.width * (_desk5.dx + 0.08), s.height * (_desk5.dy - 0.02), const Color(0xFFFFEB3B), 2),
+      _FlowerInfo(
+        s.width * (_desk5.dx + 0.08),
+        s.height * (_desk5.dy - 0.02),
+        const Color(0xFFFFEB3B),
+        2,
+      ),
       // On desk 2 (left side)
-      _FlowerInfo(s.width * (_desk2.dx + 0.02), s.height * (_desk2.dy - 0.02), const Color(0xFFE91E63), 3),
+      _FlowerInfo(
+        s.width * (_desk2.dx + 0.02),
+        s.height * (_desk2.dy - 0.02),
+        const Color(0xFFE91E63),
+        3,
+      ),
     ];
 
     for (final f in flowers) {
@@ -1618,14 +1754,11 @@ class OfficePainter extends CustomPainter {
       canvas.drawPath(
         beamPath,
         Paint()
-          ..shader = ui.Gradient.linear(
-            Offset(lx, ly),
-            Offset(lx, ly + beamH),
-            [
-              const Color(0xFFFFE0A0).withValues(alpha: beamAlpha * 2),
-              const Color(0xFFFFE0A0).withValues(alpha: 0),
-            ],
-          ),
+          ..shader =
+              ui.Gradient.linear(Offset(lx, ly), Offset(lx, ly + beamH), [
+                const Color(0xFFFFE0A0).withValues(alpha: beamAlpha * 2),
+                const Color(0xFFFFE0A0).withValues(alpha: 0),
+              ]),
       );
 
       // Floor light pool
@@ -1636,7 +1769,9 @@ class OfficePainter extends CustomPainter {
           height: beamH * 0.15,
         ),
         Paint()
-          ..color = const Color(0xFFFFE0A0).withValues(alpha: nightIntensity * 0.06)
+          ..color = const Color(
+            0xFFFFE0A0,
+          ).withValues(alpha: nightIntensity * 0.06)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
       );
     }
@@ -1665,7 +1800,8 @@ class OfficePainter extends CustomPainter {
     );
 
     // Walk animation
-    final walking = robot.state == RobotState.walking || robot.state == RobotState.carrying;
+    final walking =
+        robot.state == RobotState.walking || robot.state == RobotState.carrying;
     final walkPhase = walking ? time * 8 : 0.0;
     final bobY = robot.state == RobotState.idle ? sin(time * 2) * 1.5 : 0.0;
 
@@ -1685,7 +1821,10 @@ class OfficePainter extends CustomPainter {
     // Left foot
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(rx - bodyW * 0.2 - legSwing, ry + bodyH * 0.3 + legH + 2 + bobY),
+        center: Offset(
+          rx - bodyW * 0.2 - legSwing,
+          ry + bodyH * 0.3 + legH + 2 + bobY,
+        ),
         width: 6 * scale,
         height: 3 * scale,
       ),
@@ -1700,7 +1839,10 @@ class OfficePainter extends CustomPainter {
     // Right foot
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(rx + bodyW * 0.2 + legSwing, ry + bodyH * 0.3 + legH + 2 + bobY),
+        center: Offset(
+          rx + bodyW * 0.2 + legSwing,
+          ry + bodyH * 0.3 + legH + 2 + bobY,
+        ),
         width: 6 * scale,
         height: 3 * scale,
       ),
@@ -1723,10 +1865,7 @@ class OfficePainter extends CustomPainter {
         ..shader = ui.Gradient.linear(
           Offset(rx - bodyW / 2, ry - bodyH / 2),
           Offset(rx + bodyW / 2, ry + bodyH / 2),
-          [
-            robot.type.color,
-            Color.lerp(robot.type.color, Colors.black, 0.3)!,
-          ],
+          [robot.type.color, Color.lerp(robot.type.color, Colors.black, 0.3)!],
         ),
     );
     // Body highlight
@@ -1744,11 +1883,13 @@ class OfficePainter extends CustomPainter {
     );
 
     // Chest LED (pulsing)
-    final ledPulse = 0.5 + 0.5 * sin(time * 3 + robot.type.id.hashCode.toDouble());
+    final ledPulse =
+        0.5 + 0.5 * sin(time * 3 + robot.type.id.hashCode.toDouble());
     canvas.drawCircle(
       Offset(rx, ry + bodyH * 0.1 + bobY),
       3 * scale,
-      Paint()..color = robot.type.eyeColor.withValues(alpha: 0.3 + 0.5 * ledPulse),
+      Paint()
+        ..color = robot.type.eyeColor.withValues(alpha: 0.3 + 0.5 * ledPulse),
     );
     canvas.drawCircle(
       Offset(rx, ry + bodyH * 0.1 + bobY),
@@ -1793,7 +1934,11 @@ class OfficePainter extends CustomPainter {
       final docY = ry + bodyH * 0.1 + bobY;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(docX, docY), width: 8 * scale, height: 10 * scale),
+          Rect.fromCenter(
+            center: Offset(docX, docY),
+            width: 8 * scale,
+            height: 10 * scale,
+          ),
           const Radius.circular(1),
         ),
         Paint()..color = Colors.white.withValues(alpha: 0.9),
@@ -1822,16 +1967,18 @@ class OfficePainter extends CustomPainter {
         ..shader = ui.Gradient.linear(
           Offset(rx, headY - headH / 2),
           Offset(rx, headY + headH / 2),
-          [
-            Color.lerp(robot.type.color, Colors.white, 0.15)!,
-            robot.type.color,
-          ],
+          [Color.lerp(robot.type.color, Colors.white, 0.15)!, robot.type.color],
         ),
     );
     // Head highlight
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(rx - headW * 0.35, headY - headH * 0.4, headW * 0.3, headH * 0.35),
+        Rect.fromLTWH(
+          rx - headW * 0.35,
+          headY - headH * 0.4,
+          headW * 0.3,
+          headH * 0.35,
+        ),
         Radius.circular(3 * scale),
       ),
       Paint()..color = Colors.white.withValues(alpha: 0.15),
@@ -1863,7 +2010,11 @@ class OfficePainter extends CustomPainter {
       );
       // Eye glow
       canvas.drawOval(
-        Rect.fromCenter(center: Offset(eyeX, headY), width: eyeW * 1.8, height: eyeH * 2),
+        Rect.fromCenter(
+          center: Offset(eyeX, headY),
+          width: eyeW * 1.8,
+          height: eyeH * 2,
+        ),
         Paint()
           ..color = robot.type.eyeColor.withValues(alpha: 0.12)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
@@ -1876,7 +2027,12 @@ class OfficePainter extends CustomPainter {
       // Happy smile
       final smilePath = Path();
       smilePath.moveTo(rx - headW * 0.15, mouthY);
-      smilePath.quadraticBezierTo(rx, mouthY + 3 * scale, rx + headW * 0.15, mouthY);
+      smilePath.quadraticBezierTo(
+        rx,
+        mouthY + 3 * scale,
+        rx + headW * 0.15,
+        mouthY,
+      );
       canvas.drawPath(
         smilePath,
         Paint()
@@ -1909,7 +2065,8 @@ class OfficePainter extends CustomPainter {
           ..strokeWidth = 1.5 * scale,
       );
       // Antenna tip glow
-      final tipPulse = 0.5 + 0.5 * _osc(4, robot.type.id.hashCode.toDouble() + 1);
+      final tipPulse =
+          0.5 + 0.5 * _osc(4, robot.type.id.hashCode.toDouble() + 1);
       canvas.drawCircle(
         Offset(rx + wobble, antennaBase - 10 * scale),
         2.5 * scale,
@@ -1943,7 +2100,13 @@ class OfficePainter extends CustomPainter {
 
     // Speech bubble
     if (robot.speechTimer > 0 && robot.speechText.isNotEmpty) {
-      _drawSpeechBubble(canvas, rx, headY - headH / 2 - 12 * scale, robot.speechText, scale);
+      _drawSpeechBubble(
+        canvas,
+        rx,
+        headY - headH / 2 - 12 * scale,
+        robot.speechText,
+        scale,
+      );
     }
 
     // Floating emoji
@@ -1953,7 +2116,10 @@ class OfficePainter extends CustomPainter {
       final emojiTp = TextPainter(
         text: TextSpan(
           text: robot.floatingEmoji,
-          style: TextStyle(fontSize: 12 * scale, color: Colors.white.withValues(alpha: emojiAlpha)),
+          style: TextStyle(
+            fontSize: 12 * scale,
+            color: Colors.white.withValues(alpha: emojiAlpha),
+          ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -1961,11 +2127,21 @@ class OfficePainter extends CustomPainter {
     }
   }
 
-  void _drawSpeechBubble(Canvas canvas, double x, double y, String text, double scale) {
+  void _drawSpeechBubble(
+    Canvas canvas,
+    double x,
+    double y,
+    String text,
+    double scale,
+  ) {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(color: _textCol(), fontSize: 6 * scale, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: _textCol(),
+          fontSize: 6 * scale,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
@@ -1977,11 +2153,20 @@ class OfficePainter extends CustomPainter {
 
     // Bubble
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(bx, by, bw, bh), Radius.circular(4 * scale)),
-      Paint()..color = (_isDark ? const Color(0xFF2a2a44) : Colors.white).withValues(alpha: 0.92),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(bx, by, bw, bh),
+        Radius.circular(4 * scale),
+      ),
+      Paint()
+        ..color = (_isDark ? const Color(0xFF2a2a44) : Colors.white).withValues(
+          alpha: 0.92,
+        ),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(bx, by, bw, bh), Radius.circular(4 * scale)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(bx, by, bw, bh),
+        Radius.circular(4 * scale),
+      ),
       Paint()
         ..color = _furnitureDark()
         ..style = PaintingStyle.stroke
@@ -1996,7 +2181,10 @@ class OfficePainter extends CustomPainter {
     triPath.close();
     canvas.drawPath(
       triPath,
-      Paint()..color = (_isDark ? const Color(0xFF2a2a44) : Colors.white).withValues(alpha: 0.92),
+      Paint()
+        ..color = (_isDark ? const Color(0xFF2a2a44) : Colors.white).withValues(
+          alpha: 0.92,
+        ),
     );
 
     tp.paint(canvas, Offset(bx + 5 * scale, by + 3 * scale));
@@ -2013,7 +2201,16 @@ class OfficePainter extends CustomPainter {
       for (int j = i + 1; j < working.length; j++) {
         final a = working[i];
         final b = working[j];
-        _drawParticleStream(canvas, s, a.x, a.y, b.x, b.y, a.type.color, b.type.color);
+        _drawParticleStream(
+          canvas,
+          s,
+          a.x,
+          a.y,
+          b.x,
+          b.y,
+          a.type.color,
+          b.type.color,
+        );
       }
     }
   }
@@ -2090,8 +2287,7 @@ class OfficePainter extends CustomPainter {
     );
 
     // Subtle scanline / CRT effect
-    final scanPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.02);
+    final scanPaint = Paint()..color = Colors.white.withValues(alpha: 0.02);
     for (double sy = my + screenInset; sy < my + mh - screenInset; sy += 3) {
       canvas.drawLine(
         Offset(mx + screenInset, sy),
@@ -2130,26 +2326,70 @@ class OfficePainter extends CustomPainter {
 
     // CPU
     _drawMonitorLabel(canvas, 'CPU', Offset(barX, firstBarY), mh * 0.07);
-    _drawMonitorBar(canvas, barX, firstBarY + mh * 0.07, barW, barH, cpuUsage,
-        cpuUsage > 0.8 ? CognithorTheme.red : cpuUsage > 0.5 ? CognithorTheme.orange : CognithorTheme.sectionDashboard);
+    _drawMonitorBar(
+      canvas,
+      barX,
+      firstBarY + mh * 0.07,
+      barW,
+      barH,
+      cpuUsage,
+      cpuUsage > 0.8
+          ? CognithorTheme.red
+          : cpuUsage > 0.5
+          ? CognithorTheme.orange
+          : CognithorTheme.sectionDashboard,
+    );
 
     // GPU
     final gpuBarY = firstBarY + barSpacing;
     _drawMonitorLabel(canvas, 'GPU', Offset(barX, gpuBarY), mh * 0.07);
-    _drawMonitorBar(canvas, barX, gpuBarY + mh * 0.07, barW, barH, gpuUsage,
-        gpuUsage > 0.8 ? CognithorTheme.red : gpuUsage > 0.5 ? CognithorTheme.orange : CognithorTheme.accent);
+    _drawMonitorBar(
+      canvas,
+      barX,
+      gpuBarY + mh * 0.07,
+      barW,
+      barH,
+      gpuUsage,
+      gpuUsage > 0.8
+          ? CognithorTheme.red
+          : gpuUsage > 0.5
+          ? CognithorTheme.orange
+          : CognithorTheme.accent,
+    );
 
     // RAM
     final ramBarY = gpuBarY + barSpacing;
     _drawMonitorLabel(canvas, 'RAM', Offset(barX, ramBarY), mh * 0.07);
-    _drawMonitorBar(canvas, barX, ramBarY + mh * 0.07, barW, barH, memoryUsage,
-        memoryUsage > 0.8 ? CognithorTheme.red : memoryUsage > 0.5 ? CognithorTheme.orange : CognithorTheme.blue);
+    _drawMonitorBar(
+      canvas,
+      barX,
+      ramBarY + mh * 0.07,
+      barW,
+      barH,
+      memoryUsage,
+      memoryUsage > 0.8
+          ? CognithorTheme.red
+          : memoryUsage > 0.5
+          ? CognithorTheme.orange
+          : CognithorTheme.blue,
+    );
 
     // LOAD
     final loadBarY = ramBarY + barSpacing;
     _drawMonitorLabel(canvas, 'LOAD', Offset(barX, loadBarY), mh * 0.07);
-    _drawMonitorBar(canvas, barX, loadBarY + mh * 0.07, barW, barH, systemLoad,
-        systemLoad > 0.8 ? CognithorTheme.red : systemLoad > 0.5 ? CognithorTheme.orange : CognithorTheme.gold);
+    _drawMonitorBar(
+      canvas,
+      barX,
+      loadBarY + mh * 0.07,
+      barW,
+      barH,
+      systemLoad,
+      systemLoad > 0.8
+          ? CognithorTheme.red
+          : systemLoad > 0.5
+          ? CognithorTheme.orange
+          : CognithorTheme.gold,
+    );
 
     // Monitor stand (small trapezoid below the monitor)
     final standW = mw * 0.25;
@@ -2163,7 +2403,11 @@ class OfficePainter extends CustomPainter {
   }
 
   void _drawMonitorLabel(
-      Canvas canvas, String text, Offset pos, double fontSize) {
+    Canvas canvas,
+    String text,
+    Offset pos,
+    double fontSize,
+  ) {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
@@ -2178,8 +2422,15 @@ class OfficePainter extends CustomPainter {
     tp.paint(canvas, pos);
   }
 
-  void _drawMonitorBar(Canvas canvas, double x, double y, double w, double h,
-      double value, Color color) {
+  void _drawMonitorBar(
+    Canvas canvas,
+    double x,
+    double y,
+    double w,
+    double h,
+    double value,
+    Color color,
+  ) {
     // Background track
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -2237,7 +2488,8 @@ class RobotOffice extends StatefulWidget {
   State<RobotOffice> createState() => _RobotOfficeState();
 }
 
-class _RobotOfficeState extends State<RobotOffice> with SingleTickerProviderStateMixin {
+class _RobotOfficeState extends State<RobotOffice>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final List<Robot> _robots;
   final _rng = Random();
@@ -2321,7 +2573,8 @@ class _RobotOfficeState extends State<RobotOffice> with SingleTickerProviderStat
             robot.stateTimer = 0;
             robot.nextSwitch = 2.0 + _rng.nextDouble() * 3.0;
             // Show speech bubble
-            robot.speechText = _speechMessages[_rng.nextInt(_speechMessages.length)];
+            robot.speechText =
+                _speechMessages[_rng.nextInt(_speechMessages.length)];
             robot.speechTimer = 2.5;
           } else {
             final speed = 0.15 * dt; // normalized units per second
@@ -2372,7 +2625,9 @@ class _RobotOfficeState extends State<RobotOffice> with SingleTickerProviderStat
 
     robot.targetX = target.dx;
     robot.targetY = target.dy;
-    robot.state = roll > 0.50 && roll < 0.55 ? RobotState.carrying : RobotState.walking;
+    robot.state = roll > 0.50 && roll < 0.55
+        ? RobotState.carrying
+        : RobotState.walking;
     robot.stateTimer = 0;
     robot.nextSwitch = 10.0; // max walk time before re-evaluation
   }

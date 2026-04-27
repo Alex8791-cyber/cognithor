@@ -86,7 +86,8 @@ class ResearchReportView extends StatelessWidget {
           ...result.sources.asMap().entries.map((entry) {
             final idx = entry.key + 1;
             final src = entry.value;
-            final title = src['title'] as String? ?? src['url'] as String? ?? '';
+            final title =
+                src['title'] as String? ?? src['url'] as String? ?? '';
             final url = src['url'] as String? ?? '';
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
@@ -209,9 +210,7 @@ class _MarkdownBody extends StatelessWidget {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant,
-              ),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
             ),
             child: SelectableText(
               codeLines.join('\n'),
@@ -257,39 +256,45 @@ class _MarkdownBody extends StatelessWidget {
 
       // Headings
       if (rawLine.startsWith('### ')) {
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Text(
-            rawLine.substring(4),
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
+            child: Text(
+              rawLine.substring(4),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ));
+        );
         continue;
       }
       if (rawLine.startsWith('## ')) {
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(top: 14, bottom: 4),
-          child: Text(
-            rawLine.substring(3),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 14, bottom: 4),
+            child: Text(
+              rawLine.substring(3),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ));
+        );
         continue;
       }
       if (rawLine.startsWith('# ')) {
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 6),
-          child: Text(
-            rawLine.substring(2),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 6),
+            child: Text(
+              rawLine.substring(2),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ));
+        );
         continue;
       }
 
@@ -351,23 +356,23 @@ class _InlineText extends StatelessWidget {
       if (match.start > lastEnd) {
         spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
       }
-      spans.add(TextSpan(
-        text: match.group(0),
-        style: TextStyle(
-          color: accentColor,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'monospace',
-          fontSize: 12,
+      spans.add(
+        TextSpan(
+          text: match.group(0),
+          style: TextStyle(
+            color: accentColor,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'monospace',
+            fontSize: 12,
+          ),
         ),
-      ));
+      );
       lastEnd = match.end;
     }
     if (lastEnd < text.length) {
       spans.add(TextSpan(text: text.substring(lastEnd)));
     }
 
-    return SelectableText.rich(
-      TextSpan(style: baseStyle, children: spans),
-    );
+    return SelectableText.rich(TextSpan(style: baseStyle, children: spans));
   }
 }

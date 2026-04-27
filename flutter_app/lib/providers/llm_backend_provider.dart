@@ -16,10 +16,10 @@ class HardwareInfo {
   });
 
   factory HardwareInfo.fromJson(Map<String, dynamic> j) => HardwareInfo(
-        gpuName: j['gpu_name'] as String,
-        vramGb: j['vram_gb'] as int,
-        computeCapability: j['compute_capability'] as String,
-      );
+    gpuName: j['gpu_name'] as String,
+    vramGb: j['vram_gb'] as int,
+    computeCapability: j['compute_capability'] as String,
+  );
 }
 
 class VLLMStatus {
@@ -42,17 +42,16 @@ class VLLMStatus {
   });
 
   factory VLLMStatus.fromJson(Map<String, dynamic> j) => VLLMStatus(
-        hardwareOk: j['hardware_ok'] as bool,
-        hardwareInfo: j['hardware_info'] == null
-            ? null
-            : HardwareInfo.fromJson(
-                j['hardware_info'] as Map<String, dynamic>),
-        dockerOk: j['docker_ok'] as bool,
-        imagePulled: j['image_pulled'] as bool,
-        containerRunning: j['container_running'] as bool,
-        currentModel: j['current_model'] as String?,
-        lastError: j['last_error'] as String?,
-      );
+    hardwareOk: j['hardware_ok'] as bool,
+    hardwareInfo: j['hardware_info'] == null
+        ? null
+        : HardwareInfo.fromJson(j['hardware_info'] as Map<String, dynamic>),
+    dockerOk: j['docker_ok'] as bool,
+    imagePulled: j['image_pulled'] as bool,
+    containerRunning: j['container_running'] as bool,
+    currentModel: j['current_model'] as String?,
+    lastError: j['last_error'] as String?,
+  );
 }
 
 class BackendEntry {
@@ -67,10 +66,10 @@ class BackendEntry {
   });
 
   factory BackendEntry.fromJson(Map<String, dynamic> j) => BackendEntry(
-        name: j['name'] as String,
-        enabled: j['enabled'] as bool,
-        status: j['status'] as String,
-      );
+    name: j['name'] as String,
+    enabled: j['enabled'] as bool,
+    status: j['status'] as String,
+  );
 }
 
 class LlmBackendProvider extends ChangeNotifier {
@@ -88,7 +87,7 @@ class LlmBackendProvider extends ChangeNotifier {
   bool get isPolling => _pollTimer != null;
 
   LlmBackendProvider({required this.apiBaseUrl, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+    : _http = httpClient ?? http.Client();
 
   Future<void> refreshList() async {
     try {
@@ -108,11 +107,13 @@ class LlmBackendProvider extends ChangeNotifier {
 
   Future<void> refreshVllmStatus() async {
     try {
-      final r =
-          await _http.get(Uri.parse('$apiBaseUrl/api/backends/vllm/status'));
+      final r = await _http.get(
+        Uri.parse('$apiBaseUrl/api/backends/vllm/status'),
+      );
       if (r.statusCode != 200) return;
-      vllmStatus =
-          VLLMStatus.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+      vllmStatus = VLLMStatus.fromJson(
+        jsonDecode(r.body) as Map<String, dynamic>,
+      );
       notifyListeners();
     } catch (e) {
       error = e.toString();

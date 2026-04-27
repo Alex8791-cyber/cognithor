@@ -4,11 +4,7 @@ import 'package:cognithor_ui/l10n/generated/app_localizations.dart';
 
 /// Wraps a child widget with long-press actions (copy, select all).
 class MessageActions extends StatelessWidget {
-  const MessageActions({
-    super.key,
-    required this.text,
-    required this.child,
-  });
+  const MessageActions({super.key, required this.text, required this.child});
 
   final String text;
   final Widget child;

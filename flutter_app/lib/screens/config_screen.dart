@@ -45,19 +45,35 @@ class _Category {
 
 final _categories = [
   _Category((l) => l.catAiEngine, Icons.psychology, [
-    'providers', 'planner', 'executor', 'prompts',
+    'providers',
+    'planner',
+    'executor',
+    'prompts',
   ]),
-  _Category((l) => l.catChannels, Icons.cell_tower, [
-    'channels',
-  ]),
+  _Category((l) => l.catChannels, Icons.cell_tower, ['channels']),
   _Category((l) => l.catKnowledge, Icons.storage, [
-    'memory', 'bindings', 'web', 'vault',
+    'memory',
+    'bindings',
+    'web',
+    'vault',
   ]),
   _Category((l) => l.catSecurity, Icons.shield, [
-    'security', 'tools', 'audit', 'database',
+    'security',
+    'tools',
+    'audit',
+    'database',
   ]),
   _Category((l) => l.catSystem, Icons.settings, [
-    'general', 'language', 'logging', 'cron', 'mcp', 'system_profile', 'budget', 'social', 'evolution', 'system',
+    'general',
+    'language',
+    'logging',
+    'cron',
+    'mcp',
+    'system_profile',
+    'budget',
+    'social',
+    'evolution',
+    'system',
   ]),
 ];
 
@@ -72,53 +88,121 @@ class _SubPageDef {
 
 final _pageRegistry = <String, _SubPageDef>{
   'general': _SubPageDef(
-      Icons.settings, (l) => l.configPageGeneral, () => const GeneralPage()),
+    Icons.settings,
+    (l) => l.configPageGeneral,
+    () => const GeneralPage(),
+  ),
   'language': _SubPageDef(
-      Icons.language, (l) => l.configPageLanguage, () => const LanguagePage()),
+    Icons.language,
+    (l) => l.configPageLanguage,
+    () => const LanguagePage(),
+  ),
   'providers': _SubPageDef(
-      Icons.cloud, (l) => l.configPageProviders, () => const ProvidersPage()),
-  'planner': _SubPageDef(Icons.architecture, (l) => l.configPagePlanner,
-      () => const PlannerPage()),
-  'executor': _SubPageDef(Icons.play_arrow, (l) => l.configPageExecutor,
-      () => const ExecutorPage()),
+    Icons.cloud,
+    (l) => l.configPageProviders,
+    () => const ProvidersPage(),
+  ),
+  'planner': _SubPageDef(
+    Icons.architecture,
+    (l) => l.configPagePlanner,
+    () => const PlannerPage(),
+  ),
+  'executor': _SubPageDef(
+    Icons.play_arrow,
+    (l) => l.configPageExecutor,
+    () => const ExecutorPage(),
+  ),
   'memory': _SubPageDef(
-      Icons.memory, (l) => l.configPageMemory, () => const MemoryPage()),
+    Icons.memory,
+    (l) => l.configPageMemory,
+    () => const MemoryPage(),
+  ),
   'channels': _SubPageDef(
-      Icons.chat, (l) => l.configPageChannels, () => const ChannelsPage()),
+    Icons.chat,
+    (l) => l.configPageChannels,
+    () => const ChannelsPage(),
+  ),
   'security': _SubPageDef(
-      Icons.shield, (l) => l.configPageSecurity, () => const SecurityPage()),
+    Icons.shield,
+    (l) => l.configPageSecurity,
+    () => const SecurityPage(),
+  ),
   'tools': _SubPageDef(
-      Icons.desktop_windows, (l) => l.configPageTools, () => const ToolsPage()),
-  'audit': _SubPageDef(Icons.verified_user, (l) => l.configPageAudit,
-      () => const AuditPage()),
+    Icons.desktop_windows,
+    (l) => l.configPageTools,
+    () => const ToolsPage(),
+  ),
+  'audit': _SubPageDef(
+    Icons.verified_user,
+    (l) => l.configPageAudit,
+    () => const AuditPage(),
+  ),
   'web': _SubPageDef(
-      Icons.public, (l) => l.configPageWeb, () => const WebPage()),
-  'mcp':
-      _SubPageDef(Icons.dns, (l) => l.configPageMcp, () => const McpPage()),
+    Icons.public,
+    (l) => l.configPageWeb,
+    () => const WebPage(),
+  ),
+  'mcp': _SubPageDef(Icons.dns, (l) => l.configPageMcp, () => const McpPage()),
   'cron': _SubPageDef(
-      Icons.schedule, (l) => l.configPageCron, () => const CronPage()),
-  'database': _SubPageDef(Icons.storage, (l) => l.configPageDatabase,
-      () => const DatabasePage()),
+    Icons.schedule,
+    (l) => l.configPageCron,
+    () => const CronPage(),
+  ),
+  'database': _SubPageDef(
+    Icons.storage,
+    (l) => l.configPageDatabase,
+    () => const DatabasePage(),
+  ),
   'logging': _SubPageDef(
-      Icons.article, (l) => l.configPageLogging, () => const LoggingPage()),
-  'prompts': _SubPageDef(Icons.edit_note, (l) => l.configPagePrompts,
-      () => const PromptsPage()),
+    Icons.article,
+    (l) => l.configPageLogging,
+    () => const LoggingPage(),
+  ),
+  'prompts': _SubPageDef(
+    Icons.edit_note,
+    (l) => l.configPagePrompts,
+    () => const PromptsPage(),
+  ),
   'bindings': _SubPageDef(
-      Icons.link, (l) => l.configPageBindings, () => const BindingsConfigPage()),
-  'system_profile': _SubPageDef(Icons.memory,
-      (l) => l.configPageSystemProfile, () => const SystemProfilePage()),
-  'budget': _SubPageDef(Icons.account_balance_wallet,
-      (l) => l.configPageBudget, () => const BudgetPage()),
-  'atl': _SubPageDef(Icons.psychology,
-      (l) => 'Autonomous Thinking', () => const AtlPage()),
+    Icons.link,
+    (l) => l.configPageBindings,
+    () => const BindingsConfigPage(),
+  ),
+  'system_profile': _SubPageDef(
+    Icons.memory,
+    (l) => l.configPageSystemProfile,
+    () => const SystemProfilePage(),
+  ),
+  'budget': _SubPageDef(
+    Icons.account_balance_wallet,
+    (l) => l.configPageBudget,
+    () => const BudgetPage(),
+  ),
+  'atl': _SubPageDef(
+    Icons.psychology,
+    (l) => 'Autonomous Thinking',
+    () => const AtlPage(),
+  ),
   'vault': _SubPageDef(
-      Icons.lock_outlined, (l) => 'Vault', () => const VaultPage()),
-  'social': _SubPageDef(Icons.track_changes, (l) => l.socialListening,
-      () => const SocialPage()),
-  'evolution': _SubPageDef(Icons.auto_awesome, (l) => 'Evolution',
-      () => const EvolutionConfigPage()),
+    Icons.lock_outlined,
+    (l) => 'Vault',
+    () => const VaultPage(),
+  ),
+  'social': _SubPageDef(
+    Icons.track_changes,
+    (l) => l.socialListening,
+    () => const SocialPage(),
+  ),
+  'evolution': _SubPageDef(
+    Icons.auto_awesome,
+    (l) => 'Evolution',
+    () => const EvolutionConfigPage(),
+  ),
   'system': _SubPageDef(
-      Icons.build, (l) => l.configPageSystem, () => const SystemConfigPage()),
+    Icons.build,
+    (l) => l.configPageSystem,
+    () => const SystemConfigPage(),
+  ),
 };
 
 // ── Config Screen ────────────────────────────────────────────────────────────
@@ -196,8 +280,7 @@ class _ConfigScreenState extends State<ConfigScreen>
     }
   }
 
-  List<String> get _currentPageKeys =>
-      _categories[_selectedCategory].pageKeys;
+  List<String> get _currentPageKeys => _categories[_selectedCategory].pageKeys;
 
   String get _currentPageKey => _currentPageKeys[_selectedSubPage];
 
@@ -241,16 +324,21 @@ class _ConfigScreenState extends State<ConfigScreen>
       const SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
     };
     final digitKeys = [
-      LogicalKeyboardKey.digit1, LogicalKeyboardKey.digit2,
-      LogicalKeyboardKey.digit3, LogicalKeyboardKey.digit4,
-      LogicalKeyboardKey.digit5, LogicalKeyboardKey.digit6,
-      LogicalKeyboardKey.digit7, LogicalKeyboardKey.digit8,
-      LogicalKeyboardKey.digit9, LogicalKeyboardKey.digit0,
+      LogicalKeyboardKey.digit1,
+      LogicalKeyboardKey.digit2,
+      LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4,
+      LogicalKeyboardKey.digit5,
+      LogicalKeyboardKey.digit6,
+      LogicalKeyboardKey.digit7,
+      LogicalKeyboardKey.digit8,
+      LogicalKeyboardKey.digit9,
+      LogicalKeyboardKey.digit0,
     ];
     for (var i = 0; i < digitKeys.length && i < _currentPageKeys.length; i++) {
       final idx = i;
-      bindings[SingleActivator(digitKeys[i], control: true)] =
-          () => _navigateToSubPage(idx);
+      bindings[SingleActivator(digitKeys[i], control: true)] = () =>
+          _navigateToSubPage(idx);
     }
 
     return CallbackShortcuts(
@@ -283,26 +371,35 @@ class _ConfigScreenState extends State<ConfigScreen>
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       color: CognithorTheme.red.withValues(alpha: 0.15),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber,
-                              size: 16, color: CognithorTheme.orange),
+                          Icon(
+                            Icons.warning_amber,
+                            size: 16,
+                            color: CognithorTheme.orange,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               cfg.error!,
                               style: TextStyle(
-                                  color: CognithorTheme.orange, fontSize: 12),
+                                color: CognithorTheme.orange,
+                                fontSize: 12,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           TextButton(
                             onPressed: () => cfg.loadAll(),
-                            child: Text(l.retry,
-                                style: const TextStyle(fontSize: 12)),
+                            child: Text(
+                              l.retry,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
@@ -361,8 +458,10 @@ class _ConfigScreenState extends State<ConfigScreen>
         labelColor: tint,
         unselectedLabelColor: CognithorTheme.textSecondary,
         labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        unselectedLabelStyle:
-            const TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.normal,
+        ),
         overlayColor: WidgetStatePropertyAll(tint.withValues(alpha: 0.08)),
         dividerColor: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -418,8 +517,8 @@ class _ConfigScreenState extends State<ConfigScreen>
           final shortcutLabel = i < 9
               ? '^${i + 1}'
               : i == 9
-                  ? '^0'
-                  : null;
+              ? '^0'
+              : null;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 2),
@@ -433,15 +532,16 @@ class _ConfigScreenState extends State<ConfigScreen>
               child: ListTile(
                 dense: true,
                 visualDensity: VisualDensity.compact,
-                leading: Icon(def.icon,
-                    size: 18,
-                    color: selected ? tint : CognithorTheme.textSecondary),
+                leading: Icon(
+                  def.icon,
+                  size: 18,
+                  color: selected ? tint : CognithorTheme.textSecondary,
+                ),
                 title: Text(
                   def.labelKey(l),
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        selected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                     color: selected
                         ? tint
                         : Theme.of(context).textTheme.bodyMedium?.color,
@@ -462,7 +562,8 @@ class _ConfigScreenState extends State<ConfigScreen>
                 selected: selected,
                 selectedTileColor: tint.withValues(alpha: 0.08),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           );
@@ -472,7 +573,10 @@ class _ConfigScreenState extends State<ConfigScreen>
   }
 
   Widget _buildSaveBar(
-      BuildContext context, ConfigProvider cfg, AppLocalizations l) {
+    BuildContext context,
+    ConfigProvider cfg,
+    AppLocalizations l,
+  ) {
     if (!cfg.hasChanges && !cfg.saving) return const SizedBox.shrink();
 
     const tint = CognithorTheme.sectionAdmin;
@@ -502,7 +606,8 @@ class _ConfigScreenState extends State<ConfigScreen>
                   ? const SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.save, size: 16),
               label: Text(cfg.saving ? l.saving : l.saveCtrlS),
             ),
@@ -542,9 +647,10 @@ class _NeonPulseWrapperState extends State<_NeonPulseWrapper>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _opacity = Tween<double>(begin: 0.25, end: 0.55).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _opacity = Tween<double>(
+      begin: 0.25,
+      end: 0.55,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     if (widget.active) _controller.repeat(reverse: true);
   }
 

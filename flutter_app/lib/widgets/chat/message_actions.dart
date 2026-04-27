@@ -50,8 +50,9 @@ class _MessageActionButtonsState extends State<MessageActionButtons> {
 
   @override
   Widget build(BuildContext context) {
-    final alignment =
-        widget.isUser ? MainAxisAlignment.end : MainAxisAlignment.start;
+    final alignment = widget.isUser
+        ? MainAxisAlignment.end
+        : MainAxisAlignment.start;
 
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 4),
@@ -64,8 +65,7 @@ class _MessageActionButtonsState extends State<MessageActionButtons> {
               tooltip: 'Edit',
               onTap: widget.onEdit!,
             ),
-          if (widget.isUser && widget.onEdit != null)
-            const SizedBox(width: 2),
+          if (widget.isUser && widget.onEdit != null) const SizedBox(width: 2),
           _ActionIcon(
             icon: _copied ? Icons.check : Icons.copy_outlined,
             tooltip: _copied ? 'Copied!' : 'Copy',
@@ -111,7 +111,9 @@ class _ActionIcon extends StatelessWidget {
           child: Icon(
             icon,
             size: 15,
-            color: highlight ? CognithorTheme.green : CognithorTheme.textTertiary,
+            color: highlight
+                ? CognithorTheme.green
+                : CognithorTheme.textTertiary,
           ),
         ),
       ),

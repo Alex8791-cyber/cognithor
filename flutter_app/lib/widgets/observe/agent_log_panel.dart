@@ -48,10 +48,10 @@ class _AgentLogPanelState extends State<AgentLogPanel> {
 
   IconData _phaseIcon(String phase) {
     return switch (phase) {
-      'plan' => Icons.psychology,    // brain
-      'gate' => Icons.shield,        // shield
+      'plan' => Icons.psychology, // brain
+      'gate' => Icons.shield, // shield
       'execute' => Icons.play_arrow, // play
-      'replan' => Icons.refresh,     // refresh
+      'replan' => Icons.refresh, // refresh
       _ => Icons.info_outline,
     };
   }
@@ -93,22 +93,19 @@ class _AgentLogPanelState extends State<AgentLogPanel> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Phase icon
-              Icon(
-                _phaseIcon(phase),
-                size: 14,
-                color: _phaseColor(phase),
-              ),
+              Icon(_phaseIcon(phase), size: 14, color: _phaseColor(phase)),
               const SizedBox(width: 4),
               if (ts.isNotEmpty)
                 Text(
                   ts.length > 8 ? ts.substring(ts.length - 8) : ts,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(fontFamily: 'monospace', fontSize: 10),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                  ),
                 ),
               const SizedBox(width: 6),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   color: _phaseColor(phase).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(3),
@@ -116,23 +113,30 @@ class _AgentLogPanelState extends State<AgentLogPanel> {
                 child: Text(
                   phase.isNotEmpty ? phase : 'info',
                   style: TextStyle(
-                      color: _phaseColor(phase),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600),
+                    color: _phaseColor(phase),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               if (tool.isNotEmpty) ...[
                 const SizedBox(width: 4),
-                Text(tool,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                        color: CognithorTheme.accent, fontSize: 11)),
+                Text(
+                  tool,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: CognithorTheme.accent,
+                    fontSize: 11,
+                  ),
+                ),
               ],
               const SizedBox(width: 6),
               Expanded(
-                child: Text(message,
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               // Elapsed time badge
               if (elapsed != null) ...[

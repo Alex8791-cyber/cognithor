@@ -58,12 +58,12 @@ class _KanbanScreenState extends State<KanbanScreen> {
     );
     if (result != null && mounted) {
       await context.read<KanbanProvider>().createTask(
-            title: result['title'] as String,
-            description: result['description'] as String? ?? '',
-            priority: result['priority'] as String? ?? 'medium',
-            assignedAgent: result['assigned_agent'] as String? ?? '',
-            labels: (result['labels'] as List<String>?) ?? [],
-          );
+        title: result['title'] as String,
+        description: result['description'] as String? ?? '',
+        priority: result['priority'] as String? ?? 'medium',
+        assignedAgent: result['assigned_agent'] as String? ?? '',
+        labels: (result['labels'] as List<String>?) ?? [],
+      );
     }
   }
 
@@ -79,7 +79,10 @@ class _KanbanScreenState extends State<KanbanScreen> {
             children: [
               // Toolbar
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
@@ -92,8 +95,14 @@ class _KanbanScreenState extends State<KanbanScreen> {
                     // Toggle — 3 segments
                     SegmentedButton<_KanbanView>(
                       segments: [
-                        ButtonSegment(value: _KanbanView.board, label: Text(l.kanbanMyTasks)),
-                        ButtonSegment(value: _KanbanView.pipeline, label: Text(l.kanbanLivePipeline)),
+                        ButtonSegment(
+                          value: _KanbanView.board,
+                          label: Text(l.kanbanMyTasks),
+                        ),
+                        ButtonSegment(
+                          value: _KanbanView.pipeline,
+                          label: Text(l.kanbanLivePipeline),
+                        ),
                         ButtonSegment(
                           value: _KanbanView.scheduled,
                           icon: const Icon(Icons.schedule, size: 16),
@@ -101,7 +110,8 @@ class _KanbanScreenState extends State<KanbanScreen> {
                         ),
                       ],
                       selected: {_view},
-                      onSelectionChanged: (s) => setState(() => _view = s.first),
+                      onSelectionChanged: (s) =>
+                          setState(() => _view = s.first),
                       style: ButtonStyle(
                         visualDensity: VisualDensity.compact,
                         textStyle: WidgetStateProperty.all(
@@ -119,7 +129,9 @@ class _KanbanScreenState extends State<KanbanScreen> {
                             '${kanban.tasks.length} tasks',
                             style: TextStyle(
                               fontSize: 12,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                           ),
                         ),
@@ -138,7 +150,9 @@ class _KanbanScreenState extends State<KanbanScreen> {
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (_) => KanbanConfigDialog(availableAgents: _agentNames),
+                            builder: (_) => KanbanConfigDialog(
+                              availableAgents: _agentNames,
+                            ),
                           );
                         },
                       ),
@@ -151,18 +165,20 @@ class _KanbanScreenState extends State<KanbanScreen> {
                 child: switch (_view) {
                   _KanbanView.board => const KanbanBoard(),
                   _KanbanView.pipeline => Consumer<ChatProvider>(
-                      builder: (context, chat, _) {
-                        return KanbanPanel(
-                          entries: chat.pipeline
-                              .map((p) => {
-                                    'phase': p.phase,
-                                    'status': p.status,
-                                    'elapsed_ms': p.elapsedMs,
-                                  })
-                              .toList(),
-                        );
-                      },
-                    ),
+                    builder: (context, chat, _) {
+                      return KanbanPanel(
+                        entries: chat.pipeline
+                            .map(
+                              (p) => {
+                                'phase': p.phase,
+                                'status': p.status,
+                                'elapsed_ms': p.elapsedMs,
+                              },
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
                   _KanbanView.scheduled => const ScheduledPanel(),
                 },
               ),

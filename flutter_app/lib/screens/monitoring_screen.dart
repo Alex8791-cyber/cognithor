@@ -120,32 +120,17 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
               labelColor: CognithorTheme.accent,
               unselectedLabelColor: CognithorTheme.textSecondary,
               tabs: const [
-                Tab(
-                  icon: Icon(Icons.dashboard_outlined),
-                  text: 'Dashboard',
-                ),
-                Tab(
-                  icon: Icon(Icons.event_note_outlined),
-                  text: 'Events',
-                ),
-                Tab(
-                  icon: Icon(Icons.terminal_outlined),
-                  text: 'Live Logs',
-                ),
+                Tab(icon: Icon(Icons.dashboard_outlined), text: 'Dashboard'),
+                Tab(icon: Icon(Icons.event_note_outlined), text: 'Events'),
+                Tab(icon: Icon(Icons.terminal_outlined), text: 'Live Logs'),
               ],
             ),
           ),
           Expanded(
             child: TabBarView(
               children: [
-                _DashboardTab(
-                  dashboard: _dashboard!,
-                  onRefresh: _loadData,
-                ),
-                _EventsTab(
-                  events: _events,
-                  onRefresh: _loadData,
-                ),
+                _DashboardTab(dashboard: _dashboard!, onRefresh: _loadData),
+                _EventsTab(events: _events, onRefresh: _loadData),
                 const LiveLogsTab(),
               ],
             ),
@@ -159,10 +144,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
 // ── Dashboard Tab ────────────────────────────────────────────────────
 
 class _DashboardTab extends StatelessWidget {
-  const _DashboardTab({
-    required this.dashboard,
-    required this.onRefresh,
-  });
+  const _DashboardTab({required this.dashboard, required this.onRefresh});
 
   final Map<String, dynamic> dashboard;
   final Future<void> Function() onRefresh;
@@ -213,10 +195,7 @@ class _DashboardTab extends StatelessWidget {
 // ── Events Tab ───────────────────────────────────────────────────────
 
 class _EventsTab extends StatelessWidget {
-  const _EventsTab({
-    required this.events,
-    required this.onRefresh,
-  });
+  const _EventsTab({required this.events, required this.onRefresh});
 
   final List<dynamic>? events;
   final Future<void> Function() onRefresh;

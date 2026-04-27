@@ -18,7 +18,11 @@ class CognithorBadgeIcon extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Icon(icon, color: color ?? CognithorTheme.textSecondary, size: CognithorTheme.iconSizeMd),
+        Icon(
+          icon,
+          color: color ?? CognithorTheme.textSecondary,
+          size: CognithorTheme.iconSizeMd,
+        ),
         if (count > 0)
           Positioned(
             right: -6,

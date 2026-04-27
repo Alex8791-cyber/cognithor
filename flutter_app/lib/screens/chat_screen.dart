@@ -85,7 +85,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!_pipListenerAttached) {
       final chat = context.read<ChatProvider>();
       chat.addListener(() {
-        if (!chat.isStreaming && chat.activeTool == null && chat.statusText.isEmpty) {
+        if (!chat.isStreaming &&
+            chat.activeTool == null &&
+            chat.statusText.isEmpty) {
           final pip = context.read<PipProvider>();
           if (pip.busy) {
             Future.delayed(const Duration(seconds: 3), () {
@@ -143,32 +145,32 @@ class _ChatScreenState extends State<ChatScreen> {
     final l = AppLocalizations.of(context);
 
     return Scaffold(
-        key: _scaffoldKey,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: _buildAppBar(l),
-        drawer: Consumer<SessionsProvider>(
-          builder: (context, sessions, _) {
-            return ChatHistoryDrawer(
-              sessions: sessions.sessions,
-              folders: sessions.folders,
-              activeSessionId: sessions.activeSessionId,
-              onSelectSession: _onSelectSession,
-              onNewChat: _onNewChat,
-              onNewIncognitoChat: _onNewIncognitoChat,
-              onExitIncognito: _isIncognito ? _exitIncognito : null,
-              isIncognito: _isIncognito,
-              onDeleteSession: _onDeleteSession,
-              onRenameSession: _onRenameSession,
-              onMoveToFolder: _onMoveToFolder,
-              searchResults: sessions.searchResults,
-              onSearchChanged: sessions.searchChats,
-              sessionsByProject: sessions.sessionsByProject,
-            );
-          },
-        ),
-        body: Container(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: Row(
+      key: _scaffoldKey,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: _buildAppBar(l),
+      drawer: Consumer<SessionsProvider>(
+        builder: (context, sessions, _) {
+          return ChatHistoryDrawer(
+            sessions: sessions.sessions,
+            folders: sessions.folders,
+            activeSessionId: sessions.activeSessionId,
+            onSelectSession: _onSelectSession,
+            onNewChat: _onNewChat,
+            onNewIncognitoChat: _onNewIncognitoChat,
+            onExitIncognito: _isIncognito ? _exitIncognito : null,
+            isIncognito: _isIncognito,
+            onDeleteSession: _onDeleteSession,
+            onRenameSession: _onRenameSession,
+            onMoveToFolder: _onMoveToFolder,
+            searchResults: sessions.searchResults,
+            onSearchChanged: sessions.searchChats,
+            sessionsByProject: sessions.sessionsByProject,
+          );
+        },
+      ),
+      body: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Row(
           children: [
             // Tree sidebar (when toggled)
             if (_showTreeSidebar) const TreeSidebar(),
@@ -193,7 +195,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       if (!voice.isActive) return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
                         child: VoiceIndicator(state: voice.state),
                       );
                     },
@@ -216,19 +220,25 @@ class _ChatScreenState extends State<ChatScreen> {
                   Expanded(
                     child: Consumer2<ChatProvider, HackerModeProvider>(
                       builder: (context, chat, hackerMode, _) {
-                        debugPrint('[Chat] Consumer2 rebuild: messages=${chat.messages.length} streaming=${chat.isStreaming} id=${identityHashCode(chat)}');
+                        debugPrint(
+                          '[Chat] Consumer2 rebuild: messages=${chat.messages.length} streaming=${chat.isStreaming} id=${identityHashCode(chat)}',
+                        );
                         _scrollToBottom();
 
                         // Auto-load tree after messages change
                         // The tree loads via REST, not WS — simpler and more reliable
                         if (chat.messages.isNotEmpty) {
                           final tree = context.read<TreeProvider>();
-                          if (tree.activePath.length != chat.messages.length && !chat.isStreaming) {
+                          if (tree.activePath.length != chat.messages.length &&
+                              !chat.isStreaming) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               final conn = context.read<ConnectionProvider>();
                               final sessions = context.read<SessionsProvider>();
                               tree.setApi(conn.api);
-                              tree.refreshFromSession(conn.api, sessionId: sessions.activeSessionId);
+                              tree.refreshFromSession(
+                                conn.api,
+                                sessionId: sessions.activeSessionId,
+                              );
                             });
                           }
                         }
@@ -252,7 +262,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         }
 
                         final hasPreFlight = chat.preFlightData != null;
-                        final itemCount = chat.messages.length +
+                        final itemCount =
+                            chat.messages.length +
                             (chat.isStreaming ? 1 : 0) +
                             (hasPreFlight ? 1 : 0) +
                             (_showTyping(chat) ? 1 : 0);
@@ -271,19 +282,32 @@ class _ChatScreenState extends State<ChatScreen> {
 
                             // Pre-flight card appears after messages (and streaming), before typing
                             if (hasPreFlight) {
-                              final preFlightIndex = chat.messages.length +
+                              final preFlightIndex =
+                                  chat.messages.length +
                                   (chat.isStreaming ? 1 : 0);
                               if (index == preFlightIndex) {
                                 return PreFlightCard(
-                                  goal: chat.preFlightData!['goal'] as String? ?? '',
-                                  steps: (chat.preFlightData!['steps'] as List?)
-                                      ?.cast<Map<String, dynamic>>() ?? [],
-                                  timeoutSeconds: chat.preFlightData!['timeout'] as int? ?? 3,
+                                  goal:
+                                      chat.preFlightData!['goal'] as String? ??
+                                      '',
+                                  steps:
+                                      (chat.preFlightData!['steps'] as List?)
+                                          ?.cast<Map<String, dynamic>>() ??
+                                      [],
+                                  timeoutSeconds:
+                                      chat.preFlightData!['timeout'] as int? ??
+                                      3,
                                   onCancel: () {
                                     chat.dismissPreFlight();
-                                    final sessions = context.read<SessionsProvider>();
-                                    final api = context.read<ConnectionProvider>().api;
-                                    api.post('system/cancel', {'session_id': sessions.activeSessionId ?? ''});
+                                    final sessions = context
+                                        .read<SessionsProvider>();
+                                    final api = context
+                                        .read<ConnectionProvider>()
+                                        .api;
+                                    api.post('system/cancel', {
+                                      'session_id':
+                                          sessions.activeSessionId ?? '',
+                                    });
                                   },
                                 );
                               }
@@ -320,14 +344,18 @@ class _ChatScreenState extends State<ChatScreen> {
                                         text: msg.text,
                                         isUser: false,
                                         onRetry: () => chat.retryLastResponse(),
-                                        showRetry: index == chat.messages.length - 1,
+                                        showRetry:
+                                            index == chat.messages.length - 1,
                                       ),
                                       const SizedBox(width: 4),
                                       FeedbackButtons(
                                         messageId: msg.id,
                                         onFeedback: (rating, msgId) {
                                           chat.sendFeedback(
-                                              rating, msgId, msg.text);
+                                            rating,
+                                            msgId,
+                                            msg.text,
+                                          );
                                         },
                                       ),
                                     ],
@@ -347,31 +375,50 @@ class _ChatScreenState extends State<ChatScreen> {
                                       VersionNavigator(
                                         currentVersion: msg.activeVersion,
                                         totalVersions: msg.versionCount,
-                                        onPrevious: () =>
-                                            chat.switchVersion(index, msg.activeVersion - 1),
-                                        onNext: () =>
-                                            chat.switchVersion(index, msg.activeVersion + 1),
+                                        onPrevious: () => chat.switchVersion(
+                                          index,
+                                          msg.activeVersion - 1,
+                                        ),
+                                        onNext: () => chat.switchVersion(
+                                          index,
+                                          msg.activeVersion + 1,
+                                        ),
                                       ),
-                                    if (msg.hasVersions) const SizedBox(width: 8),
+                                    if (msg.hasVersions)
+                                      const SizedBox(width: 8),
                                     // Tree-based branch navigation (when tree is active)
                                     Consumer<TreeProvider>(
                                       builder: (context, tree, _) {
-                                        if (!tree.hasTree) return const SizedBox.shrink();
-                                        final nodeId = (index < tree.activePath.length)
+                                        if (!tree.hasTree)
+                                          return const SizedBox.shrink();
+                                        final nodeId =
+                                            (index < tree.activePath.length)
                                             ? tree.activePath[index]
                                             : msg.treeNodeId;
-                                        if (nodeId == null || !tree.isForkPoint(nodeId)) {
+                                        if (nodeId == null ||
+                                            !tree.isForkPoint(nodeId)) {
                                           return const SizedBox.shrink();
                                         }
                                         return Padding(
-                                          padding: const EdgeInsets.only(right: 8),
+                                          padding: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
                                           child: BranchNavigator(
-                                            currentIndex: tree.getActiveChildIndex(nodeId),
-                                            totalBranches: tree.getChildCount(nodeId),
+                                            currentIndex: tree
+                                                .getActiveChildIndex(nodeId),
+                                            totalBranches: tree.getChildCount(
+                                              nodeId,
+                                            ),
                                             onPrevious: () => tree.switchBranch(
-                                                nodeId, tree.getActiveChildIndex(nodeId) - 1),
+                                              nodeId,
+                                              tree.getActiveChildIndex(nodeId) -
+                                                  1,
+                                            ),
                                             onNext: () => tree.switchBranch(
-                                                nodeId, tree.getActiveChildIndex(nodeId) + 1),
+                                              nodeId,
+                                              tree.getActiveChildIndex(nodeId) +
+                                                  1,
+                                            ),
                                           ),
                                         );
                                       },
@@ -408,8 +455,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   // Tool indicator
                   Consumer<ChatProvider>(
                     builder: (context, chat, _) {
-                      if (chat.activeTool == null &&
-                          chat.statusText.isEmpty) {
+                      if (chat.activeTool == null && chat.statusText.isEmpty) {
                         return const SizedBox.shrink();
                       }
                       return ToolIndicator(
@@ -509,11 +555,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     agentLog: chat.agentLog,
                     planDetail: chat.planDetail,
                     pipelineState: chat.pipeline
-                        .map((p) => {
-                              'phase': p.phase,
-                              'status': p.status,
-                              'elapsed_ms': p.elapsedMs,
-                            })
+                        .map(
+                          (p) => {
+                            'phase': p.phase,
+                            'status': p.status,
+                            'elapsed_ms': p.elapsedMs,
+                          },
+                        )
                         .toList(),
                     onClose: () => setState(() => _showObserve = false),
                   );
@@ -521,7 +569,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
           ],
         ),
-        ),
+      ),
     );
   }
 
@@ -639,18 +687,30 @@ class _ChatScreenState extends State<ChatScreen> {
                 onTap: () => _exitIncognito(),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.purple.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.purple.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: Colors.purple.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.visibility_off, size: 12, color: Colors.purple),
+                      Icon(
+                        Icons.visibility_off,
+                        size: 12,
+                        color: Colors.purple,
+                      ),
                       SizedBox(width: 3),
-                      Text('Inkognito', style: TextStyle(fontSize: 10, color: Colors.purple)),
+                      Text(
+                        'Inkognito',
+                        style: TextStyle(fontSize: 10, color: Colors.purple),
+                      ),
                       SizedBox(width: 3),
                       Icon(Icons.close, size: 10, color: Colors.purple),
                     ],
@@ -667,7 +727,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<Widget> _buildAppBarActions(AppLocalizations l) {
     final isLargePhone = MediaQuery.of(context).size.width > 400;
-    final spacer = isLargePhone ? const SizedBox(width: 4) : const SizedBox.shrink();
+    final spacer = isLargePhone
+        ? const SizedBox(width: 4)
+        : const SizedBox.shrink();
 
     return [
       // Voice toggle
@@ -689,11 +751,9 @@ class _ChatScreenState extends State<ChatScreen> {
         icon: const Icon(Icons.auto_stories),
         tooltip: l.teachCognithor,
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const TeachScreen(),
-            ),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const TeachScreen()));
         },
       ),
       spacer,
@@ -703,9 +763,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return IconButton(
             icon: Icon(
               Icons.terminal,
-              color: hackerMode.enabled
-                  ? const Color(0xFF00FF41)
-                  : null,
+              color: hackerMode.enabled ? const Color(0xFF00FF41) : null,
             ),
             tooltip: l.hackerMode,
             onPressed: () => hackerMode.toggle(),
@@ -795,7 +853,9 @@ class _FeedbackFollowupBannerState extends State<_FeedbackFollowupBanner> {
       decoration: BoxDecoration(
         color: CognithorTheme.orange.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: CognithorTheme.orange.withValues(alpha: 0.30)),
+        border: Border.all(
+          color: CognithorTheme.orange.withValues(alpha: 0.30),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,10 +863,7 @@ class _FeedbackFollowupBannerState extends State<_FeedbackFollowupBanner> {
         children: [
           Text(
             widget.question,
-            style: TextStyle(
-              fontSize: 13,
-              color: CognithorTheme.textSecondary,
-            ),
+            style: TextStyle(fontSize: 13, color: CognithorTheme.textSecondary),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -820,10 +877,13 @@ class _FeedbackFollowupBannerState extends State<_FeedbackFollowupBanner> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                    color: CognithorTheme.orange.withValues(alpha: 0.30)),
+                  color: CognithorTheme.orange.withValues(alpha: 0.30),
+                ),
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
             ),
             style: const TextStyle(fontSize: 13),
           ),

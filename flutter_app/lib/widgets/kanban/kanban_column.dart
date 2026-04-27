@@ -51,7 +51,9 @@ class KanbanColumn extends StatelessWidget {
           decoration: BoxDecoration(
             color: isHovering
                 ? color.withValues(alpha: 0.15)
-                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                : theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.3,
+                  ),
             borderRadius: BorderRadius.circular(12),
             border: isHovering
                 ? Border.all(color: color, width: 2)
@@ -82,7 +84,10 @@ class KanbanColumn extends StatelessWidget {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -109,7 +114,9 @@ class KanbanColumn extends StatelessWidget {
                     child: Text(
                       'No tasks',
                       style: TextStyle(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.4,
+                        ),
                         fontSize: 12,
                       ),
                     ),
@@ -121,7 +128,8 @@ class KanbanColumn extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   buildDefaultDragHandles: false,
                   itemCount: tasks.length,
-                  onReorder: (oldIdx, newIdx) => _onReorder(context, oldIdx, newIdx),
+                  onReorder: (oldIdx, newIdx) =>
+                      _onReorder(context, oldIdx, newIdx),
                   proxyDecorator: (child, index, animation) {
                     return AnimatedBuilder(
                       animation: animation,
