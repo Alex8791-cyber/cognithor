@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
 """Scan src/cognithor/ for MCP tool definitions and emit catalog.json.
 
-Tool discovery:
-  * Any module under src/cognithor/mcp/ containing a function decorated with
-    @mcp_tool / @cognithor_tool / @tool.
-  * Skill modules that register MCP-compatible tools via these decorators.
+Tool discovery (two paths):
+  1. **Decorator path** (`extract_tools`): any function decorated with
+     `@mcp_tool` / `@cognithor_tool` / `@tool` under `src/cognithor/`.
+  2. **Builtin-handler path** (`extract_register_builtin_calls`): any call to
+     `mcp_client.register_builtin_handler("name", handler, description=...,
+     input_schema=...)` under `src/cognithor/mcp/`. This is how the live
+     MCP server populates its ~145 tools (see `mcp/atl_tools.py`,
+     `mcp/api_hub.py`, etc.).
 
-KNOWN GAP (as of v0.95.0):
-  The live MCP server in src/cognithor/mcp/server.py registers ~145 tools via
-  imperative `server.register_tool(MCPToolDef(name=..., handler=...))` calls,
-  NOT via decorators. Those tools are therefore NOT discovered by this script
-  and `catalog.json` reports `tool_count: 0` in the published artifact.
-
-  To close the gap, either:
-    1. Migrate the `register_tool()` call-sites in mcp/server.py + bridge.py to
-       use a `@mcp_tool` decorator (preferred — single source of truth), OR
-    2. Extend extract_tools() with an AST visitor that detects
-       `register_tool(MCPToolDef(name="...", description="..."))` calls and
-       extracts the kwargs (kept as metadata, no runtime import).
+The bridge step in `mcp/bridge.py` (`_bridge_builtin_tools`) reads the
+populated handler registry at runtime and constructs `MCPToolDef`s
+dynamically — that path is NOT statically discoverable. We therefore extract
+from the upstream `register_builtin_handler` literals instead.
 
 Output JSON shape:
   {
@@ -93,6 +89,83 @@ def extract_tools(py_file: Path) -> list[dict]:
     return results
 
 
+def extract_register_builtin_calls(py_file: Path) -> list[dict]:
+    """Find `mcp_client.register_builtin_handler("name", ..., description=..., ...)` call sites.
+
+    Captures the literal kwargs without importing the module. Skips dynamic
+    name args (variable, f-string) — those are runtime-only and can't be
+    statically catalogued.
+    """
+    try:
+        tree = ast.parse(py_file.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return []
+    results: list[dict] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        # Match `<obj>.register_builtin_handler(...)`.
+        if not (isinstance(func, ast.Attribute) and func.attr == "register_builtin_handler"):
+            continue
+        if not node.args:
+            continue
+        name_node = node.args[0]
+        if not (isinstance(name_node, ast.Constant) and isinstance(name_node.value, str)):
+            # Dynamic name — skip rather than guess.
+            continue
+        tool_name = name_node.value
+        description = ""
+        for kw in node.keywords:
+            if kw.arg == "description" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                description = kw.value.value
+                break
+            # Some call-sites use a parenthesized string-concat for description;
+            # try to fold that into a single literal.
+            if kw.arg == "description" and isinstance(kw.value, ast.BinOp):
+                description = _fold_str_concat(kw.value)
+                break
+        module = (
+            py_file.relative_to(REPO_ROOT / "src")
+            .with_suffix("")
+            .as_posix()
+            .replace("/", ".")
+        )
+        category = _infer_category(py_file, description)
+        name_lower = tool_name.lower()
+        desc_lower = description.lower()
+        dach = any(marker in name_lower or marker in desc_lower for marker in DACH_MARKERS)
+        results.append(
+            {
+                "name": tool_name,
+                "module": module,
+                "category": category,
+                "description": description.split("\n")[0][:200],
+                "dach_specific": dach,
+            }
+        )
+    return results
+
+
+def _fold_str_concat(node: ast.BinOp) -> str:
+    """Best-effort fold of `"..." + "..."` and `"..." "..."` into a single str."""
+    if isinstance(node.op, ast.Add):
+        left = node.left
+        right = node.right
+        left_s = (
+            left.value if isinstance(left, ast.Constant) and isinstance(left.value, str)
+            else _fold_str_concat(left) if isinstance(left, ast.BinOp)
+            else ""
+        )
+        right_s = (
+            right.value if isinstance(right, ast.Constant) and isinstance(right.value, str)
+            else _fold_str_concat(right) if isinstance(right, ast.BinOp)
+            else ""
+        )
+        return left_s + right_s
+    return ""
+
+
 def _decorator_name(dec: ast.expr) -> str:
     if isinstance(dec, ast.Name):
         return dec.id
@@ -136,6 +209,7 @@ def main() -> int:
     tools: list[dict] = []
     for py in MCP_DIR.rglob("*.py"):
         tools.extend(extract_tools(py))
+        tools.extend(extract_register_builtin_calls(py))
 
     # Filter out tools from modules that aren't wired into the live server yet.
     # See NOT_YET_REGISTERED_PREFIXES at top of file.

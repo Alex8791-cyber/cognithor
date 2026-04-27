@@ -1,5 +1,790 @@
 {
-  "generated_at": "2026-04-26T12:13:31.047907+00:00",
-  "tool_count": 0,
-  "tools": []
+  "generated_at": "2026-04-27T18:29:37.431593+00:00",
+  "tool_count": 112,
+  "tools": [
+    {
+      "name": "file_write",
+      "module": "cognithor.mcp.filesystem",
+      "category": "filesystem",
+      "description": "Alias für write_file. Erstellt oder überschreibt eine Datei.",
+      "dach_specific": false
+    },
+    {
+      "name": "add_entity",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Erstellt eine neue Entität im Wissens-Graphen. Typen: person, company, product, project, etc.",
+      "dach_specific": false
+    },
+    {
+      "name": "add_relation",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Erstellt eine Beziehung zwischen zwei Entitäten im Wissens-Graphen. Beispiel: Müller --[nutzt]→ Cloud-Pro",
+      "dach_specific": false
+    },
+    {
+      "name": "analyze_code",
+      "module": "cognithor.mcp.code_tools",
+      "category": "misc",
+      "description": "Analysiert Python-Code auf Code-Smells und Sicherheitsprobleme. Kombiniert AST-basierte Qualitätsanalyse mit Security-Pattern-Scanning. Read-only, kein Risiko. Akzeptiert Code als String oder Dateipfa",
+      "dach_specific": false
+    },
+    {
+      "name": "api_call",
+      "module": "cognithor.mcp.api_hub",
+      "category": "misc",
+      "description": "Make an authenticated API call to a configured integration. Supports GET, POST, PUT, DELETE, PATCH, HEAD methods.",
+      "dach_specific": false
+    },
+    {
+      "name": "api_connect",
+      "module": "cognithor.mcp.api_hub",
+      "category": "misc",
+      "description": "Configure a new API integration. Supports pre-built templates for GitHub, Jira, Notion, Todoist, Home Assistant, and OpenWeatherMap. Credentials are never stored -- only the environment variable name.",
+      "dach_specific": false
+    },
+    {
+      "name": "api_disconnect",
+      "module": "cognithor.mcp.api_hub",
+      "category": "misc",
+      "description": "Remove an API integration configuration. This does not revoke any API keys -- only removes the local config.",
+      "dach_specific": false
+    },
+    {
+      "name": "arc_play",
+      "module": "cognithor.mcp.arc_tools",
+      "category": "misc",
+      "description": "Start or run an ARC-AGI-3 game session. Provide a 'game_id' to identify the environment. Optionally set 'use_llm' (default true) and 'max_steps'.",
+      "dach_specific": false
+    },
+    {
+      "name": "arc_replay",
+      "module": "cognithor.mcp.arc_tools",
+      "category": "misc",
+      "description": "Replay a completed ARC-AGI-3 session from its recorded audit trail. Set 'verbose' to true to see individual event details.",
+      "dach_specific": false
+    },
+    {
+      "name": "arc_status",
+      "module": "cognithor.mcp.arc_tools",
+      "category": "misc",
+      "description": "Query the status of an ARC-AGI-3 session. Provide 'game_id' for a specific session, or omit to list all sessions.",
+      "dach_specific": false
+    },
+    {
+      "name": "atl_goals",
+      "module": "cognithor.mcp.atl_tools",
+      "category": "misc",
+      "description": "Manage ATL goals. Actions: list (default), add (needs title), pause/resume/complete (needs goal_id).",
+      "dach_specific": false
+    },
+    {
+      "name": "atl_journal",
+      "module": "cognithor.mcp.atl_tools",
+      "category": "misc",
+      "description": "Read ATL journal entries. Default: today only. Set days > 1 for history.",
+      "dach_specific": false
+    },
+    {
+      "name": "atl_status",
+      "module": "cognithor.mcp.atl_tools",
+      "category": "misc",
+      "description": "Show ATL status: config, cycle count, active goals.",
+      "dach_specific": false
+    },
+    {
+      "name": "calendar_check_availability",
+      "module": "cognithor.mcp.calendar_tools",
+      "category": "misc",
+      "description": "Freie Zeitfenster innerhalb der Arbeitszeit finden. Berücksichtigt bestehende Termine.",
+      "dach_specific": false
+    },
+    {
+      "name": "calendar_create_event",
+      "module": "cognithor.mcp.calendar_tools",
+      "category": "misc",
+      "description": "Neuen Kalender-Termin erstellen. Schreibt in die lokale ICS-Datei.",
+      "dach_specific": false
+    },
+    {
+      "name": "calendar_today",
+      "module": "cognithor.mcp.calendar_tools",
+      "category": "misc",
+      "description": "Zeigt die heutigen Kalender-Termine an. Optional ein anderes Datum angeben.",
+      "dach_specific": false
+    },
+    {
+      "name": "calendar_upcoming",
+      "module": "cognithor.mcp.calendar_tools",
+      "category": "misc",
+      "description": "Zeigt kommende Kalender-Termine an, sortiert nach Startzeit.",
+      "dach_specific": false
+    },
+    {
+      "name": "chart_from_csv",
+      "module": "cognithor.mcp.chart_tools",
+      "category": "misc",
+      "description": "Erstellt ein Diagramm direkt aus einer CSV-Datei. Liest die Datei, erkennt Spalten automatisch, erstellt PNG.",
+      "dach_specific": false
+    },
+    {
+      "name": "check_background_job",
+      "module": "cognithor.mcp.background_tasks",
+      "category": "misc",
+      "description": "Check status and recent output of a background job.",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_click",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Click at specific pixel coordinates on the desktop. Use computer_screenshot first to identify element positions.",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_click_element",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Click a UI element by description instead of coordinates. Takes a screenshot, finds the matching element via vision, and clicks it. Example: 'Login button', 'the search field', 'Close icon'.",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_drag",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Drag from one position to another (e.g., for drag-and-drop).",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_hotkey",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Press a keyboard shortcut. Pass keys separated by +. Examples: 'ctrl+c', 'ctrl+v', 'alt+tab', 'enter', 'escape', 'ctrl+shift+s'.",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_screenshot",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Take a screenshot of the desktop and describe visible UI elements with their approximate pixel coordinates. Use this to see what's on screen before clicking.",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_scroll",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Scroll at specific coordinates on the desktop.",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_type",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Type text using the keyboard. Supports Unicode (umlauts, etc.). Click a text field first with computer_click.",
+      "dach_specific": false
+    },
+    {
+      "name": "computer_wait_for_change",
+      "module": "cognithor.mcp.computer_use",
+      "category": "misc",
+      "description": "Wait until the screen changes after an action. Confirms that a click/type/hotkey had a visible effect. Returns whether the screen changed and optionally what changed.",
+      "dach_specific": false
+    },
+    {
+      "name": "create_chart",
+      "module": "cognithor.mcp.chart_tools",
+      "category": "misc",
+      "description": "Erstellt ein Diagramm aus Daten (bar, line, pie, scatter, hbar). Akzeptiert Daten als Liste von Dicts oder CSV-String. Speichert als PNG im Workspace. Dark-Theme.",
+      "dach_specific": false
+    },
+    {
+      "name": "create_skill",
+      "module": "cognithor.mcp.skill_tools",
+      "category": "misc",
+      "description": "Erstellt einen neuen Jarvis-Skill als Markdown-Datei. Der Skill ist sofort nach Erstellung verfuegbar.",
+      "dach_specific": false
+    },
+    {
+      "name": "create_table_image",
+      "module": "cognithor.mcp.chart_tools",
+      "category": "misc",
+      "description": "Rendert Daten als formatierte Tabelle in einem Bild (PNG). Optionales Highlighting der Maximalwerte. Dark-Theme.",
+      "dach_specific": false
+    },
+    {
+      "name": "db_connect",
+      "module": "cognithor.mcp.database_tools",
+      "category": "misc",
+      "description": "Testet eine Datenbankverbindung und zeigt Informationen an (Typ, Version, Groesse, Anzahl Tabellen).",
+      "dach_specific": false
+    },
+    {
+      "name": "db_execute",
+      "module": "cognithor.mcp.database_tools",
+      "category": "misc",
+      "description": "Fuehrt eine schreibende SQL-Anweisung aus (INSERT/UPDATE/DELETE/CREATE). Erfordert Gatekeeper-Genehmigung. DROP-Anweisungen sind blockiert.",
+      "dach_specific": false
+    },
+    {
+      "name": "db_query",
+      "module": "cognithor.mcp.database_tools",
+      "category": "misc",
+      "description": "Fuehrt eine SELECT-Abfrage auf einer Datenbank aus (read-only). Unterstuetzt SQLite (Dateipfad) und PostgreSQL (Connection-String). Ergebnis: Formatierte Tabelle mit Spalten und Zeilen.",
+      "dach_specific": false
+    },
+    {
+      "name": "db_schema",
+      "module": "cognithor.mcp.database_tools",
+      "category": "misc",
+      "description": "Zeigt das Schema einer Datenbank an. Ohne table-Parameter: Liste aller Tabellen. Mit table-Parameter: Detaillierte Spalteninformationen.",
+      "dach_specific": false
+    },
+    {
+      "name": "delete_entity",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Löscht eine Entität und alle zugehörigen Relationen aus dem Wissens-Graphen (GDPR erasure). Exakter Name-Match.",
+      "dach_specific": false
+    },
+    {
+      "name": "delete_relation",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Löscht eine Relation zwischen zwei Entitäten aus dem Wissens-Graphen (GDPR erasure).",
+      "dach_specific": false
+    },
+    {
+      "name": "docker_inspect",
+      "module": "cognithor.mcp.docker_tools",
+      "category": "misc",
+      "description": "Inspect a Docker container or image. Returns detailed JSON info including state, config, network settings, and mounts.",
+      "dach_specific": false
+    },
+    {
+      "name": "docker_logs",
+      "module": "cognithor.mcp.docker_tools",
+      "category": "misc",
+      "description": "Get logs from a Docker container. Supports tail lines and time-based filtering.",
+      "dach_specific": false
+    },
+    {
+      "name": "docker_ps",
+      "module": "cognithor.mcp.docker_tools",
+      "category": "misc",
+      "description": "List Docker containers. Shows ID, name, image, status, and ports. Use all=true to include stopped containers.",
+      "dach_specific": false
+    },
+    {
+      "name": "docker_run",
+      "module": "cognithor.mcp.docker_tools",
+      "category": "misc",
+      "description": "Start a Docker container from an image. Supports port mapping, environment variables, and custom commands. Security: --privileged and host network modes are blocked.",
+      "dach_specific": false
+    },
+    {
+      "name": "docker_stop",
+      "module": "cognithor.mcp.docker_tools",
+      "category": "misc",
+      "description": "Stop a running Docker container gracefully. Sends SIGTERM, then SIGKILL after timeout.",
+      "dach_specific": false
+    },
+    {
+      "name": "edit_file",
+      "module": "cognithor.mcp.filesystem",
+      "category": "misc",
+      "description": "Ersetzt einen eindeutigen String in einer Datei (str_replace).",
+      "dach_specific": false
+    },
+    {
+      "name": "email_read_inbox",
+      "module": "cognithor.mcp.email_tools",
+      "category": "misc",
+      "description": "E-Mails aus dem Posteingang lesen. Gibt Absender, Betreff, Datum und eine Vorschau zurück.",
+      "dach_specific": false
+    },
+    {
+      "name": "email_search",
+      "module": "cognithor.mcp.email_tools",
+      "category": "misc",
+      "description": "E-Mails durchsuchen nach Absender, Betreff, Inhalt oder Datum.",
+      "dach_specific": false
+    },
+    {
+      "name": "email_send",
+      "module": "cognithor.mcp.email_tools",
+      "category": "misc",
+      "description": "E-Mail senden über SMTP. Unterstützt Text und HTML, CC/BCC und Datei-Anhänge aus dem Workspace.",
+      "dach_specific": false
+    },
+    {
+      "name": "email_summarize",
+      "module": "cognithor.mcp.email_tools",
+      "category": "misc",
+      "description": "Posteingang zusammenfassen: Gruppierung nach Absender und Thread, Statistiken und Top-Absender.",
+      "dach_specific": false
+    },
+    {
+      "name": "exec_command",
+      "module": "cognithor.mcp.shell",
+      "category": "misc",
+      "description": "",
+      "dach_specific": false
+    },
+    {
+      "name": "find_and_replace",
+      "module": "cognithor.mcp.search_tools",
+      "category": "misc",
+      "description": "Sucht und ersetzt Text in Dateien. WICHTIG: Standard ist dry_run=true (nur Vorschau). Erstellt .bak-Backups vor Aenderungen. Unterstuetzt Text und Regex.",
+      "dach_specific": false
+    },
+    {
+      "name": "find_in_files",
+      "module": "cognithor.mcp.search_tools",
+      "category": "misc",
+      "description": "Durchsucht Dateiinhalte nach Text oder Regex. Zeigt Treffer mit Kontext (Zeilen davor/danach). Ueberspringt automatisch Binaerdateien und grosse Dateien.",
+      "dach_specific": false
+    },
+    {
+      "name": "get_clipboard",
+      "module": "cognithor.mcp.desktop_tools",
+      "category": "misc",
+      "description": "Read clipboard content (text or image). Note: Clipboard may contain sensitive information.",
+      "dach_specific": false
+    },
+    {
+      "name": "get_core_memory",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Gibt die CORE.md zurück (Identität, Regeln, Präferenzen).",
+      "dach_specific": false
+    },
+    {
+      "name": "get_entity",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Lädt eine Entität aus dem Wissens-Graphen mit allen Attributen und Relationen. Sucht per Name (Teilmatch möglich).",
+      "dach_specific": false
+    },
+    {
+      "name": "get_recent_episodes",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Lädt die Tageslog-Einträge der letzten Tage.",
+      "dach_specific": false
+    },
+    {
+      "name": "git_branch",
+      "module": "cognithor.mcp.git_tools",
+      "category": "misc",
+      "description": "Git-Branch-Operationen: list (alle Branches anzeigen), create (neuen Branch erstellen), switch (Branch wechseln), delete (Branch sicher loeschen, nur -d).",
+      "dach_specific": false
+    },
+    {
+      "name": "git_commit",
+      "module": "cognithor.mcp.git_tools",
+      "category": "misc",
+      "description": "Staged bestimmte Dateien und erstellt einen Git-Commit. KEIN 'git add .' -- nur explizit benannte Dateien werden gestaged. Optional: --amend zum Aendern des letzten Commits.",
+      "dach_specific": false
+    },
+    {
+      "name": "git_diff",
+      "module": "cognithor.mcp.git_tools",
+      "category": "misc",
+      "description": "Zeigt Git-Diffs an. Optionen: unstaged (Default), staged (--cached), oder Vergleich mit einem bestimmten Commit.",
+      "dach_specific": false
+    },
+    {
+      "name": "git_log",
+      "module": "cognithor.mcp.git_tools",
+      "category": "misc",
+      "description": "Zeigt die Git-Commit-History. Optionaler Autor-Filter und kompaktes Format.",
+      "dach_specific": false
+    },
+    {
+      "name": "git_status",
+      "module": "cognithor.mcp.git_tools",
+      "category": "misc",
+      "description": "Zeigt den Git Working-Tree-Status: staged, unstaged und untracked Dateien. Read-only, kein Risiko.",
+      "dach_specific": false
+    },
+    {
+      "name": "install_community_skill",
+      "module": "cognithor.mcp.skill_tools",
+      "category": "misc",
+      "description": "Installiert einen Community-Skill aus dem oeffentlichen Registry. Fuehrt automatisch 5 Sicherheits-Checks durch und zeigt benoetigte Tool-Permissions an.",
+      "dach_specific": false
+    },
+    {
+      "name": "kanban_create_task",
+      "module": "cognithor.mcp.kanban_tools",
+      "category": "misc",
+      "description": "Create a new task on the Kanban board",
+      "dach_specific": false
+    },
+    {
+      "name": "kanban_list_tasks",
+      "module": "cognithor.mcp.kanban_tools",
+      "category": "misc",
+      "description": "List tasks on the Kanban board",
+      "dach_specific": false
+    },
+    {
+      "name": "kanban_update_task",
+      "module": "cognithor.mcp.kanban_tools",
+      "category": "misc",
+      "description": "Update a task's status or result on the Kanban board",
+      "dach_specific": false
+    },
+    {
+      "name": "knowledge_gaps",
+      "module": "cognithor.mcp.synthesis",
+      "category": "misc",
+      "description": "Analysiert was zu einem Thema bekannt ist und was fehlt. Gibt einen Vollständigkeits-Score und priorisierte Recherche-Vorschläge.",
+      "dach_specific": false
+    },
+    {
+      "name": "knowledge_timeline",
+      "module": "cognithor.mcp.synthesis",
+      "category": "misc",
+      "description": "Baut eine chronologische Zeitlinie aus allen verfügbaren Quellen auf. Zeigt Kausalketten (X führte zu Y) und erkennbare Trends.",
+      "dach_specific": false
+    },
+    {
+      "name": "list_background_jobs",
+      "module": "cognithor.mcp.background_tasks",
+      "category": "misc",
+      "description": "List all background jobs (active and recent completed).",
+      "dach_specific": false
+    },
+    {
+      "name": "list_directory",
+      "module": "cognithor.mcp.filesystem",
+      "category": "misc",
+      "description": "Listet Verzeichnisinhalt als Baumstruktur.",
+      "dach_specific": false
+    },
+    {
+      "name": "list_reminders",
+      "module": "cognithor.mcp.notification_tools",
+      "category": "misc",
+      "description": "List active/pending reminders. Set include_past=true to see fired/cancelled ones.",
+      "dach_specific": false
+    },
+    {
+      "name": "list_skills",
+      "module": "cognithor.mcp.skill_tools",
+      "category": "misc",
+      "description": "Listet alle registrierten Jarvis-Skills mit Name, Kategorie, Keywords und Erfolgsrate.",
+      "dach_specific": false
+    },
+    {
+      "name": "memory_stats",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Zeigt Statistiken des Memory-Systems (Chunks, Entitäten, Prozeduren etc.).",
+      "dach_specific": false
+    },
+    {
+      "name": "publish_skill",
+      "module": "cognithor.mcp.skill_tools",
+      "category": "misc",
+      "description": "Publish a local skill to the Cognithor Community Skill Registry on GitHub. The skill must exist locally and have valid frontmatter with trigger_keywords and tools_required. Requires GitHub credentials",
+      "dach_specific": false
+    },
+    {
+      "name": "read_background_log",
+      "module": "cognithor.mcp.background_tasks",
+      "category": "misc",
+      "description": "Read the log/output of a background job. Supports tail (last N lines), head (first N lines), offset+limit pagination, and grep filtering.",
+      "dach_specific": false
+    },
+    {
+      "name": "read_file",
+      "module": "cognithor.mcp.filesystem",
+      "category": "misc",
+      "description": "Liest eine Datei. Pfad wird gegen Sandbox-Policy geprüft.",
+      "dach_specific": false
+    },
+    {
+      "name": "record_procedure_usage",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Meldet Erfolg/Misserfolg einer Prozedur für Lern-Tracking.",
+      "dach_specific": false
+    },
+    {
+      "name": "remote_exec",
+      "module": "cognithor.mcp.remote_shell",
+      "category": "misc",
+      "description": "Execute a command on a remote host via SSH. Use for running commands on servers, Docker containers, or VPS instances. Requires host to be registered first.",
+      "dach_specific": false
+    },
+    {
+      "name": "remote_list_hosts",
+      "module": "cognithor.mcp.remote_shell",
+      "category": "misc",
+      "description": "List all registered remote SSH hosts.",
+      "dach_specific": false
+    },
+    {
+      "name": "remote_test_connection",
+      "module": "cognithor.mcp.remote_shell",
+      "category": "misc",
+      "description": "Test SSH connection to a registered host.",
+      "dach_specific": false
+    },
+    {
+      "name": "report_skill",
+      "module": "cognithor.mcp.skill_tools",
+      "category": "misc",
+      "description": "Meldet einen Community-Skill als missbraeuchlich oder problematisch.",
+      "dach_specific": false
+    },
+    {
+      "name": "run_python",
+      "module": "cognithor.mcp.code_tools",
+      "category": "misc",
+      "description": "Führt Python-Code in einer Sandbox aus. Der Code wird als temporäre Datei geschrieben und via Python-Interpreter ausgeführt. Arbeitsverzeichnis: ~/.cognithor/workspace/. Für autonomes Coding: Schreibe",
+      "dach_specific": false
+    },
+    {
+      "name": "save_to_memory",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Speichert neue Information ins Jarvis-Gedächtnis. Tier wählen: 'episodic' für Tageslog, 'semantic' für Fakten, 'procedural' für gelernte Abläufe.",
+      "dach_specific": false
+    },
+    {
+      "name": "screenshot_desktop",
+      "module": "cognithor.mcp.desktop_tools",
+      "category": "misc",
+      "description": "Take a full desktop screenshot. Note: Screenshots may contain sensitive information.",
+      "dach_specific": false
+    },
+    {
+      "name": "screenshot_region",
+      "module": "cognithor.mcp.desktop_tools",
+      "category": "misc",
+      "description": "Take a screenshot of a specific screen region. Note: Screenshots may contain sensitive information.",
+      "dach_specific": false
+    },
+    {
+      "name": "search_community_skills",
+      "module": "cognithor.mcp.skill_tools",
+      "category": "misc",
+      "description": "Durchsucht das Community-Skill-Registry nach verfuegbaren Skills.",
+      "dach_specific": false
+    },
+    {
+      "name": "search_files",
+      "module": "cognithor.mcp.search_tools",
+      "category": "misc",
+      "description": "Findet Dateien nach Name oder Glob-Pattern (z.B. '*.py', '**/*.json'). Rekursive Suche mit automatischem Ausschluss von .git, node_modules, etc.",
+      "dach_specific": false
+    },
+    {
+      "name": "search_memory",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Durchsucht das Jarvis-Gedächtnis (alle 5 Tiers). Nutzt Hybrid-Suche: BM25 (lexikalisch) + Vektor (semantisch) + Graph. Immer als ERSTES aufrufen wenn du Kontext brauchst.",
+      "dach_specific": false
+    },
+    {
+      "name": "search_procedures",
+      "module": "cognithor.mcp.memory_server",
+      "category": "misc",
+      "description": "Sucht nach gelernten Prozeduren/Skills. Prozeduren enthalten bewährte Abläufe für wiederkehrende Aufgaben.",
+      "dach_specific": false
+    },
+    {
+      "name": "send_notification",
+      "module": "cognithor.mcp.notification_tools",
+      "category": "misc",
+      "description": "Send an immediate desktop notification with a title and message.",
+      "dach_specific": false
+    },
+    {
+      "name": "set_clipboard",
+      "module": "cognithor.mcp.desktop_tools",
+      "category": "misc",
+      "description": "Copy text to the system clipboard.",
+      "dach_specific": false
+    },
+    {
+      "name": "set_reminder",
+      "module": "cognithor.mcp.notification_tools",
+      "category": "misc",
+      "description": "Set a reminder for the future. Provide 'text' and either 'delay_minutes' (relative) or 'at' (ISO datetime). Optional 'repeat': none/daily/weekly.",
+      "dach_specific": false
+    },
+    {
+      "name": "social_leads",
+      "module": "cognithor.mcp.social_tools",
+      "category": "misc",
+      "description": "Leads von allen Plattformen auflisten mit optionalen Filtern",
+      "dach_specific": false
+    },
+    {
+      "name": "social_scan",
+      "module": "cognithor.mcp.social_tools",
+      "category": "misc",
+      "description": "Scanne soziale Plattformen nach Leads (Reddit, Hacker News, Discord, RSS)",
+      "dach_specific": false
+    },
+    {
+      "name": "start_background",
+      "module": "cognithor.mcp.background_tasks",
+      "category": "misc",
+      "description": "Start a shell command in the background. Returns a job_id for monitoring. Use for long-running tasks like downloads, builds, or training runs.",
+      "dach_specific": false
+    },
+    {
+      "name": "stop_background_job",
+      "module": "cognithor.mcp.background_tasks",
+      "category": "misc",
+      "description": "Stop a running background job. Use force=true for immediate SIGKILL.",
+      "dach_specific": false
+    },
+    {
+      "name": "vault_delete",
+      "module": "cognithor.mcp.vault",
+      "category": "misc",
+      "description": "Delete a vault note by path (GDPR erasure)",
+      "dach_specific": false
+    },
+    {
+      "name": "vault_link",
+      "module": "cognithor.mcp.vault",
+      "category": "misc",
+      "description": "Erstellt eine bidirektionale [[Backlink]]-Verknüpfung zwischen zwei Notizen im Vault.",
+      "dach_specific": false
+    },
+    {
+      "name": "vault_list",
+      "module": "cognithor.mcp.vault",
+      "category": "misc",
+      "description": "Listet Notizen im Knowledge Vault auf. Filterbar nach Ordner und Tags, sortierbar nach Datum oder Titel.",
+      "dach_specific": false
+    },
+    {
+      "name": "vault_read",
+      "module": "cognithor.mcp.vault",
+      "category": "misc",
+      "description": "Liest eine einzelne Notiz aus dem Vault. Akzeptiert Titel, relativen Pfad oder Slug.",
+      "dach_specific": false
+    },
+    {
+      "name": "vault_save",
+      "module": "cognithor.mcp.vault",
+      "category": "misc",
+      "description": "Speichert eine Notiz im Knowledge Vault (Obsidian-kompatibel). Erstellt Markdown mit YAML-Frontmatter, Tags und [[Backlinks]]. Ideal für Recherche-Ergebnisse, Meeting-Notizen, Wissensartikel.",
+      "dach_specific": false
+    },
+    {
+      "name": "vault_search",
+      "module": "cognithor.mcp.vault",
+      "category": "misc",
+      "description": "Durchsucht das Knowledge Vault nach Notizen. Volltextsuche in Titel und Inhalt, filterbar nach Ordner und Tags.",
+      "dach_specific": false
+    },
+    {
+      "name": "vault_update",
+      "module": "cognithor.mcp.vault",
+      "category": "misc",
+      "description": "Aktualisiert eine bestehende Notiz im Vault. Kann Text anhängen und/oder Tags ergänzen.",
+      "dach_specific": false
+    },
+    {
+      "name": "wait_background_job",
+      "module": "cognithor.mcp.background_tasks",
+      "category": "misc",
+      "description": "Wait for a background job to complete (with timeout).",
+      "dach_specific": false
+    },
+    {
+      "name": "web_news_search",
+      "module": "cognithor.mcp.web",
+      "category": "misc",
+      "description": "Nachrichtensuche durchführen. Gibt aktuelle Nachrichten mit Titel, Quelle, Datum und Snippet zurück. Ideal für aktuelle Ereignisse und Neuigkeiten.",
+      "dach_specific": false
+    },
+    {
+      "name": "write_file",
+      "module": "cognithor.mcp.filesystem",
+      "category": "misc",
+      "description": "Erstellt oder überschreibt eine Datei (atomar).",
+      "dach_specific": false
+    },
+    {
+      "name": "api_list",
+      "module": "cognithor.mcp.api_hub",
+      "category": "web",
+      "description": "List all configured API integrations and available templates. Shows connection status, auth type, and base URL.",
+      "dach_specific": false
+    },
+    {
+      "name": "http_request",
+      "module": "cognithor.mcp.web",
+      "category": "web",
+      "description": "HTTP-Request ausführen (GET/POST/PUT/PATCH/DELETE). Für API-Aufrufe, Webhooks und REST-Interaktionen.",
+      "dach_specific": false
+    },
+    {
+      "name": "investigate_org",
+      "module": "cognithor.mcp.osint_tools",
+      "category": "web",
+      "description": "OSINT investigation of an organization: checks web presence, funding, team",
+      "dach_specific": false
+    },
+    {
+      "name": "investigate_person",
+      "module": "cognithor.mcp.osint_tools",
+      "category": "web",
+      "description": "OSINT investigation of a person: collects evidence from GitHub, web, arXiv, cross-verifies claims, computes Trust Score (0-100)",
+      "dach_specific": false
+    },
+    {
+      "name": "investigate_project",
+      "module": "cognithor.mcp.osint_tools",
+      "category": "web",
+      "description": "OSINT investigation of a project: checks GitHub repos, web mentions, funding claims",
+      "dach_specific": false
+    },
+    {
+      "name": "knowledge_contradictions",
+      "module": "cognithor.mcp.synthesis",
+      "category": "web",
+      "description": "Vergleicht gespeichertes Wissen (Memory + Vault) mit aktuellen Web-Informationen und identifiziert Widersprüche, veraltete Fakten und neue Erkenntnisse.",
+      "dach_specific": false
+    },
+    {
+      "name": "knowledge_synthesize",
+      "module": "cognithor.mcp.synthesis",
+      "category": "web",
+      "description": "Vollständige Wissenssynthese: Sammelt alle Quellen (Memory, Vault, Web), vergleicht Informationen, erkennt Widersprüche, baut Zeitlinien, bewertet Konfidenz und identifiziert Wissenslücken. DAS zentra",
+      "dach_specific": false
+    },
+    {
+      "name": "search_and_read",
+      "module": "cognithor.mcp.web",
+      "category": "web",
+      "description": "Kombinierte Websuche + Fetch: Sucht im Web und liest die Top-Ergebnisse. Ideal für tiefere Recherche. Mit cross_check=true werden Quellen verglichen.",
+      "dach_specific": false
+    },
+    {
+      "name": "web_fetch",
+      "module": "cognithor.mcp.web",
+      "category": "web",
+      "description": "URL abrufen und Haupttext extrahieren. Nutzt trafilatura für saubere Text-Extraktion, mit automatischem Jina AI Reader Fallback für JS-heavy Seiten.",
+      "dach_specific": false
+    },
+    {
+      "name": "web_search",
+      "module": "cognithor.mcp.web",
+      "category": "web",
+      "description": "Websuche durchführen. Gibt formatierte Suchergebnisse mit Titel, URL und Snippet zurück. Unterstützt Zeitfilter für aktuelle Ergebnisse.",
+      "dach_specific": false
+    }
+  ]
 }
