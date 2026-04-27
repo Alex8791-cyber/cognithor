@@ -171,6 +171,34 @@ async def handle_trace_subscribe_message(
     return "unknown_message_type"  # unreachable
 
 
+async def pump_queue_to_websocket(
+    queue: asyncio.Queue[dict[str, Any]],
+    sender: Any,
+    frame_type: str,
+) -> None:
+    """Drain a subscriber queue, wrap each record in `{type, payload}`, and send.
+
+    Runs as an asyncio Task; cancel to stop. On send-error, logs and
+    continues — the pump should outlive transient WebSocket hiccups
+    (the outer connection-handler will cancel us if the WS is truly dead).
+    """
+    while True:
+        try:
+            record = await queue.get()
+        except asyncio.CancelledError:
+            raise
+        try:
+            await sender({"type": frame_type, "payload": record})
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — pump must survive
+            log.warning(
+                "trace_ws_send_failed type=%s err=%s",
+                frame_type,
+                type(exc).__name__,
+            )
+
+
 # ============================================================================
 # WebUI Channel
 # ============================================================================

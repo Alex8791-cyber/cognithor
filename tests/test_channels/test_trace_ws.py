@@ -180,3 +180,34 @@ async def test_handle_unknown_subscribe_type_returns_error(monkeypatch: pytest.M
         sender=sender,
     )
     assert err == "unknown_message_type"
+
+
+@pytest.mark.asyncio
+async def test_pump_queue_to_websocket_forwards_lifecycle_events() -> None:
+    """The pump task drains a subscriber queue and sends formatted frames."""
+    from cognithor.channels.webui import (
+        TraceSubscriberState,
+        pump_queue_to_websocket,
+    )
+    from cognithor.crew.trace_bus import get_trace_bus
+
+    bus = get_trace_bus()
+    state = TraceSubscriberState()
+    queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=10)
+    state.lifecycle_handle = bus.subscribe_lifecycle(queue)
+    sender = AsyncMock()
+
+    pump_task = asyncio.create_task(pump_queue_to_websocket(queue, sender, "crew_lifecycle"))
+    bus.publish({"event_type": "crew_kickoff_started", "trace_id": "abc", "n_tasks": 3})
+    await asyncio.sleep(0.05)
+    pump_task.cancel()
+    try:
+        await pump_task
+    except asyncio.CancelledError:
+        pass
+
+    state.clear_all(bus)
+    assert sender.call_count >= 1
+    sent_frame = sender.call_args.args[0]
+    assert sent_frame["type"] == "crew_lifecycle"
+    assert sent_frame["payload"]["trace_id"] == "abc"
