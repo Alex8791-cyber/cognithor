@@ -117,13 +117,16 @@ class _CurrentBackendCardState extends State<_CurrentBackendCard> {
     try {
       final conn = context.read<ConnectionProvider>();
       final result = await conn.api.getBackendStatus();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _status = result;
           _loading = false;
         });
+      }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -225,8 +228,9 @@ class _CurrentBackendCardState extends State<_CurrentBackendCard> {
                   (models['executor'] as Map<String, dynamic>?)?['name']
                       ?.toString() ??
                   '';
-              if (plannerModel.isEmpty && executorModel.isEmpty)
+              if (plannerModel.isEmpty && executorModel.isEmpty) {
                 return const SizedBox.shrink();
+              }
               return Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Wrap(
@@ -291,13 +295,16 @@ class _BackendSwitchDialogState extends State<_BackendSwitchDialog> {
     try {
       final conn = context.read<ConnectionProvider>();
       final result = await conn.api.getBackendStatus();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _status = result;
           _loading = false;
         });
+      }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 

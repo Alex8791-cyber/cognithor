@@ -389,8 +389,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                     // Tree-based branch navigation (when tree is active)
                                     Consumer<TreeProvider>(
                                       builder: (context, tree, _) {
-                                        if (!tree.hasTree)
+                                        if (!tree.hasTree) {
                                           return const SizedBox.shrink();
+                                        }
                                         final nodeId =
                                             (index < tree.activePath.length)
                                             ? tree.activePath[index]

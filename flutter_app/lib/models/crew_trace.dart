@@ -1,6 +1,6 @@
-/// Models for the Trace-UI screen — mirrors the JSON returned by
-/// `/api/crew/traces`, `/api/crew/trace/{id}`, and the WebSocket
-/// `crew_lifecycle` / `crew_event` frames.
+// Models for the Trace-UI screen — mirrors the JSON returned by
+// `/api/crew/traces`, `/api/crew/trace/{id}`, and the WebSocket
+// `crew_lifecycle` / `crew_event` frames.
 
 enum TraceStatus { running, completed, failed }
 

@@ -494,8 +494,9 @@ class ConfigProvider extends ChangeNotifier {
           }
           futures.add(
             _api!.patch('config/$section', sectionData).then((r) {
-              if (r.containsKey('error'))
+              if (r.containsKey('error')) {
                 _sectionErrors[section] = r['error'].toString();
+              }
             }),
           );
         }
@@ -533,8 +534,9 @@ class ConfigProvider extends ChangeNotifier {
       if (topLevel.isNotEmpty) {
         futures.add(
           _api!.patch('config', topLevel).then((r) {
-            if (r.containsKey('error'))
+            if (r.containsKey('error')) {
               _sectionErrors['general'] = r['error'].toString();
+            }
           }),
         );
       }
@@ -545,8 +547,9 @@ class ConfigProvider extends ChangeNotifier {
         if (name.isNotEmpty) {
           futures.add(
             _api!.post('agents/$name', agent).then((r) {
-              if (r.containsKey('error'))
+              if (r.containsKey('error')) {
                 _sectionErrors['agents'] = r['error'].toString();
+              }
             }),
           );
         }
@@ -558,8 +561,9 @@ class ConfigProvider extends ChangeNotifier {
         if (name.isNotEmpty) {
           futures.add(
             _api!.post('bindings/$name', binding).then((r) {
-              if (r.containsKey('error'))
+              if (r.containsKey('error')) {
                 _sectionErrors['bindings'] = r['error'].toString();
+              }
             }),
           );
         }
@@ -569,8 +573,9 @@ class ConfigProvider extends ChangeNotifier {
       if (_prompts.isNotEmpty) {
         futures.add(
           _api!.put('prompts', _prompts).then((r) {
-            if (r.containsKey('error'))
+            if (r.containsKey('error')) {
               _sectionErrors['prompts'] = r['error'].toString();
+            }
           }),
         );
       }
@@ -578,8 +583,9 @@ class ConfigProvider extends ChangeNotifier {
       // Cron jobs
       futures.add(
         _api!.put('cron-jobs', {'jobs': _cronJobs}).then((r) {
-          if (r.containsKey('error'))
+          if (r.containsKey('error')) {
             _sectionErrors['cron'] = r['error'].toString();
+          }
         }),
       );
 
@@ -587,8 +593,9 @@ class ConfigProvider extends ChangeNotifier {
       if (_mcpServers.isNotEmpty) {
         futures.add(
           _api!.put('mcp-servers', _mcpServers).then((r) {
-            if (r.containsKey('error'))
+            if (r.containsKey('error')) {
               _sectionErrors['mcp'] = r['error'].toString();
+            }
           }),
         );
       }
@@ -597,8 +604,9 @@ class ConfigProvider extends ChangeNotifier {
       if (_a2a.isNotEmpty) {
         futures.add(
           _api!.put('a2a', _a2a).then((r) {
-            if (r.containsKey('error'))
+            if (r.containsKey('error')) {
               _sectionErrors['a2a'] = r['error'].toString();
+            }
           }),
         );
       }

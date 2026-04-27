@@ -26,11 +26,12 @@ class _TemplatePickerState extends State<TemplatePicker> {
     final templates = await context.read<RedditLeadsProvider>().getTemplates(
       subreddit: widget.subreddit,
     );
-    if (mounted)
+    if (mounted) {
       setState(() {
         _templates = templates;
         _loading = false;
       });
+    }
   }
 
   @override

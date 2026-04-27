@@ -253,13 +253,21 @@ class _CronJobCard extends StatelessWidget {
   }
 
   IconData _iconForAction(String name) {
-    if (name.contains('briefing') || name.contains('morning'))
+    if (name.contains('briefing') || name.contains('morning')) {
       return Icons.wb_sunny;
-    if (name.contains('review')) return Icons.rate_review;
-    if (name.contains('memory') || name.contains('maintenance'))
+    }
+    if (name.contains('review')) {
+      return Icons.rate_review;
+    }
+    if (name.contains('memory') || name.contains('maintenance')) {
       return Icons.memory;
-    if (name.contains('scan') || name.contains('reddit')) return Icons.radar;
-    if (name.contains('backup')) return Icons.backup;
+    }
+    if (name.contains('scan') || name.contains('reddit')) {
+      return Icons.radar;
+    }
+    if (name.contains('backup')) {
+      return Icons.backup;
+    }
     return Icons.schedule;
   }
 

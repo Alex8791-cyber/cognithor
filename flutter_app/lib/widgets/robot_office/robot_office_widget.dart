@@ -1541,8 +1541,9 @@ class _RobotOfficeWidgetState extends State<RobotOfficeWidget>
     double nearestDist = double.infinity;
     for (final other in _robots) {
       if (other == r) continue;
-      if (other.state != RobotState.idle && other.state != RobotState.working)
+      if (other.state != RobotState.idle && other.state != RobotState.working) {
         continue;
+      }
       final dx = other.x - r.x;
       final dy = other.y - r.y;
       final dist = dx * dx + dy * dy;

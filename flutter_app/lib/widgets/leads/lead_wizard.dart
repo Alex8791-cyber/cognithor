@@ -82,8 +82,9 @@ class _LeadWizardState extends State<LeadWizard> {
     setState(() => _posting = false);
     if (ok) {
       _repliedCount++;
-      if (mounted)
+      if (mounted) {
         CognithorToast.show(context, 'Reply posted', type: ToastType.success);
+      }
       _advance();
     }
   }
@@ -144,10 +145,12 @@ class _LeadWizardState extends State<LeadWizard> {
           if (event is KeyDownEvent && !_replyFocusNode.hasFocus) {
             if (event.logicalKey == LogicalKeyboardKey.keyA) _archive();
             if (event.logicalKey == LogicalKeyboardKey.keyS) _skip();
-            if (event.logicalKey == LogicalKeyboardKey.keyR && !_posting)
+            if (event.logicalKey == LogicalKeyboardKey.keyR && !_posting) {
               _reply();
-            if (event.logicalKey == LogicalKeyboardKey.keyI)
+            }
+            if (event.logicalKey == LogicalKeyboardKey.keyI) {
               setState(() => _showRefine = !_showRefine);
+            }
           }
         },
         child: Column(

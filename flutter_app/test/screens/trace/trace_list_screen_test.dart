@@ -24,7 +24,7 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => [
-        CrewTraceMeta(
+        const CrewTraceMeta(
           traceId: 'trace-1',
           status: TraceStatus.running,
           nTasks: 2,
@@ -32,7 +32,7 @@ void main() {
           agentCount: 1,
           nFailedGuardrails: 0,
         ),
-        CrewTraceMeta(
+        const CrewTraceMeta(
           traceId: 'trace-2',
           status: TraceStatus.completed,
           nTasks: 4,

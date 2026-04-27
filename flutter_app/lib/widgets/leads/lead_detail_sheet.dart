@@ -253,8 +253,9 @@ class _LeadDetailSheetState extends State<LeadDetailSheet> {
                               final perf =
                                   snap.data?['performance']
                                       as Map<String, dynamic>?;
-                              if (perf == null)
+                              if (perf == null) {
                                 return const Text('Not tracked yet');
+                              }
                               final score =
                                   (perf['engagement_score'] as num?)?.toInt() ??
                                   0;
@@ -272,8 +273,7 @@ class _LeadDetailSheetState extends State<LeadDetailSheet> {
                               );
                               if (tag != null && mounted) {
                                 await provider.setFeedback(lead.id, tag: tag);
-                                if (!mounted) return;
-                                // ignore: use_build_context_synchronously
+                                if (!context.mounted) return;
                                 CognithorToast.show(
                                   context,
                                   'Feedback saved',

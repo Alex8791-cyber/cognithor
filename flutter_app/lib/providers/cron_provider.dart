@@ -44,10 +44,12 @@ class CronJob {
     final dow = parts[4];
     if (dow == '1-5') return 'Weekdays $hour:${minute.padLeft(2, '0')}';
     if (dow == '5') return 'Fridays $hour:${minute.padLeft(2, '0')}';
-    if (parts[2] == '1' && parts[3] == '*')
+    if (parts[2] == '1' && parts[3] == '*') {
       return 'Monthly (1st) $hour:${minute.padLeft(2, '0')}';
-    if (dow == '*' && parts[2] == '*')
+    }
+    if (dow == '*' && parts[2] == '*') {
       return 'Daily $hour:${minute.padLeft(2, '0')}';
+    }
     return schedule;
   }
 }

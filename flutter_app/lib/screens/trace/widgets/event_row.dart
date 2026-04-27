@@ -66,7 +66,7 @@ class EventRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF131A30),
         border: Border.all(
-          color: (color ?? const Color(0xFF2A3550)).withOpacity(0.4),
+          color: (color ?? const Color(0xFF2A3550)).withValues(alpha: 0.4),
         ),
         borderRadius: BorderRadius.circular(10),
       ),
@@ -121,7 +121,7 @@ class EventRow extends StatelessWidget {
             width: 18,
             height: 18,
             decoration: BoxDecoration(
-              color: s.color.withOpacity(0.2),
+              color: s.color.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(s.icon, size: 12, color: s.color),
