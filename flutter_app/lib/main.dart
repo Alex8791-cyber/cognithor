@@ -28,6 +28,8 @@ import 'package:cognithor_ui/providers/cron_provider.dart';
 import 'package:cognithor_ui/providers/sources_provider.dart';
 import 'package:cognithor_ui/providers/packs_provider.dart';
 import 'package:cognithor_ui/providers/research_provider.dart';
+import 'package:cognithor_ui/providers/trace_provider.dart';
+import 'package:cognithor_ui/services/trace_service.dart';
 import 'package:cognithor_ui/screens/splash_screen.dart';
 import 'package:cognithor_ui/theme/cognithor_theme.dart';
 
@@ -68,6 +70,19 @@ class CognithorApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SourcesProvider()),
         ChangeNotifierProvider(create: (_) => PacksProvider()),
         ChangeNotifierProvider(create: (_) => ResearchProvider()),
+        ChangeNotifierProxyProvider<ConnectionProvider, TraceProvider?>(
+          create: (_) => null,
+          update: (_, conn, prev) {
+            if (conn.state != CognithorConnectionState.connected) return null;
+            if (prev != null) return prev;
+            return TraceProvider(
+              traceService: TraceService(
+                apiClient: conn.api,
+                wsService: conn.ws,
+              ),
+            );
+          },
+        ),
       ],
       child: Consumer2<ThemeProvider, LocaleProvider>(
         builder: (context, themeProvider, localeProvider, _) {
