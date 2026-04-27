@@ -15,9 +15,11 @@
 - [Model Router](#model-router)
 - [Context Pipeline](#context-pipeline)
 - [Role System (v0.36)](#role-system)
+- [Human-in-the-Loop (HITL)](#human-in-the-loop-hitl)
 - [Evolution Engine](#evolution-engine)
 - [OSINT / HIM Module](#osint--him-module)
 - [GDPR Compliance Layer](#gdpr-compliance-layer)
+- [Forensics — Run Recording & Replay](#forensics--run-recording--replay)
 - [Encryption at Rest](#encryption-at-rest)
 - [Bible Reference Index](#bible-reference-index)
 
@@ -378,6 +380,57 @@ Direction-based delegation (`a2a/delegation.py`):
 
 ---
 
+## Human-in-the-Loop (HITL)
+
+Graph-level approval workflow that pauses an agent run at any node and
+routes the decision to a human. Used wherever a Gatekeeper verdict alone is
+not authoritative — irreversible spend, regulated actions (DACH compliance),
+multi-stakeholder sign-off — and as the YELLOW/ORANGE escape hatch for the
+Gatekeeper itself.
+
+```
+   Graph node
+       │
+       ▼
+   ApprovalManager.create_approval()
+       │
+       ├──► Notifier (in-app / webhook / callback)
+       │      └──► assignees: ["supervisor"]
+       │
+       ▼
+   wait_for_decision(timeout, escalation_chain)
+       │
+       ├── APPROVED   ──► graph proceeds
+       ├── REJECTED   ──► graph short-circuits
+       ├── DELEGATED  ──► reassign + re-notify
+       └── TIMEOUT    ──► escalate to next assignee
+```
+
+### Key files
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `ApprovalManager` | `hitl/manager.py` | Lifecycle of approval requests + decision storage |
+| Approval node factory | `hitl/nodes.py` | `create_approval_node()` for graph integration |
+| Multi-channel dispatch | `hitl/notifier.py` | In-app, webhook, callback notifications |
+| Type definitions | `hitl/types.py` | `HITLConfig`, `ApprovalDecision`, status enums |
+
+### How it integrates with PGE-Trinity
+
+- The Gatekeeper returns `PENDING` / `ESCALATED` for borderline decisions.
+- The hook bridge (`gateway/claude_code_hooks.py`) maps both to an
+  `ApprovalManager.create_approval()` and surfaces the request_id in the
+  `ask` response — see also the bridge optimization PR (#160).
+- An ASK-mode `ProactiveTask` in `proactive/__init__.py` short-circuits to
+  `AWAITING_APPROVAL` until `approve_task()` is called.
+
+### Stability
+
+Active subsystem; classified KEEP-ACTIVE in the
+[2026-04-27 stale-module triage](docs/audits/2026-04-27-stale-module-triage.md).
+
+---
+
 ## Evolution Engine
 
 The Evolution Engine enables Cognithor to autonomously learn, research, and build
@@ -490,6 +543,55 @@ Key components:
 - `security/compliance_audit.py` — Immutable audit log
 - `security/encrypted_db.py` — SQLCipher wrapper
 - `security/gdpr.py` — DataPurpose, DPIARiskLevel, ErasureManager (7 handlers)
+
+---
+
+## Forensics — Run Recording & Replay
+
+Companion to the Observer Audit Layer. While Observer captures real-time
+audit events for the live UI / `crew.trace_bus`, Forensics captures
+**complete runs** to a persistent SQLite store so historical agent
+behaviour can be reconstructed bit-for-bit, debugged, and replayed against
+new policies or model versions.
+
+```
+   Live agent run
+       │
+       ▼
+   RunRecorder
+       │
+       ├── ActionPlan       ──┐
+       ├── GateDecision     ──┤
+       ├── ToolResult       ──┼──► forensics.db (SQLCipher, AES-256)
+       ├── ReflectionResult ──┤      run_records / run_summaries tables
+       └── Policy snapshot  ──┘
+                                       │
+                                       ▼
+                                  ReplayEngine
+                                       │
+                                       ├── Re-execute against current code
+                                       ├── Diff old vs new gate verdict
+                                       └── Surface regressions / drift
+```
+
+### Key files
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `RunRecorder` | `forensics/run_recorder.py` | Streaming write of plans / verdicts / tool I/O / reflections to SQLCipher |
+| `ReplayEngine` | `forensics/replay_engine.py` | Hydrate a recorded run + re-run with current policies for regression detection |
+
+### Why it lives next to GDPR Compliance
+
+Every recording is an immutable, encrypted-at-rest artefact subject to the
+Art. 17 ErasureManager. The 7 erasure handlers in `security/gdpr.py`
+include forensics so a user-erasure request scrubs replay history along
+with memory and vault.
+
+### Stability
+
+Active subsystem; classified KEEP-ACTIVE in the
+[2026-04-27 stale-module triage](docs/audits/2026-04-27-stale-module-triage.md).
 
 ---
 
