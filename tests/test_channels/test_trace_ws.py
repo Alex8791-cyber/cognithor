@@ -211,3 +211,46 @@ async def test_pump_queue_to_websocket_forwards_lifecycle_events() -> None:
     sent_frame = sender.call_args.args[0]
     assert sent_frame["type"] == "crew_lifecycle"
     assert sent_frame["payload"]["trace_id"] == "abc"
+
+
+@pytest.mark.asyncio
+async def test_clear_all_after_subscribes_releases_bus_subscriptions(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify TraceSubscriberState.clear_all() removes all bus subscriptions
+    so a disconnect doesn't leak."""
+    from cognithor.channels.webui import (
+        TraceSubscriberState,
+        handle_trace_subscribe_message,
+    )
+    from cognithor.crew.trace_bus import get_trace_bus
+
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "owner")
+    bus = get_trace_bus()
+    state = TraceSubscriberState()
+    sender = AsyncMock()
+
+    # Subscribe to lifecycle + 2 topics
+    await handle_trace_subscribe_message(
+        message={"type": "crew_lifecycle_subscribe"},
+        state=state, bus=bus, user_id="owner", sender=sender,
+    )
+    await handle_trace_subscribe_message(
+        message={"type": "crew_subscribe", "trace_id": "t1"},
+        state=state, bus=bus, user_id="owner", sender=sender,
+    )
+    await handle_trace_subscribe_message(
+        message={"type": "crew_subscribe", "trace_id": "t2"},
+        state=state, bus=bus, user_id="owner", sender=sender,
+    )
+
+    # Confirm bus has 3 distinct topic entries.
+    assert "__lifecycle__" in bus._subscribers  # noqa: SLF001
+    assert "t1" in bus._subscribers  # noqa: SLF001
+    assert "t2" in bus._subscribers  # noqa: SLF001
+
+    # Simulate WebSocket disconnect cleanup.
+    state.clear_all(bus)
+
+    # Bus should now have no subscribers in any of these topics.
+    assert "__lifecycle__" not in bus._subscribers  # noqa: SLF001
+    assert "t1" not in bus._subscribers  # noqa: SLF001
+    assert "t2" not in bus._subscribers  # noqa: SLF001
