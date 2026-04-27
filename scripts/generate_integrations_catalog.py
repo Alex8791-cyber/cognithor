@@ -3,8 +3,21 @@
 
 Tool discovery:
   * Any module under src/cognithor/mcp/ containing a function decorated with
-    @mcp_tool (or class registering to the tool_registry).
-  * Skill modules that register MCP-compatible tools.
+    @mcp_tool / @cognithor_tool / @tool.
+  * Skill modules that register MCP-compatible tools via these decorators.
+
+KNOWN GAP (as of v0.95.0):
+  The live MCP server in src/cognithor/mcp/server.py registers ~145 tools via
+  imperative `server.register_tool(MCPToolDef(name=..., handler=...))` calls,
+  NOT via decorators. Those tools are therefore NOT discovered by this script
+  and `catalog.json` reports `tool_count: 0` in the published artifact.
+
+  To close the gap, either:
+    1. Migrate the `register_tool()` call-sites in mcp/server.py + bridge.py to
+       use a `@mcp_tool` decorator (preferred — single source of truth), OR
+    2. Extend extract_tools() with an AST visitor that detects
+       `register_tool(MCPToolDef(name="...", description="..."))` calls and
+       extracts the kwargs (kept as metadata, no runtime import).
 
 Output JSON shape:
   {
