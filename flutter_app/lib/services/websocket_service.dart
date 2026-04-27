@@ -228,6 +228,13 @@ class WebSocketService {
     });
   }
 
+  /// Send an arbitrary outbound frame. Used by feature services
+  /// (e.g. TraceService) to dispatch their own message types.
+  /// Returns `true` if written to the socket, `false` if dropped (no channel).
+  bool send(Map<String, dynamic> frame) {
+    return _send({...frame, 'session_id': _sessionId});
+  }
+
   // ---------------------------------------------------------------------------
   // Connection internals
   // ---------------------------------------------------------------------------
