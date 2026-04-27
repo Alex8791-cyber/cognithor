@@ -2848,4 +2848,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nextRun => 'Next';
+
+  @override
+  String get navTraces => 'Traces';
+
+  @override
+  String get traceStatusRunning => 'RUNNING';
+
+  @override
+  String get traceStatusCompleted => 'COMPLETED';
+
+  @override
+  String get traceStatusFailed => 'FAILED';
+
+  @override
+  String get traceFilterAll => 'All';
+
+  @override
+  String get traceFilterRunning => 'Running';
+
+  @override
+  String get traceFilterCompleted => 'Completed';
+
+  @override
+  String get traceFilterFailed => 'Failed';
+
+  @override
+  String get traceEmpty => 'No traces yet';
+
+  @override
+  String get traceNotFound => 'Trace not found — possibly rotated.';
 }

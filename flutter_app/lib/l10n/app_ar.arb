@@ -1649,5 +1649,26 @@
   "pausedJobs": "متوقف مؤقتاً",
   "@pausedJobs": {},
   "nextRun": "التالي",
-  "@nextRun": {}
+  "@nextRun": {},
+
+  "navTraces": "التتبعات",
+  "@navTraces": {},
+  "traceStatusRunning": "جارٍ",
+  "@traceStatusRunning": {},
+  "traceStatusCompleted": "مكتمل",
+  "@traceStatusCompleted": {},
+  "traceStatusFailed": "فشل",
+  "@traceStatusFailed": {},
+  "traceFilterAll": "الكل",
+  "@traceFilterAll": {},
+  "traceFilterRunning": "جارٍ",
+  "@traceFilterRunning": {},
+  "traceFilterCompleted": "مكتمل",
+  "@traceFilterCompleted": {},
+  "traceFilterFailed": "فشل",
+  "@traceFilterFailed": {},
+  "traceEmpty": "لا توجد تتبعات بعد",
+  "@traceEmpty": {},
+  "traceNotFound": "التتبع غير موجود — ربما تم تدويره.",
+  "@traceNotFound": {}
 }

@@ -139,41 +139,41 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorServerDown => 'الخادم غير متاح';
 
   @override
-  String get sendingApproval => 'Sending approval...';
+  String get sendingApproval => 'جاري إرسال الموافقة...';
 
   @override
-  String get sendingRejection => 'Sending rejection...';
+  String get sendingRejection => 'جاري إرسال الرفض...';
 
   @override
-  String get actionApproved => 'OK — Action approved';
+  String get actionApproved => '✓ تم اعتماد الإجراء';
 
   @override
-  String get actionRejected => 'OK — Action rejected';
+  String get actionRejected => '✓ تم رفض الإجراء';
 
   @override
   String errorWithDetail(String detail) {
-    return 'Error: $detail';
+    return 'خطأ: $detail';
   }
 
   @override
   String get noBackendConnection =>
-      'No connection to backend. Please check your connection.';
+      'لا يوجد اتصال بالخلفية. يُرجى التحقق من الاتصال.';
 
   @override
   String get approvalSendFailed =>
-      'Approval could not be sent (connection lost). Please try again.';
+      'تعذّر إرسال الموافقة (انقطع الاتصال). يُرجى المحاولة مرة أخرى.';
 
   @override
-  String get connectionLost => 'Connection to server lost';
+  String get connectionLost => 'انقطع الاتصال بالخادم';
 
   @override
-  String get connectionRestoring => 'Restoring connection...';
+  String get connectionRestoring => 'جاري استعادة الاتصال...';
 
   @override
-  String get connectNow => 'Connect now';
+  String get connectNow => 'الاتصال الآن';
 
   @override
-  String get recheck => 'Recheck';
+  String get recheck => 'إعادة التحقق';
 
   @override
   String get identityNotAvailable => 'طبقة الهوية غير متوفرة';
@@ -2840,4 +2840,34 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get nextRun => 'التالي';
+
+  @override
+  String get navTraces => 'التتبعات';
+
+  @override
+  String get traceStatusRunning => 'جارٍ';
+
+  @override
+  String get traceStatusCompleted => 'مكتمل';
+
+  @override
+  String get traceStatusFailed => 'فشل';
+
+  @override
+  String get traceFilterAll => 'الكل';
+
+  @override
+  String get traceFilterRunning => 'جارٍ';
+
+  @override
+  String get traceFilterCompleted => 'مكتمل';
+
+  @override
+  String get traceFilterFailed => 'فشل';
+
+  @override
+  String get traceEmpty => 'لا توجد تتبعات بعد';
+
+  @override
+  String get traceNotFound => 'التتبع غير موجود — ربما تم تدويره.';
 }

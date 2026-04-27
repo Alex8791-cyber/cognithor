@@ -1649,5 +1649,26 @@
   "pausedJobs": "已暂停",
   "@pausedJobs": {},
   "nextRun": "下次",
-  "@nextRun": {}
+  "@nextRun": {},
+
+  "navTraces": "追踪",
+  "@navTraces": {},
+  "traceStatusRunning": "运行中",
+  "@traceStatusRunning": {},
+  "traceStatusCompleted": "已完成",
+  "@traceStatusCompleted": {},
+  "traceStatusFailed": "失败",
+  "@traceStatusFailed": {},
+  "traceFilterAll": "全部",
+  "@traceFilterAll": {},
+  "traceFilterRunning": "运行中",
+  "@traceFilterRunning": {},
+  "traceFilterCompleted": "已完成",
+  "@traceFilterCompleted": {},
+  "traceFilterFailed": "失败",
+  "@traceFilterFailed": {},
+  "traceEmpty": "暂无追踪记录",
+  "@traceEmpty": {},
+  "traceNotFound": "追踪未找到 — 可能已轮换。",
+  "@traceNotFound": {}
 }

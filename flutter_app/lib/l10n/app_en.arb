@@ -1665,5 +1665,26 @@
   "pausedJobs": "Paused",
   "@pausedJobs": {},
   "nextRun": "Next",
-  "@nextRun": {}
+  "@nextRun": {},
+
+  "navTraces": "Traces",
+  "@navTraces": {"description": "Sidebar nav label for the Trace-UI screen"},
+  "traceStatusRunning": "RUNNING",
+  "@traceStatusRunning": {},
+  "traceStatusCompleted": "COMPLETED",
+  "@traceStatusCompleted": {},
+  "traceStatusFailed": "FAILED",
+  "@traceStatusFailed": {},
+  "traceFilterAll": "All",
+  "@traceFilterAll": {},
+  "traceFilterRunning": "Running",
+  "@traceFilterRunning": {},
+  "traceFilterCompleted": "Completed",
+  "@traceFilterCompleted": {},
+  "traceFilterFailed": "Failed",
+  "@traceFilterFailed": {},
+  "traceEmpty": "No traces yet",
+  "@traceEmpty": {},
+  "traceNotFound": "Trace not found — possibly rotated.",
+  "@traceNotFound": {}
 }

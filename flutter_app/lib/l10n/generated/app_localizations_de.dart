@@ -2856,4 +2856,34 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get nextRun => 'Naechste';
+
+  @override
+  String get navTraces => 'Traces';
+
+  @override
+  String get traceStatusRunning => 'LAEUFT';
+
+  @override
+  String get traceStatusCompleted => 'FERTIG';
+
+  @override
+  String get traceStatusFailed => 'FEHLGESCHLAGEN';
+
+  @override
+  String get traceFilterAll => 'Alle';
+
+  @override
+  String get traceFilterRunning => 'Laeuft';
+
+  @override
+  String get traceFilterCompleted => 'Fertig';
+
+  @override
+  String get traceFilterFailed => 'Fehlgeschlagen';
+
+  @override
+  String get traceEmpty => 'Noch keine Traces';
+
+  @override
+  String get traceNotFound => 'Trace nicht gefunden — moeglicherweise rotiert.';
 }

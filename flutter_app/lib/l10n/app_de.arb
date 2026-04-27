@@ -995,5 +995,16 @@
   "scheduledTasksHint": "Konfiguriere Cron-Jobs unter Administration, um wiederkehrende Aufgaben zu planen.",
   "activeJobs": "Aktiv",
   "pausedJobs": "Pausiert",
-  "nextRun": "Naechste"
+  "nextRun": "Naechste",
+
+  "navTraces": "Traces",
+  "traceStatusRunning": "LAEUFT",
+  "traceStatusCompleted": "FERTIG",
+  "traceStatusFailed": "FEHLGESCHLAGEN",
+  "traceFilterAll": "Alle",
+  "traceFilterRunning": "Laeuft",
+  "traceFilterCompleted": "Fertig",
+  "traceFilterFailed": "Fehlgeschlagen",
+  "traceEmpty": "Noch keine Traces",
+  "traceNotFound": "Trace nicht gefunden — moeglicherweise rotiert."
 }

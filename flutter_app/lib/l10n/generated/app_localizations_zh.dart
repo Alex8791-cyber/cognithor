@@ -139,41 +139,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorServerDown => '后端不可用';
 
   @override
-  String get sendingApproval => 'Sending approval...';
+  String get sendingApproval => '正在发送审批...';
 
   @override
-  String get sendingRejection => 'Sending rejection...';
+  String get sendingRejection => '正在发送拒绝...';
 
   @override
-  String get actionApproved => 'OK — Action approved';
+  String get actionApproved => '✓ 操作已批准';
 
   @override
-  String get actionRejected => 'OK — Action rejected';
+  String get actionRejected => '✓ 操作已拒绝';
 
   @override
   String errorWithDetail(String detail) {
-    return 'Error: $detail';
+    return '错误：$detail';
   }
 
   @override
-  String get noBackendConnection =>
-      'No connection to backend. Please check your connection.';
+  String get noBackendConnection => '无法连接到后端。请检查您的连接。';
 
   @override
-  String get approvalSendFailed =>
-      'Approval could not be sent (connection lost). Please try again.';
+  String get approvalSendFailed => '无法发送审批（连接丢失）。请重试。';
 
   @override
-  String get connectionLost => 'Connection to server lost';
+  String get connectionLost => '与服务器的连接丢失';
 
   @override
-  String get connectionRestoring => 'Restoring connection...';
+  String get connectionRestoring => '正在恢复连接...';
 
   @override
-  String get connectNow => 'Connect now';
+  String get connectNow => '立即连接';
 
   @override
-  String get recheck => 'Recheck';
+  String get recheck => '重新检查';
 
   @override
   String get identityNotAvailable => '身份层不可用';
@@ -2822,4 +2820,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get nextRun => '下次';
+
+  @override
+  String get navTraces => '追踪';
+
+  @override
+  String get traceStatusRunning => '运行中';
+
+  @override
+  String get traceStatusCompleted => '已完成';
+
+  @override
+  String get traceStatusFailed => '失败';
+
+  @override
+  String get traceFilterAll => '全部';
+
+  @override
+  String get traceFilterRunning => '运行中';
+
+  @override
+  String get traceFilterCompleted => '已完成';
+
+  @override
+  String get traceFilterFailed => '失败';
+
+  @override
+  String get traceEmpty => '暂无追踪记录';
+
+  @override
+  String get traceNotFound => '追踪未找到 — 可能已轮换。';
 }

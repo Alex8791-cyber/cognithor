@@ -5597,6 +5597,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Next'**
   String get nextRun;
+
+  /// Sidebar nav label for the Trace-UI screen
+  ///
+  /// In en, this message translates to:
+  /// **'Traces'**
+  String get navTraces;
+
+  /// No description provided for @traceStatusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'RUNNING'**
+  String get traceStatusRunning;
+
+  /// No description provided for @traceStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'COMPLETED'**
+  String get traceStatusCompleted;
+
+  /// No description provided for @traceStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'FAILED'**
+  String get traceStatusFailed;
+
+  /// No description provided for @traceFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get traceFilterAll;
+
+  /// No description provided for @traceFilterRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get traceFilterRunning;
+
+  /// No description provided for @traceFilterCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get traceFilterCompleted;
+
+  /// No description provided for @traceFilterFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get traceFilterFailed;
+
+  /// No description provided for @traceEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No traces yet'**
+  String get traceEmpty;
+
+  /// No description provided for @traceNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Trace not found — possibly rotated.'**
+  String get traceNotFound;
 }
 
 class _AppLocalizationsDelegate
