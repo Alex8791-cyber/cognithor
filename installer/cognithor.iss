@@ -107,16 +107,39 @@ Source: "{#ProjectRoot}\config.yaml.example"; DestDir: "{app}"; DestName: "confi
 Source: "{#ProjectRoot}\flutter_app\windows\runner\resources\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Cognithor"; Filename: "{app}\Cognithor.exe"; IconFilename: "{app}\app_icon.ico"; Comment: "Start Cognithor"
-Name: "{group}\Cognithor CLI"; Filename: "cmd.exe"; Parameters: "/k ""{app}\cognithor.bat"""; IconFilename: "{app}\app_icon.ico"; Comment: "Cognithor Command Line"
+; AppUserModelID lets Windows treat each shortcut as the canonical identity
+; for the running process — required for proper taskbar pinning, jump-list
+; grouping, and Start-menu/Search result deduplication.
+Name: "{group}\Cognithor"; Filename: "{app}\Cognithor.exe"; IconFilename: "{app}\app_icon.ico"; Comment: "Start Cognithor"; AppUserModelID: "Cognithor.AgentOS"
+Name: "{group}\Cognithor Desktop App"; Filename: "{app}\flutter_app\jarvis_ui.exe"; IconFilename: "{app}\app_icon.ico"; Comment: "Cognithor Command Center (native UI)"; AppUserModelID: "Cognithor.AgentOS.Desktop"; Components: flutter
+Name: "{group}\Cognithor CLI"; Filename: "cmd.exe"; Parameters: "/k ""{app}\cognithor.bat"""; IconFilename: "{app}\app_icon.ico"; Comment: "Cognithor Command Line"; AppUserModelID: "Cognithor.AgentOS.CLI"
 Name: "{group}\Uninstall Cognithor"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Cognithor"; Filename: "{app}\Cognithor.exe"; IconFilename: "{app}\app_icon.ico"; Comment: "Start Cognithor"
+Name: "{autodesktop}\Cognithor"; Filename: "{app}\Cognithor.exe"; IconFilename: "{app}\app_icon.ico"; Comment: "Start Cognithor"; AppUserModelID: "Cognithor.AgentOS"
 
 [Registry]
 ; Add to PATH if selected
 Root: HKCU; Subkey: "Environment"; \
     ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; \
     Components: addpath; Check: NeedsAddPath('{app}')
+
+; App Paths registration — lets Win+R "Cognithor" (or just typing "Cognithor" in the
+; Start menu) launch the app directly without a fully-qualified path. Also makes the
+; binary discoverable to ShellExecute callers across the system.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\Cognithor.exe"; \
+    ValueType: string; ValueData: "{app}\Cognithor.exe"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\Cognithor.exe"; \
+    ValueType: string; ValueName: "Path"; ValueData: "{app}"
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\Cognithor.exe"; \
+    ValueType: string; ValueName: "FriendlyAppName"; ValueData: "Cognithor"
+
+; Flutter desktop binary (still named jarvis_ui.exe for legacy reasons — surface a
+; friendly name so search results show "Cognithor Desktop").
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\jarvis_ui.exe"; \
+    ValueType: string; ValueData: "{app}\flutter_app\jarvis_ui.exe"; \
+    Components: flutter; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\jarvis_ui.exe"; \
+    ValueType: string; ValueName: "FriendlyAppName"; ValueData: "Cognithor Desktop"; \
+    Components: flutter
 
 [Run]
 ; Post-install: offer to start Cognithor
