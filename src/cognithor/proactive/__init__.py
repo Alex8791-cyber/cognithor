@@ -1,5 +1,10 @@
 """Proaktiver Heartbeat: Ereignisgesteuertes Task-Scheduling.
 
+**Stability:** feature-complete single-file module. Consumed by
+`cognithor.cron.engine` (heartbeat loop). Expand only when adding new
+heartbeat strategies or event types — the existing `EventType`,
+`HeartbeatScheduler`, `TaskQueue`, and `EventSource` surfaces are stable.
+
 Jarvis wartet nicht nur auf User-Input, sondern handelt proaktiv:
   - E-Mail-Triage (neue Mails scannen, priorisieren, Zusammenfassung)
   - Tagesbriefings (morgens/abends automatisch zusammenstellen)

@@ -1,5 +1,10 @@
 """Cognithor Agent SDK — build agents and tools in minimal code.
 
+**Stability:** stable public API. Used at agent/tool **definition time**, not
+runtime — the decorators construct dataclasses (`AgentDefinition`,
+`ToolDefinition`, `HookDefinition`) that the rest of the system consumes.
+Bump the major version when changing decorator signatures or definition shapes.
+
 Quick Start::
 
     from cognithor.sdk import agent, tool, hook
