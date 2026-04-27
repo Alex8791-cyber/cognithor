@@ -22,12 +22,14 @@ import contextlib
 import json
 import os
 import time
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from cognithor.channels.base import Channel, MessageHandler, StatusType
+from cognithor.crew.trace_bus import SubscriptionHandle, TraceBus
 from cognithor.models import IncomingMessage, OutgoingMessage, PlannedAction
 from cognithor.security.rate_limiter import RateLimiter
 from cognithor.security.token_store import get_token_store
@@ -75,6 +77,32 @@ class WSMessageType:
     ERROR = "error"
     PONG = "pong"
     IDENTITY_STATE = "identity_state"
+
+
+# ============================================================================
+# Trace-UI subscription state
+# ============================================================================
+
+
+@dataclass
+class TraceSubscriberState:
+    """Per-WebSocket-session state tracking active TraceBus subscriptions.
+
+    Stored on the session object so we can cleanly unsubscribe everything
+    when the WebSocket disconnects.
+    """
+
+    lifecycle_handle: SubscriptionHandle | None = None
+    topic_handles: dict[str, SubscriptionHandle] = field(default_factory=dict)
+
+    def clear_all(self, bus: TraceBus) -> None:
+        """Unsubscribe everything this session is subscribed to."""
+        if self.lifecycle_handle is not None:
+            bus.unsubscribe(self.lifecycle_handle)
+            self.lifecycle_handle = None
+        for handle in list(self.topic_handles.values()):
+            bus.unsubscribe(handle)
+        self.topic_handles.clear()
 
 
 # ============================================================================
