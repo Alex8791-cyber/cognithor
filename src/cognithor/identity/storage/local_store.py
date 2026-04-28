@@ -47,10 +47,15 @@ class LocalStore:
             dict: {'uri': str, 'filepath': str, 'hash': str}
         """
         import hashlib
+        import uuid
 
+        # Timestamp has 1-second resolution; rapid back-to-back saves with the
+        # same identity_id would collide and silently overwrite each other.
+        # Append a short uuid4 fragment to guarantee a unique filename.
         timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        unique_suffix = uuid.uuid4().hex[:8]
         safe_id = _SAFE_ID_RE.sub("_", identity_id[:16])
-        filename = f"{safe_id}_{timestamp}.json"
+        filename = f"{safe_id}_{timestamp}_{unique_suffix}.json"
         filepath = os.path.join(self.base_dir, filename)
 
         content = json.dumps(snapshot, ensure_ascii=False, indent=2)

@@ -109,6 +109,29 @@ class TestSaveLoadSnapshot:
         assert result is None
 
 
+class TestRapidSaveNoCollision:
+    """Regression: PR #168 noted that 1-second timestamp resolution caused
+    rapid same-second saves with the same identity_id to silently overwrite
+    each other. The fix appends a uuid4 fragment to the filename."""
+
+    def test_two_saves_in_same_second_produce_two_files(self, tmp_path):
+        store = LocalStore(base_dir=str(tmp_path / "store"))
+        r1 = store.save_snapshot({"n": 1}, identity_id="x")
+        r2 = store.save_snapshot({"n": 2}, identity_id="x")
+        assert r1["filepath"] != r2["filepath"]
+        assert os.path.exists(r1["filepath"])
+        assert os.path.exists(r2["filepath"])
+
+    def test_load_each_returns_its_own_payload(self, tmp_path):
+        store = LocalStore(base_dir=str(tmp_path / "store"))
+        r1 = store.save_snapshot({"n": 1}, identity_id="x")
+        r2 = store.save_snapshot({"n": 2}, identity_id="x")
+        d1 = store.load_snapshot(r1["uri"])
+        d2 = store.load_snapshot(r2["uri"])
+        assert d1["n"] == 1
+        assert d2["n"] == 2
+
+
 # ---------------------------------------------------------------------------
 # LocalStore — path traversal
 # ---------------------------------------------------------------------------

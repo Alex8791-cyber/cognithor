@@ -82,6 +82,12 @@ class VectorStore:
             # ChromaDB metadata values must be string, int, float, or bool
             clean_metadata = self._clean_metadata(metadata)
 
+            # ChromaDB 1.5+ rejects empty metadata dicts with ValueError.
+            # Inject a sentinel so the call still succeeds; callers that
+            # pass {} get a single benign field instead of a 500.
+            if not clean_metadata:
+                clean_metadata = {"_meta_empty": True}
+
             # Check for existing record
             existing = self._collection.get(ids=[memory_id])
             if existing["ids"]:

@@ -166,6 +166,26 @@ class TestGetAllIdsAndClear:
 
 
 # ---------------------------------------------------------------------------
+# TestEmptyMetadataGuard  (regression for ChromaDB 1.5+ ValueError on {})
+# ---------------------------------------------------------------------------
+
+
+class TestEmptyMetadataGuard:
+    """ChromaDB 1.5+ rejects empty metadata dicts with ValueError.
+    The add() guard injects a sentinel so callers passing {} don't crash."""
+
+    def test_add_with_empty_metadata_does_not_raise(self, vs):
+        vs.add("m1", EMB_X, {})  # empty metadata
+        assert vs.count() == 1
+        assert vs.exists("m1")
+
+    def test_empty_metadata_record_is_queryable(self, vs):
+        vs.add("m1", EMB_X, {})
+        ids = vs.query(EMB_X, n_results=5)
+        assert "m1" in ids
+
+
+# ---------------------------------------------------------------------------
 # TestCleanMetadata  (static — no ChromaDB needed)
 # ---------------------------------------------------------------------------
 
