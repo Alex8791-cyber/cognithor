@@ -20,10 +20,17 @@ class TestBootstrapEndpointProtection:
     """No unprotected route may leak the token."""
 
     def test_token_not_in_unprotected_routes(self) -> None:
-        source = (_SRC / "channels" / "config_routes.py").read_text(
-            encoding="utf-8",
-        )
-        # "bootstrap" must NOT appear in config_routes.py at all.
+        # `config_routes` ist seit 2026-04-29 ein Paket; Helfer wandern
+        # schrittweise in Sub-Module
+        # (siehe `docs/superpowers/plans/2026-04-29-config-routes-split.md`).
+        # Scan ueber alle `.py`-Dateien im Paket-Verzeichnis.
+        pkg_dir = _SRC / "channels" / "config_routes"
+        if pkg_dir.is_dir():
+            source_files = sorted(pkg_dir.glob("*.py"))
+        else:
+            source_files = [pkg_dir.with_suffix(".py")]
+        source = "\n".join(p.read_text(encoding="utf-8") for p in source_files)
+        # "bootstrap" must NOT appear in config_routes at all.
         # If it ever does, it must be behind ``dependencies=deps`` or
         # return "consumed" (the legacy already-consumed guard).
         matches = [line for line in source.splitlines() if "bootstrap" in line.lower()]
@@ -33,7 +40,7 @@ class TestBootstrapEndpointProtection:
                 or "consumed" in line.lower()
                 or line.lstrip().startswith("#")
                 or line.lstrip().startswith('"""')
-            ), f"Unprotected 'bootstrap' reference in config_routes.py: {line!r}"
+            ), f"Unprotected 'bootstrap' reference in config_routes: {line!r}"
 
 
 class TestMetaTagInjection:
