@@ -22,13 +22,13 @@ Audit of 14 backend modules under `src/cognithor/` with no commits since 2026-04
 - **Test coverage:** 11 test refs.
 - **Recommendation:** No action. Module is stable and integrated within the security layer.
 
-### `benchmark` — **VERIFY-WIRING**
+### `benchmark` — **VERIFY-WIRING** → see [2026-04-28 archive recommendation](2026-04-28-benchmark-archive-recommendation.md)
 
 - **Purpose:** Performance benchmarking & profiling utilities (2 files, 863 LOC).
 - **External import count:** 0 (only test refs).
 - **Test coverage:** 1 test ref.
-- **Runtime relevance:** Mentioned in CLI flags but not instantiated at runtime.
-- **Question for the user:** *Archive now, or keep seeded for future ARC-AGI-3 integration?* If kept, document the intended consumer.
+- **Runtime relevance:** None — not wired into CLI / gateway / channels.
+- **Recommendation:** Archive. The canonical benchmark home is the top-level `cognithor_bench/` package (own `pyproject.toml`, `cognithor-bench` CLI, Cognithor + AutoGen adapters). The internal `src/cognithor/benchmark/` is a parallel implementation with zero callers. See the linked recommendation doc for details + decision options.
 
 ### `documents` — **KEEP-DOCUMENTED**
 
@@ -121,7 +121,7 @@ green post-deletion (14 454 passed).
 - [x] ~~Resolve `kanban/` (7 TODOs) and `proactive/` (2 TODOs) hot-spots~~ — false positive, the "TODOs" were enum members named `TODO`, not work markers.
 - [x] ~~Decide `ui/`~~ — deleted (PR #162).
 - [x] ~~Add brief sections to `docs/ARCHITECTURE.md` for `forensics/` and `hitl/`~~ — done (`adcd6314`).
-- [ ] Decide `benchmark/`: archive vs. keep-for-ARC-AGI-3 (still pending — user judgment call).
+- [ ] Decide `benchmark/`: archive vs. keep-and-wire — see [2026-04-28 archive recommendation](2026-04-28-benchmark-archive-recommendation.md). Recommended: archive. Pending User confirmation.
 
 ## Notes
 
