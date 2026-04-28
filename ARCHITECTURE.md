@@ -758,5 +758,5 @@ decisions. Here is the complete mapping:
 | §15 | Monitoring | `gateway/monitoring.py`, `healthcheck.py` |
 | §16 | Explainability | `core/explainability.py`, `audit/eu_ai_act.py` |
 | §17 | GDPR, Multi-Tenancy | `core/multitenant.py`, `telemetry/` |
-| §18 | Performance | `core/performance.py`, `benchmark/suite.py` |
+| §18 | Performance | `core/performance.py` |
 | §19 | Evolution Engine | `evolution/loop.py`, `evolution/checkpoint.py`, `evolution/resume.py`, `system/resource_monitor.py` |

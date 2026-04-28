@@ -165,7 +165,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **Tool Sandbox Hardening** — Per-tool resource limits, network guards, escape detection (8 attack categories)
 - **GDPR Compliance Toolkit** — Data processing logs (Art. 30), retention enforcement, right-to-erasure (Art. 17), audit export
 - **ARC-AGI-3 Benchmark** — Compete in the [ARC Prize 2026](https://arcprize.org/competitions/2026) ($2M+ prize pool) via the `arc/` module: hybrid agent (algorithmic + LLM + CNN), 3 MCP tools (`arc_play`, `arc_status`, `arc_replay`), CLI mode, swarm mode. `pip install cognithor[arc]`
-- **Agent Benchmark Suite** — 14 standardized tasks, composite scoring, regression detection across versions
+- **Multi-Agent Benchmark Scaffold** — Reproducible benchmark harness in the top-level `cognithor_bench/` package: own `pyproject.toml`, `cognithor-bench` CLI, Cognithor + AutoGen adapters
 - **Deterministic Replay** — Record and replay agent executions with what-if analysis and diff comparison
 - **Agent SDK** — Decorator-based agent registration (`@agent`, `@tool`, `@hook`), project scaffolding
 - **Plugin Remote Registry** — Remote manifests with SHA-256 checksums, dependency resolution, install/update/rollback
@@ -209,7 +209,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 │  Planner    │  Gatekeeper  │  Executor                            │
 │  (LLM)      │  (Policy)    │  (Sandbox)                           │
 ├─────────────┴──────────────┴──────────────────────────────────────┤
-│  DAG Workflow Engine · Workflow Adapter · Benchmark Suite             │
+│  DAG Workflow Engine · Workflow Adapter                               │
 ├───────────────────────────────────────────────────────────────────┤
 │                   MCP Tool Layer (145+ tools)                        │
 │   Filesystem · Shell · Memory · Web · Browser · Media · Vault      │
@@ -688,7 +688,6 @@ Notable test suites: 183 Computer Use tests, 176 ARC tests, 136 Hierarchical Ret
 | Other | 247 | HITL, governance, learning, proactive, config manager |
 | Tools | 103 | Refactoring agent, code analyzer, skill CLI developer tools |
 | Utils | 126 | Logging, helper functions, error messages, installer |
-| Benchmark | 48 | Agent benchmark suite, scoring, regression detection |
 | Cron | 63 | Engine, job store, scheduling |
 | UI API | 55 | Command Center endpoints (config, agents, prompts, cron, MCP, A2A) |
 

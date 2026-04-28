@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- `src/cognithor/benchmark/` (in-process `BenchmarkRunner` / `RegressionDetector` / `BenchmarkReport` framework, ~863 LOC) archived to `archive/cognithor_internal_benchmark/`. No production callers in 18+ days; the canonical benchmark home is the top-level `cognithor_bench/` package (own `pyproject.toml`, `cognithor-bench` CLI, Cognithor + AutoGen adapters). See `docs/audits/2026-04-28-benchmark-archive-recommendation.md`.
+- `tests/test_benchmark/` archived alongside the source. Suite no longer runs in CI.
+
 ## [0.95.0] — 2026-04-27
 
 ### Added — Trace-UI
