@@ -6,8 +6,28 @@ in das System integriert sind und nicht isoliert existieren.
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+
+def _module_or_package_source(mod: ModuleType) -> str:
+    """Concatenate source for a module or every `.py` file in a package.
+
+    Robust gegen den schrittweisen Split von `cognithor.channels.config_routes`
+    aus dem Single-File-Modul in ein Paket mit Sub-Modulen
+    (siehe `docs/superpowers/plans/2026-04-29-config-routes-split.md`).
+    """
+    file = getattr(mod, "__file__", None)
+    if file and Path(file).name == "__init__.py":
+        pkg_dir = Path(file).parent
+        return "\n".join(p.read_text(encoding="utf-8") for p in sorted(pkg_dir.glob("*.py")))
+    return inspect.getsource(mod)
+
 
 # ============================================================================
 # 1. Channels-Export: Slack/Discord im Package verfügbar
@@ -187,11 +207,10 @@ class TestConfigRoutesWiring:
 
     def test_config_routes_references_config_api(self) -> None:
         """config_routes nutzt die neue config_api."""
-        import inspect
 
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         # Prüfe, dass die neuen Endpoints referenziert werden
         assert "bindings" in source.lower()
         assert "circles" in source.lower()
@@ -344,11 +363,9 @@ class TestMonitoringWiring:
         assert "heartbeat" in snap
 
     def test_config_routes_has_monitoring_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "monitoring_dashboard" in source
         assert "monitoring_metrics" in source
         assert "audit_trail" in source
@@ -402,11 +419,9 @@ class TestIsolationWiring:
         assert not guard.check_access("agent_1", Path("/etc/passwd"))
 
     def test_config_routes_has_isolation_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "isolation_stats" in source
         assert "isolation_quotas" in source
         assert "isolation_violations" in source
@@ -437,11 +452,9 @@ class TestMarketplaceWiring:
         assert exchange.marketplace is not None
 
     def test_config_routes_has_marketplace_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "marketplace_feed" in source
         assert "marketplace_search" in source
         assert "marketplace_categories" in source
@@ -541,11 +554,9 @@ class TestAuthWiring:
         assert len(result) == 2
 
     def test_config_routes_has_auth_endpoint(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "auth_stats" in source
 
 
@@ -574,11 +585,9 @@ class TestAgentHeartbeatWiring:
         # AgentHeartbeat is Enterprise-deferred
 
     def test_config_routes_has_heartbeat_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "agent_heartbeat_dashboard" in source
         assert "agent_heartbeat_summary" in source
 
@@ -608,11 +617,9 @@ class TestUpdaterWiring:
         assert exchange.updater is not None
 
     def test_config_routes_has_updater_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "updater_stats" in source
         assert "updater_pending" in source
         assert "updater_recalls" in source
@@ -650,11 +657,9 @@ class TestCommandsWiring:
         assert hasattr(gw, "_interaction_store")
 
     def test_config_routes_has_command_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "list_commands" in source
         assert "commands_slack" in source
         assert "commands_discord" in source
@@ -689,21 +694,17 @@ class TestWizardsRBACWiring:
         assert rbac.check_permission("admin", "config", "write")
 
     def test_config_routes_has_wizard_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "list_wizards" in source
         assert "run_wizard" in source
         assert "wizard_templates" in source
 
     def test_config_routes_has_rbac_endpoints(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "rbac_roles" in source
         assert "rbac_check" in source
 
@@ -746,31 +747,25 @@ class TestWizardsRBACWiring:
 
 class TestNewEndpointsWiring:
     def test_sse_endpoint_exists(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "monitoring_sse_stream" in source
         assert "text/event-stream" in source
 
     def test_wizard_endpoints_exist(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "list_wizards" in source
         assert "get_wizard" in source
         assert "run_wizard" in source
         assert "wizard_templates" in source
 
     def test_rbac_endpoints_exist(self) -> None:
-        import inspect
-
         from cognithor.channels import config_routes
 
-        source = inspect.getsource(config_routes)
+        source = _module_or_package_source(config_routes)
         assert "rbac_roles" in source
         assert "rbac_check" in source
 

@@ -1,4 +1,11 @@
-"""Cognithor · Konfigurations-API Routes.
+"""Cognithor · Config-Routes Factory — wird schrittweise in Sub-Module aufgeteilt.
+
+Dieses Modul enthaelt aktuell die komplette `create_config_routes()`-Funktion
+sowie alle 24 `_register_*_routes()`-Helper. Im Rahmen des Refactor-Plans
+(siehe `docs/superpowers/plans/2026-04-29-config-routes-split.md`) wandern die
+Helper schrittweise in eigene Sub-Module unter `cognithor.channels.config_routes/`.
+Bis dahin bleiben sie hier — Public-API ist `create_config_routes()`, re-exportiert
+ueber `cognithor.channels.config_routes.__init__`.
 
 REST-Endpoints fuer die Konfigurationsverwaltung via WebUI:
 

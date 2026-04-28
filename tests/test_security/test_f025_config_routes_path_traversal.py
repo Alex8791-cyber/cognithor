@@ -261,9 +261,18 @@ class TestSourceLevelChecks:
     """Prueft den Source-Code auf den Fix."""
 
     def _get_source(self) -> str:
-        from cognithor.channels import config_routes
+        # `_register_workflow_graph_routes` lebt aktuell in `_factory.py` und
+        # zieht im Rahmen des Splits in `config_routes/workflows.py` um
+        # (siehe `docs/superpowers/plans/2026-04-29-config-routes-split.md`).
+        # Solange das Symbol im Paket existiert, finden wir es per Lookup.
+        from cognithor.channels import config_routes as _cr_pkg
+        from cognithor.channels.config_routes import _factory
 
-        return inspect.getsource(config_routes._register_workflow_graph_routes)
+        for module in (_factory, _cr_pkg):
+            fn = getattr(module, "_register_workflow_graph_routes", None)
+            if fn is not None:
+                return inspect.getsource(fn)
+        raise AttributeError("_register_workflow_graph_routes nicht gefunden")
 
     def test_uses_resolve(self) -> None:
         source = self._get_source()

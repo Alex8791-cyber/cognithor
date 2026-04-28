@@ -151,6 +151,25 @@ class TestRouteRegistration:
         """create_config_routes registriert zahlreiche Routes."""
         assert len(registered_app.routes) > 30
 
+    def test_route_inventory_unchanged(self, registered_app: FakeApp) -> None:
+        """Drift-Bremse fuer den schrittweisen Split nach Sub-Modulen.
+
+        Der Plan in `docs/superpowers/plans/2026-04-29-config-routes-split.md`
+        bewegt 24 `_register_*_routes`-Helper aus `_factory.py` heraus. Wenn
+        bei einer Migration ein Endpoint verschwindet, sich umbenennt oder
+        zusaetzlich registriert wird, muss diese Fixture bewusst aktualisiert
+        werden — nicht stillschweigend driften.
+        """
+        import json
+        from pathlib import Path
+
+        fixture = Path(__file__).parent / "fixtures" / "route_inventory.json"
+        expected = set(json.loads(fixture.read_text(encoding="utf-8"))["routes"])
+        actual = set(registered_app.routes.keys())
+        assert actual == expected, (
+            f"route inventory drifted; missing={expected - actual}, extra={actual - expected}"
+        )
+
     def test_health_registered(self, registered_app: FakeApp) -> None:
         assert "GET /api/v1/health" in registered_app.routes
 
