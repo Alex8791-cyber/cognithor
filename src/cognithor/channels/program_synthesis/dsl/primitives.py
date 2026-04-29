@@ -10,10 +10,9 @@ time via the :func:`primitive` decorator. The catalog is the
 single source of truth for both the search engine and the public DSL
 reference.
 
-This file currently holds the **geometric**, **color**, **size/scale**,
-**spatial**, and **object-detection** groups (35 primitives). Subsequent
-PRs add mask/logic, construction, and constant groups for a Phase 1
-total of 56.
+This file holds the full Phase-1 base catalog (56 primitives):
+geometric, color, size/scale, spatial, object-detection, mask/logic,
+construction, and color constants.
 """
 
 from __future__ import annotations
@@ -779,3 +778,246 @@ def render_objects(objects: ObjectSet, base: _Grid) -> _Grid:
             if 0 <= r < h and 0 <= c < w:
                 out[r, c] = obj.color
     return out
+
+
+_Mask = NDArray[np.bool_]
+
+
+def _check_mask(m: object, name: str) -> _Mask:
+    if not isinstance(m, np.ndarray):
+        raise TypeMismatchError(f"{name}: expected ndarray, got {type(m).__name__}")
+    if m.ndim != 2:
+        raise TypeMismatchError(f"{name}: expected 2-D mask, got {m.ndim}-D")
+    if m.dtype != np.bool_:
+        raise TypeMismatchError(f"{name}: expected bool dtype, got {m.dtype}")
+    return m
+
+
+# ---------------------------------------------------------------------------
+# 36-42. Mask / Logic
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="mask_eq",
+    signature=Signature(inputs=("Grid", "Color"), output="Mask"),
+    cost=1.5,
+    description="Return a boolean mask: True where the grid equals *color*.",
+    examples=(("[[1,2],[1,3]] color=1", "[[True,False],[True,False]]"),),
+)
+def mask_eq(grid: _Grid, color: int) -> _Mask:
+    _check_grid(grid, "mask_eq")
+    _check_color(color, "mask_eq.color")
+    return (grid == color).copy()
+
+
+@primitive(
+    name="mask_ne",
+    signature=Signature(inputs=("Grid", "Color"), output="Mask"),
+    cost=1.5,
+    description="Return a boolean mask: True where the grid is *not* color.",
+    examples=(("[[1,2],[1,3]] color=1", "[[False,True],[False,True]]"),),
+)
+def mask_ne(grid: _Grid, color: int) -> _Mask:
+    _check_grid(grid, "mask_ne")
+    _check_color(color, "mask_ne.color")
+    return (grid != color).copy()
+
+
+@primitive(
+    name="mask_apply",
+    signature=Signature(inputs=("Grid", "Mask", "Color"), output="Grid"),
+    cost=2.0,
+    description=(
+        "Set every cell of the grid where *mask* is True to *color*. "
+        "Mask shape must match the grid shape exactly."
+    ),
+    examples=(("[[1,2]] mask=[[T,F]] color=9", "[[9,2]]"),),
+)
+def mask_apply(grid: _Grid, mask: _Mask, color: int) -> _Grid:
+    _check_grid(grid, "mask_apply")
+    _check_mask(mask, "mask_apply.mask")
+    _check_color(color, "mask_apply.color")
+    if mask.shape != grid.shape:
+        raise TypeMismatchError(f"mask_apply: mask shape {mask.shape} != grid shape {grid.shape}")
+    out = grid.copy()
+    out[mask] = color
+    return out
+
+
+def _check_same_shape(a: _Mask, b: _Mask, name: str) -> None:
+    if a.shape != b.shape:
+        raise TypeMismatchError(f"{name}: shape mismatch {a.shape} vs {b.shape}")
+
+
+@primitive(
+    name="mask_and",
+    signature=Signature(inputs=("Mask", "Mask"), output="Mask"),
+    cost=1.5,
+    description="Pixel-wise logical AND of two masks of equal shape.",
+    examples=(("[[T,F]] AND [[T,T]]", "[[T,F]]"),),
+)
+def mask_and(a: _Mask, b: _Mask) -> _Mask:
+    _check_mask(a, "mask_and.a")
+    _check_mask(b, "mask_and.b")
+    _check_same_shape(a, b, "mask_and")
+    return np.logical_and(a, b).copy()
+
+
+@primitive(
+    name="mask_or",
+    signature=Signature(inputs=("Mask", "Mask"), output="Mask"),
+    cost=1.5,
+    description="Pixel-wise logical OR of two masks of equal shape.",
+    examples=(("[[T,F]] OR [[F,T]]", "[[T,T]]"),),
+)
+def mask_or(a: _Mask, b: _Mask) -> _Mask:
+    _check_mask(a, "mask_or.a")
+    _check_mask(b, "mask_or.b")
+    _check_same_shape(a, b, "mask_or")
+    return np.logical_or(a, b).copy()
+
+
+@primitive(
+    name="mask_xor",
+    signature=Signature(inputs=("Mask", "Mask"), output="Mask"),
+    cost=1.5,
+    description="Pixel-wise logical XOR of two masks of equal shape.",
+    examples=(("[[T,F]] XOR [[T,T]]", "[[F,T]]"),),
+)
+def mask_xor(a: _Mask, b: _Mask) -> _Mask:
+    _check_mask(a, "mask_xor.a")
+    _check_mask(b, "mask_xor.b")
+    _check_same_shape(a, b, "mask_xor")
+    return np.logical_xor(a, b).copy()
+
+
+@primitive(
+    name="mask_not",
+    signature=Signature(inputs=("Mask",), output="Mask"),
+    cost=1.2,
+    description="Pixel-wise logical NOT (involution: mask_not(mask_not(x)) == x).",
+    examples=(("[[T,F]]", "[[F,T]]"),),
+)
+def mask_not(a: _Mask) -> _Mask:
+    _check_mask(a, "mask_not")
+    return np.logical_not(a).copy()
+
+
+# ---------------------------------------------------------------------------
+# 43-46. Construction / Composition
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="stack_horizontal",
+    signature=Signature(inputs=("Grid", "Grid"), output="Grid"),
+    cost=2.0,
+    description=(
+        "Stack two grids side-by-side (left-to-right). "
+        "Row counts must match; output cols = left.cols + right.cols."
+    ),
+    examples=(("[[1]]||[[2]]", "[[1,2]]"),),
+)
+def stack_horizontal(left: _Grid, right: _Grid) -> _Grid:
+    _check_grid(left, "stack_horizontal.left")
+    _check_grid(right, "stack_horizontal.right")
+    if left.shape[0] != right.shape[0]:
+        raise TypeMismatchError(
+            f"stack_horizontal: row mismatch {left.shape[0]} vs {right.shape[0]}"
+        )
+    return np.concatenate([left, right], axis=1).copy()
+
+
+@primitive(
+    name="stack_vertical",
+    signature=Signature(inputs=("Grid", "Grid"), output="Grid"),
+    cost=2.0,
+    description=(
+        "Stack two grids top-to-bottom. "
+        "Column counts must match; output rows = top.rows + bottom.rows."
+    ),
+    examples=(("[[1,2]]==[[3,4]]", "[[1,2],[3,4]]"),),
+)
+def stack_vertical(top: _Grid, bottom: _Grid) -> _Grid:
+    _check_grid(top, "stack_vertical.top")
+    _check_grid(bottom, "stack_vertical.bottom")
+    if top.shape[1] != bottom.shape[1]:
+        raise TypeMismatchError(f"stack_vertical: col mismatch {top.shape[1]} vs {bottom.shape[1]}")
+    return np.concatenate([top, bottom], axis=0).copy()
+
+
+@primitive(
+    name="overlay",
+    signature=Signature(inputs=("Grid", "Grid", "Color"), output="Grid"),
+    cost=2.5,
+    description=(
+        "Overlay *top* onto *base*: cells of *top* equal to *transparent_color* "
+        "are skipped, all other cells overwrite *base*. Both grids must have "
+        "the same shape."
+    ),
+    examples=(("base=[[1,1]] top=[[0,2]] transparent=0", "[[1,2]]"),),
+)
+def overlay(base: _Grid, top: _Grid, transparent_color: int) -> _Grid:
+    _check_grid(base, "overlay.base")
+    _check_grid(top, "overlay.top")
+    _check_color(transparent_color, "overlay.transparent_color")
+    if base.shape != top.shape:
+        raise TypeMismatchError(f"overlay: shape mismatch {base.shape} vs {top.shape}")
+    out = base.copy()
+    mask = top != transparent_color
+    out[mask] = top[mask]
+    return out
+
+
+@primitive(
+    name="frame",
+    signature=Signature(inputs=("Grid", "Color"), output="Grid"),
+    cost=1.8,
+    description=(
+        "Draw a 1-pixel border of *color* around the grid edge, "
+        "leaving the interior unchanged. Grid must be at least 1×1."
+    ),
+    examples=(("[[1,2],[3,4]] color=0", "[[0,0],[0,0]] (2x2 fully framed → all border)"),),
+)
+def frame(grid: _Grid, color: int) -> _Grid:
+    _check_grid(grid, "frame")
+    _check_color(color, "frame.color")
+    out = grid.copy()
+    out[0, :] = color
+    out[-1, :] = color
+    out[:, 0] = color
+    out[:, -1] = color
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 47-56. Color constants
+# ---------------------------------------------------------------------------
+
+
+def _make_color_const(c: int) -> None:
+    """Register a zero-arity primitive that returns the literal color *c*.
+
+    Each is its own primitive in the catalog so the search engine can
+    enumerate them as leaves; the cost is intentionally low (0.5) so they
+    don't dominate Occam ranking.
+    """
+
+    @primitive(
+        name=f"const_color_{c}",
+        signature=Signature(inputs=(), output="Color"),
+        cost=0.5,
+        description=f"Constant color {c}.",
+        examples=(("(no input)", str(c)),),
+    )
+    def _const() -> int:
+        return c
+
+    # Suppress "function defined but never used" — Python keeps the
+    # registry reference alive via the decorator.
+    _ = _const
+
+
+for _c in range(10):
+    _make_color_const(_c)
