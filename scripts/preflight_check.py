@@ -26,12 +26,13 @@ from pathlib import Path
 
 MIN_PYTHON = (3, 12)
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-# Cognithor home: prefer COGNITHOR_HOME, fall back to legacy COGNITHOR_HOME
-# (kept for backwards-compat with pre-rebrand installs), then default
-# to ~/.cognithor/. The legacy ~/.jarvis/ path is no longer the default.
+# Cognithor home: prefer COGNITHOR_HOME env var, fall back to legacy
+# JARVIS_HOME (kept for backwards-compat with pre-rebrand installs),
+# then default to ~/.cognithor/. The legacy ~/.jarvis/ path is no longer
+# the default but still honored if the user has it set explicitly.
 COGNITHOR_HOME = Path(
     os.environ.get("COGNITHOR_HOME")
-    or os.environ.get("COGNITHOR_HOME")
+    or os.environ.get("JARVIS_HOME")
     or (Path.home() / ".cognithor")
 )
 

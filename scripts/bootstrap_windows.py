@@ -175,13 +175,13 @@ def _download_flutter_web(repo_root: str) -> bool:
 
 
 # ── Pfade ──────────────────────────────────────────────────────────────────
-# Cognithor home: prefer COGNITHOR_HOME, fall back to legacy COGNITHOR_HOME
-# (older installs), then default to ~/.cognithor/. Variable name stays
-# `COGNITHOR_HOME` everywhere downstream — old `COGNITHOR_HOME` was a
-# pre-rebrand artefact.
+# Cognithor home: prefer COGNITHOR_HOME env var, fall back to legacy
+# JARVIS_HOME (older installs), then default to ~/.cognithor/.
+# Variable name stays `COGNITHOR_HOME` everywhere downstream — old
+# `JARVIS_HOME` was a pre-rebrand artefact kept for backwards-compat only.
 COGNITHOR_HOME = Path(
     os.environ.get("COGNITHOR_HOME")
-    or os.environ.get("COGNITHOR_HOME")
+    or os.environ.get("JARVIS_HOME")
     or (Path.home() / ".cognithor")
 )
 MARKER_FILE = COGNITHOR_HOME / ".cognithor_initialized"
@@ -952,6 +952,39 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
                     )
         except Exception as e:
             warn(f"Venv sync check failed: {e}")
+
+    # Dev-mode: auto-install pre-commit hooks if running from source repo.
+    # Only fires when `.git/` exists alongside `.pre-commit-config.yaml`.
+    # End-user wheel installs skip this silently (no .git in site-packages).
+    _precommit_cfg = Path(repo_root) / ".pre-commit-config.yaml"
+    _git_dir = Path(repo_root) / ".git"
+    if _precommit_cfg.exists() and _git_dir.exists():
+        try:
+            _pc_check = subprocess.run(
+                [sys.executable, "-m", "pre_commit", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if _pc_check.returncode == 0:
+                _pc_install = subprocess.run(
+                    [sys.executable, "-m", "pre_commit", "install"],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    cwd=repo_root,
+                )
+                if _pc_install.returncode == 0:
+                    ok("pre-commit hooks installed (dev repo)")
+                else:
+                    info(f"pre-commit install non-fatal: {_pc_install.stderr.strip()[:100]}")
+            else:
+                info(
+                    "pre-commit not installed — dev contributors should run "
+                    "`pip install pre-commit && pre-commit install`"
+                )
+        except Exception as exc:
+            info(f"pre-commit auto-install skipped: {exc}")
 
     # ── 6. Flutter Web UI ──────────────────────────────────────────────
     header("6/14  Flutter Web UI")

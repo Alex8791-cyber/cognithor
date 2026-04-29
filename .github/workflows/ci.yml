@@ -173,6 +173,19 @@ jobs:
           PYTHONIOENCODING: "utf-8"
           PYTHONUTF8: "1"
 
+      - name: verify_readme_claims.py (README drift detection)
+        # Non-blocking informational drift check: counts MCP tools, channels,
+        # LLM providers, and test functions, then compares against the values
+        # claimed in README.md. Drift surfaces in the build log but does NOT
+        # fail the job — README updates are usually informational.
+        # `continue-on-error: true` ensures any genuine drift gets seen
+        # without blocking unrelated PRs.
+        continue-on-error: true
+        run: python scripts/verify_readme_claims.py
+        env:
+          PYTHONIOENCODING: "utf-8"
+          PYTHONUTF8: "1"
+
       - name: smoke_test.py (import + bootstrap checks)
         # Skips Ollama/models; only imports, config load, directory scaffold.
         # If the script changes shape, this step catches it before release.
