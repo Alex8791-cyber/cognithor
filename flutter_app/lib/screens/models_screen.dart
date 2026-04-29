@@ -107,156 +107,182 @@ class _ModelsScreenState extends State<ModelsScreen> {
     final coder = _asModelMap(configModels['coder']);
     final embedding = _asModelMap(configModels['embedding']);
 
+    final warnings = (stats['warnings'] is List)
+        ? (stats['warnings'] as List)
+        : const <dynamic>[];
+
+    Widget availableModelCard(int index) {
+      final m = available[index];
+      // Available models may be strings or Maps
+      final name = m is String
+          ? m
+          : (m is Map ? m['name']?.toString() ?? '' : m.toString());
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: NeonCard(
+          tint: CognithorTheme.sectionAdmin,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.model_training,
+                size: 16,
+                color: CognithorTheme.sectionAdmin,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  name,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget warningCard(int index) {
+      final w = warnings[index];
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: NeonCard(
+          tint: CognithorTheme.orange,
+          child: Row(
+            children: [
+              Icon(Icons.warning_amber, color: CognithorTheme.orange, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  w.toString(),
+                  style: TextStyle(color: CognithorTheme.orange, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Migrated from `ListView(children: [..., ...available.map(...), ...])` to
+    // CustomScrollView so the unbounded `available` model list (can grow into
+    // the hundreds for OpenRouter-backed setups) renders lazily via
+    // SliverList.builder. Fixed configured-model cards + stats stay as
+    // SliverToBoxAdapters above and below the lazy section.
     return RefreshIndicator(
       onRefresh: () async {
         final a = context.read<AdminProvider>();
         await Future.wait([a.loadModels(), a.loadModelStats()]);
       },
       color: CognithorTheme.accent,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Configured models
-          CognithorSection(title: l.configured),
-          _ConfiguredModelCard(
-            label: l.plannerModel,
-            icon: Icons.architecture,
-            model: planner,
-            configKey: 'planner',
-            availableModels: available,
-          ),
-          _ConfiguredModelCard(
-            label: l.executorModel,
-            icon: Icons.play_arrow,
-            model: executor,
-            configKey: 'executor',
-            availableModels: available,
-          ),
-          _ConfiguredModelCard(
-            label: l.coderModel,
-            icon: Icons.code,
-            model: coder,
-            configKey: 'coder',
-            availableModels: available,
-          ),
-          _ConfiguredModelCard(
-            label: l.embeddingModel,
-            icon: Icons.text_fields,
-            model: embedding,
-            configKey: 'embedding',
-            availableModels: available,
-          ),
-
-          // Available models
-          const SizedBox(height: 8),
-          CognithorSection(title: l.availableModels),
-          if (available.isEmpty)
-            CognithorEmptyState(icon: Icons.model_training, title: l.noModels),
-          ...available.map<Widget>((m) {
-            // Available models may be strings or Maps
-            final name = m is String
-                ? m
-                : (m is Map ? m['name']?.toString() ?? '' : m.toString());
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: NeonCard(
-                tint: CognithorTheme.sectionAdmin,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverList.list(
+              children: [
+                CognithorSection(title: l.configured),
+                _ConfiguredModelCard(
+                  label: l.plannerModel,
+                  icon: Icons.architecture,
+                  model: planner,
+                  configKey: 'planner',
+                  availableModels: available,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.model_training,
-                      size: 16,
-                      color: CognithorTheme.sectionAdmin,
+                _ConfiguredModelCard(
+                  label: l.executorModel,
+                  icon: Icons.play_arrow,
+                  model: executor,
+                  configKey: 'executor',
+                  availableModels: available,
+                ),
+                _ConfiguredModelCard(
+                  label: l.coderModel,
+                  icon: Icons.code,
+                  model: coder,
+                  configKey: 'coder',
+                  availableModels: available,
+                ),
+                _ConfiguredModelCard(
+                  label: l.embeddingModel,
+                  icon: Icons.text_fields,
+                  model: embedding,
+                  configKey: 'embedding',
+                  availableModels: available,
+                ),
+                const SizedBox(height: 8),
+                CognithorSection(title: l.availableModels),
+                if (available.isEmpty)
+                  CognithorEmptyState(
+                    icon: Icons.model_training,
+                    title: l.noModels,
+                  ),
+              ],
+            ),
+          ),
+          if (available.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.builder(
+                itemCount: available.length,
+                itemBuilder: (_, index) => availableModelCard(index),
+              ),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            sliver: SliverList.list(
+              children: [
+                if (available.length > 20) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '${available.length} models available from '
+                    '${cfg.cfg['llm_backend_type'] ?? 'backend'}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: CognithorTheme.textSecondary,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                CognithorSection(title: l.modelStats),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    CognithorStat(
+                      label: l.total,
+                      value: totalModels,
+                      icon: Icons.model_training,
+                      color: CognithorTheme.accent,
+                    ),
+                    CognithorStat(
+                      label: l.providers,
+                      value: providerCount,
+                      icon: Icons.cloud,
+                      color: CognithorTheme.green,
+                    ),
+                    CognithorStat(
+                      label: l.capabilities,
+                      value: capCount,
+                      icon: Icons.star,
+                      color: CognithorTheme.orange,
                     ),
                   ],
                 ),
-              ),
-            );
-          }),
-          // Remove the old caps/prov section — replace with a simple note
-          if (available.length > 20) ...[
-            const SizedBox(height: 8),
-            Text(
-              '${available.length} models available from ${cfg.cfg['llm_backend_type'] ?? 'backend'}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: CognithorTheme.textSecondary,
+                if (warnings.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  CognithorSection(title: l.modelWarnings),
+                ],
+              ],
+            ),
+          ),
+          if (warnings.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.builder(
+                itemCount: warnings.length,
+                itemBuilder: (_, index) => warningCard(index),
               ),
             ),
-          ],
-
-          // Stats
-          const SizedBox(height: 8),
-          CognithorSection(title: l.modelStats),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              CognithorStat(
-                label: l.total,
-                value: totalModels,
-                icon: Icons.model_training,
-                color: CognithorTheme.accent,
-              ),
-              CognithorStat(
-                label: l.providers,
-                value: providerCount,
-                icon: Icons.cloud,
-                color: CognithorTheme.green,
-              ),
-              CognithorStat(
-                label: l.capabilities,
-                value: capCount,
-                icon: Icons.star,
-                color: CognithorTheme.orange,
-              ),
-            ],
-          ),
-
-          // Warnings (from model stats)
-          if (stats['warnings'] is List &&
-              (stats['warnings'] as List).isNotEmpty) ...[
-            const SizedBox(height: 16),
-            CognithorSection(title: l.modelWarnings),
-            ...(stats['warnings'] as List).map<Widget>((w) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: NeonCard(
-                  tint: CognithorTheme.orange,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber,
-                        color: CognithorTheme.orange,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          w.toString(),
-                          style: TextStyle(
-                            color: CognithorTheme.orange,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
         ],
       ),
     );

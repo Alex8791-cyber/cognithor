@@ -186,40 +186,43 @@ class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
               // Sessions list — search results or grouped by project
               Expanded(
                 child: hasSearchResults
-                    ? ListView(
+                    // Search results are an unbounded dynamic list — use the
+                    // lazy ListView.builder so we don't materialize every
+                    // ListTile when the user has thousands of search hits.
+                    ? ListView.builder(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
                         ),
-                        children: widget.searchResults
-                            .map(
-                              (r) => ListTile(
-                                dense: true,
-                                title: Text(
-                                  r['session_title'] as String? ?? '',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  r['content'] as String? ?? '',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                                onTap: () {
-                                  final sid = r['session_id'] as String?;
-                                  if (sid != null) {
-                                    widget.onSelectSession(sid);
-                                    Navigator.of(context).pop();
-                                  }
-                                },
+                        itemCount: widget.searchResults.length,
+                        itemBuilder: (_, index) {
+                          final r = widget.searchResults[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(
+                              r['session_title'] as String? ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
-                            )
-                            .toList(),
+                            ),
+                            subtitle: Text(
+                              r['content'] as String? ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            onTap: () {
+                              final sid = r['session_id'] as String?;
+                              if (sid != null) {
+                                widget.onSelectSession(sid);
+                                Navigator.of(context).pop();
+                              }
+                            },
+                          );
+                        },
                       )
                     : widget.sessions.isEmpty
                     ? Center(
