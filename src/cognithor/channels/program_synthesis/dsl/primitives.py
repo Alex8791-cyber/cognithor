@@ -10,9 +10,10 @@ time via the :func:`primitive` decorator. The catalog is the
 single source of truth for both the search engine and the public DSL
 reference.
 
-This file currently holds the **geometric** and **color** groups
-(15 primitives). Subsequent PRs add size/scale, spatial, object,
-mask/logic, construction, and constant groups for a Phase 1 total of 56.
+This file currently holds the **geometric**, **color**, **size/scale**,
+**spatial**, and **object-detection** groups (35 primitives). Subsequent
+PRs add mask/logic, construction, and constant groups for a Phase 1
+total of 56.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from numpy.typing import NDArray
 from cognithor.channels.program_synthesis.core.exceptions import TypeMismatchError
 from cognithor.channels.program_synthesis.dsl.registry import primitive
 from cognithor.channels.program_synthesis.dsl.signatures import Signature
+from cognithor.channels.program_synthesis.dsl.types_grid import Object, ObjectSet
 
 _Grid = NDArray[np.int8]
 
@@ -507,3 +509,273 @@ def wrap_shift(grid: _Grid, dy: int, dx: int) -> _Grid:
     _check_int(dy, "wrap_shift.dy")
     _check_int(dx, "wrap_shift.dx")
     return np.roll(grid, shift=(dy, dx), axis=(0, 1)).copy()
+
+
+def _check_object(o: object, name: str) -> Object:
+    if not isinstance(o, Object):
+        raise TypeMismatchError(f"{name}: expected Object, got {type(o).__name__}")
+    return o
+
+
+def _check_object_set(s: object, name: str) -> ObjectSet:
+    if not isinstance(s, ObjectSet):
+        raise TypeMismatchError(f"{name}: expected ObjectSet, got {type(s).__name__}")
+    return s
+
+
+# ---------------------------------------------------------------------------
+# 28-29. Connected components
+# ---------------------------------------------------------------------------
+
+
+def _connected_components(grid: _Grid, connectivity: int) -> ObjectSet:
+    """Compute connected components via flood-fill (raster-scan order).
+
+    ``connectivity`` is 4 (orthogonal) or 8 (orthogonal + diagonal).
+    Background pixels (most-common color) are *excluded* — they form no
+    objects. Each non-background color produces its own component(s).
+
+    No scipy dependency: a stack-based flood-fill keeps the implementation
+    sandbox-friendly and avoids pulling in a heavy import for a single
+    primitive group.
+    """
+    bg = int(np.bincount(grid.ravel(), minlength=10).argmax())
+    h, w = grid.shape
+    visited = np.zeros_like(grid, dtype=bool)
+    components: list[Object] = []
+
+    if connectivity == 4:
+        offsets = ((-1, 0), (1, 0), (0, -1), (0, 1))
+    else:  # 8
+        offsets = (
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        )
+
+    for r in range(h):
+        for c in range(w):
+            if visited[r, c] or int(grid[r, c]) == bg:
+                continue
+            color = int(grid[r, c])
+            stack: list[tuple[int, int]] = [(r, c)]
+            cells: list[tuple[int, int]] = []
+            while stack:
+                rr, cc = stack.pop()
+                if (
+                    rr < 0
+                    or rr >= h
+                    or cc < 0
+                    or cc >= w
+                    or visited[rr, cc]
+                    or int(grid[rr, cc]) != color
+                ):
+                    continue
+                visited[rr, cc] = True
+                cells.append((rr, cc))
+                for dr, dc in offsets:
+                    stack.append((rr + dr, cc + dc))
+            components.append(Object(color=color, cells=tuple(cells)))
+
+    return ObjectSet(objects=tuple(components))
+
+
+@primitive(
+    name="connected_components_4",
+    signature=Signature(inputs=("Grid",), output="ObjectSet"),
+    cost=2.5,
+    description=(
+        "4-connectivity flood-fill of all non-background pixels. "
+        "Background = most-common color (excluded from output)."
+    ),
+    examples=(("[[0,1,0],[0,1,0]]", "ObjectSet([Object(color=1, size=2)])"),),
+)
+def connected_components_4(grid: _Grid) -> ObjectSet:
+    _check_grid(grid, "connected_components_4")
+    return _connected_components(grid, connectivity=4)
+
+
+@primitive(
+    name="connected_components_8",
+    signature=Signature(inputs=("Grid",), output="ObjectSet"),
+    cost=2.5,
+    description=(
+        "8-connectivity flood-fill of all non-background pixels. "
+        "Diagonal neighbours count; otherwise identical to "
+        "``connected_components_4``."
+    ),
+    examples=(("[[1,0],[0,1]]", "ObjectSet([Object(color=1, size=2)])"),),
+)
+def connected_components_8(grid: _Grid) -> ObjectSet:
+    _check_grid(grid, "connected_components_8")
+    return _connected_components(grid, connectivity=8)
+
+
+# ---------------------------------------------------------------------------
+# 30. objects_of_color
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="objects_of_color",
+    signature=Signature(inputs=("Grid", "Color"), output="ObjectSet"),
+    cost=2.0,
+    description=(
+        "Return the 4-connected components whose color matches the argument. "
+        "Treats the requested color as foreground regardless of background."
+    ),
+    examples=(("[[1,0,2],[1,0,0]] color=1", "ObjectSet of one 2-cell object"),),
+)
+def objects_of_color(grid: _Grid, color: int) -> ObjectSet:
+    _check_grid(grid, "objects_of_color")
+    _check_color(color, "objects_of_color.color")
+    h, w = grid.shape
+    visited = np.zeros_like(grid, dtype=bool)
+    components: list[Object] = []
+    offsets = ((-1, 0), (1, 0), (0, -1), (0, 1))
+    for r in range(h):
+        for c in range(w):
+            if visited[r, c] or int(grid[r, c]) != color:
+                continue
+            stack = [(r, c)]
+            cells: list[tuple[int, int]] = []
+            while stack:
+                rr, cc = stack.pop()
+                if (
+                    rr < 0
+                    or rr >= h
+                    or cc < 0
+                    or cc >= w
+                    or visited[rr, cc]
+                    or int(grid[rr, cc]) != color
+                ):
+                    continue
+                visited[rr, cc] = True
+                cells.append((rr, cc))
+                for dr, dc in offsets:
+                    stack.append((rr + dr, cc + dc))
+            components.append(Object(color=color, cells=tuple(cells)))
+    return ObjectSet(objects=tuple(components))
+
+
+# ---------------------------------------------------------------------------
+# 31-32. largest / smallest
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="largest_object",
+    signature=Signature(inputs=("ObjectSet",), output="Object"),
+    cost=1.5,
+    description=(
+        "Object with the largest pixel count in the set. "
+        "Ties broken by discovery order (first occurrence wins)."
+    ),
+    examples=(("ObjectSet of [{size=2}, {size=5}]", "Object size=5"),),
+)
+def largest_object(objects: ObjectSet) -> Object:
+    _check_object_set(objects, "largest_object")
+    if objects.is_empty():
+        raise TypeMismatchError("largest_object: empty ObjectSet")
+    best = objects.objects[0]
+    for o in objects.objects[1:]:
+        if o.size > best.size:
+            best = o
+    return best
+
+
+@primitive(
+    name="smallest_object",
+    signature=Signature(inputs=("ObjectSet",), output="Object"),
+    cost=1.5,
+    description=(
+        "Object with the smallest pixel count in the set. "
+        "Ties broken by discovery order (first occurrence wins)."
+    ),
+    examples=(("ObjectSet of [{size=2}, {size=5}]", "Object size=2"),),
+)
+def smallest_object(objects: ObjectSet) -> Object:
+    _check_object_set(objects, "smallest_object")
+    if objects.is_empty():
+        raise TypeMismatchError("smallest_object: empty ObjectSet")
+    best = objects.objects[0]
+    for o in objects.objects[1:]:
+        if o.size < best.size:
+            best = o
+    return best
+
+
+# ---------------------------------------------------------------------------
+# 33. bounding_box
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="bounding_box",
+    signature=Signature(inputs=("Object",), output="Grid"),
+    cost=1.5,
+    description=(
+        "Render the object as a tight grid of size = bbox dimensions. "
+        "Pixels inside the object get its color, pixels outside get 0."
+    ),
+    examples=(("Object(color=5, cells=[(0,0),(0,1),(1,1)])", "[[5,5],[0,5]]"),),
+)
+def bounding_box(obj: Object) -> _Grid:
+    _check_object(obj, "bounding_box")
+    if not obj.cells:
+        return np.array([[0]], dtype=np.int8)
+    r0, r1, c0, c1 = obj.bbox
+    out = np.zeros((r1 - r0, c1 - c0), dtype=np.int8)
+    for r, c in obj.cells:
+        out[r - r0, c - c0] = obj.color
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 34. object_count
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="object_count",
+    signature=Signature(inputs=("ObjectSet",), output="Int"),
+    cost=1.0,
+    description="Number of objects in the set (≥ 0).",
+    examples=(("ObjectSet of 3", "3"),),
+)
+def object_count(objects: ObjectSet) -> int:
+    _check_object_set(objects, "object_count")
+    return len(objects)
+
+
+# ---------------------------------------------------------------------------
+# 35. render_objects
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="render_objects",
+    signature=Signature(inputs=("ObjectSet", "Grid"), output="Grid"),
+    cost=2.0,
+    description=(
+        "Paint every object in the set onto a copy of *base*. "
+        "Cells outside the grid are silently dropped (clip-to-edge). "
+        "Later objects overwrite earlier ones at overlapping cells."
+    ),
+    examples=(("ObjectSet of one (color=2)] onto [[0,0],[0,0]]", "[[2,0],[0,0]]"),),
+)
+def render_objects(objects: ObjectSet, base: _Grid) -> _Grid:
+    _check_object_set(objects, "render_objects")
+    _check_grid(base, "render_objects.base")
+    out = base.copy()
+    h, w = out.shape
+    for obj in objects.objects:
+        for r, c in obj.cells:
+            if 0 <= r < h and 0 <= c < w:
+                out[r, c] = obj.color
+    return out

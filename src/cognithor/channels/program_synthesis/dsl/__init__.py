@@ -13,5 +13,6 @@ from __future__ import annotations
 from cognithor.channels.program_synthesis.dsl import primitives as primitives
 from cognithor.channels.program_synthesis.dsl.registry import REGISTRY
 from cognithor.channels.program_synthesis.dsl.signatures import Signature
+from cognithor.channels.program_synthesis.dsl.types_grid import Mask, Object, ObjectSet
 
-__all__ = ["REGISTRY", "Signature", "primitives"]
+__all__ = ["REGISTRY", "Mask", "Object", "ObjectSet", "Signature", "primitives"]
