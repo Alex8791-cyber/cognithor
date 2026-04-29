@@ -186,6 +186,11 @@ def register_canvas_tools(mcp_client: Any, canvas_manager: Any) -> CanvasTools:
     bereitsteht. Die Tools `canvas_push`, `canvas_reset`, `canvas_snapshot`
     und `canvas_eval` werden dem Planner als reguläre MCP-Tools angeboten.
 
+    Hinweis: Die 4 `register_builtin_handler`-Aufrufe sind **statisch** mit
+    Literal-Strings ausformuliert (kein `for tool_def in ...:`-Loop), damit
+    `scripts/generate_integrations_catalog.py` (AST-basiert) die Tools
+    discovern kann. Dynamic-Loop-Registration wird vom Generator skipped.
+
     Args:
         mcp_client: `JarvisMCPClient`-Instanz mit `register_builtin_handler`.
         canvas_manager: `CanvasManager`-Instanz mit verbundenem Broadcaster.
@@ -196,21 +201,80 @@ def register_canvas_tools(mcp_client: Any, canvas_manager: Any) -> CanvasTools:
     """
     ct = CanvasTools(canvas_manager)
 
-    for tool_def in ct.tool_definitions:
-        name = tool_def["name"]
+    async def _canvas_push_handler(session_id: str = "default", **kwargs: Any) -> dict[str, Any]:
+        return await ct.handle_tool_call("canvas_push", kwargs, session_id)
 
-        async def _handler(
-            session_id: str = "default",
-            tool_name: str = name,
-            **kwargs: Any,
-        ) -> dict[str, Any]:
-            return await ct.handle_tool_call(tool_name, kwargs, session_id)
+    async def _canvas_reset_handler(session_id: str = "default", **kwargs: Any) -> dict[str, Any]:
+        return await ct.handle_tool_call("canvas_reset", kwargs, session_id)
 
-        mcp_client.register_builtin_handler(
-            name,
-            _handler,
-            description=tool_def.get("description", ""),
-            input_schema=tool_def.get("inputSchema"),
-        )
+    async def _canvas_snapshot_handler(
+        session_id: str = "default", **kwargs: Any
+    ) -> dict[str, Any]:
+        return await ct.handle_tool_call("canvas_snapshot", kwargs, session_id)
+
+    async def _canvas_eval_handler(session_id: str = "default", **kwargs: Any) -> dict[str, Any]:
+        return await ct.handle_tool_call("canvas_eval", kwargs, session_id)
+
+    mcp_client.register_builtin_handler(
+        "canvas_push",
+        _canvas_push_handler,
+        description=(
+            "Pusht HTML/CSS/JS-Inhalt in das Canvas-Panel des Clients. "
+            "Kann für Visualisierungen, Dashboards, Formulare und "
+            "interaktive Inhalte verwendet werden. Der Inhalt wird in "
+            "einem sandboxed iframe dargestellt."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string",
+                    "description": "HTML/CSS/JS-Inhalt für das Canvas",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Optionaler Titel für das Canvas-Panel",
+                    "default": "",
+                },
+            },
+            "required": ["html"],
+        },
+    )
+    mcp_client.register_builtin_handler(
+        "canvas_reset",
+        _canvas_reset_handler,
+        description="Leert das Canvas und entfernt allen Inhalt.",
+        input_schema={"type": "object", "properties": {}},
+    )
+    mcp_client.register_builtin_handler(
+        "canvas_snapshot",
+        _canvas_snapshot_handler,
+        description=(
+            "Liest den aktuellen HTML-Inhalt des Canvas. "
+            "Nützlich um den aktuellen Zustand zu inspizieren "
+            "bevor Änderungen vorgenommen werden."
+        ),
+        input_schema={"type": "object", "properties": {}},
+    )
+    mcp_client.register_builtin_handler(
+        "canvas_eval",
+        _canvas_eval_handler,
+        description=(
+            "Führt JavaScript-Code im Canvas-iframe aus. "
+            "Kann verwendet werden um bestehende Canvas-Inhalte "
+            "dynamisch zu aktualisieren ohne den gesamten HTML "
+            "neu zu pushen."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "js": {
+                    "type": "string",
+                    "description": "JavaScript-Code zur Ausführung im Canvas",
+                },
+            },
+            "required": ["js"],
+        },
+    )
 
     return ct

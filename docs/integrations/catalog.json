@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-04-27T18:29:37.431593+00:00",
-  "tool_count": 112,
+  "generated_at": "2026-04-29T07:36:40.758513+00:00",
+  "tool_count": 116,
   "tools": [
     {
       "name": "file_write",
@@ -119,6 +119,34 @@
       "module": "cognithor.mcp.calendar_tools",
       "category": "misc",
       "description": "Zeigt kommende Kalender-Termine an, sortiert nach Startzeit.",
+      "dach_specific": false
+    },
+    {
+      "name": "canvas_eval",
+      "module": "cognithor.mcp.canvas_tools",
+      "category": "misc",
+      "description": "Führt JavaScript-Code im Canvas-iframe aus. Kann verwendet werden um bestehende Canvas-Inhalte dynamisch zu aktualisieren ohne den gesamten HTML neu zu pushen.",
+      "dach_specific": false
+    },
+    {
+      "name": "canvas_push",
+      "module": "cognithor.mcp.canvas_tools",
+      "category": "misc",
+      "description": "Pusht HTML/CSS/JS-Inhalt in das Canvas-Panel des Clients. Kann für Visualisierungen, Dashboards, Formulare und interaktive Inhalte verwendet werden. Der Inhalt wird in einem sandboxed iframe dargestel",
+      "dach_specific": false
+    },
+    {
+      "name": "canvas_reset",
+      "module": "cognithor.mcp.canvas_tools",
+      "category": "misc",
+      "description": "Leert das Canvas und entfernt allen Inhalt.",
+      "dach_specific": false
+    },
+    {
+      "name": "canvas_snapshot",
+      "module": "cognithor.mcp.canvas_tools",
+      "category": "misc",
+      "description": "Liest den aktuellen HTML-Inhalt des Canvas. Nützlich um den aktuellen Zustand zu inspizieren bevor Änderungen vorgenommen werden.",
       "dach_specific": false
     },
     {

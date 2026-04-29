@@ -2,14 +2,18 @@ name: Integrations Catalog Freshness
 
 on:
   push:
-    branches: [main, "feat/**"]
+    branches: [main, "feat/**", "fix/**", "refactor/**"]
     paths:
       - "src/cognithor/mcp/**"
+      - "src/cognithor/mcp/canvas_tools.py"
       - "scripts/generate_integrations_catalog.py"
+      - "docs/integrations/catalog.json"
   pull_request:
     paths:
       - "src/cognithor/mcp/**"
+      - "src/cognithor/mcp/canvas_tools.py"
       - "scripts/generate_integrations_catalog.py"
+      - "docs/integrations/catalog.json"
 
 jobs:
   check-drift:
