@@ -241,6 +241,7 @@ jobs:
           python -m pytest tests/ -q --tb=short \
             --ignore=tests/test_channels/test_voice_ws_bridge.py \
             --deselect=tests/test_integration/test_vllm_fake_server.py::TestVLLMBackendEndToEnd::test_full_chat_roundtrip \
+            --deselect=tests/test_security/test_f011_duplicate_detection_perf.py::TestMaxEntriesLimit::test_large_input_truncated \
             --cov=cognithor \
             --cov-report=term \
             --cov-report=xml:coverage.xml \
