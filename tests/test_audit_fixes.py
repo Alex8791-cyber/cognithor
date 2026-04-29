@@ -25,6 +25,18 @@ from cognithor.config import CognithorConfig
 _SRC_ROOT = Path(__file__).resolve().parent.parent / "src" / "cognithor"
 
 
+def _gateway_package_source() -> str:
+    """Return concatenated source of every `.py` file in the gateway package.
+
+    The original `gateway.py` was a single 6 600 LOC file; the staged split
+    (PRs #188-#190+) extracts helpers into sub-modules under `gateway/`.
+    Audit tests that string-probe gateway behaviour need to see the whole
+    package, not just `gateway.py`.
+    """
+    gw_dir = _SRC_ROOT / "gateway"
+    return "\n".join(p.read_text(encoding="utf-8") for p in sorted(gw_dir.glob("*.py")))
+
+
 # ============================================================================
 # C-13: anthropic_max_tokens Bounds
 # ============================================================================
@@ -403,7 +415,7 @@ class TestH05_GatewaySilentExceptsRemoved:
     """except Exception: pass wurde durch log.debug() ersetzt."""
 
     def test_gateway_has_no_silent_pass_blocks(self) -> None:
-        content = (_SRC_ROOT / "gateway" / "gateway.py").read_text(encoding="utf-8")
+        content = _gateway_package_source()
         silent_blocks = re.findall(
             r"except\s+Exception\s*:.*?\n\s+pass\s*\n",
             content,
@@ -453,7 +465,7 @@ class TestH12_FailurePatternWired:
     """add_failure_pattern wird in gateway.py aufgerufen."""
 
     def test_failure_pattern_in_gateway(self) -> None:
-        content = (_SRC_ROOT / "gateway" / "gateway.py").read_text(encoding="utf-8")
+        content = _gateway_package_source()
         assert "add_failure_pattern" in content
 
 
