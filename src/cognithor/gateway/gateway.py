@@ -1408,6 +1408,18 @@ class Gateway:
 
         return lifecycle.rebuild_llm_client(self, new_backend_type)
 
+    async def execute_workflow(self, workflow_yaml: str) -> dict[str, Any]:
+        """Execute a YAML-defined workflow via the DAG WorkflowEngine."""
+        from cognithor.gateway import lifecycle
+
+        return await lifecycle.execute_workflow(self, workflow_yaml)
+
+    async def execute_action_plan_as_workflow(self, plan: ActionPlan) -> dict[str, Any]:
+        """Execute a PGE `ActionPlan` through the DAG WorkflowEngine."""
+        from cognithor.gateway import lifecycle
+
+        return await lifecycle.execute_action_plan_as_workflow(self, plan)
+
     def reload_components(
         self,
         *,
