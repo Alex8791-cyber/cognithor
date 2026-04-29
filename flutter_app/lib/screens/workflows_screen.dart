@@ -176,14 +176,35 @@ class _WorkflowsScreenState extends State<WorkflowsScreen>
           );
         }
 
+        final categories = provider.categories;
         return RefreshIndicator(
           onRefresh: () => provider.loadCategories(),
-          child: ListView(
-            padding: const EdgeInsets.all(CognithorTheme.spacing),
-            children: [
-              CognithorSection(title: l.categories),
-              const SizedBox(height: CognithorTheme.spacingSm),
-              ...provider.categories.map(_buildCategoryCard),
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  CognithorTheme.spacing,
+                  CognithorTheme.spacing,
+                  CognithorTheme.spacing,
+                  CognithorTheme.spacingSm,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: CognithorSection(title: l.categories),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: CognithorTheme.spacing,
+                ),
+                sliver: SliverList.builder(
+                  itemCount: categories.length,
+                  itemBuilder: (context, i) =>
+                      _buildCategoryCard(categories[i]),
+                ),
+              ),
+              const SliverPadding(
+                padding: EdgeInsets.only(bottom: CognithorTheme.spacing),
+              ),
             ],
           ),
         );
