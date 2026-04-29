@@ -387,6 +387,8 @@ class TestRegistry:
         ):
             assert expected in names, f"{expected} not registered"
 
-    def test_full_catalog_size_matches_spec(self) -> None:
-        # 56 base primitives expected after Week 2 (incl. 10 constants).
-        assert len(REGISTRY) == 56
+    def test_base_primitives_present(self) -> None:
+        # The Phase-1 base catalog has 56 primitives. Higher-order
+        # primitives (Phase 1.5) extend the registry further; this
+        # test only locks down the floor.
+        assert len(REGISTRY) >= 56

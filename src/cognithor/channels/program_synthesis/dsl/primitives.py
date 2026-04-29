@@ -1021,3 +1021,68 @@ def _make_color_const(c: int) -> None:
 
 for _c in range(10):
     _make_color_const(_c)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.5: Higher-order primitives (H1, H2). H3-H5 follow in subsequent PRs.
+# ---------------------------------------------------------------------------
+
+
+from cognithor.channels.program_synthesis.dsl.lambdas import (
+    Lambda,
+    evaluate_lambda,
+)
+from cognithor.channels.program_synthesis.dsl.predicates import (
+    Predicate,
+    PredicateContext,
+    evaluate_predicate,
+)
+
+
+def _check_lambda(fn: object, name: str) -> Lambda:
+    if not isinstance(fn, Lambda):
+        raise TypeMismatchError(f"{name}: expected Lambda, got {type(fn).__name__}")
+    return fn
+
+
+def _check_predicate(p: object, name: str) -> Predicate:
+    if not isinstance(p, Predicate):
+        raise TypeMismatchError(f"{name}: expected Predicate, got {type(p).__name__}")
+    return p
+
+
+@primitive(
+    name="map_objects",
+    signature=Signature(inputs=("ObjectSet", "Lambda"), output="ObjectSet"),
+    cost=3.0,
+    description=(
+        "Apply *fn* to every object in the set; return the resulting "
+        "ObjectSet in the same order. Pure, no in-place mutation."
+    ),
+    examples=(("ObjectSet of 3, recolor_lambda(5)", "ObjectSet of 3, all color=5"),),
+)
+def map_objects(objects: ObjectSet, fn: Lambda) -> ObjectSet:
+    _check_object_set(objects, "map_objects")
+    _check_lambda(fn, "map_objects.fn")
+    transformed = tuple(evaluate_lambda(fn, o) for o in objects.objects)
+    return ObjectSet(objects=transformed)
+
+
+@primitive(
+    name="filter_objects",
+    signature=Signature(inputs=("ObjectSet", "Predicate"), output="ObjectSet"),
+    cost=2.5,
+    description=(
+        "Keep only objects for which *pred* is True. The predicate's "
+        "is_largest_in / is_smallest_in receive the original ObjectSet "
+        "as context so 'largest' refers to the input set, not the "
+        "filtered output."
+    ),
+    examples=(("ObjectSet of 3 (colors 1,2,3), color_eq(2)", "ObjectSet of 1 (color=2)"),),
+)
+def filter_objects(objects: ObjectSet, pred: Predicate) -> ObjectSet:
+    _check_object_set(objects, "filter_objects")
+    _check_predicate(pred, "filter_objects.pred")
+    ctx = PredicateContext(object_set=objects)
+    kept = tuple(o for o in objects.objects if evaluate_predicate(pred, o, ctx))
+    return ObjectSet(objects=kept)
