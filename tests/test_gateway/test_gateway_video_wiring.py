@@ -58,27 +58,30 @@ class TestBuildVideoAttachmentIsNonBlocking:
         subprocess.run) to a thread pool, otherwise a slow remote URL
         ties up the async event loop for up to 30 s.
 
-        This is a source-level assertion because _build_video_attachment's
-        call site is buried in the Gateway's chat handler and is hard to
-        reach via unit test without spinning up a full gateway stack.
+        Source-level assertion. The handler used to live in `gateway.py`
+        but was extracted into `gateway/message_handler.py` as part of
+        the staged gateway split (PR #192 onwards). Scan both modules.
         """
         import inspect
 
-        from cognithor.gateway import gateway as gw
+        from cognithor.gateway import gateway as gw_mod
 
-        src = inspect.getsource(gw)
+        src = inspect.getsource(gw_mod)
+        try:
+            from cognithor.gateway import message_handler
+
+            src += "\n" + inspect.getsource(message_handler)
+        except ImportError:
+            pass
 
         # The blocking call site must be wrapped; look for the exact pattern.
-        # We accept either of these forms:
-        #   await asyncio.to_thread(_build_video_attachment, ...)
-        #   await asyncio.to_thread(self._build_video_attachment, ...)
-        # and reject the bare unwrapped form.
+        # Accept the wrapped forms; reject any bare unwrapped form.
         has_wrapped = "asyncio.to_thread(_build_video_attachment" in src or (
             "asyncio.to_thread(\n" in src and "_build_video_attachment" in src
         )
         assert has_wrapped, (
             "Expected _build_video_attachment to be called via "
-            "asyncio.to_thread in gateway.py - see Bug I3."
+            "asyncio.to_thread (either gateway.py or message_handler.py) — see Bug I3."
         )
 
         # And the bare unwrapped form must NOT appear in any active code path.
