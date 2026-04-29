@@ -1683,6 +1683,22 @@ def main() -> None:
                 gateway.register_channel(_WebUIBridge())
                 log.info("webui_channel_bridge_registered")
 
+                # Wire CanvasManager broadcaster to live WS connections so that
+                # the agent's `canvas_push` tool calls are delivered to the
+                # Flutter Canvas-Panel widget. CanvasManager was instantiated
+                # in tools-phase init; we bind its broadcaster only now that
+                # `_ws_connections` is in scope.
+                _canvas_manager_attr = getattr(gateway, "_canvas_manager", None)
+                if _canvas_manager_attr is not None:
+
+                    async def _canvas_broadcaster(session_id: str, payload: dict) -> None:
+                        ws = _ws_connections.get(session_id)
+                        if ws:
+                            await _ws_safe_send(ws, {"session_id": session_id, **payload})
+
+                    _canvas_manager_attr._broadcaster = _canvas_broadcaster
+                    log.info("canvas_broadcaster_wired")
+
                 # ── TTS-Endpoint (Piper) ─────────────────────────────────
                 _voice_cfg = getattr(getattr(config, "channels", None), "voice_config", None)
                 _default_piper_voice = (
@@ -2433,6 +2449,121 @@ def main() -> None:
                 )
                 # iMessage hat keine Token; device_id ist optional
                 gateway.register_channel(IMessageChannel(device_id=device_id))
+
+            # IRC channel (config-flag based, server is the gating field)
+            if getattr(config.channels, "irc_enabled", False):
+                irc_server = config.channels.irc_server or os.environ.get(
+                    "COGNITHOR_IRC_SERVER", ""
+                )
+                if irc_server:
+                    from cognithor.channels.irc import IRCChannel
+
+                    gateway.register_channel(
+                        IRCChannel(
+                            server=irc_server,
+                            port=config.channels.irc_port,
+                            nick=config.channels.irc_nick,
+                            channels=list(config.channels.irc_channels),
+                            password=os.environ.get("COGNITHOR_IRC_PASSWORD", ""),
+                        )
+                    )
+                    log.info("irc_channel_registered", server=irc_server)
+                else:
+                    log.warning("irc_enabled_but_no_server")
+
+            # Mattermost channel (auto-detect: token + url -> start)
+            mm_token = config.channels.mattermost_token or os.environ.get(
+                "COGNITHOR_MATTERMOST_TOKEN", ""
+            )
+            mm_url = config.channels.mattermost_url or os.environ.get(
+                "COGNITHOR_MATTERMOST_URL", ""
+            )
+            if mm_token and mm_url:
+                from cognithor.channels.mattermost import MattermostChannel
+
+                gateway.register_channel(
+                    MattermostChannel(
+                        url=mm_url,
+                        token=mm_token,
+                        default_channel=config.channels.mattermost_channel,
+                    )
+                )
+                log.info("mattermost_channel_registered", url=mm_url)
+            elif mm_token or mm_url:
+                log.warning(
+                    "mattermost_partial_config", has_token=bool(mm_token), has_url=bool(mm_url)
+                )
+
+            # Google Chat channel (config-flag based; credentials path is gating)
+            if getattr(config.channels, "google_chat_enabled", False):
+                gc_creds = config.channels.google_chat_credentials_path or os.environ.get(
+                    "COGNITHOR_GOOGLE_CHAT_CREDENTIALS_PATH", ""
+                )
+                if gc_creds:
+                    from cognithor.channels.google_chat import GoogleChatChannel
+
+                    gateway.register_channel(
+                        GoogleChatChannel(
+                            credentials_path=gc_creds,
+                            allowed_spaces=list(config.channels.google_chat_allowed_spaces),
+                        )
+                    )
+                    log.info("google_chat_channel_registered")
+                else:
+                    log.warning("google_chat_enabled_but_no_credentials_path")
+
+            # Feishu channel (auto-detect: app_id + app_secret -> start)
+            feishu_app_id = config.channels.feishu_app_id or os.environ.get(
+                "COGNITHOR_FEISHU_APP_ID", ""
+            )
+            feishu_app_secret = config.channels.feishu_app_secret or os.environ.get(
+                "COGNITHOR_FEISHU_APP_SECRET", ""
+            )
+            if feishu_app_id and feishu_app_secret:
+                from cognithor.channels.feishu import FeishuChannel
+
+                gateway.register_channel(
+                    FeishuChannel(app_id=feishu_app_id, app_secret=feishu_app_secret)
+                )
+                log.info("feishu_channel_registered")
+            elif feishu_app_id or feishu_app_secret:
+                log.warning(
+                    "feishu_partial_config",
+                    has_app_id=bool(feishu_app_id),
+                    has_app_secret=bool(feishu_app_secret),
+                )
+
+            # Twitch channel (auto-detect: token + channel -> start)
+            twitch_token = config.channels.twitch_token or os.environ.get(
+                "COGNITHOR_TWITCH_TOKEN", ""
+            )
+            twitch_channel = config.channels.twitch_channel or os.environ.get(
+                "COGNITHOR_TWITCH_CHANNEL", ""
+            )
+            if twitch_token and twitch_channel:
+                from cognithor.channels.twitch import TwitchChannel
+
+                gateway.register_channel(
+                    TwitchChannel(
+                        token=twitch_token,
+                        channel=twitch_channel,
+                        allowed_users=list(config.channels.twitch_allowed_users),
+                    )
+                )
+                log.info("twitch_channel_registered", channel=twitch_channel)
+            elif twitch_token or twitch_channel:
+                log.warning(
+                    "twitch_partial_config",
+                    has_token=bool(twitch_token),
+                    has_channel=bool(twitch_channel),
+                )
+
+            # Voice channel (config-flag based; uses VoiceConfig sub-section)
+            if getattr(config.channels, "voice_enabled", False):
+                from cognithor.channels.voice import VoiceChannel
+
+                gateway.register_channel(VoiceChannel(config=config.channels.voice_config))
+                log.info("voice_channel_registered")
 
             # Start dashboard if enabled
             if config.dashboard.enabled:

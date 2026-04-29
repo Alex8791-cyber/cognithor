@@ -528,6 +528,24 @@ async def init_tools(
         log.debug("background_tools_not_registered", exc_info=True)
     result["bg_manager"] = bg_manager
 
+    # Live Canvas tools (canvas_push / reset / snapshot / eval) — registers a
+    # `CanvasManager` that the WebUI channel will hook a broadcaster into once
+    # it starts. Without an active WebSocket the agent can still snapshot its
+    # own canvas; broadcasts are no-ops until WebUIChannel binds the broadcaster.
+    canvas_manager = None
+    try:
+        from cognithor.channels.canvas import CanvasManager
+        from cognithor.mcp.canvas_tools import register_canvas_tools
+
+        canvas_manager = CanvasManager()
+        register_canvas_tools(mcp_client, canvas_manager)
+        if gateway:
+            gateway._canvas_manager = canvas_manager
+        log.info("canvas_tools_registered")
+    except Exception:
+        log.debug("canvas_tools_not_registered", exc_info=True)
+    result["canvas_manager"] = canvas_manager
+
     # Verified Web Lookup (multi-agent fact verification)
     try:
         from cognithor.mcp.verified_lookup import register_verified_lookup_tools

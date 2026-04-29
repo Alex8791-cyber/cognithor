@@ -176,3 +176,41 @@ class CanvasTools:
             "success": True,
             "message": f"JavaScript ausgeführt ({len(js)} Zeichen)",
         }
+
+
+def register_canvas_tools(mcp_client: Any, canvas_manager: Any) -> CanvasTools:
+    """Registriert die 4 Canvas-Tools beim MCP-Client.
+
+    Wird im Gateway-Init aufgerufen, sobald ein `CanvasManager` mit aktivem
+    Broadcaster (typischerweise an `WebUIChannel.send_canvas_event` gebunden)
+    bereitsteht. Die Tools `canvas_push`, `canvas_reset`, `canvas_snapshot`
+    und `canvas_eval` werden dem Planner als reguläre MCP-Tools angeboten.
+
+    Args:
+        mcp_client: `JarvisMCPClient`-Instanz mit `register_builtin_handler`.
+        canvas_manager: `CanvasManager`-Instanz mit verbundenem Broadcaster.
+
+    Returns:
+        Die `CanvasTools`-Instanz fuer optionalen direkten Zugriff (z.B.
+        Tests). Im Normalbetrieb braucht der Aufrufer das nicht.
+    """
+    ct = CanvasTools(canvas_manager)
+
+    for tool_def in ct.tool_definitions:
+        name = tool_def["name"]
+
+        async def _handler(
+            session_id: str = "default",
+            tool_name: str = name,
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            return await ct.handle_tool_call(tool_name, kwargs, session_id)
+
+        mcp_client.register_builtin_handler(
+            name,
+            _handler,
+            description=tool_def.get("description", ""),
+            input_schema=tool_def.get("inputSchema"),
+        )
+
+    return ct

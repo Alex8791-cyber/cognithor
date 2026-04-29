@@ -406,6 +406,31 @@ class WebUIChannel(Channel):
                 },
             )
 
+    async def send_canvas_event(
+        self,
+        session_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Sendet ein Canvas-Event (push/reset/eval) an den Client.
+
+        Wird vom `CanvasManager` als Broadcaster verwendet, sobald MCP-Tools
+        wie `canvas_push` Inhalte ins Live-Canvas-Panel des Flutter-UI legen.
+        Wenn die Session keine aktive WebSocket-Verbindung hat, ist der Call
+        ein No-Op (analog zu `send_streaming_token`).
+        """
+        ws = self._connections.get(session_id)
+        if ws:
+            await self._ws_send(
+                ws,
+                {
+                    "type": event_type,
+                    "session_id": session_id,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    **payload,
+                },
+            )
+
     async def send_pipeline_event(
         self,
         session_id: str,
