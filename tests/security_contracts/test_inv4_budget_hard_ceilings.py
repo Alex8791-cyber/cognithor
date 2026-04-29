@@ -73,13 +73,31 @@ def test_cost_budget_ok_when_within(tmp_path):
 
 
 def test_cost_budget_checked_mid_loop():
-    """gateway._run_pge_loop MUST call check_budget() inside the loop."""
+    """The PGE loop MUST call `check_budget()` mid-loop.
+
+    The loop body was extracted from `gateway.py::_run_pge_loop` into
+    `gateway/pge_loop.py::run_pge_loop` (PR #191). Scan both:
+      1. The Gateway-class wrapper source first (still works pre-split).
+      2. The free function in `pge_loop` (post-split source-of-truth).
+    """
     import inspect
 
     from cognithor.gateway.gateway import Gateway
 
-    source = inspect.getsource(Gateway._run_pge_loop)
-    assert "check_budget" in source, "check_budget() must be called inside _run_pge_loop"
+    wrapper_source = inspect.getsource(Gateway._run_pge_loop)
+    if "check_budget" in wrapper_source:
+        return  # pre-split layout
+    try:
+        from cognithor.gateway import pge_loop
+
+        loop_source = inspect.getsource(pge_loop.run_pge_loop)
+    except (ImportError, AttributeError):
+        loop_source = ""
+    assert "check_budget" in loop_source, (
+        "check_budget() must be called inside the PGE loop "
+        "(checked both gateway.Gateway._run_pge_loop and "
+        "gateway.pge_loop.run_pge_loop)"
+    )
 
 
 def test_cost_budget_daily_and_monthly_independent(tmp_path):
