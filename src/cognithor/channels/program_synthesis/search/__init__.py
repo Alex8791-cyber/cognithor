@@ -14,5 +14,22 @@ from cognithor.channels.program_synthesis.search.candidate import (
     Program,
     ProgramNode,
 )
+from cognithor.channels.program_synthesis.search.equivalence import (
+    ObservationalEquivalencePruner,
+)
+from cognithor.channels.program_synthesis.search.executor import (
+    ExecutionResult,
+    Executor,
+    InProcessExecutor,
+)
 
-__all__ = ["Const", "InputRef", "Program", "ProgramNode"]
+__all__ = [
+    "Const",
+    "ExecutionResult",
+    "Executor",
+    "InProcessExecutor",
+    "InputRef",
+    "ObservationalEquivalencePruner",
+    "Program",
+    "ProgramNode",
+]
