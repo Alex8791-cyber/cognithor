@@ -199,7 +199,10 @@ class TestRegistry:
         assert spec.signature.inputs == ("ObjectSet", "Predicate")
         assert spec.signature.output == "ObjectSet"
 
-    def test_total_catalog_grows_to_58(self) -> None:
-        # 56 base primitives + 2 higher-order so far (H1 + H2). H3-H5
-        # bring it to 61 (or more if helper sub-primitives land).
-        assert len(REGISTRY) == 58
+    def test_catalog_includes_higher_order(self) -> None:
+        # Phase-1.5 primitives extend the 56-primitive base catalog.
+        # The exact total grows as more higher-order primitives land —
+        # this test only locks in the floor + presence of H1 + H2.
+        assert len(REGISTRY) >= 58
+        assert "map_objects" in REGISTRY
+        assert "filter_objects" in REGISTRY

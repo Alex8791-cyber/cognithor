@@ -1086,3 +1086,100 @@ def filter_objects(objects: ObjectSet, pred: Predicate) -> ObjectSet:
     ctx = PredicateContext(object_set=objects)
     kept = tuple(o for o in objects.objects if evaluate_predicate(pred, o, ctx))
     return ObjectSet(objects=kept)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.5: H3 align_to + AlignMode enum
+# ---------------------------------------------------------------------------
+
+
+from enum import Enum
+
+
+class AlignMode(str, Enum):
+    """Where to anchor object A relative to object B's bounding box."""
+
+    CENTER = "center"
+    LEFT = "left"
+    RIGHT = "right"
+    TOP = "top"
+    BOTTOM = "bottom"
+    TOP_LEFT = "top_left"
+    TOP_RIGHT = "top_right"
+    BOTTOM_LEFT = "bottom_left"
+    BOTTOM_RIGHT = "bottom_right"
+
+
+def _check_align_mode(m: object, name: str) -> AlignMode:
+    if isinstance(m, AlignMode):
+        return m
+    if isinstance(m, str):
+        try:
+            return AlignMode(m)
+        except ValueError as exc:
+            raise TypeMismatchError(
+                f"{name}: unknown AlignMode {m!r}; allowed: {[mode.value for mode in AlignMode]}"
+            ) from exc
+    raise TypeMismatchError(f"{name}: expected AlignMode or str, got {type(m).__name__}")
+
+
+def _bbox_center(bbox: tuple[int, int, int, int]) -> tuple[int, int]:
+    """Integer center of a half-open bbox (r0, r1, c0, c1).
+
+    Uses floor-division so the result is always a valid cell position.
+    """
+    r0, r1, c0, c1 = bbox
+    return ((r0 + r1 - 1) // 2, (c0 + c1 - 1) // 2)
+
+
+def _align_delta(
+    a_bbox: tuple[int, int, int, int],
+    b_bbox: tuple[int, int, int, int],
+    mode: AlignMode,
+) -> tuple[int, int]:
+    """How much to shift A so its bbox aligns with B's per *mode*."""
+    ar0, ar1, ac0, ac1 = a_bbox
+    br0, br1, bc0, bc1 = b_bbox
+    a_cy, a_cx = _bbox_center(a_bbox)
+    b_cy, b_cx = _bbox_center(b_bbox)
+
+    # Default: centre-aligned on both axes.
+    dy = b_cy - a_cy
+    dx = b_cx - a_cx
+
+    if mode in (AlignMode.LEFT, AlignMode.TOP_LEFT, AlignMode.BOTTOM_LEFT):
+        dx = bc0 - ac0
+    if mode in (AlignMode.RIGHT, AlignMode.TOP_RIGHT, AlignMode.BOTTOM_RIGHT):
+        # bbox is half-open; right edge cell is r1-1.
+        dx = (bc1 - 1) - (ac1 - 1)
+    if mode in (AlignMode.TOP, AlignMode.TOP_LEFT, AlignMode.TOP_RIGHT):
+        dy = br0 - ar0
+    if mode in (AlignMode.BOTTOM, AlignMode.BOTTOM_LEFT, AlignMode.BOTTOM_RIGHT):
+        dy = (br1 - 1) - (ar1 - 1)
+    return (dy, dx)
+
+
+@primitive(
+    name="align_to",
+    signature=Signature(inputs=("Object", "Object", "AlignMode"), output="Object"),
+    cost=3.0,
+    description=(
+        "Translate object A so its bounding box aligns with B's per *mode*. "
+        "CENTER aligns both axes; the four edges align that axis and "
+        "centre the other; corners align both axes simultaneously."
+    ),
+    examples=(("a, b, CENTER", "a translated so its centre matches b's centre"),),
+)
+def align_to(a: Object, b: Object, mode: AlignMode) -> Object:
+    _check_object(a, "align_to.a")
+    _check_object(b, "align_to.b")
+    m = _check_align_mode(mode, "align_to.mode")
+    if not a.cells or not b.cells:
+        return a
+    dy, dx = _align_delta(a.bbox, b.bbox, m)
+    if dy == 0 and dx == 0:
+        return a
+    return Object(
+        color=a.color,
+        cells=tuple((r + dy, c + dx) for r, c in a.cells),
+    )
