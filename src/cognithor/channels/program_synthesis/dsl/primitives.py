@@ -271,3 +271,239 @@ def replace_background(grid: _Grid, new: int) -> _Grid:
     _check_color(new, "replace_background.new")
     bg = most_common_color(grid)
     return recolor(grid, bg, new)
+
+
+def _check_int(n: object, name: str, *, min_val: int | None = None) -> int:
+    if not isinstance(n, int) or isinstance(n, bool):
+        raise TypeMismatchError(f"{name}: expected int, got {type(n).__name__}")
+    if min_val is not None and n < min_val:
+        raise TypeMismatchError(f"{name}: {n} < {min_val}")
+    return n
+
+
+# ---------------------------------------------------------------------------
+# 16-21. Size / Scale
+# ---------------------------------------------------------------------------
+
+
+@primitive(
+    name="scale_up_2x",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description="Scale the grid up by 2× (each pixel becomes a 2×2 block).",
+    examples=(("[[1,2]]", "[[1,1,2,2],[1,1,2,2]]"),),
+)
+def scale_up_2x(grid: _Grid) -> _Grid:
+    _check_grid(grid, "scale_up_2x")
+    return np.repeat(np.repeat(grid, 2, axis=0), 2, axis=1).copy()
+
+
+@primitive(
+    name="scale_up_3x",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description="Scale the grid up by 3× (each pixel becomes a 3×3 block).",
+    examples=(("[[1]]", "[[1,1,1],[1,1,1],[1,1,1]]"),),
+)
+def scale_up_3x(grid: _Grid) -> _Grid:
+    _check_grid(grid, "scale_up_3x")
+    return np.repeat(np.repeat(grid, 3, axis=0), 3, axis=1).copy()
+
+
+@primitive(
+    name="scale_down_2x",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description=(
+        "Scale the grid down by 2× by sampling the top-left pixel of each 2×2 block. "
+        "Odd dimensions are truncated. Only valid for grids with shape ≥ 2×2."
+    ),
+    examples=(("[[1,1,2,2],[1,1,2,2]]", "[[1,2]]"),),
+)
+def scale_down_2x(grid: _Grid) -> _Grid:
+    _check_grid(grid, "scale_down_2x")
+    if grid.shape[0] < 2 or grid.shape[1] < 2:
+        raise TypeMismatchError(f"scale_down_2x: grid {grid.shape} too small to halve")
+    return grid[::2, ::2].copy()
+
+
+@primitive(
+    name="tile_2x",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description="Tile the grid in a 2×2 pattern (output dimensions = input × 2).",
+    examples=(("[[1,2]]", "[[1,2,1,2],[1,2,1,2]]"),),
+)
+def tile_2x(grid: _Grid) -> _Grid:
+    _check_grid(grid, "tile_2x")
+    return np.tile(grid, (2, 2)).copy()
+
+
+@primitive(
+    name="crop_bbox",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=1.5,
+    description=(
+        "Crop to the bounding box of all non-background pixels (background = "
+        "most-common color). Returns a 1×1 grid containing the background color "
+        "if the grid is uniformly background."
+    ),
+    examples=(("[[0,0,0],[0,5,0],[0,0,0]]", "[[5]]"),),
+)
+def crop_bbox(grid: _Grid) -> _Grid:
+    _check_grid(grid, "crop_bbox")
+    bg = most_common_color(grid)
+    mask = grid != bg
+    if not mask.any():
+        # Uniformly background — return a single-cell grid with that color.
+        return np.array([[bg]], dtype=np.int8)
+    rows = np.any(mask, axis=1)
+    cols = np.any(mask, axis=0)
+    r0, r1 = int(np.argmax(rows)), int(len(rows) - np.argmax(rows[::-1]))
+    c0, c1 = int(np.argmax(cols)), int(len(cols) - np.argmax(cols[::-1]))
+    return grid[r0:r1, c0:c1].copy()
+
+
+@primitive(
+    name="pad_with",
+    signature=Signature(inputs=("Grid", "Color", "Int"), output="Grid"),
+    cost=1.8,
+    description=(
+        "Pad the grid on all four sides with *width* pixels of *color*. Width must be ≥ 0."
+    ),
+    examples=(("[[1]] color=0 width=1", "[[0,0,0],[0,1,0],[0,0,0]]"),),
+)
+def pad_with(grid: _Grid, color: int, width: int) -> _Grid:
+    _check_grid(grid, "pad_with")
+    _check_color(color, "pad_with.color")
+    _check_int(width, "pad_with.width", min_val=0)
+    if width == 0:
+        return grid.copy()
+    return np.pad(grid, pad_width=width, mode="constant", constant_values=color).copy()
+
+
+# ---------------------------------------------------------------------------
+# 22-27. Spatial (gravity / shift)
+# ---------------------------------------------------------------------------
+
+
+def _gravity(grid: _Grid, axis: int, direction: int, name: str) -> _Grid:
+    """Pull non-background pixels toward one edge along *axis*.
+
+    ``direction`` = +1 means toward the high-index edge (down / right);
+    ``direction`` = -1 means toward the low-index edge (up / left).
+    Background = most-common color.
+    """
+    _check_grid(grid, name)
+    bg = most_common_color(grid)
+    out = np.full_like(grid, bg)
+    if axis == 0:
+        for c in range(grid.shape[1]):
+            col = grid[:, c]
+            non_bg = col[col != bg]
+            if direction == 1:
+                out[grid.shape[0] - len(non_bg) :, c] = non_bg
+            else:
+                out[: len(non_bg), c] = non_bg
+    else:
+        for r in range(grid.shape[0]):
+            row = grid[r, :]
+            non_bg = row[row != bg]
+            if direction == 1:
+                out[r, grid.shape[1] - len(non_bg) :] = non_bg
+            else:
+                out[r, : len(non_bg)] = non_bg
+    return out
+
+
+@primitive(
+    name="gravity_down",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description="Pull all non-background pixels in each column toward the bottom edge.",
+    examples=(("[[1,0],[0,2],[0,0]]", "[[0,0],[0,0],[1,2]]"),),
+)
+def gravity_down(grid: _Grid) -> _Grid:
+    return _gravity(grid, axis=0, direction=1, name="gravity_down")
+
+
+@primitive(
+    name="gravity_up",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description="Pull all non-background pixels in each column toward the top edge.",
+    examples=(("[[0,0],[1,0],[0,2]]", "[[1,2],[0,0],[0,0]]"),),
+)
+def gravity_up(grid: _Grid) -> _Grid:
+    return _gravity(grid, axis=0, direction=-1, name="gravity_up")
+
+
+@primitive(
+    name="gravity_left",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description="Pull all non-background pixels in each row toward the left edge.",
+    examples=(("[[0,1,0,2]]", "[[1,2,0,0]]"),),
+)
+def gravity_left(grid: _Grid) -> _Grid:
+    return _gravity(grid, axis=1, direction=-1, name="gravity_left")
+
+
+@primitive(
+    name="gravity_right",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description="Pull all non-background pixels in each row toward the right edge.",
+    examples=(("[[1,0,2,0]]", "[[0,0,1,2]]"),),
+)
+def gravity_right(grid: _Grid) -> _Grid:
+    return _gravity(grid, axis=1, direction=1, name="gravity_right")
+
+
+@primitive(
+    name="shift",
+    signature=Signature(inputs=("Grid", "Int", "Int"), output="Grid"),
+    cost=2.0,
+    description=(
+        "Shift the grid by (dy, dx). Pixels that fall off the edge are dropped, "
+        "exposed cells are filled with the background (most-common color). "
+        "Range is unrestricted; large shifts collapse the output to all-background."
+    ),
+    examples=(("[[1,2],[3,4]] dy=1 dx=0", "[[bg,bg],[1,2]]"),),
+)
+def shift(grid: _Grid, dy: int, dx: int) -> _Grid:
+    _check_grid(grid, "shift")
+    _check_int(dy, "shift.dy")
+    _check_int(dx, "shift.dx")
+    bg = most_common_color(grid)
+    h, w = grid.shape
+    out = np.full_like(grid, bg)
+
+    # Source slice in the input, destination slice in the output.
+    src_r0 = max(0, -dy)
+    src_r1 = min(h, h - dy)
+    dst_r0 = max(0, dy)
+    dst_r1 = dst_r0 + (src_r1 - src_r0)
+
+    src_c0 = max(0, -dx)
+    src_c1 = min(w, w - dx)
+    dst_c0 = max(0, dx)
+    dst_c1 = dst_c0 + (src_c1 - src_c0)
+
+    if src_r1 > src_r0 and src_c1 > src_c0:
+        out[dst_r0:dst_r1, dst_c0:dst_c1] = grid[src_r0:src_r1, src_c0:src_c1]
+    return out
+
+
+@primitive(
+    name="wrap_shift",
+    signature=Signature(inputs=("Grid", "Int", "Int"), output="Grid"),
+    cost=2.2,
+    description="Shift the grid by (dy, dx) with toroidal wrap-around (numpy.roll).",
+    examples=(("[[1,2],[3,4]] dy=1 dx=0", "[[3,4],[1,2]]"),),
+)
+def wrap_shift(grid: _Grid, dy: int, dx: int) -> _Grid:
+    _check_grid(grid, "wrap_shift")
+    _check_int(dy, "wrap_shift.dy")
+    _check_int(dx, "wrap_shift.dx")
+    return np.roll(grid, shift=(dy, dx), axis=(0, 1)).copy()
