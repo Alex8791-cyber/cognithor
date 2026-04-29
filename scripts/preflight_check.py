@@ -26,7 +26,14 @@ from pathlib import Path
 
 MIN_PYTHON = (3, 12)
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-JARVIS_HOME = Path(os.environ.get("JARVIS_HOME", Path.home() / ".jarvis"))
+# Cognithor home: prefer COGNITHOR_HOME, fall back to legacy COGNITHOR_HOME
+# (kept for backwards-compat with pre-rebrand installs), then default
+# to ~/.cognithor/. The legacy ~/.jarvis/ path is no longer the default.
+COGNITHOR_HOME = Path(
+    os.environ.get("COGNITHOR_HOME")
+    or os.environ.get("COGNITHOR_HOME")
+    or (Path.home() / ".cognithor")
+)
 
 # Required Python packages (import_name, pip_name)
 REQUIRED_PACKAGES = [
@@ -242,11 +249,11 @@ def check_ollama_connection() -> None:
 
 def check_directories() -> None:
     header("6. Directory Structure")
-    home = JARVIS_HOME
+    home = COGNITHOR_HOME
     if home.exists():
-        passed(f"Jarvis home: {home}")
+        passed(f"Cognithor home: {home}")
     else:
-        info(f"Jarvis home not created yet: {home} (will be created on first run)")
+        info(f"Cognithor home not created yet: {home} (will be created on first run)")
 
     # Check writable
     test_dir = Path(tempfile.gettempdir()) / "cognithor-preflight-test"
@@ -320,17 +327,20 @@ def check_env_vars() -> None:
         info("No channel tokens set (CLI mode only)")
 
     # Check .env file
-    env_path = JARVIS_HOME / ".env"
+    env_path = COGNITHOR_HOME / ".env"
     if env_path.exists():
         passed(f".env file found: {env_path}")
     else:
         info(f"No .env file at {env_path} (optional)")
 
     # API security
-    if os.environ.get("JARVIS_API_TOKEN"):
+    if os.environ.get("COGNITHOR_API_TOKEN") or os.environ.get("JARVIS_API_TOKEN"):
         passed("API token set (Control Center secured)")
     else:
-        warned("JARVIS_API_TOKEN not set", "API is unprotected -- set for production use")
+        warned(
+            "COGNITHOR_API_TOKEN not set",
+            "API is unprotected -- set for production use",
+        )
 
 
 def check_ports() -> None:

@@ -1,0 +1,57 @@
+# Cognithor pre-commit hooks.
+#
+# Setup (once per clone):
+#   pip install pre-commit
+#   pre-commit install
+#
+# These hooks enforce the CLAUDE.md house rules technically (not just by
+# convention): "always run ruff format before commit" and the "no
+# `git add -A`" rule via a forbidden-paths check.
+#
+# Hooks fail fast and let you re-stage. They do not auto-amend.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.12
+    hooks:
+      - id: ruff
+        name: ruff check (lint)
+        args: ["--no-fix", "--exit-non-zero-on-fix"]
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format (no drift)
+        args: ["--check"]
+        types_or: [python, pyi]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(skills/.*|docs/integrations/catalog\.json)$
+      - id: end-of-file-fixer
+        exclude: ^(skills/.*|docs/integrations/catalog\.json)$
+      - id: check-yaml
+        args: ["--unsafe"]  # accept GitHub Actions multi-line tags
+      - id: check-toml
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  - repo: local
+    hooks:
+      - id: forbid-skills-regen-artefacts
+        name: Forbid commits of skills/* auto-regen artefacts
+        entry: |
+          bash -c '
+            staged=$(git diff --cached --name-only | grep -E "^skills/" || true)
+            if [ -n "$staged" ]; then
+              echo "ERROR: skills/* files are auto-regen artefacts that strip"
+              echo "frontmatter and must NEVER be committed. Unstage them with:"
+              echo "  git restore --staged skills/"
+              echo "Affected paths:"
+              echo "$staged" | sed "s/^/  /"
+              exit 1
+            fi
+          '
+        language: system
+        always_run: true
+        pass_filenames: false

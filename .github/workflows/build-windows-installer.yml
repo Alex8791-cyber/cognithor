@@ -1,8 +1,13 @@
 name: Build Windows Installer
 
+# Manual-only: this workflow exists for ad-hoc rebuilds of the Windows
+# installer (e.g., after a launcher patch or Inno-Setup script change).
+# On `push: tags: ['v*']` the installer is built as part of `release.yml`,
+# which orchestrates the full release-bundle (launcher → Flutter web →
+# installer → GitHub Release upload) in one pipeline. Keeping a parallel
+# tag-trigger here caused duplicate Windows-runner cycles and a Release-
+# upload race against `release.yml`.
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:

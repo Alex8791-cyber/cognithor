@@ -57,6 +57,7 @@ dev = [
     "hypothesis>=6.0,<7",
     "ruff>=0.9,<1",
     "mypy>=1.14,<2",
+    "pre-commit>=3.5,<5",
     # NOTE: Local sub-packages (cognithor-bench, insurance-agent-pack) are
     # NOT listed here because direct file references are forbidden in
     # PyPI-published metadata (see PyPI rejection of v0.94.0 publish).

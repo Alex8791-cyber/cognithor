@@ -175,8 +175,16 @@ def _download_flutter_web(repo_root: str) -> bool:
 
 
 # ── Pfade ──────────────────────────────────────────────────────────────────
-JARVIS_HOME = Path(os.environ.get("JARVIS_HOME", Path.home() / ".jarvis"))
-MARKER_FILE = JARVIS_HOME / ".cognithor_initialized"
+# Cognithor home: prefer COGNITHOR_HOME, fall back to legacy COGNITHOR_HOME
+# (older installs), then default to ~/.cognithor/. Variable name stays
+# `COGNITHOR_HOME` everywhere downstream — old `COGNITHOR_HOME` was a
+# pre-rebrand artefact.
+COGNITHOR_HOME = Path(
+    os.environ.get("COGNITHOR_HOME")
+    or os.environ.get("COGNITHOR_HOME")
+    or (Path.home() / ".cognithor")
+)
+MARKER_FILE = COGNITHOR_HOME / ".cognithor_initialized"
 OLLAMA_URL = "http://localhost:11434"
 BACKEND_PORT = 8741
 
@@ -903,7 +911,7 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
     # Also install into ~/.jarvis/venv if it exists but lacks jarvis
     # (Vite launcher prefers this venv — must have jarvis installed)
     _home_venv_python = (
-        JARVIS_HOME
+        COGNITHOR_HOME
         / "venv"
         / ("Scripts" if sys.platform == "win32" else "bin")
         / ("python.exe" if sys.platform == "win32" else "python")
@@ -918,7 +926,7 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
                 cwd=repo_root,
             )
             if _venv_check.returncode != 0:
-                info(f"Installing jarvis into {JARVIS_HOME / 'venv'}...")
+                info(f"Installing jarvis into {COGNITHOR_HOME / 'venv'}...")
                 _venv_inst = subprocess.run(
                     [
                         str(_home_venv_python),
@@ -936,10 +944,10 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
                     cwd=repo_root,
                 )
                 if _venv_inst.returncode == 0:
-                    ok(f"jarvis also installed in {JARVIS_HOME / 'venv'}")
+                    ok(f"jarvis also installed in {COGNITHOR_HOME / 'venv'}")
                 else:
                     warn(
-                        f"Could not install jarvis into {JARVIS_HOME / 'venv'}: "
+                        f"Could not install jarvis into {COGNITHOR_HOME / 'venv'}: "
                         f"{_venv_inst.stderr[:200]}"
                     )
         except Exception as e:
@@ -1007,13 +1015,24 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
     # ── 7. Verzeichnisstruktur ─────────────────────────────────────────
     header("7/14  Directory Structure")
     try:
+        # Primary: cognithor entry-point. Legacy `jarvis` entry-point still
+        # exists but is deprecated and may be removed in a future release.
         init_proc = subprocess.run(
-            [sys.executable, "-m", "jarvis", "--init-only"],
+            [sys.executable, "-m", "cognithor", "--init-only"],
             capture_output=True,
             text=True,
             timeout=30,
             cwd=repo_root,
         )
+        if init_proc.returncode != 0:
+            # Fallback to legacy `jarvis` entry-point (older installs)
+            init_proc = subprocess.run(
+                [sys.executable, "-m", "jarvis", "--init-only"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=repo_root,
+            )
         if init_proc.returncode == 0:
             ok("Directory structure initialized")
         else:
@@ -1031,12 +1050,12 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
             "cache",
             "cache/web_search",
         ]:
-            (JARVIS_HOME / sub).mkdir(parents=True, exist_ok=True)
+            (COGNITHOR_HOME / sub).mkdir(parents=True, exist_ok=True)
         ok("Directory structure created manually")
 
     # ── 8. Konfiguration ───────────────────────────────────────────────
     header("8/14  Configuration")
-    config_dest = JARVIS_HOME / "config.yaml"
+    config_dest = COGNITHOR_HOME / "config.yaml"
     config_src = Path(repo_root) / "config.yaml.example"
     if not config_dest.exists() and config_src.exists():
         shutil.copy2(config_src, config_dest)
@@ -1050,7 +1069,7 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
     if config_dest.exists():
         _cfg_text = config_dest.read_text(encoding="utf-8")
         if "language:" not in _cfg_text:
-            _detected_lang, _source = resolve_install_language(JARVIS_HOME)
+            _detected_lang, _source = resolve_install_language(COGNITHOR_HOME)
             # Sprache an den Anfang der config.yaml schreiben
             config_dest.write_text(
                 f'language: "{_detected_lang}"\n' + _cfg_text,
@@ -1058,7 +1077,7 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
             )
             ok(f"Language set to '{_detected_lang}' (source: {_source})")
 
-    env_dest = JARVIS_HOME / ".env"
+    env_dest = COGNITHOR_HOME / ".env"
     env_src = Path(repo_root) / ".env.example"
     if not env_dest.exists() and env_src.exists():
         shutil.copy2(env_src, env_dest)
@@ -1069,15 +1088,15 @@ def first_start(repo_root: str, *, skip_models: bool = False) -> bool:
         result.add_warn(".env.example not found -- skipped")
 
     # ── 8b. Bundled agent packs (HN, Discord, RSS — free, apache-2.0)
-    _copy_bundled_packs(JARVIS_HOME)
+    _copy_bundled_packs(COGNITHOR_HOME)
 
     # ── 9. Piper TTS Voice-Modell ────────────────────────────────────
     header("9/14  Piper TTS Voice Model")
-    voices_dir = JARVIS_HOME / "voices"
+    voices_dir = COGNITHOR_HOME / "voices"
     voices_dir.mkdir(parents=True, exist_ok=True)
     piper_voice = "de_DE-pavoque-low"
     # Stimme aus Config lesen, falls vorhanden
-    config_yaml = JARVIS_HOME / "config.yaml"
+    config_yaml = COGNITHOR_HOME / "config.yaml"
     if config_yaml.exists():
         try:
             import yaml
@@ -1277,7 +1296,7 @@ def quick_start(repo_root: str, *, skip_models: bool = False) -> bool:
 
     # ── 4. Import-Test (system Python + home venv) ──────────────────────
     _home_venv_py = (
-        JARVIS_HOME
+        COGNITHOR_HOME
         / "venv"
         / ("Scripts" if sys.platform == "win32" else "bin")
         / ("python.exe" if sys.platform == "win32" else "python")
@@ -1331,9 +1350,9 @@ def quick_start(repo_root: str, *, skip_models: bool = False) -> bool:
             result.add_fail("Import-Test", str(e))
 
     # ── 5. Piper TTS Voice-Modell ───────────────────────────────────
-    voices_dir = JARVIS_HOME / "voices"
+    voices_dir = COGNITHOR_HOME / "voices"
     piper_voice = "de_DE-pavoque-low"
-    config_yaml = JARVIS_HOME / "config.yaml"
+    config_yaml = COGNITHOR_HOME / "config.yaml"
     if config_yaml.exists():
         try:
             import yaml
@@ -1452,7 +1471,7 @@ def main() -> int:
         return 1
 
     print(f"  {DIM}Repo:    {repo_root}{RESET}")
-    print(f"  {DIM}Home:    {JARVIS_HOME}{RESET}")
+    print(f"  {DIM}Home:    {COGNITHOR_HOME}{RESET}")
     print(f"  {DIM}Version: {BOOTSTRAP_VERSION}{RESET}")
 
     marker = read_marker()

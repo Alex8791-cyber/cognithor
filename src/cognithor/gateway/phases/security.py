@@ -162,6 +162,18 @@ async def init_security(config: Any, llm_backend: Any = None) -> PhaseResult:
     from cognithor.audit import AuditLogger
     from cognithor.core.gatekeeper import Gatekeeper
     from cognithor.security.monitor import RuntimeMonitor
+    from cognithor.security.owner import OwnerSource, check_owner_security_posture
+
+    # Owner-gating posture check — surfaces a loud warning if the deployment
+    # falls back to the hardcoded author name (i.e., no env var AND
+    # pyproject.toml not reachable, which can happen in some installed wheels).
+    owner_source, owner_msg = check_owner_security_posture()
+    if owner_source is OwnerSource.HARDCODED_FALLBACK:
+        log.warning("owner_gate_insecure_fallback", message=owner_msg)
+    elif owner_source is OwnerSource.PYPROJECT:
+        log.info("owner_gate_pyproject_fallback", message=owner_msg)
+    else:
+        log.info("owner_gate_explicit_env", message=owner_msg)
 
     result: PhaseResult = {}
 

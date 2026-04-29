@@ -4,7 +4,7 @@ Context for AI coding assistants (Claude Code, Cursor, Codex, etc.) working in t
 
 ## What this is
 
-**Cognithor · Agent OS** — local-first autonomous agent operating system. Python backend (FastAPI gateway, PGE-Trinity orchestration over Ollama-served qwen3 models, 145 MCP tools across 14 modules) + Flutter Command Center (167+ Dart files, 33 screens, 4 locales).
+**Cognithor · Agent OS** — local-first autonomous agent operating system. Python backend (FastAPI gateway, PGE-Trinity orchestration; default backend is Ollama-served qwen3 models, with vLLM, OpenAI, Anthropic, Gemini and 14 other backends as opt-in alternatives; 127+ MCP tools across 30+ modules) + Flutter Command Center (~200 Dart files, 60+ screens spread across feature areas + a Config sub-tree, 27 providers, 4 locales).
 
 Owner: Alexander Söllner. License: Apache 2.0. PyPI: `pip install cognithor`. Current release: see `pyproject.toml` (`[project] version`).
 

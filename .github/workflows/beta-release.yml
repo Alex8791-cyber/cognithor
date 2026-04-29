@@ -10,7 +10,7 @@ permissions:
 jobs:
   # Run the same checks as CI before releasing
   lint:
-    name: Lint (Ruff)
+    name: Lint (Ruff) + Format check + Version consistency
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +25,38 @@ jobs:
 
       - name: Ruff check (critical errors)
         run: ruff check src/ tests/ --select=F821,F811 --no-fix
+
+      - name: Ruff format check (no drift)
+        run: ruff format --check src/ tests/
+
+      - name: 4-way version consistency
+        run: |
+          python <<'PY'
+          import re, sys
+          from pathlib import Path
+
+          def read(path, pattern):
+              text = Path(path).read_text(encoding="utf-8")
+              m = re.search(pattern, text, re.MULTILINE)
+              return m.group(1) if m else None
+
+          versions = {
+              "pyproject.toml": read("pyproject.toml", r'^version\s*=\s*["\']([\d.]+)["\']'),
+              "src/cognithor/__init__.py": read("src/cognithor/__init__.py", r'__version__\s*=\s*["\']([\d.]+)["\']'),
+              "flutter_app/pubspec.yaml": read("flutter_app/pubspec.yaml", r'^version:\s*([\d.]+)'),
+              "flutter_app/lib/providers/connection_provider.dart": read(
+                  "flutter_app/lib/providers/connection_provider.dart",
+                  r'kFrontendVersion\s*=\s*["\']([\d.]+)["\']',
+              ),
+          }
+          unique = set(v for v in versions.values() if v is not None)
+          for k, v in versions.items():
+              print(f"  {k}: {v}")
+          if len(unique) != 1:
+              print("ERROR: version drift across the 4 sources", file=sys.stderr)
+              sys.exit(1)
+          print(f"All 4 versions match: {unique.pop()}")
+          PY
 
   test:
     name: Test (Python 3.12)
