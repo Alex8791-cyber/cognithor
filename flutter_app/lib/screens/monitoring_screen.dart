@@ -213,73 +213,90 @@ class _EventsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
 
+    final eventsList = events ?? const <dynamic>[];
+
+    Widget eventCard(int index) {
+      final e = eventsList[index] as Map<String, dynamic>;
+      final severity = e['severity']?.toString() ?? 'INFO';
+      final message = e['message']?.toString() ?? '';
+      final timestamp = e['timestamp']?.toString() ?? '';
+
+      return NeonCard(
+        tint: CognithorTheme.sectionAdmin,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CognithorStatusBadge(
+              label: severity,
+              color: _severityColor(severity),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(message, style: Theme.of(context).textTheme.bodyMedium),
+                  if (timestamp.isNotEmpty)
+                    Text(
+                      timestamp,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Migrated from `ListView(children: [..., ...events.map(...)])` to a
+    // CustomScrollView so the events list renders lazily via SliverList.builder.
+    // Events can grow into the hundreds; eager rendering caused noticeable
+    // jank when monitoring a busy gateway.
     return RefreshIndicator(
       onRefresh: onRefresh,
       color: CognithorTheme.accent,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          CognithorSection(
-            title: l.events,
-            trailing: Text(
-              l.refreshing,
-              style: Theme.of(context).textTheme.bodySmall,
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: CognithorSection(
+                title: l.events,
+                trailing: Text(
+                  l.refreshing,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             ),
           ),
-          if (events == null || events!.isEmpty)
-            NeonCard(
-              tint: CognithorTheme.sectionAdmin,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    l.noEvents,
-                    style: Theme.of(context).textTheme.bodySmall,
+          if (eventsList.isEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverToBoxAdapter(
+                child: NeonCard(
+                  tint: CognithorTheme.sectionAdmin,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        l.noEvents,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
                   ),
                 ),
               ),
             )
           else
-            ...events!.map<Widget>((event) {
-              final e = event as Map<String, dynamic>;
-              final severity = e['severity']?.toString() ?? 'INFO';
-              final message = e['message']?.toString() ?? '';
-              final timestamp = e['timestamp']?.toString() ?? '';
-
-              return NeonCard(
-                tint: CognithorTheme.sectionAdmin,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CognithorStatusBadge(
-                      label: severity,
-                      color: _severityColor(severity),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            message,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          if (timestamp.isNotEmpty)
-                            Text(
-                              timestamp,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              sliver: SliverList.builder(
+                itemCount: eventsList.length,
+                itemBuilder: (_, index) => eventCard(index),
+              ),
+            ),
         ],
       ),
     );

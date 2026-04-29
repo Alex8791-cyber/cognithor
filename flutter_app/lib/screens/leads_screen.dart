@@ -256,26 +256,49 @@ class _LeadsScreenState extends State<LeadsScreen> {
                             sources.refresh(),
                           ]);
                         },
-                        child: ListView(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          children: [
-                            _buildUpsellSection(sources),
+                        // Migrated from `ListView(children: [...provider.leads.map(...)])`
+                        // to a CustomScrollView so the dynamic lead list renders lazily
+                        // via SliverList.builder. The fixed upsell + empty-state cards
+                        // stay as SliverToBoxAdapters above the lazy list.
+                        child: CustomScrollView(
+                          slivers: [
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                              sliver: SliverToBoxAdapter(
+                                child: _buildUpsellSection(sources),
+                              ),
+                            ),
                             if (provider.leads.isEmpty)
-                              CognithorEmptyState(
-                                icon: Icons.track_changes,
-                                title: l.noLeadsFound,
-                                subtitle: l.noLeadsHint,
+                              SliverPadding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                sliver: SliverToBoxAdapter(
+                                  child: CognithorEmptyState(
+                                    icon: Icons.track_changes,
+                                    title: l.noLeadsFound,
+                                    subtitle: l.noLeadsHint,
+                                  ),
+                                ),
                               )
                             else
-                              ...provider.leads.map(
-                                (lead) => LeadCard(
-                                  lead: lead,
-                                  onTap: () => _openDetail(lead),
-                                  onReply: () => _replyLead(lead.id),
-                                  onArchive: () => _archiveLead(lead.id),
+                              SliverPadding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                sliver: SliverList.builder(
+                                  itemCount: provider.leads.length,
+                                  itemBuilder: (context, index) {
+                                    final lead = provider.leads[index];
+                                    return LeadCard(
+                                      lead: lead,
+                                      onTap: () => _openDetail(lead),
+                                      onReply: () => _replyLead(lead.id),
+                                      onArchive: () => _archiveLead(lead.id),
+                                    );
+                                  },
                                 ),
                               ),
                           ],
