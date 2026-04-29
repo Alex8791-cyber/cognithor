@@ -14,6 +14,9 @@ from cognithor.channels.program_synthesis.search.candidate import (
     Program,
     ProgramNode,
 )
+from cognithor.channels.program_synthesis.search.enumerative import (
+    EnumerativeSearch,
+)
 from cognithor.channels.program_synthesis.search.equivalence import (
     ObservationalEquivalencePruner,
 )
@@ -25,6 +28,7 @@ from cognithor.channels.program_synthesis.search.executor import (
 
 __all__ = [
     "Const",
+    "EnumerativeSearch",
     "ExecutionResult",
     "Executor",
     "InProcessExecutor",
