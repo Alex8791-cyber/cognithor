@@ -20,7 +20,7 @@ import hashlib
 import re
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
 from cognithor.models import AgentResult, Message, MessageRole
 from cognithor.utils.logging import get_logger
@@ -408,9 +408,10 @@ async def run_post_processing(
 
 
 # ── Pattern Documentation ────────────────────────────────────
-
-# Rate limiter for pattern recordings: max 5 per hour
-_PATTERN_MAX_PER_HOUR: ClassVar[int] = 5
+# `_PATTERN_MAX_PER_HOUR` lives as a ClassVar on `Gateway` (defined in
+# `gateway.py`). `maybe_record_pattern` reads it via `gw._PATTERN_MAX_PER_HOUR`.
+# Class-attr lookup works on bare `Gateway()` and `Gateway.__new__(Gateway)`
+# instances alike — important because tests instantiate without `__init__`.
 
 
 def maybe_record_pattern(

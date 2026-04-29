@@ -4354,6 +4354,11 @@ class Gateway:
     # Maximum character count for persisted tool results in chat history
     _CONTEXT_RESULT_LIMIT: int = 4000
 
+    # Rate limiter for pattern recordings (post-processing pipeline): at most
+    # 5 procedural-memory writes per hour. Read by
+    # `post_processing.maybe_record_pattern()` via `gw._PATTERN_MAX_PER_HOUR`.
+    _PATTERN_MAX_PER_HOUR: ClassVar[int] = 5
+
     # Tools whose results are file paths that should be attached to the response.
     # Read by `message_utils.extract_attachments()` via `gw._ATTACHMENT_TOOLS`.
     _ATTACHMENT_TOOLS: ClassVar[frozenset[str]] = frozenset(
