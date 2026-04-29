@@ -30,7 +30,6 @@ from cognithor.gateway.gateway import (
     _classify_attachments,
     _extract_uuid_from_path,
 )
-from cognithor.gateway.observer_directive import run_pge_with_observer_directive
 from cognithor.i18n import t
 from cognithor.models import (
     ActionPlan,
@@ -948,7 +947,12 @@ async def formulate_response(
         except Exception:
             log.debug("streaming_formulate_failed_fallback", exc_info=True)
             # Fall through to non-streaming
-    return await run_pge_with_observer_directive(
+    # Look up via the gateway module namespace so monkeypatches on
+    # `gateway_module.run_pge_with_observer_directive` (used by
+    # `tests/test_integration/test_observer_flow.py`) intercept the call.
+    from cognithor.gateway import gateway as _gw_mod
+
+    return await _gw_mod.run_pge_with_observer_directive(
         planner=gw._planner,
         user_message=msg_text,
         results=all_results,

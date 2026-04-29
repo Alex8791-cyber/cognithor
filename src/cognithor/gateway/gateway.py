@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import hashlib
 import re
 import signal
 import threading
@@ -30,6 +29,16 @@ from cognithor.core.autonomous_orchestrator import AutonomousOrchestrator
 from cognithor.core.observer import (  # noqa: TC001
     PGEReloopDirective,  # noqa: F401 — runtime import for Task 16 isinstance checks
     ResponseEnvelope,
+)
+
+# Re-export so monkeypatch-on-gateway-module tests + back-compat callers
+# keep working. `message_handler.formulate_response` reads through the
+# `gateway` module namespace, not directly from `observer_directive`, so
+# `monkeypatch.setattr(gateway_module, "run_pge_with_observer_directive", ...)`
+# intercepts the call as before. See `tests/test_integration/test_observer_flow.py::
+# TestGatewayEndToEnd::test_gateway_uses_observer_wrapper`.
+from cognithor.gateway.observer_directive import (  # noqa: F401
+    run_pge_with_observer_directive,
 )
 from cognithor.gateway.phases import (
     apply_phase,
