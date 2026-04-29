@@ -8,30 +8,42 @@ from __future__ import annotations
 class TestSessionCloseFiresVideoCleanup:
     def test_stale_cleanup_triggers_on_session_close(self):
         """When _cleanup_stale_sessions evicts a session, the VideoCleanupWorker
-        must be told so its registered uploads get deleted immediately."""
+        must be told so its registered uploads get deleted immediately.
+
+        The cleanup logic was extracted from `gateway.py` into
+        `gateway/session_mgmt.py` (PR #189). Scan both modules to stay
+        robust against further sub-module splits.
+        """
         import inspect
 
-        from cognithor.gateway import gateway as gw
+        from cognithor.gateway import gateway as gw_mod
+        from cognithor.gateway import session_mgmt
 
-        src = inspect.getsource(gw)
+        # Gather source from both the orchestrator and the session-mgmt
+        # sub-module — `cleanup_stale_sessions` may live in either one.
+        full_src = inspect.getsource(gw_mod) + "\n" + inspect.getsource(session_mgmt)
 
-        # Find _cleanup_stale_sessions method body and check for a call to
-        # video_cleanup.on_session_close inside it.
-        # Accept either:
-        #   self._video_cleanup.on_session_close(...)
-        #   asyncio.ensure_future(self._video_cleanup.on_session_close(...))
-        #   await self._video_cleanup.on_session_close(...)
-        m_start = src.find("def _cleanup_stale_sessions")
-        assert m_start != -1, "Could not locate _cleanup_stale_sessions in gateway.py"
-        # Take a reasonable window after the def
-        m_end = src.find("\n    def ", m_start + 1)
-        if m_end == -1:
-            m_end = len(src)
-        body = src[m_start:m_end]
+        # Look for `cleanup_stale_sessions` (with or without leading underscore
+        # — the wrapper in gateway.py is `_cleanup_stale_sessions`, the free
+        # function in session_mgmt.py is `cleanup_stale_sessions`).
+        for needle in ("def _cleanup_stale_sessions", "def cleanup_stale_sessions"):
+            m_start = full_src.find(needle)
+            if m_start == -1:
+                continue
+            # Window after the def — stop at the next top-level / class-level
+            # def to avoid bleeding into adjacent functions.
+            tail = full_src[m_start:]
+            m_end = tail.find("\ndef ", 1)
+            m_end_class = tail.find("\n    def ", 1)
+            cuts = [c for c in (m_end, m_end_class, len(tail)) if c >= 0]
+            body = tail[: min(cuts)]
+            if "on_session_close" in body:
+                return  # Found and verified.
 
-        assert "on_session_close" in body, (
-            "_cleanup_stale_sessions does not call VideoCleanupWorker.on_session_close. "
-            "Session-lifetime cleanup is dead code — videos only deleted by 24h TTL sweep."
+        raise AssertionError(
+            "Neither cleanup_stale_sessions nor _cleanup_stale_sessions calls "
+            "VideoCleanupWorker.on_session_close. Session-lifetime cleanup is "
+            "dead code — videos only deleted by 24h TTL sweep."
         )
 
 

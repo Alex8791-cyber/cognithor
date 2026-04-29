@@ -5078,90 +5078,16 @@ class Gateway:
         return await message_utils.answer_from_presearch(self, user_message, search_results)
 
     def _cleanup_stale_sessions(self) -> None:
-        """Remove sessions that have not been accessed for more than _SESSION_TTL_SECONDS.
+        """Entfernt abgelaufene Sessions aus dem In-Memory-Cache."""
+        from cognithor.gateway import session_mgmt
 
-        This is called periodically (guarded by _CLEANUP_INTERVAL_SECONDS) to
-        prevent unbounded growth of the in-memory session and working-memory dicts.
-
-        When a VideoCleanupWorker is configured, each evicted session_id is also
-        dispatched to :meth:`VideoCleanupWorker.on_session_close` so that any
-        uploaded video files registered against that session are deleted
-        immediately, instead of waiting for the 24 h TTL sweep.
-        """
-        now = time.monotonic()
-        evicted_session_ids: list[str] = []
-        with self._session_lock:
-            stale_keys = [
-                key
-                for key, last_ts in self._session_last_accessed.items()
-                if (now - last_ts) > self._SESSION_TTL_SECONDS
-            ]
-            for key in stale_keys:
-                session = self._sessions.pop(key, None)
-                if session:
-                    self._working_memories.pop(session.session_id, None)
-                    evicted_session_ids.append(session.session_id)
-                self._session_last_accessed.pop(key, None)
-        if stale_keys:
-            log.info("stale_sessions_cleaned", count=len(stale_keys))
-        # Session-lifetime video cleanup: fire VideoCleanupWorker.on_session_close
-        # for each evicted session so registered uploads are deleted now rather
-        # than waiting up to 24 h for the TTL sweep. on_session_close is a
-        # coroutine; schedule it as a background task if we are on an event
-        # loop, otherwise the TTL sweep remains a safety net.
-        video_cleanup = getattr(self, "_video_cleanup", None)
-        if evicted_session_ids and video_cleanup is not None:
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                # Called from a thread or context with no running loop —
-                # rely on the TTL sweep to reclaim the orphaned uploads.
-                loop = None
-            if loop is not None:
-                background_tasks = getattr(self, "_background_tasks", None)
-                for sid in evicted_session_ids:
-                    try:
-                        task = loop.create_task(video_cleanup.on_session_close(sid))
-                        # Track to keep a strong reference and avoid "Task was
-                        # destroyed but it is pending" warnings.
-                        if background_tasks is not None:
-                            background_tasks.add(task)
-                            task.add_done_callback(background_tasks.discard)
-                    except Exception:
-                        log.debug(
-                            "video_cleanup_schedule_failed",
-                            session_id=sid,
-                            exc_info=True,
-                        )
-        self._last_session_cleanup = now
+        return session_mgmt.cleanup_stale_sessions(self)
 
     def _maybe_cleanup_sessions(self) -> None:
-        """Trigger stale session cleanup if enough time has passed since the last sweep."""
-        now = time.monotonic()
-        if (now - self._last_session_cleanup) >= self._CLEANUP_INTERVAL_SECONDS:
-            self._cleanup_stale_sessions()
-            # GDPR retention: also clean up persisted sessions & channel mappings
-            if self._session_store:
-                try:
-                    self._session_store.cleanup_old_sessions(max_age_days=30)
-                    self._session_store.cleanup_channel_mappings(max_age_days=30)
-                except Exception as exc:
-                    log.warning("gdpr_retention_cleanup_failed", error=str(exc))
+        """Triggert das Stale-Session-Cleanup, wenn das Intervall ueberschritten ist."""
+        from cognithor.gateway import session_mgmt
 
-    async def _run_retention_enforcement(self) -> None:
-        """GDPR: enforce retention policies via cron."""
-        try:
-            from cognithor.security.gdpr import GDPRComplianceManager
-
-            if hasattr(self, "_compliance_engine") and self._compliance_engine:
-                mgr = getattr(self, "_gdpr_compliance_manager", None)
-                if mgr and isinstance(mgr, GDPRComplianceManager):
-                    result = mgr.enforce_retention()
-                    log.info("gdpr_retention_enforced", result=result)
-                else:
-                    log.debug("gdpr_retention_enforcement_skipped_no_manager")
-        except Exception:
-            log.debug("gdpr_retention_enforcement_failed", exc_info=True)
+        return session_mgmt.maybe_cleanup_sessions(self)
 
     def _get_or_create_session(
         self,
@@ -5169,141 +5095,22 @@ class Gateway:
         user_id: str,
         agent_name: str = "jarvis",
     ) -> SessionContext:
-        """Laedt oder erstellt eine Session fuer Channel+User+Agent.
+        """Holt oder erstellt eine Session fuer (channel, user_id, agent_name)."""
+        from cognithor.gateway import session_mgmt
 
-        Per-Agent-Isolation: Jeder Agent hat seine eigene Session.
-        Das verhindert dass Working Memories vermischt werden.
-
-        Reihenfolge:
-          0. Periodic stale-session cleanup
-          1. Im RAM-Cache nachschauen
-          2. Aus SQLite laden (Session-Persistenz)
-          3. Neue Session erstellen
-        """
-        # 0. Periodically clean up stale sessions
-        self._maybe_cleanup_sessions()
-
-        key = f"{channel}:{user_id}:{agent_name}"
-
-        with self._session_lock:
-            # 1. RAM-Cache
-            if key in self._sessions:
-                self._session_last_accessed[key] = time.monotonic()
-                return self._sessions[key]
-
-            # 2. SQLite-Persistenz
-            if self._session_store:
-                stored = self._session_store.load_session(channel, user_id, agent_name)
-                if stored and stored.agent_name == agent_name:
-                    self._sessions[key] = stored
-                    self._session_last_accessed[key] = time.monotonic()
-                    log.info(
-                        "session_restored",
-                        session=stored.session_id[:8],
-                        channel=channel,
-                        agent=agent_name,
-                        messages=stored.message_count,
-                    )
-                    return stored
-
-            # 3. Neue Session
-            session = SessionContext(
-                user_id=user_id,
-                channel=channel,
-                agent_name=agent_name,
-                max_iterations=self._config.security.max_iterations,
-            )
-            self._sessions[key] = session
-            self._session_last_accessed[key] = time.monotonic()
-
-        # Persist (outside lock, does not block other sessions)
-        if self._session_store:
-            self._session_store.save_session(session)
-
-        log.info(
-            "session_created",
-            session=session.session_id[:8],
-            channel=channel,
-            agent=agent_name,
-        )
-        return session
+        return session_mgmt.get_or_create_session(self, channel, user_id, agent_name)
 
     def _get_or_create_working_memory(self, session: SessionContext) -> WorkingMemory:
-        """Laedt oder erstellt Working Memory fuer eine Session.
+        """Holt oder erstellt das WorkingMemory fuer eine Session."""
+        from cognithor.gateway import session_mgmt
 
-        Bei existierenden Sessions wird die Chat-History aus SQLite geladen.
-        """
-        with self._session_lock:
-            if session.session_id in self._working_memories:
-                return self._working_memories[session.session_id]
-
-        # Create outside lock (I/O operations do not block other sessions)
-        wm = WorkingMemory(
-            session_id=session.session_id,
-            max_tokens=self._config.models.planner.context_window,
-        )
-
-        # Core Memory laden (wenn vorhanden)
-        core_path = self._config.core_memory_path
-        if core_path.exists():
-            try:
-                wm.core_memory_text = core_path.read_text(encoding="utf-8")
-            except Exception as exc:
-                log.warning("core_memory_load_failed", error=str(exc))
-
-        # CAG prefix injection
-        # CAG prefix is prepared in handle_message() (async context), not here
-
-        # Chat-History aus SessionStore wiederherstellen
-        if self._session_store:
-            try:
-                history_limit = getattr(
-                    getattr(self._config, "session", None),
-                    "chat_history_limit",
-                    100,
-                )
-                history = self._session_store.load_chat_history(
-                    session.session_id,
-                    limit=history_limit,
-                )
-                if history:
-                    wm.chat_history = history
-                    log.info(
-                        "chat_history_restored",
-                        session=session.session_id[:8],
-                        messages=len(history),
-                    )
-            except Exception as exc:
-                log.warning("chat_history_load_failed", error=str(exc))
-
-        with self._session_lock:
-            # Double-check: another thread may have been faster
-            if session.session_id not in self._working_memories:
-                self._working_memories[session.session_id] = wm
-            return self._working_memories[session.session_id]
+        return session_mgmt.get_or_create_working_memory(self, session)
 
     def _check_and_compact(self, wm: WorkingMemory, session: SessionContext) -> None:
-        """Prueft Token-Budget und kompaktiert Chat-History wenn noetig.
+        """Prueft ob das WorkingMemory komprimiert werden muss und tut es ggf."""
+        from cognithor.gateway import session_mgmt
 
-        Nutzt den WorkingMemoryManager fuer sprachbewusste Token-Schaetzung
-        und FIFO-Entfernung alter Nachrichten.
-        """
-        from cognithor.memory.working import WorkingMemoryManager
-
-        mem_cfg = self._config.memory
-        mgr = WorkingMemoryManager(config=mem_cfg, max_tokens=wm.max_tokens)
-        mgr._memory = wm  # Manager auf aktuelle WM zeigen
-
-        if mgr.needs_compaction:
-            result = mgr.compact()
-            if result.messages_removed > 0:
-                log.info(
-                    "auto_compaction",
-                    session=session.session_id[:8],
-                    messages_removed=result.messages_removed,
-                    tokens_freed=result.tokens_freed,
-                    usage_after=f"{mgr.usage_ratio:.0%}",
-                )
+        return session_mgmt.check_and_compact(self, wm, session)
 
     async def _handle_approvals(
         self,
