@@ -42,18 +42,29 @@ class InputRef:
 
 @dataclass(frozen=True)
 class Const:
-    """A literal value (color index, integer parameter, enum tag, ...)."""
+    """A literal value (color index, integer parameter, enum tag, Predicate, Lambda, ...).
 
-    value: int | str
+    Predicate and Lambda values are accepted so the enumerator can seed
+    higher-order primitive arguments as bank leaves. The executor returns
+    these values verbatim — primitives like ``filter_objects`` /
+    ``map_objects`` consume them as their second argument.
+    """
+
+    value: object
     output_type: str
 
     def to_source(self) -> str:
-        # Ints render as their decimal value, strings keep their quotes
-        # so the source round-trips through eval() (used only by the
+        # Ints render as their decimal value. Predicate / Lambda values
+        # carry their own ``to_source`` and we delegate so the program
+        # source stays round-trippable. Strings keep their quotes so the
+        # source round-trips through eval() (used only by the
         # `cognithor pse explain` formatter, never by the search engine).
-        if isinstance(self.value, int) and not isinstance(self.value, bool):
-            return str(self.value)
-        return repr(self.value)
+        v = self.value
+        if isinstance(v, int) and not isinstance(v, bool):
+            return str(v)
+        if hasattr(v, "to_source") and callable(v.to_source):
+            return v.to_source()
+        return repr(v)
 
     def depth(self) -> int:
         return 0

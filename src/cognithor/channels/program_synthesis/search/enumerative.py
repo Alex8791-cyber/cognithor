@@ -153,6 +153,82 @@ def _seed_color_bank(
         bank.setdefault("Color", []).append(Const(value=c, output_type="Color"))
 
 
+def _predicate_seeds() -> list[object]:
+    """Curated, finite list of leaf Predicate values for the bank.
+
+    The closed-set predicate constructor catalog is enumeration-safe by
+    design (spec §6.4) — but the search engine still needs a *bounded*
+    seed list, otherwise size_eq/size_gt/size_lt with arbitrary integers
+    would blow the bank up. The list below is the canonical Phase-1.5
+    seed:
+
+    * ``color_eq(c)`` for every ARC color (10).
+    * ``size_eq/gt/lt(n)`` for n ∈ {1, 2, 3, 4, 5} — covers every demo
+      grid up to 5×5 plus the typical "single-cell vs multi-cell"
+      distinction (15).
+    * ``is_rectangle()``, ``is_square()``, ``touches_border()`` (3).
+
+    Total: 28 Predicate leaves. Combinator constructors (``not``,
+    ``and``, ``or``) are intentionally excluded from Phase 1 — they
+    would be reachable via depth-(d+1) Program nodes with a Predicate
+    output type, which the engine doesn't yet enumerate.
+    """
+    from cognithor.channels.program_synthesis.dsl.predicates import (
+        Predicate,
+    )
+
+    seeds: list[object] = []
+    for color in range(10):
+        seeds.append(Predicate(constructor="color_eq", args=(color,)))
+    for n in (1, 2, 3, 4, 5):
+        seeds.append(Predicate(constructor="size_eq", args=(n,)))
+        seeds.append(Predicate(constructor="size_gt", args=(n,)))
+        seeds.append(Predicate(constructor="size_lt", args=(n,)))
+    seeds.append(Predicate(constructor="is_rectangle"))
+    seeds.append(Predicate(constructor="is_square"))
+    seeds.append(Predicate(constructor="touches_border"))
+    return seeds
+
+
+def _lambda_seeds() -> list[object]:
+    """Curated, finite list of leaf Lambda values for the bank.
+
+    * ``identity_lambda()`` (1).
+    * ``recolor_lambda(c)`` for every ARC color (10).
+    * ``shift_lambda(dy, dx)`` for the four cardinal unit shifts (4).
+
+    Total: 15 Lambda leaves. ``branch_lambda`` is intentionally excluded
+    — it requires a Predicate plus two Lambdas, so it would balloon the
+    seed list combinatorially. Phase-2 search may construct branch
+    Lambdas via the depth-(d+1) recursion the engine grows in spec §15
+    (Phase-2: cost-aware Lambda enumeration).
+    """
+    from cognithor.channels.program_synthesis.dsl.lambdas import Lambda
+
+    seeds: list[object] = [Lambda(constructor="identity_lambda")]
+    for color in range(10):
+        seeds.append(Lambda(constructor="recolor_lambda", args=(color,)))
+    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        seeds.append(Lambda(constructor="shift_lambda", args=(dy, dx)))
+    return seeds
+
+
+def _seed_higher_order_bank(bank: dict[str, list[ProgramNode]]) -> None:
+    """Populate the bank with Predicate and Lambda leaves.
+
+    These are the closed-set seed values that make higher-order
+    primitives (``filter_objects``, ``map_objects``, ``branch``)
+    actually reachable in enumeration. Each seed is a depth-0 ``Const``
+    leaf carrying the Predicate/Lambda value verbatim — the executor
+    returns them as-is, so the host primitive receives a real
+    Predicate/Lambda dataclass to evaluate.
+    """
+    for pred in _predicate_seeds():
+        bank.setdefault("Predicate", []).append(Const(value=pred, output_type="Predicate"))
+    for fn in _lambda_seeds():
+        bank.setdefault("Lambda", []).append(Const(value=fn, output_type="Lambda"))
+
+
 def _budget_exhausted(budget: Budget, stats: _SearchStats) -> bool:
     return (
         stats.candidates_examined >= budget.max_candidates
@@ -228,6 +304,7 @@ class EnumerativeSearch:
         bank: dict[str, list[ProgramNode]] = _zero_arity_leaves(self._registry)
         bank.setdefault("Grid", []).append(InputRef())
         _seed_color_bank(bank)
+        _seed_higher_order_bank(bank)
 
         # Trivial-task fast path: input == output.
         if _all_demos_correct(InputRef(), spec, self._executor):
