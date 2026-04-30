@@ -8,9 +8,16 @@ follow in subsequent sprints.
 
 from __future__ import annotations
 
+from cognithor.channels.program_synthesis.refiner.local_edit import (
+    LocalEditMutator,
+)
 from cognithor.channels.program_synthesis.refiner.mode_controller import (
     RefinerMode,
     RefinerModeController,
 )
 
-__all__ = ["RefinerMode", "RefinerModeController"]
+__all__ = [
+    "LocalEditMutator",
+    "RefinerMode",
+    "RefinerModeController",
+]
