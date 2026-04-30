@@ -86,7 +86,7 @@ cognithor pse run task.json             # E2E synthesis + trace
 |---|---|
 | **K9** Trace-Vollständigkeit (every solved task has a trace) | ✅ Phase 1 |
 | **K10** Replay-Reproduzierbarkeit (P95 ≤ 100 ms, byte-identical) | ✅ Phase 1 |
-| **K4** 100 % adversarial-cases blocked | ✅ active layers; 12 subprocess cases scaffolded |
+| **K4** 100 % adversarial-cases blocked | ⏳ 18 active K4 tests pass (registry, validators, type-system payloads); 6 subprocess/setrlimit cases scaffolded |
 | **D17** WSL2-Default under Windows | ✅ Strategy router |
 | **D18** Auto-Tuner Pflichtlauf | ✅ Deterministic, no-ML |
 | **D3** Test coverage ≥ 90 % on new code | ✅ 95 % on `channels/program_synthesis/` |

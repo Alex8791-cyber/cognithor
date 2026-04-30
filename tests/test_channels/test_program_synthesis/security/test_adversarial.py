@@ -248,27 +248,131 @@ class TestDataIntegrity:
 
 
 # ---------------------------------------------------------------------------
-# Layer 5: cases requiring the real subprocess sandbox.
+# Layer 5a: spec §11.5 cases that the typed-Program + registry-whitelist
+# layers already block — no subprocess machinery needed.
 #
-# These test the spec §11.5 list. They're scaffolded with the canonical
-# adversarial payloads, but skipped until the subprocess + AST-whitelist
-# + setrlimit machinery lands. Removing the skip is part of the K4
-# hard-gate audit before release.
+# These payloads ARE NOT REPRESENTABLE in the Phase-1 program tree:
+# Program nodes carry only ``primitive: str`` plus typed children
+# (Program / InputRef / Const). Const.value is an int / str / Predicate /
+# Lambda — never a Python source string, never a callable. The executor
+# looks every primitive up in the REGISTRY and refuses anything else
+# with ``UnknownPrimitiveError`` (see TestRegistryWhitelist above).
+#
+# The tests below construct each canonical adversarial payload as a
+# Program tree and assert the existing layers block it. They run in
+# every CI lane — no subprocess needed.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="requires subprocess sandbox (Week 6+ PR)")
-class TestSubprocessSandbox:
-    """Scaffold for the full K4 audit. Each test maps to one of the
-    20+ adversarial cases enumerated in spec §11.5."""
+class TestPayloadsBlockedByTypeSystem:
+    """Spec §11.5 payloads that the typed-tree + registry refuse."""
 
     def test_eval_payload_blocked(self) -> None:
-        # eval("__import__('os').system('rm -rf /')")
-        raise NotImplementedError
+        # ``eval("__import__('os').system('rm -rf /')")`` — even framing
+        # this requires either an ``eval`` primitive in the registry or
+        # smuggling the source through Const.value. The first is impossible
+        # (registry has no ``eval``); the second is impossible because
+        # InProcessExecutor returns Const.value verbatim — it is *never*
+        # interpreted as code.
+        ex = InProcessExecutor()
+        prog = Program("eval", (InputRef(),), "Grid")
+        result = ex.execute(prog, _g([[1]]))
+        assert result.ok is False
+        assert result.error == "UnknownPrimitiveError"
 
     def test_import_payload_blocked(self) -> None:
-        # __import__('os').system(...)
-        raise NotImplementedError
+        ex = InProcessExecutor()
+        for name in ("__import__", "import", "importlib", "exec"):
+            prog = Program(name, (InputRef(),), "Grid")
+            result = ex.execute(prog, _g([[1]]))
+            assert result.ok is False
+            assert result.error == "UnknownPrimitiveError"
+
+    def test_dunder_class_reflection_blocked(self) -> None:
+        # Even smuggled as a primitive name, ``__class__`` / ``__bases__``
+        # / ``__mro__`` are not registered.
+        ex = InProcessExecutor()
+        for name in (
+            "__class__",
+            "__bases__",
+            "__mro__",
+            "__globals__",
+            "__getattribute__",
+        ):
+            prog = Program(name, (InputRef(),), "Grid")
+            result = ex.execute(prog, _g([[1]]))
+            assert result.ok is False
+            assert result.error == "UnknownPrimitiveError"
+
+    def test_dunder_subclasses_traversal_blocked(self) -> None:
+        # ``object.__subclasses__()`` reflection trick — same shape: no
+        # primitive registered, executor refuses.
+        ex = InProcessExecutor()
+        for name in ("__subclasses__", "object", "type", "vars", "globals"):
+            prog = Program(name, (InputRef(),), "Grid")
+            result = ex.execute(prog, _g([[1]]))
+            assert result.ok is False
+            assert result.error == "UnknownPrimitiveError"
+
+    def test_f_string_double_underscore_trick_blocked(self) -> None:
+        # The "f-string ``{x.__class__.__base__.__subclasses__()}``" trick
+        # only works if a Python f-string is *interpolated*. The PSE
+        # executor never interpolates Const.value — it returns the string
+        # to the host primitive, which expects a typed argument and
+        # raises TypeMismatchError if it isn't. So any string Const that
+        # carries an f-string-like payload fails at the type validator,
+        # never at any point that interprets it as code.
+        ex = InProcessExecutor()
+        # Force a Const(str) into a slot that expects a Color — the
+        # validator rejects it before any interpretation.
+        prog = Program(
+            "recolor",
+            (
+                InputRef(),
+                Const(
+                    value="{x.__class__.__base__.__subclasses__()}",
+                    output_type="Color",
+                ),
+                Const(value=2, output_type="Color"),
+            ),
+            "Grid",
+        )
+        result = ex.execute(prog, _g([[1]]))
+        assert result.ok is False
+        assert result.error == "TypeMismatchError"
+
+    def test_pickle_bomb_billion_laughs_blocked(self) -> None:
+        # The cache stores program SOURCE STRINGS (see
+        # ``integration/tactical_memory.py``), not pickled objects.
+        # A "billion laughs" payload would need a deserializer that
+        # recursively expands references — pickle. PSE never pickles a
+        # SynthesisResult, so the bomb has no surface to land on.
+        from cognithor.channels.program_synthesis.integration.tactical_memory import (
+            PSECache,
+        )
+
+        cache = PSECache()
+        # Verify the public API never accepts a ``pickle.loads`` path.
+        for attr in dir(cache):
+            assert "pickle" not in attr.lower(), (
+                f"PSECache surface contains {attr!r}; spec §11.5 forbids "
+                f"pickle in the PSE channel — use program_source strings."
+            )
+
+
+# ---------------------------------------------------------------------------
+# Layer 5b: spec §11.5 cases that genuinely need the subprocess sandbox.
+#
+# These test runtime resource limits / OS isolation that an in-process
+# executor cannot enforce. They stay scaffolded + skipped until the
+# subprocess worker (setrlimit + namespaces + WSL2 fan-out) lands.
+# Flipping them on is the remaining K4 work before release.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skip(reason="requires subprocess sandbox + setrlimit (resource-limit PR)")
+class TestSubprocessResourceLimits:
+    """OS-isolation tests — gated on the real worker."""
 
     def test_while_true_loop_killed_by_wall_clock(self) -> None:
         raise NotImplementedError
@@ -287,16 +391,4 @@ class TestSubprocessSandbox:
         raise NotImplementedError
 
     def test_recursion_stack_overflow_isolated(self) -> None:
-        raise NotImplementedError
-
-    def test_pickle_bomb_billion_laughs_blocked(self) -> None:
-        raise NotImplementedError
-
-    def test_dunder_class_reflection_blocked(self) -> None:
-        raise NotImplementedError
-
-    def test_dunder_subclasses_traversal_blocked(self) -> None:
-        raise NotImplementedError
-
-    def test_f_string_double_underscore_trick_blocked(self) -> None:
         raise NotImplementedError
