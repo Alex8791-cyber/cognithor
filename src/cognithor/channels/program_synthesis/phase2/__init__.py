@@ -23,10 +23,19 @@ from cognithor.channels.program_synthesis.phase2.config import (
     DEFAULT_PHASE2_CONFIG,
     Phase2Config,
 )
+from cognithor.channels.program_synthesis.phase2.dual_prior import (
+    DualPriorMixer,
+    DualPriorResult,
+)
 from cognithor.channels.program_synthesis.phase2.llm_prior import (
     LLMPrior,
     LLMPriorClient,
     LLMPriorError,
+)
+from cognithor.channels.program_synthesis.phase2.symbolic_prior import (
+    SymbolicPrior,
+    SymbolicPriorResult,
+    UniformSymbolicPrior,
 )
 from cognithor.channels.program_synthesis.phase2.telemetry import (
     phase2_counters,
@@ -40,11 +49,16 @@ __all__ = [
     "DEFAULT_PHASE2_CONFIG",
     "HIGH_IMPACT_PRIMITIVES",
     "STRUCTURAL_ABSTRACTION_PRIMITIVES",
+    "DualPriorMixer",
+    "DualPriorResult",
     "LLMPrior",
     "LLMPriorClient",
     "LLMPriorError",
     "Phase2Config",
     "SuspicionScore",
+    "SymbolicPrior",
+    "SymbolicPriorResult",
+    "UniformSymbolicPrior",
     "alpha_bounds",
     "apply_sample_size_dampening",
     "classify_primitive_name",
