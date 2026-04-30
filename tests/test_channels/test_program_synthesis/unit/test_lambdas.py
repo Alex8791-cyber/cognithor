@@ -53,8 +53,9 @@ class TestLambda:
         with pytest.raises(FrozenInstanceError):
             fn.constructor = "identity_lambda"  # type: ignore[misc]
 
-    def test_three_constructors_registered(self) -> None:
-        assert len(LAMBDA_CONSTRUCTORS) == 3
+    def test_base_constructors_registered(self) -> None:
+        # Floor + presence check — Phase 1.5 grows the set as H1+H5 land.
+        assert len(LAMBDA_CONSTRUCTORS) >= 3
         for name in ("identity_lambda", "recolor_lambda", "shift_lambda"):
             assert name in LAMBDA_CONSTRUCTORS
 

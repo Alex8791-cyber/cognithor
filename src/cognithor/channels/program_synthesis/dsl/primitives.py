@@ -1281,3 +1281,38 @@ def sort_objects(objects: ObjectSet, key: SortKey) -> ObjectSet:
     indexed = list(enumerate(objects.objects))
     indexed.sort(key=_sort_keyfn(k))
     return ObjectSet(objects=tuple(o for _, o in indexed))
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.5: H5 branch — conditional-Lambda combinator (spec v1.2 §7.5)
+# ---------------------------------------------------------------------------
+
+
+from cognithor.channels.program_synthesis.dsl.lambdas import (
+    branch_lambda as _branch_lambda,
+)
+
+
+@primitive(
+    name="branch",
+    signature=Signature(inputs=("Predicate", "Lambda", "Lambda"), output="Lambda"),
+    cost=3.5,
+    description=(
+        "Build a conditional Lambda: ``λobj. then_fn(obj) if pred(obj) "
+        "else else_fn(obj)``. Sub-tiefe ≤ 1 — nested ``branch`` "
+        "forbidden in Phase 1 (spec §7.5)."
+    ),
+    examples=(
+        (
+            "branch(size_gt(5), recolor_lambda(2), identity_lambda())",
+            "Lambda that recolours large objects red, leaves others alone.",
+        ),
+    ),
+)
+def branch(predicate: Predicate, then_fn: Lambda, else_fn: Lambda) -> Lambda:
+    _check_predicate(predicate, "branch.predicate")
+    _check_lambda(then_fn, "branch.then_fn")
+    _check_lambda(else_fn, "branch.else_fn")
+    if then_fn.constructor == "branch_lambda" or else_fn.constructor == "branch_lambda":
+        raise TypeMismatchError("branch: nested branches forbidden in Phase 1 (sub-tiefe limit 1)")
+    return _branch_lambda(predicate, then_fn, else_fn)
