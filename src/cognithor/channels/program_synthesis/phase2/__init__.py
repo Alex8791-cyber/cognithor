@@ -67,6 +67,9 @@ from cognithor.channels.program_synthesis.phase2.symbolic_prior import (
 from cognithor.channels.program_synthesis.phase2.telemetry import (
     phase2_counters,
 )
+from cognithor.channels.program_synthesis.phase2.triviality import (
+    triviality_score,
+)
 from cognithor.channels.program_synthesis.phase2.verifier import (
     SuspicionScore,
     compute_suspicion,
@@ -109,4 +112,5 @@ __all__ = [
     "mix_alpha",
     "partial_pixel_match",
     "phase2_counters",
+    "triviality_score",
 ]
