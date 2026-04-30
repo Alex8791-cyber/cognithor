@@ -18,11 +18,17 @@ from cognithor.channels.program_synthesis.phase2.config import (
     DEFAULT_PHASE2_CONFIG,
     Phase2Config,
 )
+from cognithor.channels.program_synthesis.phase2.verifier import (
+    SuspicionScore,
+    compute_suspicion,
+)
 
 __all__ = [
     "DEFAULT_PHASE2_CONFIG",
     "HIGH_IMPACT_PRIMITIVES",
     "STRUCTURAL_ABSTRACTION_PRIMITIVES",
     "Phase2Config",
+    "SuspicionScore",
     "classify_primitive_name",
+    "compute_suspicion",
 ]
