@@ -23,7 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import IO
+from typing import IO, Any
 
 import numpy as np
 
@@ -194,7 +194,7 @@ def _spec_from_payload(payload: object) -> TaskSpec | None:
     examples_raw = payload.get("examples")
     if not isinstance(examples_raw, list) or len(examples_raw) < 1:
         return None
-    examples: list[tuple[np.ndarray, np.ndarray]] = []
+    examples: list[tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]] = []
     for ex in examples_raw:
         if not isinstance(ex, dict):
             return None
@@ -213,7 +213,7 @@ def _spec_from_payload(payload: object) -> TaskSpec | None:
     return TaskSpec(examples=tuple(examples))
 
 
-def _budget_from_payload(payload: dict) -> Budget:
+def _budget_from_payload(payload: dict[str, Any]) -> Budget:
     raw = payload.get("budget", {})
     if not isinstance(raw, dict):
         return Budget()

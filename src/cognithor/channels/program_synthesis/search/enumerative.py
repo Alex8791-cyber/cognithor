@@ -91,8 +91,8 @@ def _zero_arity_leaves(registry: PrimitiveRegistry) -> dict[str, list[ProgramNod
 def _outputs_match(actual: Any, expected: Any) -> bool:
     """Tolerant equality used by the demo verifier."""
     if isinstance(actual, np.ndarray) and isinstance(expected, np.ndarray):
-        return actual.shape == expected.shape and np.array_equal(actual, expected)
-    return actual == expected
+        return bool(actual.shape == expected.shape and np.array_equal(actual, expected))
+    return bool(actual == expected)
 
 
 def _all_demos_correct(

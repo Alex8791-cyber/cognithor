@@ -232,7 +232,7 @@ class ProgramSynthesisChannel:
     def _inc_counter(self, key: str, **labels: str) -> None:
         c = self._counters.get(key)
         if c is not None:
-            c.inc(**labels)
+            c.inc(1.0, **labels)
 
     def _observe_histogram(self, key: str, value: float) -> None:
         h = self._histograms.get(key)
@@ -277,7 +277,7 @@ class ProgramSynthesisChannel:
         out: set[str] = set()
         if not isinstance(program, _Program):
             return out
-        stack = [program]
+        stack: list[Any] = [program]
         while stack:
             node = stack.pop()
             if isinstance(node, _Program):

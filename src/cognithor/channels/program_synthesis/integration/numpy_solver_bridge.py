@@ -35,8 +35,8 @@ if TYPE_CHECKING:
 
 def _grid_match(actual: Any, expected: Any) -> bool:
     if isinstance(actual, np.ndarray) and isinstance(expected, np.ndarray):
-        return actual.shape == expected.shape and np.array_equal(actual, expected)
-    return actual == expected
+        return bool(actual.shape == expected.shape and np.array_equal(actual, expected))
+    return bool(actual == expected)
 
 
 class NumpySolverBridge:
@@ -59,7 +59,7 @@ class NumpySolverBridge:
 
     def __init__(
         self,
-        solver_fn: Callable[..., np.ndarray | None] | None = None,
+        solver_fn: Callable[..., np.ndarray[Any, Any] | None] | None = None,
     ) -> None:
         self._solver_fn = solver_fn
 

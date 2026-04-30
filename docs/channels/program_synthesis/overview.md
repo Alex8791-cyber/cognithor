@@ -95,6 +95,7 @@ cognithor pse run task.json             # E2E synthesis + trace
 | **D10** Hashline audit trail | ✅ Chain-hash verifier |
 | **D11** Telemetry counters | ✅ In-process Registry |
 | **D12** Hello-World task documented with full trace | ✅ `tutorial.md` + drift gate |
+| **D15** Pre-commit hooks (ruff + mypy --strict + pytest) green | ✅ Ruff lint+format, mypy --strict on PSE (42 files), PSE pytest hook |
 
 ## What's NOT in Phase 1 (Phase 2 / 3 / 4)
 

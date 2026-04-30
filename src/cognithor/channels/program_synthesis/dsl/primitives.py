@@ -17,8 +17,13 @@ construction, and color constants.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, cast
+
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from cognithor.channels.program_synthesis.core.exceptions import TypeMismatchError
 from cognithor.channels.program_synthesis.dsl.registry import primitive
@@ -543,6 +548,7 @@ def _connected_components(grid: _Grid, connectivity: int) -> ObjectSet:
     visited = np.zeros_like(grid, dtype=bool)
     components: list[Object] = []
 
+    offsets: tuple[tuple[int, int], ...]
     if connectivity == 4:
         offsets = ((-1, 0), (1, 0), (0, -1), (0, 1))
     else:  # 8
@@ -808,7 +814,7 @@ def _check_mask(m: object, name: str) -> _Mask:
 def mask_eq(grid: _Grid, color: int) -> _Mask:
     _check_grid(grid, "mask_eq")
     _check_color(color, "mask_eq.color")
-    return (grid == color).copy()
+    return cast("_Mask", (grid == color).copy())
 
 
 @primitive(
@@ -821,7 +827,7 @@ def mask_eq(grid: _Grid, color: int) -> _Mask:
 def mask_ne(grid: _Grid, color: int) -> _Mask:
     _check_grid(grid, "mask_ne")
     _check_color(color, "mask_ne.color")
-    return (grid != color).copy()
+    return cast("_Mask", (grid != color).copy())
 
 
 @primitive(
@@ -1237,7 +1243,7 @@ def _grid_center_distance_squared(obj: Object) -> int:
     return cy * cy + cx * cx
 
 
-def _sort_keyfn(key: SortKey):
+def _sort_keyfn(key: SortKey) -> Callable[[tuple[int, Object]], object]:
     """Return a key-function for ``sorted(..., key=...)`` over (idx, obj) tuples.
 
     Ties always break by the discovery index ``idx`` so the output is
@@ -1279,7 +1285,7 @@ def sort_objects(objects: ObjectSet, key: SortKey) -> ObjectSet:
     if len(objects) <= 1:
         return objects
     indexed = list(enumerate(objects.objects))
-    indexed.sort(key=_sort_keyfn(k))
+    indexed.sort(key=cast("Callable[[tuple[int, Object]], Any]", _sort_keyfn(k)))
     return ObjectSet(objects=tuple(o for _, o in indexed))
 
 

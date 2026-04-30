@@ -55,3 +55,23 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # Spec D15: pre-commit-hooks (ruff, mypy --strict, pytest --cov >= 90 %)
+      # green. Scoped to the PSE channel — full-tree mypy --strict has
+      # legacy issues (see CLAUDE.md), but the PSE module is held to the
+      # spec's bar.
+      - id: mypy-strict-pse
+        name: mypy --strict on channels/program_synthesis/
+        entry: python -m mypy --strict src/cognithor/channels/program_synthesis/
+        language: system
+        types: [python]
+        files: ^src/cognithor/channels/program_synthesis/
+        pass_filenames: false
+
+      - id: pytest-pse
+        name: pytest tests/test_channels/test_program_synthesis/ (D15)
+        entry: python -m pytest tests/test_channels/test_program_synthesis/ -q --no-header
+        language: system
+        types: [python]
+        files: ^(src/cognithor/channels/program_synthesis/|tests/test_channels/test_program_synthesis/)
+        pass_filenames: false

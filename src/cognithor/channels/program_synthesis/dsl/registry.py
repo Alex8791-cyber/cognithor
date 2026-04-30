@@ -13,7 +13,7 @@ package; tests build fresh registries via :class:`PrimitiveRegistry`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from cognithor.channels.program_synthesis.core.exceptions import (
     DSLError,
@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from cognithor.channels.program_synthesis.dsl.signatures import Signature
+
+_F = TypeVar("_F", bound="Callable[..., Any]")
 
 
 @dataclass(frozen=True)
@@ -109,7 +111,7 @@ def primitive(
     description: str = "",
     examples: tuple[tuple[str, str], ...] = (),
     registry: PrimitiveRegistry | None = None,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[[_F], _F]:
     """Decorator that registers ``fn`` as a primitive in ``registry``.
 
     Used as::
@@ -121,7 +123,7 @@ def primitive(
 
     target = registry if registry is not None else REGISTRY
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: _F) -> _F:
         spec = PrimitiveSpec(
             name=name,
             signature=signature,

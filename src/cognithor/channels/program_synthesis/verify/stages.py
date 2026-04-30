@@ -309,5 +309,5 @@ __all__ = [
     "TypeStage",
     "default_pipeline",
 ]
-_ = REGISTRY  # type: ignore[unreachable]  — keep name resolvable for re-export tests
-_ = InProcessExecutor  # type: ignore[unreachable]
+_REEXPORT_REGISTRY = REGISTRY  # keep name resolvable for re-export tests
+_REEXPORT_EXECUTOR = InProcessExecutor

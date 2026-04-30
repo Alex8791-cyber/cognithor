@@ -9,9 +9,13 @@ equivalence fingerprints and hashed for cache keys.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 # A boolean per-pixel mask. Always 2-D, shape matches the source grid.
 type Mask = NDArray[np.bool_]
@@ -80,7 +84,7 @@ class ObjectSet:
     def __len__(self) -> int:
         return len(self.objects)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Object]:
         return iter(self.objects)
 
     def __getitem__(self, index: int) -> Object:

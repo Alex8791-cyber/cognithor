@@ -53,12 +53,12 @@ def _value_equal(a: Any, b: Any) -> bool:
     ``==``.
     """
     if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
-        return a.shape == b.shape and a.dtype == b.dtype and np.array_equal(a, b)
+        return bool(a.shape == b.shape and a.dtype == b.dtype and np.array_equal(a, b))
     if isinstance(a, ObjectSet) and isinstance(b, ObjectSet):
-        return a.objects == b.objects
+        return bool(a.objects == b.objects)
     if isinstance(a, Object) and isinstance(b, Object):
-        return a == b
-    return a == b
+        return bool(a == b)
+    return bool(a == b)
 
 
 def _summary(value: Any) -> str:

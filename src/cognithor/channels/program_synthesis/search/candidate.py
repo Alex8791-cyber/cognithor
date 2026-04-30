@@ -63,7 +63,8 @@ class Const:
         if isinstance(v, int) and not isinstance(v, bool):
             return str(v)
         if hasattr(v, "to_source") and callable(v.to_source):
-            return v.to_source()
+            rendered = v.to_source()
+            return rendered if isinstance(rendered, str) else repr(v)
         return repr(v)
 
     def depth(self) -> int:

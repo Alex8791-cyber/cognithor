@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import time
 from dataclasses import dataclass
+from typing import Protocol
 
 from cognithor.channels.program_synthesis.core.types import (
     Budget,
@@ -27,6 +28,11 @@ from cognithor.channels.program_synthesis.core.types import (
     TaskSpec,
 )
 from cognithor.channels.program_synthesis.core.version import DSL_VERSION
+
+
+class _Clock(Protocol):
+    def time(self) -> float: ...
+
 
 # TTL constants — spec §14.3.
 TTL_SUCCESS_DAYS: float = 30.0
@@ -107,7 +113,7 @@ class PSECache:
         self,
         *,
         dsl_version: str = DSL_VERSION,
-        clock: object = time,
+        clock: _Clock = time,
     ) -> None:
         self._dsl_version = dsl_version
         self._clock = clock
