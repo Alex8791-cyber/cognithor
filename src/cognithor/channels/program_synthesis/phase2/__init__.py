@@ -23,6 +23,12 @@ from cognithor.channels.program_synthesis.phase2.config import (
     DEFAULT_PHASE2_CONFIG,
     Phase2Config,
 )
+from cognithor.channels.program_synthesis.phase2.config_loader import (
+    DEFAULT_HEURISTICS_PATH,
+    ConfigLoadError,
+    LoadedHeuristics,
+    load_heuristics,
+)
 from cognithor.channels.program_synthesis.phase2.dual_prior import (
     DualPriorMixer,
     DualPriorResult,
@@ -46,14 +52,17 @@ from cognithor.channels.program_synthesis.phase2.verifier import (
 )
 
 __all__ = [
+    "DEFAULT_HEURISTICS_PATH",
     "DEFAULT_PHASE2_CONFIG",
     "HIGH_IMPACT_PRIMITIVES",
     "STRUCTURAL_ABSTRACTION_PRIMITIVES",
+    "ConfigLoadError",
     "DualPriorMixer",
     "DualPriorResult",
     "LLMPrior",
     "LLMPriorClient",
     "LLMPriorError",
+    "LoadedHeuristics",
     "Phase2Config",
     "SuspicionScore",
     "SymbolicPrior",
@@ -63,6 +72,7 @@ __all__ = [
     "apply_sample_size_dampening",
     "classify_primitive_name",
     "compute_suspicion",
+    "load_heuristics",
     "mix_alpha",
     "phase2_counters",
 ]

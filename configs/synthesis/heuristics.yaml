@@ -1,0 +1,359 @@
+# Cognithor Synthesis Engine — Heuristics Config
+#
+# All tunable heuristic values from Phase-2-Spec v1.4 centralized.
+# 
+# RULE: No magic numbers in source code. Every threshold, multiplier,
+# weight, and bound below has a Source-Reference (Spec §) and an
+# Empirical-Status flag. Sprint-1 implementation must read from this 
+# file, never hard-code.
+#
+# Format:
+#   <key>:
+#     value: <value>
+#     source: "Spec §x.y.z"
+#     status: validated | heuristic | tentative
+#     notes: "..."
+#
+# status semantics:
+#   - validated: empirically backed (in v1.4 not yet, mostly heuristic)
+#   - heuristic: best educated guess, needs Sprint-1 grid-search
+#   - tentative: reserved fix, only activate if interaction-test fails
+
+version: "1.4.0"
+spec_version: "phase2_spec_v1.4"
+
+# ════════════════════════════════════════════════════════════════════
+# Module A — Dual-Prior
+# ════════════════════════════════════════════════════════════════════
+
+llm_prior:
+  # Backend choice for the Phase-2 LLM-Prior. The Sprint-1 plan
+  # originally drafted llama.cpp + GBNF; the project owner chose vLLM
+  # (HTTP, OpenAI-compatible) as the production backend.
+  # llama.cpp paths kept for posterity / fallback.
+  backend: "vllm"
+  base_url: "http://localhost:8000/v1"
+  model_name: "Qwen/Qwen3.6-27B-Instruct"
+  fallback_model_name: "Qwen/Qwen3.6-27B-Instruct-AWQ"
+  call_timeout_seconds: 8.0
+  # llama.cpp-specific paths, kept for the alternate-backend
+  # contingency the plan called out.
+  model_path: "./models/Qwen3.6-27B-Instruct-Q5_K_M.gguf"
+  fallback_model_path: "./models/Qwen3.5-7B-Coder-Q5_K_M.gguf"
+
+  inference:
+    n_ctx: 32768
+    n_batch: 512
+    n_threads: 16
+    flash_attention: true
+    seed: 42
+    n_gpu_layers: -1
+    rope_scaling: "linear"
+    call_timeout_seconds: 8.0
+
+  sampling:
+    temperature_policy: 0.0          # spec §4.2 — Policy: deterministic
+    temperature_repair_cot: 0.3      # spec §4.7.3 stage 1 — Phase2Config.llm_temperature_stage1 source
+    temperature_repair_edit: 0.0     # spec §4.7.3 stage 2 — Phase2Config.llm_temperature_stage2 source
+    temperature_retry_cot: 0.5       # spec §4.7.3 retry
+    top_k: 40
+
+  batching:
+    max_batch: 16
+    max_wait_ms: 50
+
+  determinism:
+    deterministic_max_batch: 1       # spec §4.10 deterministic mode
+
+symbolic_prior:
+  temperature: 1.0
+  
+  rule_weights_mode: "uniform"       # uniform | tuned (sprint-1 outcome)
+  
+  # spec §4.4.1 — sample-size dampening
+  sample_size:
+    saturation_n: 4                  # spec §4.4.1; status: heuristic
+    # dampening_factor = min(1.0, n_demos / saturation_n)
+
+cache:
+  exact_cache:
+    backend: "sqlite"
+    max_size_gb: 10
+    eviction: "lru"
+  
+  approximate_cache:
+    backend: "faiss"
+    embedding_dim: 768
+    embedder: "BGE-M3"
+    
+    # spec §4.9.2
+    similarity_threshold: 0.85       # below: no hit
+    top_neighbor_threshold: 0.92     # above: top-only, below: mix
+    max_mix_neighbors: 3
+    
+    adaptive_mode: false             # spec §16 question 17
+    adaptive_warmup_lookups: 1000
+
+alpha:
+  # spec §4.4.4 — multiplicative adaptive bounds (revised v1.3 E1)
+  entropy_floor: 0.5
+  entropy_base: 0.85
+  performance_floor: 0.5
+  performance_base: 1.0
+  # → product range [0.25, 0.85]
+  
+  hysteresis_iterations: 5           # spec §4.4.4
+  
+  performance_tracker:
+    window: 10                       # spec §4.4.4
+    adaptive_window: false           # spec §16 question 16; tentative
+  
+  cold_start_alpha: 0.85             # before any data
+
+prior_mixer:
+  # spec §4.4.4
+  # final_alpha = clamp(alpha_entropy * alpha_performance, 0.25, 0.85)
+
+top_k_per_depth:
+  # spec §4.5 — depth-staged (revised v1.2 D3)
+  root: 16
+  shallow: 12       # depth 1-2
+  middle: 8         # depth 3-4
+  deep: 6           # depth >= 5
+
+logit_masking:
+  # spec §4.6
+  enable: true
+  enforce_type_compatibility: true
+  enforce_range_constraints: true
+  enforce_anti_redundancy: true
+  max_consecutive_rotates: 3
+  max_program_depth: 12
+
+# ════════════════════════════════════════════════════════════════════
+# Module B — MCTS Controller
+# ════════════════════════════════════════════════════════════════════
+
+mcts:
+  # spec §5.2 — PUCT
+  c_puct_default: 3.5                # status: heuristic; sprint-1 grid
+  c_puct_grid_search: [2.0, 2.5, 3.0, 3.5, 4.0, 5.0]
+  
+  depth_scaling:
+    enabled: false                   # opt-in
+    lambda_d: 0.1
+  
+  rollout:
+    greedy_visits_threshold: 50      # before: greedy, after: sampling
+    sampling_temperature: 0.7
+  
+  diversity:
+    bonus_lambda: 0.1                # spec §5.6
+    similarity_metric: "edit_distance"
+  
+  restart:
+    threshold_budget_fraction: 0.3
+    threshold_score: 0.5
+    c_puct_multiplier_on_restart: 1.5
+  
+  parallelism:
+    workers: 4
+    use_virtual_loss: true
+  
+  fallback:
+    # spec §5.10 (revised v1.2 D6)
+    score_threshold: 0.2
+    warmup_iters: 50
+    plateau_iters: 30
+    plateau_delta: 0.05
+    min_node_depth_mean: 2.0         # status: heuristic; v1.4 §16 question 9
+
+# ════════════════════════════════════════════════════════════════════
+# Module C — Critic & Refiner
+# ════════════════════════════════════════════════════════════════════
+
+refiner:
+  # spec §6.5 + §6.6
+  
+  # spec §6.5.2 — three-zone mode (NEW v1.4 F2)
+  mode_thresholds:
+    full_llm_min_alpha: 0.45         # alpha >= this → full LLM
+    hybrid_min_alpha: 0.35           # in [0.35, 0.45) → hybrid
+    # alpha < 0.35 → symbolic
+  
+  mode_hysteresis:
+    repairs_to_hold: 3               # spec §6.5.2; v1.4 §16 question 21
+  
+  # spec §6.5.2 — repair stages
+  llm_repair:
+    mode: "two_stage_retry"          # single_stage | two_stage | two_stage_retry
+    auto_fallback_to_single_stage_below_s: 2.0
+    auto_fallback_to_two_stage_below_s: 3.0
+    max_retries: 1                   # spec §4.7.3
+  
+  hybrid_repair:
+    # spec §6.5.2 — parallel symbolic + single-stage LLM
+    parallel: true
+    sub_budget_fraction: 0.5         # each side gets half of refiner budget
+  
+  local_edit:
+    max_mutations: 20
+    timeout_s: 1.0
+  
+  cegis:
+    # spec §6.5.3
+    eligibility_score_min: 0.5
+    max_iterations: 5
+    sub_budget_per_iter_fraction: 0.33
+  
+  # Score thresholds for stage gating (spec §6.6)
+  thresholds:
+    completion: 0.95                 # >= this → return as solution
+    llm_eligibility: 0.3             # below this → no LLM repair
+    cegis_eligibility: 0.5           # below this → no CEGIS
+
+# ════════════════════════════════════════════════════════════════════
+# Verifier
+# ════════════════════════════════════════════════════════════════════
+
+verifier:
+  # spec §7.2 — score weights (revised v1.2 D7)
+  score_weights:
+    demo_pass_rate: 0.55
+    partial_pixel_match: 0.13
+    invariants_satisfied: 0.08
+    triviality_score: 0.12
+    suspicion_score: 0.12
+    # SUM = 1.0
+  
+  # spec §7.3.2 — suspicion thresholds (revised v1.2 D7 + v1.3 E7)
+  suspicion:
+    cutoff_partial_score: 0.6        # below this → suspicion = 1.0
+    proportionality_threshold: 0.4   # below this → suspect
+    triviality_complexity_floor: 0.1 # below this → no suspicion
+  
+  # spec §7.3.2 — primitive class multipliers (NEW v1.4 F1)
+  syntactic_complexity:
+    high_impact_multiplier: 3.0      # status: heuristic; v1.4 §16 question 18
+    structural_abstraction_multiplier: 1.5
+    regular_multiplier: 1.0
+    
+    length_factor_normalizer: 12.0
+    depth_factor_normalizer: 6.0
+    length_weight: 0.6
+    depth_weight: 0.4
+  
+  triviality:
+    near_identity_threshold: 0.9
+    single_pixel_diff_max: 2
+
+# ════════════════════════════════════════════════════════════════════
+# DSL Primitive Classification (NEW v1.4 F1)
+# ════════════════════════════════════════════════════════════════════
+
+dsl_classification:
+  # spec §7.3.2 — these populate is_high_impact and 
+  # is_structural_abstraction flags in DSLPrimitive
+  
+  high_impact_primitives:
+    - "tile"
+    - "flood_fill"
+    - "mirror"
+    - "rotate"
+    - "transpose"
+    - "compose_grid"
+    - "scale"
+  
+  structural_abstraction_primitives:
+    - "objects"
+    - "filter_objects"
+    - "group_by_color"
+    - "find_pattern"
+    - "extract_bbox"
+
+# ════════════════════════════════════════════════════════════════════
+# Budget Partition
+# ════════════════════════════════════════════════════════════════════
+
+budget:
+  # spec §13.4 — strict partition (revised v1.2 D8)
+  partition:
+    pre_processing: 0.07
+    mcts: 0.70
+    refiner: 0.18
+    cegis: 0.05
+  
+  # MUST sum to 1.0
+  
+  # spec §13 — preset budgets
+  presets:
+    fast:
+      wall_clock_s: 1.0
+      max_llm_tokens: 1000
+      max_mcts_nodes: 50
+    standard:
+      wall_clock_s: 30.0
+      max_llm_tokens: 50000
+      max_mcts_nodes: 2000
+    deep:
+      wall_clock_s: 600.0
+      max_llm_tokens: 1000000
+      max_mcts_nodes: 50000
+  
+  reclamation:
+    enabled: true
+    threshold_utilization: 0.3       # below this, return budget to MCTS
+
+# ════════════════════════════════════════════════════════════════════
+# Early-Stop (spec §13.4.3)
+# ════════════════════════════════════════════════════════════════════
+
+early_stop:
+  enabled: true
+  required_score: 1.0
+  required_triviality: 0.85
+  required_suspicion: 0.85
+
+# ════════════════════════════════════════════════════════════════════
+# Reserved fixes (activate only if interaction-tests fail)
+# spec §12.2
+# ════════════════════════════════════════════════════════════════════
+
+reserved_fixes:
+  # spec §12.2.2 (E3×E1) — activate if few-demo LLM dominance shows
+  few_demos_dampening:
+    enabled: false
+    formula: "0.7 + 0.075 * n_demos"  # n=1: 0.775, n=2: 0.85, n=3: 0.925, n>=4: 1.0
+  
+  # spec §12.2.3 (E6×E7) — activate if high-impact reward-hacking shows
+  argument_quality_factor:
+    enabled: false
+    base_multiplier: 1.0
+    quality_amplifier: 2.0           # multiplier = 1 + 2 * quality
+
+# ════════════════════════════════════════════════════════════════════
+# Telemetry
+# ════════════════════════════════════════════════════════════════════
+
+telemetry:
+  log_level: "INFO"
+  structured: true
+  format: "json"
+  
+  prometheus:
+    enabled: true
+    port: 9090
+
+# ════════════════════════════════════════════════════════════════════
+# Calibration (filled in by sprint-1 calibration step)
+# ════════════════════════════════════════════════════════════════════
+
+calibration:
+  llm_temperature_scaling: 1.0       # filled by sprint-1 ECE calibration
+  symbolic_temperature_scaling: 1.0
+  ece_target: 0.06
+  
+  recalibration_triggers:
+    rolling_ece_threshold: 0.10
+    on_model_change: true
+    on_dsl_update: true
