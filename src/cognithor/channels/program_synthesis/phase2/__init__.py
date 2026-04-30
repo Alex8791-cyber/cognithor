@@ -29,6 +29,13 @@ from cognithor.channels.program_synthesis.phase2.config_loader import (
     LoadedHeuristics,
     load_heuristics,
 )
+from cognithor.channels.program_synthesis.phase2.datatypes import (
+    FeatureWithConfidence,
+    MCTSNode,
+    MCTSState,
+    MixedPolicy,
+    PartitionedBudget,
+)
 from cognithor.channels.program_synthesis.phase2.dual_prior import (
     DualPriorMixer,
     DualPriorResult,
@@ -59,10 +66,15 @@ __all__ = [
     "ConfigLoadError",
     "DualPriorMixer",
     "DualPriorResult",
+    "FeatureWithConfidence",
     "LLMPrior",
     "LLMPriorClient",
     "LLMPriorError",
     "LoadedHeuristics",
+    "MCTSNode",
+    "MCTSState",
+    "MixedPolicy",
+    "PartitionedBudget",
     "Phase2Config",
     "SuspicionScore",
     "SymbolicPrior",
