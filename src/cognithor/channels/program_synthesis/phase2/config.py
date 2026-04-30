@@ -57,6 +57,24 @@ class Phase2Config:
     enable_argument_quality_factor: bool = False
     enable_few_demos_dampening: bool = False
 
+    # ── Search-α bounds (spec §4.4.4) ──────────────────────────────
+    # Multiplicative-adaptive α = α_entropy · α_performance.
+    # α_entropy ∈ [alpha_entropy_lower, alpha_entropy_upper]
+    # α_performance ∈ [alpha_performance_lower, alpha_performance_upper]
+    # → α ∈ [alpha_entropy_lower · alpha_performance_lower,
+    #        alpha_entropy_upper · alpha_performance_upper]
+    #   = [0.25, 0.85] with the spec defaults.
+    alpha_entropy_lower: float = 0.5
+    alpha_entropy_upper: float = 0.85
+    alpha_performance_lower: float = 0.5
+    alpha_performance_upper: float = 1.0
+
+    # ── Sample-size dampening (Symbolic-Prior, spec §4.4) ──────────
+    # effective_confidence = base_confidence · (n / (n + dampening_n0))
+    # The default n0=4 means at n=4 demos the dampening factor is 0.5;
+    # at n=12 it's 0.75; at n=∞ it's 1.0.
+    sample_size_dampening_n0: int = 4
+
     def __post_init__(self) -> None:
         # Sanity: zones must form a non-empty graybereich.
         if not 0.0 < self.repair_alpha_zone3_upper < self.repair_alpha_zone1_lower < 1.0:
@@ -85,6 +103,26 @@ class Phase2Config:
                 f"regular ({self.regular_primitive_multiplier}) "
                 f"≤ structural ({self.structural_abstraction_multiplier}) "
                 f"≤ high_impact ({self.high_impact_multiplier})."
+            )
+        # α-bounds (spec §4.4.4): each factor must be a valid
+        # closed-interval inside [0, 1] with lower ≤ upper.
+        for name, lo, hi in (
+            ("alpha_entropy", self.alpha_entropy_lower, self.alpha_entropy_upper),
+            (
+                "alpha_performance",
+                self.alpha_performance_lower,
+                self.alpha_performance_upper,
+            ),
+        ):
+            if not 0.0 <= lo <= hi <= 1.0:
+                raise ValueError(
+                    f"Phase2Config: {name} interval [{lo}, {hi}] must "
+                    f"satisfy 0 ≤ lower ≤ upper ≤ 1."
+                )
+        if self.sample_size_dampening_n0 < 1:
+            raise ValueError(
+                f"Phase2Config: sample_size_dampening_n0 must be >= 1; "
+                f"got {self.sample_size_dampening_n0}."
             )
 
 

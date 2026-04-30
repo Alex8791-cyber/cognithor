@@ -9,6 +9,11 @@ one of them lives in :class:`Phase2Config` and is overridable.
 
 from __future__ import annotations
 
+from cognithor.channels.program_synthesis.phase2.alpha_mixer import (
+    alpha_bounds,
+    apply_sample_size_dampening,
+    mix_alpha,
+)
 from cognithor.channels.program_synthesis.phase2.classification import (
     HIGH_IMPACT_PRIMITIVES,
     STRUCTURAL_ABSTRACTION_PRIMITIVES,
@@ -29,6 +34,9 @@ __all__ = [
     "STRUCTURAL_ABSTRACTION_PRIMITIVES",
     "Phase2Config",
     "SuspicionScore",
+    "alpha_bounds",
+    "apply_sample_size_dampening",
     "classify_primitive_name",
     "compute_suspicion",
+    "mix_alpha",
 ]
