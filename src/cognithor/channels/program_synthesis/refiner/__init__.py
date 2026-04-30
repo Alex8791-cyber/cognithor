@@ -8,6 +8,11 @@ follow in subsequent sprints.
 
 from __future__ import annotations
 
+from cognithor.channels.program_synthesis.refiner.cegis import (
+    CEGISLoop,
+    CEGISResult,
+    CounterExample,
+)
 from cognithor.channels.program_synthesis.refiner.local_edit import (
     LocalEditMutator,
 )
@@ -17,6 +22,9 @@ from cognithor.channels.program_synthesis.refiner.mode_controller import (
 )
 
 __all__ = [
+    "CEGISLoop",
+    "CEGISResult",
+    "CounterExample",
     "LocalEditMutator",
     "RefinerMode",
     "RefinerModeController",

@@ -134,6 +134,15 @@ class Phase2Config:
     alpha_performance_window: int = 10
     alpha_cold_start: float = 0.85
 
+    # ── CEGIS Refiner stage (spec §6.5.3) ──────────────────────────
+    # Counter-Example-Guided Inductive Synthesis runs *after* the
+    # Drei-Zonen-Refiner if the candidate's score is in the eligible
+    # band. The loop terminates on max_iterations OR budget timeout
+    # OR all-demos-pass.
+    cegis_max_iterations: int = 5
+    cegis_eligibility_score_min: float = 0.5
+    cegis_sub_budget_per_iter_fraction: float = 0.33
+
     # ── Module A — LLM-Prior over vLLM (spec §4.2 / §4.3 / §4.7) ────
     # Backend: vLLM exposing OpenAI-compat /v1/chat/completions.
     # Default model is the spec-anchored Qwen3.6-27B-Instruct on the
@@ -227,6 +236,20 @@ class Phase2Config:
         # Phase2Config(alpha_entropy_upper=0.7) etc. constructible
         # even when the spec-default alpha_cold_start=0.85 sits
         # above a customised band.
+        if self.cegis_max_iterations < 1:
+            raise ValueError(
+                f"Phase2Config: cegis_max_iterations must be >= 1; got {self.cegis_max_iterations}."
+            )
+        if not 0.0 <= self.cegis_eligibility_score_min <= 1.0:
+            raise ValueError(
+                f"Phase2Config: cegis_eligibility_score_min must be in "
+                f"[0, 1]; got {self.cegis_eligibility_score_min}."
+            )
+        if not 0.0 < self.cegis_sub_budget_per_iter_fraction <= 1.0:
+            raise ValueError(
+                f"Phase2Config: cegis_sub_budget_per_iter_fraction must "
+                f"be in (0, 1]; got {self.cegis_sub_budget_per_iter_fraction}."
+            )
         # LLM prior validation.
         if not self.llm_model_name:
             raise ValueError("Phase2Config: llm_model_name must be non-empty.")
