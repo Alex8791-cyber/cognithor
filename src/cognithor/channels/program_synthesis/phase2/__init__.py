@@ -51,6 +51,10 @@ from cognithor.channels.program_synthesis.phase2.llm_prior import (
     LLMPriorClient,
     LLMPriorError,
 )
+from cognithor.channels.program_synthesis.phase2.pixel_match import (
+    average_partial_pixel_match,
+    partial_pixel_match,
+)
 from cognithor.channels.program_synthesis.phase2.scoring import (
     VerifierScoreInputs,
     aggregate_verifier_score,
@@ -98,9 +102,11 @@ __all__ = [
     "aggregate_verifier_score",
     "alpha_bounds",
     "apply_sample_size_dampening",
+    "average_partial_pixel_match",
     "classify_primitive_name",
     "compute_suspicion",
     "load_heuristics",
     "mix_alpha",
+    "partial_pixel_match",
     "phase2_counters",
 ]
