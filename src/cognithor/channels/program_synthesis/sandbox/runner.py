@@ -293,12 +293,15 @@ _WORKER_BOOTSTRAP = textwrap.dedent(
             _emit_error("MemoryLimitExceeded")
             return
         except OSError as exc:
-            # ENFILE/EMFILE = file-descriptor limit. EAGAIN under
-            # NPROC is mapped here too (fork failed).
-            if exc.errno in (24, 23):
+            # EMFILE (per-process FD limit) and ENFILE (system FD limit)
+            # both surface as FileLimitExceeded. EAGAIN under fork() is
+            # ProcessLimitExceeded. Other errnos / strerror strings get
+            # the generic crash tag.
+            msg = str(exc)
+            if exc.errno in (24, 23) or "Too many open files" in msg:
                 _emit_error("FileLimitExceeded", repr(exc))
                 return
-            if exc.errno == 11:
+            if exc.errno == 11 or "Resource temporarily unavailable" in msg:
                 _emit_error("ProcessLimitExceeded", repr(exc))
                 return
             _emit_error("WorkerCrashed", repr(exc))
