@@ -50,6 +50,8 @@ src/cognithor/channels/program_synthesis/
   `shift_lambda`, `branch_lambda`.
 
 Auto-generated complete catalog: [`dsl_reference.md`](./dsl_reference.md).
+Benchmark methodology + latest run: [`benchmarks.md`](./benchmarks.md).
+Hello-World walkthrough: [`tutorial.md`](./tutorial.md).
 
 ## Public API
 
