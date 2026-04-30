@@ -1,2 +1,8 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
-"""PSE cli — scaffold (Week 1). Implementation lands in later weeks."""
+"""``cognithor pse`` CLI (spec §19.2)."""
+
+from __future__ import annotations
+
+from cognithor.channels.program_synthesis.cli.pse_cli import main
+
+__all__ = ["main"]
