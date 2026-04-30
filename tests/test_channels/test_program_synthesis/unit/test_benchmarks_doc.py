@@ -62,3 +62,15 @@ class TestBenchmarksDoc:
             f"benchmarks.md lambda-constructor count is stale; live count "
             f"is {len(LAMBDA_CONSTRUCTORS)}."
         )
+        # Higher-order primitive count (spec §7.5 — anything taking a
+        # closed-set parametric arg: Predicate, Lambda, AlignMode, SortKey).
+        ho_arg_types = {"Predicate", "Lambda", "AlignMode", "SortKey"}
+        ho_count = sum(
+            1
+            for s in REGISTRY.all_primitives()
+            if any(t in ho_arg_types for t in s.signature.inputs)
+        )
+        assert f"**{ho_count}**" in body, (
+            f"benchmarks.md higher-order-primitive count is stale; live count "
+            f"is {ho_count}."
+        )

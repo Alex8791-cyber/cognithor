@@ -89,9 +89,12 @@ cognithor pse run task.json             # E2E synthesis + trace
 | **K4** 100 % adversarial-cases blocked | ✅ active layers; 12 subprocess cases scaffolded |
 | **D17** WSL2-Default under Windows | ✅ Strategy router |
 | **D18** Auto-Tuner Pflichtlauf | ✅ Deterministic, no-ML |
+| **D3** Test coverage ≥ 90 % on new code | ✅ 95 % on `channels/program_synthesis/` |
 | **D8** CLI works | ✅ Subset shipped |
+| **D9** Docs (overview + architecture + dsl_reference + tutorial + benchmarks) | ✅ All five present |
 | **D10** Hashline audit trail | ✅ Chain-hash verifier |
 | **D11** Telemetry counters | ✅ In-process Registry |
+| **D12** Hello-World task documented with full trace | ✅ `tutorial.md` + drift gate |
 
 ## What's NOT in Phase 1 (Phase 2 / 3 / 4)
 

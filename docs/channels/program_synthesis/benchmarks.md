@@ -67,7 +67,7 @@ pre-conditions for the success threshold above.
 | Base primitives | **61** (56 base + 5 Phase-1.5 higher-order) |
 | Predicate constructors | **13** (10 leaf + 3 combinators) |
 | Lambda constructors | **4** (`identity`, `recolor`, `shift`, `branch`) |
-| Higher-order primitives | **3** (`filter_objects`, `map_objects`, `branch`) |
+| Higher-order primitives | **5** (`map_objects`, `filter_objects`, `align_to`, `sort_objects`, `branch`) |
 | Default budget | `max_depth=4`, `wall_clock=30 s`, `max_candidates=50 000` |
 | Cost-Tuner final pass | **D18 ✅** — see `dsl/auto_tuner.py` |
 
