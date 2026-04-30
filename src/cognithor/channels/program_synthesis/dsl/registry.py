@@ -135,6 +135,8 @@ def primitive(
     cost: float,
     description: str = "",
     examples: tuple[tuple[str, str], ...] = (),
+    is_high_impact: bool = False,
+    is_structural_abstraction: bool = False,
     registry: PrimitiveRegistry | None = None,
 ) -> Callable[[_F], _F]:
     """Decorator that registers ``fn`` as a primitive in ``registry``.
@@ -144,9 +146,29 @@ def primitive(
         @primitive(name="rotate90", signature=Signature(("Grid",), "Grid"), cost=1.0)
         def rotate90(grid):
             return np.rot90(grid, k=-1).copy()
+
+    Phase-2 (spec v1.4 §7.3.2) classification flags map to
+    :class:`PrimitiveSpec`'s mutually-exclusive attributes; see that
+    class for the multiplier semantics.
     """
 
     target = registry if registry is not None else REGISTRY
+
+    # Phase-2 auto-classification: if the caller didn't pin a flag,
+    # the static whitelists in :mod:`phase2.classification` decide.
+    # Lazy import keeps phase2 ↔ dsl decoupled at module-init time.
+    auto_high = is_high_impact
+    auto_struct = is_structural_abstraction
+    if not auto_high and not auto_struct:
+        from cognithor.channels.program_synthesis.phase2.classification import (
+            classify_primitive_name,
+        )
+
+        cls = classify_primitive_name(name)
+        if cls == "high_impact":
+            auto_high = True
+        elif cls == "structural_abstraction":
+            auto_struct = True
 
     def decorator(fn: _F) -> _F:
         spec = PrimitiveSpec(
@@ -156,6 +178,8 @@ def primitive(
             fn=fn,
             description=description,
             examples=examples,
+            is_high_impact=auto_high,
+            is_structural_abstraction=auto_struct,
         )
         target.register(spec)
         return fn
