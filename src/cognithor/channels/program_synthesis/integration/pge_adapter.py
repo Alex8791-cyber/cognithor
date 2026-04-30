@@ -41,6 +41,15 @@ from cognithor.channels.program_synthesis.integration.state_graph_bridge import 
 from cognithor.channels.program_synthesis.integration.tactical_memory import (
     PSECache,
 )
+from cognithor.channels.program_synthesis.observability.audit import (
+    AuditTrail,
+    audit_entry_for,
+)
+from cognithor.channels.program_synthesis.observability.metrics import (
+    Registry,
+    standard_counters,
+    standard_histograms,
+)
 from cognithor.channels.program_synthesis.sandbox.strategies import (
     _BaseStrategy,
     select_sandbox_strategy,
@@ -134,19 +143,31 @@ class ProgramSynthesisChannel:
         sgn_bridge: StateGraphBridge | None = None,
         sandbox_strategy: _BaseStrategy | None = None,
         engine: EnumerativeSearch | None = None,
+        metrics_registry: Registry | None = None,
+        audit_trail: AuditTrail | None = None,
+        actor: str = "channel@cognithor",
     ) -> None:
         self._cache = cache if cache is not None else PSECache()
         self._numpy = numpy_bridge if numpy_bridge is not None else NumpySolverBridge()
         self._sgn = sgn_bridge if sgn_bridge is not None else StateGraphBridge()
-        # Pick a sandbox strategy unless the caller provides one.
         self._sandbox = (
             sandbox_strategy
             if sandbox_strategy is not None
             else select_sandbox_strategy(emit_warning=False)
         )
-        # The engine reuses the sandbox strategy as its executor — same
-        # Executor protocol, single point of policy enforcement.
         self._engine = engine if engine is not None else EnumerativeSearch(executor=self._sandbox)
+
+        # Observability — None disables emission so tests don't need
+        # to wire the registry / audit-trail when they don't care.
+        self._metrics_registry = metrics_registry
+        self._audit_trail = audit_trail
+        self._actor = actor
+        if metrics_registry is not None:
+            self._counters = standard_counters(metrics_registry)
+            self._histograms = standard_histograms(metrics_registry)
+        else:
+            self._counters = {}
+            self._histograms = {}
 
     # -- Public API --------------------------------------------------
 
@@ -154,13 +175,25 @@ class ProgramSynthesisChannel:
         """End-to-end synthesis: cache → fast-path → enumerator → cache."""
         spec = self._apply_sgn(request)
         budget = request.budget
+        wall_t0 = time.monotonic()
 
+        result = self._dispatch(spec, budget)
+        wall_elapsed = time.monotonic() - wall_t0
+        self._emit_metrics(spec, result, wall_elapsed)
+        self._emit_audit(spec, budget, result, wall_elapsed)
+        return result
+
+    # -- Internals ---------------------------------------------------
+
+    def _dispatch(self, spec: TaskSpec, budget: Budget) -> SynthesisResult:
         # 1. Cache lookup.
         if budget.cache_lookup:
             entry = self._cache.get(spec, budget)
             if entry is not None and entry.status == SynthesisStatus.SUCCESS:
                 LOG.info("PSE cache hit for %s", entry.spec_hash)
+                self._inc_counter("cache_hits_total")
                 return self._cache_entry_to_result(entry)
+        self._inc_counter("cache_misses_total")
 
         # 2. NumPy fast-path.
         if self._numpy.is_available():
@@ -168,8 +201,6 @@ class ProgramSynthesisChannel:
             fast = self._numpy.try_solve(spec)
             if fast is not None:
                 elapsed = time.monotonic() - t0
-                # Re-stamp the fast-path's cost_seconds with our wall-clock
-                # so callers see a non-zero (informative) duration.
                 stamped = SynthesisResult(
                     status=fast.status,
                     program=fast.program,
@@ -186,18 +217,104 @@ class ProgramSynthesisChannel:
 
         # 3. Enumerative search.
         result = self._engine.search(spec, budget)
-
         # 4. Cache write — the tactical-memory cache filters
         # non-cacheable statuses internally.
         self._cache.put(spec, budget, result)
         return result
 
-    # -- Internals ---------------------------------------------------
-
     def _apply_sgn(self, request: SynthesisRequest) -> TaskSpec:
         if not request.sgn_hints:
             return request.spec
         return self._sgn.annotate(request.spec, request.sgn_hints)
+
+    # -- Telemetry + audit -------------------------------------------
+
+    def _inc_counter(self, key: str, **labels: str) -> None:
+        c = self._counters.get(key)
+        if c is not None:
+            c.inc(**labels)
+
+    def _observe_histogram(self, key: str, value: float) -> None:
+        h = self._histograms.get(key)
+        if h is not None:
+            h.observe(value)
+
+    def _emit_metrics(
+        self,
+        spec: TaskSpec,
+        result: SynthesisResult,
+        wall_elapsed: float,
+    ) -> None:
+        if not self._counters and not self._histograms:
+            return
+        self._inc_counter(
+            "synthesis_requests_total",
+            status=result.status.value,
+            domain=spec.domain.value,
+        )
+        self._observe_histogram("synthesis_duration_seconds", wall_elapsed)
+        self._observe_histogram("candidates_explored", float(result.cost_candidates))
+        if result.status == SynthesisStatus.SUCCESS and result.program is not None:
+            if hasattr(result.program, "depth"):
+                self._observe_histogram("program_depth", float(result.program.depth()))
+            if hasattr(result.program, "size"):
+                self._observe_histogram("program_size", float(result.program.size()))
+            for prim_name in self._collect_primitive_names(result.program):
+                self._inc_counter("dsl_primitive_uses_total", primitive=prim_name)
+
+    @staticmethod
+    def _collect_primitive_names(program: object) -> set[str]:
+        """Walk the Program tree and collect every primitive name.
+
+        Robust to non-Program inputs (returns empty set) so the metrics
+        path can't crash on a fast-path result whose ``program`` slot is
+        ``None`` or a non-DSL placeholder.
+        """
+        from cognithor.channels.program_synthesis.search.candidate import (
+            Program as _Program,
+        )
+
+        out: set[str] = set()
+        if not isinstance(program, _Program):
+            return out
+        stack = [program]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, _Program):
+                out.add(node.primitive)
+                stack.extend(node.children)
+        return out
+
+    def _emit_audit(
+        self,
+        spec: TaskSpec,
+        budget: Budget,
+        result: SynthesisResult,
+        wall_elapsed: float,
+    ) -> None:
+        if self._audit_trail is None:
+            return
+        program_hash: str | None = None
+        if result.program is not None and hasattr(result.program, "stable_hash"):
+            try:
+                program_hash = result.program.stable_hash()
+            except Exception:
+                program_hash = None
+        entry = audit_entry_for(
+            actor=self._actor,
+            capability="pse:synthesize",
+            spec_hash=spec.stable_hash(),
+            budget={
+                "max_depth": budget.max_depth,
+                "wall_clock_seconds": budget.wall_clock_seconds,
+                "max_candidates": budget.max_candidates,
+            },
+            result_status=result.status.value,
+            program_hash=program_hash,
+            duration_ms=round(wall_elapsed * 1000.0),
+            candidates_explored=result.cost_candidates,
+        )
+        self._audit_trail.emit(entry)
 
     @staticmethod
     def _cache_entry_to_result(entry: object) -> SynthesisResult:
