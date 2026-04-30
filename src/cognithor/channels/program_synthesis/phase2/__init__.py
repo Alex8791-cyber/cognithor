@@ -23,6 +23,9 @@ from cognithor.channels.program_synthesis.phase2.config import (
     DEFAULT_PHASE2_CONFIG,
     Phase2Config,
 )
+from cognithor.channels.program_synthesis.phase2.telemetry import (
+    phase2_counters,
+)
 from cognithor.channels.program_synthesis.phase2.verifier import (
     SuspicionScore,
     compute_suspicion,
@@ -39,4 +42,5 @@ __all__ = [
     "classify_primitive_name",
     "compute_suspicion",
     "mix_alpha",
+    "phase2_counters",
 ]
