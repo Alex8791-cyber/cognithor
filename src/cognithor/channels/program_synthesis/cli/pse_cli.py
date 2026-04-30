@@ -27,6 +27,9 @@ from typing import IO
 
 import numpy as np
 
+from cognithor.channels.program_synthesis.cli.dsl_reference import (
+    cmd_dsl_reference,
+)
 from cognithor.channels.program_synthesis.core.types import (
     Budget,
     SynthesisStatus,
@@ -242,6 +245,15 @@ def _build_parser() -> argparse.ArgumentParser:
     dsl_sub.add_parser("list", help="list every registered primitive")
     dsl_describe = dsl_sub.add_parser("describe", help="show signature + cost + description")
     dsl_describe.add_argument("name", help="primitive name (e.g. rotate90)")
+    dsl_ref = dsl_sub.add_parser(
+        "reference",
+        help="emit the auto-generated DSL reference Markdown",
+    )
+    dsl_ref.add_argument(
+        "--output",
+        default=None,
+        help="path to write reference to (default: stdout)",
+    )
 
     # sandbox
     sandbox = sub.add_parser("sandbox", help="sandbox utilities")
@@ -273,6 +285,8 @@ def main(argv: list[str] | None = None, stream: IO[str] | None = None) -> int:
             return cmd_dsl_list(out)
         if args.dsl_command == "describe":
             return cmd_dsl_describe(args.name, out)
+        if args.dsl_command == "reference":
+            return cmd_dsl_reference(out, args.output)
     if args.command == "sandbox" and args.sandbox_command == "doctor":
         return cmd_sandbox_doctor(out)
     if args.command == "run":
