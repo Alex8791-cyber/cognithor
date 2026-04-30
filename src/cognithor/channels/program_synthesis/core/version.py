@@ -12,5 +12,5 @@ Semver:
 
 from __future__ import annotations
 
-PSE_VERSION = "1.2.0-draft"
+PSE_VERSION = "1.2.0"
 DSL_VERSION = "1.2.0"

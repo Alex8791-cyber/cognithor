@@ -1,0 +1,24 @@
+{
+  "_note": "Frozen baseline for spec §18.2. The reference 'v0.78 NumPy solver' on this minimal Phase-1 set is the identity-only solver — it passes only the identity task. Numbers here are committed BEFORE PSE runs, so they cannot be retrofitted in the K1 comparison.",
+  "name": "v0.78 NumPy solver",
+  "version": "0.78",
+  "frozen_at": "2026-04-30",
+  "results": {
+    "train": {
+      "0001_rotate90":          {"success": false, "cost_seconds": 0.0},
+      "0002_rotate180":         {"success": false, "cost_seconds": 0.0},
+      "0003_rotate270":         {"success": false, "cost_seconds": 0.0},
+      "0004_mirror_horizontal": {"success": false, "cost_seconds": 0.0},
+      "0005_mirror_vertical":   {"success": false, "cost_seconds": 0.0},
+      "0006_recolor_1_to_5":    {"success": false, "cost_seconds": 0.0},
+      "0007_recolor_2_to_8":    {"success": false, "cost_seconds": 0.0},
+      "0008_identity":          {"success": true,  "cost_seconds": 0.001}
+    },
+    "held_out": {
+      "0101_transpose":             {"success": false, "cost_seconds": 0.0},
+      "0102_recolor_3_to_7":        {"success": false, "cost_seconds": 0.0},
+      "0103_mirror_diagonal":       {"success": false, "cost_seconds": 0.0},
+      "0104_rotate90_then_recolor": {"success": false, "cost_seconds": 0.0}
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Cognithor PSE — ARC-DSL Reference
 
-_Auto-generated. PSE version `1.2.0-draft`, DSL version `1.2.0`._
+_Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
 **61 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 

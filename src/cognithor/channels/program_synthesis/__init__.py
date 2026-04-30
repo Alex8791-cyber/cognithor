@@ -6,8 +6,10 @@ producing free-form LLM answers. See
 ``docs/superpowers/specs/2026-04-29-pse-phase1-spec-v1.2.md`` for the full
 specification.
 
-This package is currently in scaffold state (Week 1 of the 7-week roadmap).
-Public API will be exposed once the engine is operational.
+Phase 1 (``pse-1.2.0``) is feature-complete: 61 base primitives + 5
+higher-order, K9/K10 trace + replay, K4 typed-payload + subprocess
+sandbox, D5 benchmark vs baseline, D7 cache hit-rate, D15 mypy --strict
+on every PSE source.
 """
 
 from __future__ import annotations

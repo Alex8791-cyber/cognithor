@@ -1,0 +1,33 @@
+{
+  "version": "1.2.0",
+  "_note": "Phase-1 minimal fixture set. The full 100-train + 30-held-out diverse set per spec §18.1 is a Phase-2 expansion (curated ARC-AGI-3 selection). This subset proves the harness end-to-end and produces real K1/D5/D7 numbers against the frozen baseline.",
+  "subsets": {
+    "train": {
+      "n": 8,
+      "diversity": {"geom": 4, "color": 4},
+      "task_files": [
+        "tasks/0001_rotate90.json",
+        "tasks/0002_rotate180.json",
+        "tasks/0003_rotate270.json",
+        "tasks/0004_mirror_horizontal.json",
+        "tasks/0005_mirror_vertical.json",
+        "tasks/0006_recolor_1_to_5.json",
+        "tasks/0007_recolor_2_to_8.json",
+        "tasks/0008_identity.json"
+      ]
+    },
+    "held_out": {
+      "n": 4,
+      "task_files": [
+        "tasks/0101_transpose.json",
+        "tasks/0102_recolor_3_to_7.json",
+        "tasks/0103_mirror_diagonal.json",
+        "tasks/0104_rotate90_then_recolor.json"
+      ]
+    }
+  },
+  "baseline": {
+    "name": "v0.78 NumPy solver (identity-only)",
+    "results_path": "baselines/baseline_v0.78.json"
+  }
+}

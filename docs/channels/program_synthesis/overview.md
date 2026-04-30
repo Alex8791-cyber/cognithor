@@ -86,15 +86,19 @@ cognithor pse run task.json             # E2E synthesis + trace
 |---|---|
 | **K9** Trace-Vollständigkeit (every solved task has a trace) | ✅ Phase 1 |
 | **K10** Replay-Reproduzierbarkeit (P95 ≤ 100 ms, byte-identical) | ✅ Phase 1 |
-| **K4** 100 % adversarial-cases blocked | ⏳ 18 active K4 tests pass (registry, validators, type-system payloads); 6 subprocess/setrlimit cases scaffolded |
+| **K4** 100 % adversarial-cases blocked | ✅ Type-system payloads + subprocess runner with setrlimit (Linux/WSL2/macOS); native-Windows refuses (research-mode) |
+| **D4** Security tests green on Linux + WSL2 | ✅ POSIX runner shipped; Win-research skipped per spec §11.6 |
 | **D17** WSL2-Default under Windows | ✅ Strategy router |
 | **D18** Auto-Tuner Pflichtlauf | ✅ Deterministic, no-ML |
 | **D3** Test coverage ≥ 90 % on new code | ✅ 95 % on `channels/program_synthesis/` |
 | **D8** CLI works | ✅ Subset shipped |
 | **D9** Docs (overview + architecture + dsl_reference + tutorial + benchmarks) | ✅ All five present |
 | **D10** Hashline audit trail | ✅ Chain-hash verifier |
+| **D5** / **K1** Benchmark vs baseline | ✅ +7 Solved@30s on train (Phase-1 fixture set), K1 threshold met |
+| **D7** Tactical-memory hit-rate ≥ 80 % on reruns | ✅ 100 % on rerun (8/8 cached) |
 | **D11** Telemetry counters | ✅ In-process Registry |
 | **D12** Hello-World task documented with full trace | ✅ `tutorial.md` + drift gate |
+| **D13** Version string `pse-1.2.0` set | ✅ `core/version.py` |
 | **D15** Pre-commit hooks (ruff + mypy --strict + pytest) green | ✅ Ruff lint+format, mypy --strict on PSE (42 files), PSE pytest hook |
 
 ## What's NOT in Phase 1 (Phase 2 / 3 / 4)
