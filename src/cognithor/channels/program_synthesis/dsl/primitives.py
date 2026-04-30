@@ -1183,3 +1183,101 @@ def align_to(a: Object, b: Object, mode: AlignMode) -> Object:
         color=a.color,
         cells=tuple((r + dy, c + dx) for r, c in a.cells),
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.5: H4 sort_objects + SortKey enum
+# ---------------------------------------------------------------------------
+
+
+class SortKey(str, Enum):
+    """Enumerated sort keys for ``sort_objects`` (spec §7.5)."""
+
+    SIZE_ASC = "size_asc"
+    SIZE_DESC = "size_desc"
+    COLOR_ASC = "color_asc"
+    COLOR_DESC = "color_desc"
+    POSITION_ROW = "position_row"
+    POSITION_COL = "position_col"
+    DISTANCE_FROM_CENTER = "distance_from_center"
+
+
+def _check_sort_key(k: object, name: str) -> SortKey:
+    if isinstance(k, SortKey):
+        return k
+    if isinstance(k, str):
+        try:
+            return SortKey(k)
+        except ValueError as exc:
+            raise TypeMismatchError(
+                f"{name}: unknown SortKey {k!r}; allowed: {[mode.value for mode in SortKey]}"
+            ) from exc
+    raise TypeMismatchError(f"{name}: expected SortKey or str, got {type(k).__name__}")
+
+
+def _object_top_left(obj: Object) -> tuple[int, int]:
+    if not obj.cells:
+        return (0, 0)
+    r0, _, c0, _ = obj.bbox
+    return (r0, c0)
+
+
+def _grid_center_distance_squared(obj: Object) -> int:
+    """Squared Euclidean distance from object's bbox-centre to (0, 0).
+
+    Square distance is monotonic in the actual distance and avoids
+    floating-point — important for cache-stable ordering across
+    machines.
+    """
+    if not obj.cells:
+        return 0
+    r0, r1, c0, c1 = obj.bbox
+    cy = (r0 + r1 - 1) // 2
+    cx = (c0 + c1 - 1) // 2
+    return cy * cy + cx * cx
+
+
+def _sort_keyfn(key: SortKey):
+    """Return a key-function for ``sorted(..., key=...)`` over (idx, obj) tuples.
+
+    Ties always break by the discovery index ``idx`` so the output is
+    reproducible across runs (cache-stable).
+    """
+    if key == SortKey.SIZE_ASC:
+        return lambda io: (io[1].size, io[0])
+    if key == SortKey.SIZE_DESC:
+        return lambda io: (-io[1].size, io[0])
+    if key == SortKey.COLOR_ASC:
+        return lambda io: (io[1].color, io[0])
+    if key == SortKey.COLOR_DESC:
+        return lambda io: (-io[1].color, io[0])
+    if key == SortKey.POSITION_ROW:
+        return lambda io: (_object_top_left(io[1]), io[0])
+    if key == SortKey.POSITION_COL:
+        return lambda io: (
+            (_object_top_left(io[1])[1], _object_top_left(io[1])[0]),
+            io[0],
+        )
+    if key == SortKey.DISTANCE_FROM_CENTER:
+        return lambda io: (_grid_center_distance_squared(io[1]), io[0])
+    raise ValueError(f"_sort_keyfn: unhandled SortKey {key!r}")
+
+
+@primitive(
+    name="sort_objects",
+    signature=Signature(inputs=("ObjectSet", "SortKey"), output="ObjectSet"),
+    cost=2.5,
+    description=(
+        "Stable-sort the set by *key*. Ties break by discovery order so "
+        "the result is reproducible across runs (cache-stable)."
+    ),
+    examples=(("ObjectSet of 3 (sizes 1,3,2), SIZE_ASC", "Order: size 1, 2, 3"),),
+)
+def sort_objects(objects: ObjectSet, key: SortKey) -> ObjectSet:
+    _check_object_set(objects, "sort_objects")
+    k = _check_sort_key(key, "sort_objects.key")
+    if len(objects) <= 1:
+        return objects
+    indexed = list(enumerate(objects.objects))
+    indexed.sort(key=_sort_keyfn(k))
+    return ObjectSet(objects=tuple(o for _, o in indexed))
