@@ -22,6 +22,7 @@ from cognithor.channels.program_synthesis.phase2.classification import (
 from cognithor.channels.program_synthesis.phase2.config import (
     DEFAULT_PHASE2_CONFIG,
     Phase2Config,
+    VerifierScoreWeights,
 )
 from cognithor.channels.program_synthesis.phase2.config_loader import (
     DEFAULT_HEURISTICS_PATH,
@@ -44,6 +45,10 @@ from cognithor.channels.program_synthesis.phase2.llm_prior import (
     LLMPrior,
     LLMPriorClient,
     LLMPriorError,
+)
+from cognithor.channels.program_synthesis.phase2.scoring import (
+    VerifierScoreInputs,
+    aggregate_verifier_score,
 )
 from cognithor.channels.program_synthesis.phase2.symbolic_prior import (
     SymbolicPrior,
@@ -80,6 +85,9 @@ __all__ = [
     "SymbolicPrior",
     "SymbolicPriorResult",
     "UniformSymbolicPrior",
+    "VerifierScoreInputs",
+    "VerifierScoreWeights",
+    "aggregate_verifier_score",
     "alpha_bounds",
     "apply_sample_size_dampening",
     "classify_primitive_name",

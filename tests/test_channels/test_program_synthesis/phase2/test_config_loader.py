@@ -145,6 +145,12 @@ verifier:
     high_impact_multiplier: 3.0
     structural_abstraction_multiplier: 1.5
     regular_multiplier: 1.0
+  score_weights:
+    demo_pass_rate: 0.55
+    partial_pixel_match: 0.13
+    invariants_satisfied: 0.08
+    triviality_score: 0.12
+    suspicion_score: 0.12
 
 refiner:
   mode_thresholds:

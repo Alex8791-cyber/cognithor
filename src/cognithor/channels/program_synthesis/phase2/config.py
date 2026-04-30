@@ -19,7 +19,53 @@ or replace them, then update :data:`DEFAULT_PHASE2_CONFIG`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class VerifierScoreWeights:
+    """Spec §7.2 — five-factor verifier score weights.
+
+    The final verifier score is a weighted sum of:
+
+    * ``demo_pass_rate`` — fraction of demos the program produces
+      correctly (the dominant signal).
+    * ``partial_pixel_match`` — Phase-2 graduated pixel-level match.
+    * ``invariants_satisfied`` — fraction of property-invariant tests
+      that hold.
+    * ``triviality_score`` — high when the program is non-trivial
+      (rule-based check, spec §7.3.1).
+    * ``suspicion_score`` — high when the (program, score) pair is
+      not suspicious (spec §7.3.2 — F1 multipliers feed into this).
+
+    The five weights MUST sum to 1.0 — enforced at construction.
+    """
+
+    demo_pass_rate: float = 0.55
+    partial_pixel_match: float = 0.13
+    invariants_satisfied: float = 0.08
+    triviality_score: float = 0.12
+    suspicion_score: float = 0.12
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("demo_pass_rate", self.demo_pass_rate),
+            ("partial_pixel_match", self.partial_pixel_match),
+            ("invariants_satisfied", self.invariants_satisfied),
+            ("triviality_score", self.triviality_score),
+            ("suspicion_score", self.suspicion_score),
+        ):
+            if value < 0.0 or value > 1.0:
+                raise ValueError(f"VerifierScoreWeights.{name} must be in [0, 1]; got {value}")
+        total = (
+            self.demo_pass_rate
+            + self.partial_pixel_match
+            + self.invariants_satisfied
+            + self.triviality_score
+            + self.suspicion_score
+        )
+        if abs(total - 1.0) > 1e-9:
+            raise ValueError(f"VerifierScoreWeights must sum to 1.0; got {total}")
 
 
 @dataclass(frozen=True)
@@ -96,6 +142,13 @@ class Phase2Config:
     # Wall-clock cap per LLM call (seconds). Spec §13.3 budget for
     # repair stages is sub-second; 8 s is a safe outer bound.
     llm_call_timeout_seconds: float = 8.0
+
+    # ── Verifier score weights (spec §7.2) ──────────────────────────
+    # Five-factor weighted sum that reduces a Phase-2 verifier
+    # evaluation to a single score in [0, 1]. Weights must sum to 1.0;
+    # the nested dataclass enforces that at construction time so a
+    # mis-tuned config blows up loudly.
+    verifier_score_weights: VerifierScoreWeights = field(default_factory=VerifierScoreWeights)
 
     def __post_init__(self) -> None:
         # Sanity: zones must form a non-empty graybereich.

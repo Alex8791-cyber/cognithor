@@ -33,7 +33,10 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from cognithor.channels.program_synthesis.phase2.config import Phase2Config
+from cognithor.channels.program_synthesis.phase2.config import (
+    Phase2Config,
+    VerifierScoreWeights,
+)
 
 DEFAULT_HEURISTICS_PATH = (
     Path(__file__).resolve().parents[5] / "configs" / "synthesis" / "heuristics.yaml"
@@ -101,6 +104,7 @@ def _project_to_phase2_config(raw: dict[str, Any]) -> Phase2Config:
     """
     verifier = _expect_section(raw, "verifier")
     sc = _expect_section(verifier, "syntactic_complexity", parent="verifier")
+    score_weights_raw = _expect_section(verifier, "score_weights", parent="verifier")
     refiner = _expect_section(raw, "refiner")
     thresholds = _expect_section(refiner, "mode_thresholds", parent="refiner")
     hysteresis = _expect_section(refiner, "mode_hysteresis", parent="refiner")
@@ -180,6 +184,23 @@ def _project_to_phase2_config(raw: dict[str, Any]) -> Phase2Config:
                 llm,
                 "call_timeout_seconds",
                 default=_optional_float(llm_inference, "call_timeout_seconds", default=8.0),
+            ),
+            verifier_score_weights=VerifierScoreWeights(
+                demo_pass_rate=_expect_float(
+                    score_weights_raw, "demo_pass_rate", parent="verifier.score_weights"
+                ),
+                partial_pixel_match=_expect_float(
+                    score_weights_raw, "partial_pixel_match", parent="verifier.score_weights"
+                ),
+                invariants_satisfied=_expect_float(
+                    score_weights_raw, "invariants_satisfied", parent="verifier.score_weights"
+                ),
+                triviality_score=_expect_float(
+                    score_weights_raw, "triviality_score", parent="verifier.score_weights"
+                ),
+                suspicion_score=_expect_float(
+                    score_weights_raw, "suspicion_score", parent="verifier.score_weights"
+                ),
             ),
         )
     except ValueError as exc:
