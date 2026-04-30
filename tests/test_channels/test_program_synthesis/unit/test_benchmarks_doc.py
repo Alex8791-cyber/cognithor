@@ -71,6 +71,5 @@ class TestBenchmarksDoc:
             if any(t in ho_arg_types for t in s.signature.inputs)
         )
         assert f"**{ho_count}**" in body, (
-            f"benchmarks.md higher-order-primitive count is stale; live count "
-            f"is {ho_count}."
+            f"benchmarks.md higher-order-primitive count is stale; live count is {ho_count}."
         )
