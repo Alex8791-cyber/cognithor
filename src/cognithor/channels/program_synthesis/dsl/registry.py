@@ -30,7 +30,24 @@ _F = TypeVar("_F", bound="Callable[..., Any]")
 
 @dataclass(frozen=True)
 class PrimitiveSpec:
-    """Static description of one DSL primitive."""
+    """Static description of one DSL primitive.
+
+    Phase-2 (spec v1.4 §7.3.2) adds two mutually-exclusive
+    classification flags that the suspicion-score computation reads:
+
+    * ``is_high_impact`` — the primitive directly produces the program
+      output (e.g. ``tile``, ``mirror``, ``rotate``). Carries a 3×
+      multiplier in ``compute_syntactic_complexity``.
+    * ``is_structural_abstraction`` — the primitive produces an
+      intermediate (object set, mask, bbox) rather than an output
+      (e.g. ``objects``, ``filter_objects``). Carries a 1.5×
+      multiplier — leicht über Standard, weit unter direkt-
+      transformativen.
+
+    A primitive cannot be both at once. Phase 1 leaves both flags at
+    ``False`` (the default 1× multiplier) so existing primitives are
+    unchanged until a Phase-2 sprint annotates them.
+    """
 
     name: str
     signature: Signature
@@ -38,12 +55,20 @@ class PrimitiveSpec:
     fn: Callable[..., Any]
     description: str = ""
     examples: tuple[tuple[str, str], ...] = ()
+    is_high_impact: bool = False
+    is_structural_abstraction: bool = False
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.replace("_", "").isalnum():
             raise DSLError(f"Invalid primitive name: {self.name!r}")
         if self.cost < 0:
             raise DSLError(f"Primitive cost must be >= 0, got {self.cost}")
+        # F1 spec v1.4 §18.2: mutual exclusion enforced at construction time.
+        if self.is_high_impact and self.is_structural_abstraction:
+            raise DSLError(
+                f"Primitive {self.name!r}: is_high_impact and "
+                "is_structural_abstraction are mutually exclusive."
+            )
 
 
 class PrimitiveRegistry:
