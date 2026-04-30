@@ -1,0 +1,23 @@
+{
+  "version": "1.2.0",
+  "subsets": {
+    "train": {
+      "n": 100,
+      "diversity": {"geom": 30, "color": 30, "object": 25, "mixed": 15},
+      "task_files": [
+        "tasks/0001_rotate90.json",
+        "tasks/0002_recolor_blue_to_red.json"
+      ]
+    },
+    "held_out": {
+      "n": 30,
+      "task_files": [
+        "tasks/0101_filter_largest.json"
+      ]
+    }
+  },
+  "baseline": {
+    "name": "v0.78 NumPy solver",
+    "results_path": "baselines/baseline_v0.78.json"
+  }
+}
