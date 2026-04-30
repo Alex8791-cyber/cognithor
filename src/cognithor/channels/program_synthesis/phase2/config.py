@@ -75,6 +75,28 @@ class Phase2Config:
     # at n=12 it's 0.75; at n=∞ it's 1.0.
     sample_size_dampening_n0: int = 4
 
+    # ── Module A — LLM-Prior over vLLM (spec §4.2 / §4.3 / §4.7) ────
+    # Backend: vLLM exposing OpenAI-compat /v1/chat/completions.
+    # Default model is the spec-anchored Qwen3.6-27B-Instruct on the
+    # RTX 5090 (32 GB VRAM); Q5_K_M is the default quantisation,
+    # Q4_K_M is the fallback for tighter VRAM budgets.
+    llm_base_url: str = "http://localhost:8000/v1"
+    llm_model_name: str = "Qwen/Qwen3.6-27B-Instruct"
+    llm_fallback_model_name: str = "Qwen/Qwen3.6-27B-Instruct-AWQ"
+    # Two-Stage prompting (spec §4.7): Stage-1 free-form CoT, Stage-2
+    # constrained JSON. Different temperatures because Stage-1 wants
+    # exploration (default 0.7) and Stage-2 wants determinism (0.1).
+    llm_temperature_stage1: float = 0.7
+    llm_temperature_stage2: float = 0.1
+    # Spec §4.7: retry the JSON stage exactly once on parse failure.
+    llm_json_max_retries: int = 1
+    # Spec §4.5: top-K depth-dependent. K starts at this default for
+    # depth-1 candidates; deeper levels narrow it via the search engine.
+    llm_top_k_default: int = 5
+    # Wall-clock cap per LLM call (seconds). Spec §13.3 budget for
+    # repair stages is sub-second; 8 s is a safe outer bound.
+    llm_call_timeout_seconds: float = 8.0
+
     def __post_init__(self) -> None:
         # Sanity: zones must form a non-empty graybereich.
         if not 0.0 < self.repair_alpha_zone3_upper < self.repair_alpha_zone1_lower < 1.0:
@@ -123,6 +145,32 @@ class Phase2Config:
             raise ValueError(
                 f"Phase2Config: sample_size_dampening_n0 must be >= 1; "
                 f"got {self.sample_size_dampening_n0}."
+            )
+        # LLM prior validation.
+        if not self.llm_model_name:
+            raise ValueError("Phase2Config: llm_model_name must be non-empty.")
+        if not 0.0 <= self.llm_temperature_stage1 <= 2.0:
+            raise ValueError(
+                f"Phase2Config: llm_temperature_stage1 must be in [0, 2]; "
+                f"got {self.llm_temperature_stage1}."
+            )
+        if not 0.0 <= self.llm_temperature_stage2 <= 2.0:
+            raise ValueError(
+                f"Phase2Config: llm_temperature_stage2 must be in [0, 2]; "
+                f"got {self.llm_temperature_stage2}."
+            )
+        if self.llm_json_max_retries < 0:
+            raise ValueError(
+                f"Phase2Config: llm_json_max_retries must be >= 0; got {self.llm_json_max_retries}."
+            )
+        if self.llm_top_k_default < 1:
+            raise ValueError(
+                f"Phase2Config: llm_top_k_default must be >= 1; got {self.llm_top_k_default}."
+            )
+        if self.llm_call_timeout_seconds <= 0.0:
+            raise ValueError(
+                f"Phase2Config: llm_call_timeout_seconds must be > 0; "
+                f"got {self.llm_call_timeout_seconds}."
             )
 
 
