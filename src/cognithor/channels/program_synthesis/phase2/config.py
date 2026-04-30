@@ -121,6 +121,19 @@ class Phase2Config:
     # at n=12 it's 0.75; at n=∞ it's 1.0.
     sample_size_dampening_n0: int = 4
 
+    # ── α-Controller hysteresis & sliding window (spec §4.4.4) ─────
+    # alpha_hysteresis_iterations gates how many consecutive
+    # observations of "the LLM is unreliable" the AlphaController
+    # needs to see before it permanently lowers α_performance.
+    # alpha_performance_window is the sliding-window size the
+    # PriorPerformanceTracker uses to compute the current
+    # α_performance value.
+    # alpha_cold_start is the value the controller returns when no
+    # observations have accumulated yet.
+    alpha_hysteresis_iterations: int = 5
+    alpha_performance_window: int = 10
+    alpha_cold_start: float = 0.85
+
     # ── Module A — LLM-Prior over vLLM (spec §4.2 / §4.3 / §4.7) ────
     # Backend: vLLM exposing OpenAI-compat /v1/chat/completions.
     # Default model is the spec-anchored Qwen3.6-27B-Instruct on the
@@ -199,6 +212,21 @@ class Phase2Config:
                 f"Phase2Config: sample_size_dampening_n0 must be >= 1; "
                 f"got {self.sample_size_dampening_n0}."
             )
+        if self.alpha_hysteresis_iterations < 1:
+            raise ValueError(
+                f"Phase2Config: alpha_hysteresis_iterations must be >= 1; "
+                f"got {self.alpha_hysteresis_iterations}."
+            )
+        if self.alpha_performance_window < 1:
+            raise ValueError(
+                f"Phase2Config: alpha_performance_window must be >= 1; "
+                f"got {self.alpha_performance_window}."
+            )
+        # alpha_cold_start is NOT band-checked at construction — the
+        # AlphaController clamps it at read time. That keeps
+        # Phase2Config(alpha_entropy_upper=0.7) etc. constructible
+        # even when the spec-default alpha_cold_start=0.85 sits
+        # above a customised band.
         # LLM prior validation.
         if not self.llm_model_name:
             raise ValueError("Phase2Config: llm_model_name must be non-empty.")

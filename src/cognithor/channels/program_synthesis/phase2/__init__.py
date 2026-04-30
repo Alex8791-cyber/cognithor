@@ -9,6 +9,11 @@ one of them lives in :class:`Phase2Config` and is overridable.
 
 from __future__ import annotations
 
+from cognithor.channels.program_synthesis.phase2.alpha_controller import (
+    AlphaController,
+    PriorObservation,
+    PriorPerformanceTracker,
+)
 from cognithor.channels.program_synthesis.phase2.alpha_mixer import (
     alpha_bounds,
     apply_sample_size_dampening,
@@ -68,6 +73,7 @@ __all__ = [
     "DEFAULT_PHASE2_CONFIG",
     "HIGH_IMPACT_PRIMITIVES",
     "STRUCTURAL_ABSTRACTION_PRIMITIVES",
+    "AlphaController",
     "ConfigLoadError",
     "DualPriorMixer",
     "DualPriorResult",
@@ -81,6 +87,8 @@ __all__ = [
     "MixedPolicy",
     "PartitionedBudget",
     "Phase2Config",
+    "PriorObservation",
+    "PriorPerformanceTracker",
     "SuspicionScore",
     "SymbolicPrior",
     "SymbolicPriorResult",

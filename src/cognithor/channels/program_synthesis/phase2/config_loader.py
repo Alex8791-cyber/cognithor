@@ -109,6 +109,7 @@ def _project_to_phase2_config(raw: dict[str, Any]) -> Phase2Config:
     thresholds = _expect_section(refiner, "mode_thresholds", parent="refiner")
     hysteresis = _expect_section(refiner, "mode_hysteresis", parent="refiner")
     alpha = _expect_section(raw, "alpha")
+    alpha_perf_tracker = _expect_section(alpha, "performance_tracker", parent="alpha")
     symbolic = _expect_section(raw, "symbolic_prior")
     sample = _expect_section(symbolic, "sample_size", parent="symbolic_prior")
     reserved = _expect_section(raw, "reserved_fixes")
@@ -155,6 +156,11 @@ def _project_to_phase2_config(raw: dict[str, Any]) -> Phase2Config:
             sample_size_dampening_n0=_expect_int(
                 sample, "saturation_n", parent="symbolic_prior.sample_size"
             ),
+            alpha_hysteresis_iterations=_expect_int(alpha, "hysteresis_iterations", parent="alpha"),
+            alpha_performance_window=_expect_int(
+                alpha_perf_tracker, "window", parent="alpha.performance_tracker"
+            ),
+            alpha_cold_start=_expect_float(alpha, "cold_start_alpha", parent="alpha"),
             llm_base_url=_optional_str(llm, "base_url", default="http://localhost:8000/v1"),
             # Prefer the vLLM-style ``model_name`` (HuggingFace id)
             # over the llama.cpp-style ``model_path`` (file path).

@@ -164,6 +164,10 @@ alpha:
   entropy_base: 0.85
   performance_floor: 0.5
   performance_base: 1.0
+  hysteresis_iterations: 5
+  cold_start_alpha: 0.85
+  performance_tracker:
+    window: 10
 
 symbolic_prior:
   sample_size:
