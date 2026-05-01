@@ -1,0 +1,22 @@
+{
+  "_description": "Tile the input pattern 3x3 (output is 3 times the input shape on each axis).",
+  "examples": [
+    {
+      "input": [[1, 2], [3, 4]],
+      "output": [
+        [1, 2, 1, 2, 1, 2],
+        [3, 4, 3, 4, 3, 4],
+        [1, 2, 1, 2, 1, 2],
+        [3, 4, 3, 4, 3, 4],
+        [1, 2, 1, 2, 1, 2],
+        [3, 4, 3, 4, 3, 4]
+      ]
+    }
+  ],
+  "test": [
+    {
+      "input": [[5]],
+      "output": [[5, 5, 5], [5, 5, 5], [5, 5, 5]]
+    }
+  ]
+}

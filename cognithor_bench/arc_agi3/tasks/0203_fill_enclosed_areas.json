@@ -1,0 +1,19 @@
+{
+  "_description": "Fill enclosed (background-surrounded) areas of color 0 with color 5. Requires flood-fill / region-detection.",
+  "examples": [
+    {
+      "input": [[1, 1, 1], [1, 0, 1], [1, 1, 1]],
+      "output": [[1, 1, 1], [1, 5, 1], [1, 1, 1]]
+    },
+    {
+      "input": [[2, 2, 2, 2], [2, 0, 0, 2], [2, 0, 0, 2], [2, 2, 2, 2]],
+      "output": [[2, 2, 2, 2], [2, 5, 5, 2], [2, 5, 5, 2], [2, 2, 2, 2]]
+    }
+  ],
+  "test": [
+    {
+      "input": [[3, 3, 3], [3, 0, 3], [3, 3, 3]],
+      "output": [[3, 3, 3], [3, 5, 3], [3, 3, 3]]
+    }
+  ]
+}

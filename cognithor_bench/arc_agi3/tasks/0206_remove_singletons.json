@@ -1,0 +1,15 @@
+{
+  "_description": "Remove all isolated single-cell objects (cells with no same-color neighbour); replace with 0.",
+  "examples": [
+    {
+      "input": [[1, 1, 0, 2], [1, 0, 0, 0], [0, 0, 3, 0]],
+      "output": [[1, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]]
+    }
+  ],
+  "test": [
+    {
+      "input": [[5, 5, 0], [5, 0, 7], [0, 0, 0]],
+      "output": [[5, 5, 0], [5, 0, 0], [0, 0, 0]]
+    }
+  ]
+}

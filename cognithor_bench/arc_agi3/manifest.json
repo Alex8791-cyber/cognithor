@@ -24,6 +24,20 @@
         "tasks/0103_mirror_diagonal.json",
         "tasks/0104_rotate90_then_recolor.json"
       ]
+    },
+    "hard": {
+      "_note": "Sprint-4 reality-check subset. ARC-AGI-3-style tasks that require object-level reasoning, multi-step composition, or capabilities Phase-1 EnumerativeSearch lacks. Phase-1's expected score: 0-25 %.",
+      "n": 8,
+      "task_files": [
+        "tasks/0201_count_objects_to_color.json",
+        "tasks/0202_largest_object_only.json",
+        "tasks/0203_fill_enclosed_areas.json",
+        "tasks/0204_grid_to_diagonal.json",
+        "tasks/0205_repeat_pattern_to_size.json",
+        "tasks/0206_remove_singletons.json",
+        "tasks/0207_color_by_size.json",
+        "tasks/0208_horizontal_then_vertical.json"
+      ]
     }
   },
   "baseline": {

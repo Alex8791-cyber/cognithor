@@ -1,0 +1,15 @@
+{
+  "_description": "Recolor each connected component by its size: size 1 → color 1, size 2 → color 2, etc.",
+  "examples": [
+    {
+      "input": [[1, 0, 1], [1, 0, 0], [0, 0, 1]],
+      "output": [[3, 0, 3], [3, 0, 0], [0, 0, 1]]
+    }
+  ],
+  "test": [
+    {
+      "input": [[2, 2, 0], [0, 0, 0], [0, 0, 5]],
+      "output": [[2, 2, 0], [0, 0, 0], [0, 0, 1]]
+    }
+  ]
+}

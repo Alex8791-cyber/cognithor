@@ -1,0 +1,15 @@
+{
+  "_description": "Output is a square grid of size n×n where n = number of distinct non-zero colors in input; output's main diagonal contains those colors in ascending order.",
+  "examples": [
+    {
+      "input": [[3, 0, 1], [0, 2, 0]],
+      "output": [[1, 0, 0], [0, 2, 0], [0, 0, 3]]
+    }
+  ],
+  "test": [
+    {
+      "input": [[5, 0, 7]],
+      "output": [[5, 0], [0, 7]]
+    }
+  ]
+}

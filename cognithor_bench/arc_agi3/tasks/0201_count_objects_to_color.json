@@ -1,0 +1,19 @@
+{
+  "_description": "Count non-zero objects in input; output is a 1x1 grid with that count as the color value. Tests object-counting + scalar-as-grid.",
+  "examples": [
+    {
+      "input": [[1, 0, 2], [0, 0, 0], [3, 0, 4]],
+      "output": [[4]]
+    },
+    {
+      "input": [[1, 0, 0], [0, 2, 0], [0, 0, 3]],
+      "output": [[3]]
+    }
+  ],
+  "test": [
+    {
+      "input": [[1, 2, 0], [0, 0, 0], [0, 3, 0]],
+      "output": [[3]]
+    }
+  ]
+}
