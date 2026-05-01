@@ -497,6 +497,25 @@ def self_tile_by_mask(grid: _Grid) -> _Grid:
 
 
 @primitive(
+    name="fill_with_most_common_color",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=1.5,
+    description=(
+        "Return a grid of the same shape as the input, filled with its "
+        "most-frequent colour (ties broken by lowest index, matching "
+        "`most_common_color`). Solves ARC tasks of the 5582e5ca family "
+        "where the rule is 'collapse the input to its dominant colour'."
+    ),
+    examples=(("[[4,4,8],[6,4,3],[6,3,0]]", "[[4,4,4],[4,4,4],[4,4,4]]"),),
+)
+def fill_with_most_common_color(grid: _Grid) -> _Grid:
+    _check_grid(grid, "fill_with_most_common_color")
+    counts = np.bincount(grid.ravel(), minlength=10)
+    color = int(np.argmax(counts))
+    return np.full_like(grid, color, dtype=np.int8)
+
+
+@primitive(
     name="remove_singletons",
     signature=Signature(inputs=("Grid",), output="Grid"),
     cost=2.5,
