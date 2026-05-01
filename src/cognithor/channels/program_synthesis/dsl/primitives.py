@@ -649,6 +649,41 @@ def neighbor_count_grid(grid: _Grid) -> _Grid:
 
 
 @primitive(
+    name="crop_to_least_common_color_cells",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description=(
+        "Find the rarest non-zero colour and return the bounding-box "
+        "subgrid of cells of that colour (other cells in the bbox stay "
+        "in their original colour). The rarest colour breaks ties by "
+        "lowest index. Solves ARC tasks where the rule is 'find the "
+        "marker / odd one out and crop around it'."
+    ),
+    examples=(("[[2,2,2],[2,1,2],[2,2,2]]", "[[1]]"),),
+)
+def crop_to_least_common_color_cells(grid: _Grid) -> _Grid:
+    _check_grid(grid, "crop_to_least_common_color_cells")
+    counts = np.bincount(grid.ravel(), minlength=10)
+    counts_orig = counts.copy()
+    counts_masked = counts.copy()
+    counts_masked[0] = np.iinfo(np.int64).max
+    counts_masked = np.where(counts_masked == 0, np.iinfo(np.int64).max, counts_masked)
+    least = int(np.argmin(counts_masked))
+    if int(counts_orig[least]) == 0:
+        return grid.copy()
+    mask = grid == least
+    if not mask.any():
+        return grid.copy()
+    rows = np.any(mask, axis=1)
+    cols = np.any(mask, axis=0)
+    r0 = int(np.argmax(rows))
+    r1 = int(len(rows) - np.argmax(rows[::-1]))
+    c0 = int(np.argmax(cols))
+    c1 = int(len(cols) - np.argmax(cols[::-1]))
+    return grid[r0:r1, c0:c1].copy()
+
+
+@primitive(
     name="remove_singletons",
     signature=Signature(inputs=("Grid",), output="Grid"),
     cost=2.5,

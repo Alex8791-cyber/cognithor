@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**75 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**76 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -21,6 +21,7 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `crop_bbox` | `(Grid) → Grid` | 1.50 | Crop to the bounding box of all non-background pixels (background = most-common color). Returns a 1×1 grid containing the background color if the grid is uniformly background. |
 | `crop_largest_component` | `(Grid) → Grid` | 2.50 | Find the largest 4-connected non-zero component and return its bounding-box subgrid (other cells in the bbox stay zero). Differs from `crop_bbox` (which crops to the bbox of every non-background cell jointly): solves ARC tasks where the rule is 'extract the dominant shape, drop the rest'. |
 | `crop_smallest_component` | `(Grid) → Grid` | 2.50 | Find the smallest 4-connected non-zero component and return its bounding-box subgrid. Mirror of `crop_largest_component`. Solves ARC tasks where the rule is 'extract the rare/marker shape, drop the noise'. |
+| `crop_to_least_common_color_cells` | `(Grid) → Grid` | 2.50 | Find the rarest non-zero colour and return the bounding-box subgrid of cells of that colour (other cells in the bbox stay in their original colour). The rarest colour breaks ties by lowest index. Solves ARC tasks where the rule is 'find the marker / odd one out and crop around it'. |
 | `fill_with_most_common_color` | `(Grid) → Grid` | 1.50 | Return a grid of the same shape as the input, filled with its most-frequent colour (ties broken by lowest index, matching `most_common_color`). Solves ARC tasks of the 5582e5ca family where the rule is 'collapse the input to its dominant colour'. |
 | `frame` | `(Grid, Color) → Grid` | 1.80 | Draw a 1-pixel border of *color* around the grid edge, leaving the interior unchanged. Grid must be at least 1×1. |
 | `gravity_down` | `(Grid) → Grid` | 2.00 | Pull all non-background pixels in each column toward the bottom edge. |
