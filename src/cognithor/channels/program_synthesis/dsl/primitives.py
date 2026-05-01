@@ -346,6 +346,154 @@ def tile_2x(grid: _Grid) -> _Grid:
 
 
 @primitive(
+    name="tile_3x",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description="Tile the grid in a 3×3 pattern (output dimensions = input × 3).",
+    examples=(("[[1,2]]", "[[1,2,1,2,1,2],[1,2,1,2,1,2],[1,2,1,2,1,2]]"),),
+)
+def tile_3x(grid: _Grid) -> _Grid:
+    _check_grid(grid, "tile_3x")
+    return np.tile(grid, (3, 3)).copy()
+
+
+@primitive(
+    name="remove_singletons",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description=(
+        "Replace every cell whose colour has no orthogonal same-colour "
+        "neighbour with 0. Background cells (colour 0) are preserved."
+    ),
+    examples=(("[[1,1,0,2],[1,0,0,0]]", "[[1,1,0,0],[1,0,0,0]]"),),
+)
+def remove_singletons(grid: _Grid) -> _Grid:
+    _check_grid(grid, "remove_singletons")
+    out = grid.copy()
+    rows, cols = grid.shape
+    for r in range(rows):
+        for c in range(cols):
+            colour = int(grid[r, c])
+            if colour == 0:
+                continue
+            has_neighbour = False
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and int(grid[nr, nc]) == colour:
+                    has_neighbour = True
+                    break
+            if not has_neighbour:
+                out[r, c] = 0
+    return out
+
+
+@primitive(
+    name="count_components",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description=(
+        "Count the number of 4-connected non-zero components and return a "
+        "1×1 grid containing that count as its single colour. Counts "
+        "saturate at 9 (the ARC colour range)."
+    ),
+    examples=(("[[1,0,2],[0,0,0],[3,0,4]]", "[[4]]"),),
+)
+def count_components(grid: _Grid) -> _Grid:
+    _check_grid(grid, "count_components")
+    rows, cols = grid.shape
+    visited = np.zeros_like(grid, dtype=bool)
+    components = 0
+    for r0 in range(rows):
+        for c0 in range(cols):
+            if visited[r0, c0] or int(grid[r0, c0]) == 0:
+                continue
+            colour = int(grid[r0, c0])
+            stack: list[tuple[int, int]] = [(r0, c0)]
+            visited[r0, c0] = True
+            while stack:
+                r, c = stack.pop()
+                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nr, nc = r + dr, c + dc
+                    if (
+                        0 <= nr < rows
+                        and 0 <= nc < cols
+                        and not visited[nr, nc]
+                        and int(grid[nr, nc]) == colour
+                    ):
+                        visited[nr, nc] = True
+                        stack.append((nr, nc))
+            components += 1
+    return np.array([[min(components, 9)]], dtype=np.int8)
+
+
+@primitive(
+    name="unique_colors_diagonal",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=3.0,
+    description=(
+        "Extract the sorted set of unique non-zero colours in the input "
+        "and return an N×N grid whose main diagonal contains those colours "
+        "(N = number of unique non-zero colours). The off-diagonal cells "
+        "are zero. When the input has no non-zero colours, returns a 1×1 "
+        "zero grid."
+    ),
+    examples=(("[[3,0,1],[0,2,0]]", "[[1,0,0],[0,2,0],[0,0,3]]"),),
+)
+def unique_colors_diagonal(grid: _Grid) -> _Grid:
+    _check_grid(grid, "unique_colors_diagonal")
+    colours = sorted({int(v) for v in grid.ravel() if int(v) != 0})
+    if not colours:
+        return np.zeros((1, 1), dtype=np.int8)
+    n = len(colours)
+    out = np.zeros((n, n), dtype=np.int8)
+    for i, c in enumerate(colours):
+        out[i, i] = c
+    return out
+
+
+@primitive(
+    name="recolor_by_component_size",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=3.0,
+    description=(
+        "Recolour every 4-connected non-zero component so its colour equals "
+        "its size, capped at 9. Background cells (colour 0) are preserved."
+    ),
+    examples=(("[[1,0,1],[1,0,0],[0,0,1]]", "[[2,0,1],[2,0,0],[0,0,1]]"),),
+)
+def recolor_by_component_size(grid: _Grid) -> _Grid:
+    _check_grid(grid, "recolor_by_component_size")
+    rows, cols = grid.shape
+    visited = np.zeros_like(grid, dtype=bool)
+    out = grid.copy()
+    for r0 in range(rows):
+        for c0 in range(cols):
+            if visited[r0, c0] or int(grid[r0, c0]) == 0:
+                continue
+            colour = int(grid[r0, c0])
+            stack: list[tuple[int, int]] = [(r0, c0)]
+            visited[r0, c0] = True
+            cells: list[tuple[int, int]] = [(r0, c0)]
+            while stack:
+                r, c = stack.pop()
+                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nr, nc = r + dr, c + dc
+                    if (
+                        0 <= nr < rows
+                        and 0 <= nc < cols
+                        and not visited[nr, nc]
+                        and int(grid[nr, nc]) == colour
+                    ):
+                        visited[nr, nc] = True
+                        stack.append((nr, nc))
+                        cells.append((nr, nc))
+            new_colour = min(len(cells), 9)
+            for r, c in cells:
+                out[r, c] = new_colour
+    return out
+
+
+@primitive(
     name="crop_bbox",
     signature=Signature(inputs=("Grid",), output="Grid"),
     cost=1.5,

@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**61 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**66 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -13,6 +13,7 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | Name | Signature | Cost | Description |
 |---|---|---|---|
 | `bounding_box` | `(Object) → Grid` | 1.50 | Render the object as a tight grid of size = bbox dimensions. Pixels inside the object get its color, pixels outside get 0. |
+| `count_components` | `(Grid) → Grid` | 2.50 | Count the number of 4-connected non-zero components and return a 1×1 grid containing that count as its single colour. Counts saturate at 9 (the ARC colour range). |
 | `crop_bbox` | `(Grid) → Grid` | 1.50 | Crop to the bounding box of all non-background pixels (background = most-common color). Returns a 1×1 grid containing the background color if the grid is uniformly background. |
 | `frame` | `(Grid, Color) → Grid` | 1.80 | Draw a 1-pixel border of *color* around the grid edge, leaving the interior unchanged. Grid must be at least 1×1. |
 | `gravity_down` | `(Grid) → Grid` | 2.00 | Pull all non-background pixels in each column toward the bottom edge. |
@@ -28,6 +29,8 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `overlay` | `(Grid, Grid, Color) → Grid` | 2.50 | Overlay *top* onto *base*: cells of *top* equal to *transparent_color* are skipped, all other cells overwrite *base*. Both grids must have the same shape. |
 | `pad_with` | `(Grid, Color, Int) → Grid` | 1.80 | Pad the grid on all four sides with *width* pixels of *color*. Width must be ≥ 0. |
 | `recolor` | `(Grid, Color, Color) → Grid` | 1.50 | Replace every occurrence of color *src* with color *dst*. |
+| `recolor_by_component_size` | `(Grid) → Grid` | 3.00 | Recolour every 4-connected non-zero component so its colour equals its size, capped at 9. Background cells (colour 0) are preserved. |
+| `remove_singletons` | `(Grid) → Grid` | 2.50 | Replace every cell whose colour has no orthogonal same-colour neighbour with 0. Background cells (colour 0) are preserved. |
 | `render_objects` | `(ObjectSet, Grid) → Grid` | 2.00 | Paint every object in the set onto a copy of *base*. Cells outside the grid are silently dropped (clip-to-edge). Later objects overwrite earlier ones at overlapping cells. |
 | `replace_background` | `(Grid, Color) → Grid` | 1.50 | Replace the background (most-common color) with the given color. Equivalent to ``recolor(grid, most_common_color(grid), new)``. |
 | `rotate180` | `(Grid) → Grid` | 1.00 | Rotate the grid 180°. |
@@ -41,7 +44,9 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `stack_vertical` | `(Grid, Grid) → Grid` | 2.00 | Stack two grids top-to-bottom. Column counts must match; output rows = top.rows + bottom.rows. |
 | `swap_colors` | `(Grid, Color, Color) → Grid` | 1.50 | Swap two colors throughout the grid. |
 | `tile_2x` | `(Grid) → Grid` | 2.00 | Tile the grid in a 2×2 pattern (output dimensions = input × 2). |
+| `tile_3x` | `(Grid) → Grid` | 2.50 | Tile the grid in a 3×3 pattern (output dimensions = input × 3). |
 | `transpose` | `(Grid) → Grid` | 1.00 | Transpose: swap rows and columns (flip across main diagonal). |
+| `unique_colors_diagonal` | `(Grid) → Grid` | 3.00 | Extract the sorted set of unique non-zero colours in the input and return an N×N grid whose main diagonal contains those colours (N = number of unique non-zero colours). The off-diagonal cells are zero. When the input has no non-zero colours, returns a 1×1 zero grid. |
 | `wrap_shift` | `(Grid, Int, Int) → Grid` | 2.20 | Shift the grid by (dy, dx) with toroidal wrap-around (numpy.roll). |
 
 ### Output type: `Color`
