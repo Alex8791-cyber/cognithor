@@ -358,6 +358,30 @@ def tile_3x(grid: _Grid) -> _Grid:
 
 
 @primitive(
+    name="self_tile_by_mask",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=3.0,
+    description=(
+        "Fractal self-tile: tile the grid by itself using its non-zero cells "
+        "as a placement mask. Output shape = (R*R, C*C) for an R×C input. "
+        "For each input cell (i, j), if grid[i, j] != 0 the entire input is "
+        "stamped at output block (i*R..i*R+R, j*C..j*C+C); otherwise that "
+        "block stays zero. Solves ARC tasks of the 007bbfb7 family."
+    ),
+    examples=(("[[0,1],[1,0]]", "[[0,0,0,1],[0,0,1,0],[0,1,0,0],[1,0,0,0]]"),),
+)
+def self_tile_by_mask(grid: _Grid) -> _Grid:
+    _check_grid(grid, "self_tile_by_mask")
+    rows, cols = grid.shape
+    out = np.zeros((rows * rows, cols * cols), dtype=np.int8)
+    for r in range(rows):
+        for c in range(cols):
+            if int(grid[r, c]) != 0:
+                out[r * rows : (r + 1) * rows, c * cols : (c + 1) * cols] = grid
+    return out
+
+
+@primitive(
     name="remove_singletons",
     signature=Signature(inputs=("Grid",), output="Grid"),
     cost=2.5,

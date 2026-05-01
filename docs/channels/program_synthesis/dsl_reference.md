@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**66 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**67 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -39,6 +39,7 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `scale_down_2x` | `(Grid) → Grid` | 2.00 | Scale the grid down by 2× by sampling the top-left pixel of each 2×2 block. Odd dimensions are truncated. Only valid for grids with shape ≥ 2×2. |
 | `scale_up_2x` | `(Grid) → Grid` | 2.00 | Scale the grid up by 2× (each pixel becomes a 2×2 block). |
 | `scale_up_3x` | `(Grid) → Grid` | 2.00 | Scale the grid up by 3× (each pixel becomes a 3×3 block). |
+| `self_tile_by_mask` | `(Grid) → Grid` | 3.00 | Fractal self-tile: tile the grid by itself using its non-zero cells as a placement mask. Output shape = (R*R, C*C) for an R×C input. For each input cell (i, j), if grid[i, j] != 0 the entire input is stamped at output block (i*R..i*R+R, j*C..j*C+C); otherwise that block stays zero. Solves ARC tasks of the 007bbfb7 family. |
 | `shift` | `(Grid, Int, Int) → Grid` | 2.00 | Shift the grid by (dy, dx). Pixels that fall off the edge are dropped, exposed cells are filled with the background (most-common color). Range is unrestricted; large shifts collapse the output to all-background. |
 | `stack_horizontal` | `(Grid, Grid) → Grid` | 2.00 | Stack two grids side-by-side (left-to-right). Row counts must match; output cols = left.cols + right.cols. |
 | `stack_vertical` | `(Grid, Grid) → Grid` | 2.00 | Stack two grids top-to-bottom. Column counts must match; output rows = top.rows + bottom.rows. |
