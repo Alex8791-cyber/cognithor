@@ -27,6 +27,11 @@ from cognithor.channels.program_synthesis.refiner.mode_controller import (
     RefinerMode,
     RefinerModeController,
 )
+from cognithor.channels.program_synthesis.refiner.symbolic_repair import (
+    RepairKind,
+    RepairSuggestion,
+    advise_repairs,
+)
 
 __all__ = [
     "CEGISLoop",
@@ -38,6 +43,9 @@ __all__ = [
     "PixelDiff",
     "RefinerMode",
     "RefinerModeController",
+    "RepairKind",
+    "RepairSuggestion",
     "StructureDiff",
+    "advise_repairs",
     "analyze_diff",
 ]
