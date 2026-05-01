@@ -13,6 +13,13 @@ from cognithor.channels.program_synthesis.refiner.cegis import (
     CEGISResult,
     CounterExample,
 )
+from cognithor.channels.program_synthesis.refiner.diff_analyzer import (
+    ColorDiff,
+    DiffReport,
+    PixelDiff,
+    StructureDiff,
+    analyze_diff,
+)
 from cognithor.channels.program_synthesis.refiner.local_edit import (
     LocalEditMutator,
 )
@@ -24,8 +31,13 @@ from cognithor.channels.program_synthesis.refiner.mode_controller import (
 __all__ = [
     "CEGISLoop",
     "CEGISResult",
+    "ColorDiff",
     "CounterExample",
+    "DiffReport",
     "LocalEditMutator",
+    "PixelDiff",
     "RefinerMode",
     "RefinerModeController",
+    "StructureDiff",
+    "analyze_diff",
 ]
