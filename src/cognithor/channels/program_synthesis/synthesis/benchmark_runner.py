@@ -305,11 +305,26 @@ def _percentile(sorted_values: list[float], p: float) -> float:
 
 
 async def _run_benchmark_async(args: argparse.Namespace) -> int:
-    tasks = list(
-        leak_free_benchmark_tasks(
-            wall_clock_budget_seconds=args.wall_clock_budget_seconds,
+    if args.arc_corpus is not None:
+        from cognithor.channels.program_synthesis.synthesis.arc_corpus import (
+            corpus_benchmark_tasks,
         )
-    )
+
+        tasks = list(
+            corpus_benchmark_tasks(
+                args.arc_corpus,
+                subset=args.arc_subset,
+                wall_clock_budget_seconds=args.wall_clock_budget_seconds,
+            )
+        )
+        corpus_label = f"arc:{args.arc_subset or 'all'}"
+    else:
+        tasks = list(
+            leak_free_benchmark_tasks(
+                wall_clock_budget_seconds=args.wall_clock_budget_seconds,
+            )
+        )
+        corpus_label = "leak_free"
     if args.phase2:
         summary = await _run_phase2_benchmark(
             tasks,
@@ -322,7 +337,15 @@ async def _run_benchmark_async(args: argparse.Namespace) -> int:
         summary = await run_benchmark(engine, tasks, success_threshold=args.success_threshold)
         engine_label = "phase1_only"
 
-    bundle_hash = leak_free_set_hash()
+    if args.arc_corpus is not None:
+        from cognithor.channels.program_synthesis.synthesis.arc_corpus import (
+            corpus_hash,
+            load_corpus,
+        )
+
+        bundle_hash = corpus_hash(load_corpus(args.arc_corpus, subset=args.arc_subset))
+    else:
+        bundle_hash = leak_free_set_hash()
     payload = dump_summary(summary, bundle_hash=bundle_hash)
     Path(args.output).write_text(payload, encoding="utf-8")
 
@@ -348,7 +371,7 @@ async def _run_benchmark_async(args: argparse.Namespace) -> int:
                 exit_code = 1
 
     if args.markdown:
-        title = f"PSE Phase-2 Benchmark Report ({engine_label})"
+        title = f"PSE Phase-2 Benchmark Report ({engine_label} on {corpus_label})"
         Path(args.markdown).write_text(
             render_markdown(summary, title=title, bundle_hash=bundle_hash, verdict=verdict),
             encoding="utf-8",
@@ -411,6 +434,24 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         type=float,
         default=5.0,
         help="Per-task wall-clock budget (default: 5.0s)",
+    )
+    parser.add_argument(
+        "--arc-corpus",
+        type=Path,
+        default=None,
+        help=(
+            "Use the ARC-AGI-3 corpus at this path instead of the default "
+            "20-task leak-free fixture set. Pass with --arc-subset to filter."
+        ),
+    )
+    parser.add_argument(
+        "--arc-subset",
+        type=str,
+        default=None,
+        help=(
+            "ARC-AGI-3 corpus subset name from the manifest "
+            "(e.g. 'train', 'held_out', 'hard'). Default: load every task."
+        ),
     )
     parser.add_argument(
         "--phase2",
