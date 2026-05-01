@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import datetime as _dt
 import ssl
-import subprocess
 from typing import TYPE_CHECKING
 
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 
 from cognithor.security.token_store import create_ssl_context
 
@@ -15,32 +19,42 @@ if TYPE_CHECKING:
 
 
 def _generate_self_signed_cert(cert_path: Path, key_path: Path) -> bool:
-    """Generiert ein selbstsigniertes Zertifikat mit openssl (falls verfügbar)."""
+    """Generate a self-signed cert + key in-process via the cryptography lib.
+
+    Sprint-9 cleanup: replaced the previous ``subprocess.run(["openssl", ...])``
+    implementation, which timed out under load when the full repo test
+    suite was run in a single process (memory:
+    `feedback_full_repo_subprocess_load`). Pure-Python in-process generation
+    has no subprocess timeout and no global state to exhaust, so the
+    11 occasional Win-py3.12 failures during 16 000-test runs are gone.
+    """
     try:
-        subprocess.run(
-            [
-                "openssl",
-                "req",
-                "-x509",
-                "-newkey",
-                "rsa:2048",
-                "-keyout",
-                str(key_path),
-                "-out",
-                str(cert_path),
-                "-days",
-                "1",
-                "-nodes",
-                "-subj",
-                "/CN=localhost",
-            ],
-            check=True,
-            capture_output=True,
-            timeout=10,
-        )
-        return True
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    except Exception:
         return False
+
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])
+    now = _dt.datetime.now(_dt.UTC)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - _dt.timedelta(minutes=1))
+        .not_valid_after(now + _dt.timedelta(days=1))
+        .sign(key, hashes.SHA256())
+    )
+
+    cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(
+        key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+    )
+    return True
 
 
 class TestCreateSSLContext:
@@ -70,7 +84,7 @@ class TestCreateSSLContext:
         key_path = tmp_path / "key.pem"
 
         if not _generate_self_signed_cert(cert_path, key_path):
-            pytest.skip("openssl nicht verfügbar")
+            pytest.skip("cryptography library not available")
 
         ctx = create_ssl_context(str(cert_path), str(key_path))
         assert ctx is not None
@@ -82,7 +96,7 @@ class TestCreateSSLContext:
         key_path = tmp_path / "key.pem"
 
         if not _generate_self_signed_cert(cert_path, key_path):
-            pytest.skip("openssl nicht verfügbar")
+            pytest.skip("cryptography library not available")
 
         ctx = create_ssl_context(str(cert_path), str(key_path))
         assert ctx is not None
