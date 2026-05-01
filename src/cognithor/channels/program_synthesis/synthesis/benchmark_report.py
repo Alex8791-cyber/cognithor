@@ -165,16 +165,16 @@ def compare_to_baseline(
     else:
         messages.append(
             f"OK: success_rate {current.success_rate:.1%} "
-            f"(Δ {score_delta:+.1%} vs baseline {baseline.success_rate:.1%}; "
+            f"(delta{score_delta:+.1%} vs baseline {baseline.success_rate:.1%}; "
             f"tolerance {tolerance:.1%})"
         )
     messages.append(
         f"P50 latency: {current.p50_seconds:.3f}s "
-        f"(Δ {p50_delta:+.3f}s vs baseline {baseline.p50_seconds:.3f}s)"
+        f"(delta{p50_delta:+.3f}s vs baseline {baseline.p50_seconds:.3f}s)"
     )
     messages.append(
         f"P95 latency: {current.p95_seconds:.3f}s "
-        f"(Δ {p95_delta:+.3f}s vs baseline {baseline.p95_seconds:.3f}s)"
+        f"(delta{p95_delta:+.3f}s vs baseline {baseline.p95_seconds:.3f}s)"
     )
     return RegressionVerdict(
         regressed=regressed,
