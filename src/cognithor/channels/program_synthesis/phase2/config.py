@@ -165,6 +165,25 @@ class Phase2Config:
     # repair stages is sub-second; 8 s is a safe outer bound.
     llm_call_timeout_seconds: float = 8.0
 
+    # ── Module B — MCTS controller (spec §5) ────────────────────────
+    # PUCT exploration constant (spec §5.2). Default per the
+    # heuristics.yaml. Higher c_puct rewards exploration over
+    # exploitation; the grid-search range is [2.0, 5.0].
+    mcts_c_puct: float = 3.5
+    # Virtual-loss penalty (spec §5.5 — opt-in). When parallelism is
+    # enabled, the controller subtracts this from a node's mean value
+    # during selection so concurrent workers diverge to different
+    # subtrees. Set to 0.0 to disable.
+    mcts_virtual_loss: float = 1.0
+    # Anytime: maximum total iterations (a hard ceiling on top of
+    # the wall-clock budget). 0 = no cap; default spec-anchored 2000.
+    mcts_max_iterations: int = 2000
+    # Fallback controller activation (spec §5.10). Iteration counts.
+    mcts_fallback_warmup_iters: int = 50
+    mcts_fallback_plateau_iters: int = 30
+    mcts_fallback_plateau_delta: float = 0.05
+    mcts_fallback_min_node_depth_mean: float = 2.0
+
     # ── Verifier score weights (spec §7.2) ──────────────────────────
     # Five-factor weighted sum that reduces a Phase-2 verifier
     # evaluation to a single score in [0, 1]. Weights must sum to 1.0;
@@ -275,6 +294,38 @@ class Phase2Config:
             raise ValueError(
                 f"Phase2Config: llm_call_timeout_seconds must be > 0; "
                 f"got {self.llm_call_timeout_seconds}."
+            )
+        # Module B — MCTS validation.
+        if self.mcts_c_puct <= 0.0:
+            raise ValueError(f"Phase2Config: mcts_c_puct must be > 0; got {self.mcts_c_puct}.")
+        if self.mcts_virtual_loss < 0.0:
+            raise ValueError(
+                f"Phase2Config: mcts_virtual_loss must be >= 0; got {self.mcts_virtual_loss}."
+            )
+        if self.mcts_max_iterations < 0:
+            raise ValueError(
+                f"Phase2Config: mcts_max_iterations must be >= 0 (0 = no cap); "
+                f"got {self.mcts_max_iterations}."
+            )
+        if self.mcts_fallback_warmup_iters < 0:
+            raise ValueError(
+                f"Phase2Config: mcts_fallback_warmup_iters must be >= 0; "
+                f"got {self.mcts_fallback_warmup_iters}."
+            )
+        if self.mcts_fallback_plateau_iters < 1:
+            raise ValueError(
+                f"Phase2Config: mcts_fallback_plateau_iters must be >= 1; "
+                f"got {self.mcts_fallback_plateau_iters}."
+            )
+        if self.mcts_fallback_plateau_delta < 0.0:
+            raise ValueError(
+                f"Phase2Config: mcts_fallback_plateau_delta must be >= 0; "
+                f"got {self.mcts_fallback_plateau_delta}."
+            )
+        if self.mcts_fallback_min_node_depth_mean < 0.0:
+            raise ValueError(
+                f"Phase2Config: mcts_fallback_min_node_depth_mean must be >= 0; "
+                f"got {self.mcts_fallback_min_node_depth_mean}."
             )
 
 

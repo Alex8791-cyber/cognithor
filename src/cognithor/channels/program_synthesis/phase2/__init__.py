@@ -51,6 +51,12 @@ from cognithor.channels.program_synthesis.phase2.llm_prior import (
     LLMPriorClient,
     LLMPriorError,
 )
+from cognithor.channels.program_synthesis.phase2.mcts_controller import (
+    FallbackGuard,
+    MCTSActionCandidate,
+    MCTSController,
+    MCTSResult,
+)
 from cognithor.channels.program_synthesis.phase2.pixel_match import (
     average_partial_pixel_match,
     partial_pixel_match,
@@ -90,6 +96,7 @@ __all__ = [
     "ConfigLoadError",
     "DualPriorMixer",
     "DualPriorResult",
+    "FallbackGuard",
     "FeatureWithConfidence",
     "HeuristicRule",
     "HeuristicSymbolicPrior",
@@ -97,7 +104,10 @@ __all__ = [
     "LLMPriorClient",
     "LLMPriorError",
     "LoadedHeuristics",
+    "MCTSActionCandidate",
+    "MCTSController",
     "MCTSNode",
+    "MCTSResult",
     "MCTSState",
     "MixedPolicy",
     "PartitionedBudget",
