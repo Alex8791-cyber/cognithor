@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**72 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**73 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -19,6 +19,7 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `complete_symmetry_v` | `(Grid) → Grid` | 2.50 | Fill in the grid so it is symmetric across its horizontal axis (top-bottom mirror). Existing non-zero cells are preserved; zero cells are filled from their vertical partner if that partner is non-zero. Solves ARC tasks with vertically-defaced symmetric figures. |
 | `count_components` | `(Grid) → Grid` | 2.50 | Count the number of 4-connected non-zero components and return a 1×1 grid containing that count as its single colour. Counts saturate at 9 (the ARC colour range). |
 | `crop_bbox` | `(Grid) → Grid` | 1.50 | Crop to the bounding box of all non-background pixels (background = most-common color). Returns a 1×1 grid containing the background color if the grid is uniformly background. |
+| `crop_largest_component` | `(Grid) → Grid` | 2.50 | Find the largest 4-connected non-zero component and return its bounding-box subgrid (other cells in the bbox stay zero). Differs from `crop_bbox` (which crops to the bbox of every non-background cell jointly): solves ARC tasks where the rule is 'extract the dominant shape, drop the rest'. |
 | `fill_with_most_common_color` | `(Grid) → Grid` | 1.50 | Return a grid of the same shape as the input, filled with its most-frequent colour (ties broken by lowest index, matching `most_common_color`). Solves ARC tasks of the 5582e5ca family where the rule is 'collapse the input to its dominant colour'. |
 | `frame` | `(Grid, Color) → Grid` | 1.80 | Draw a 1-pixel border of *color* around the grid edge, leaving the interior unchanged. Grid must be at least 1×1. |
 | `gravity_down` | `(Grid) → Grid` | 2.00 | Pull all non-background pixels in each column toward the bottom edge. |

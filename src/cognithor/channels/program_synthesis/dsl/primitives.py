@@ -516,6 +516,59 @@ def fill_with_most_common_color(grid: _Grid) -> _Grid:
 
 
 @primitive(
+    name="crop_largest_component",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description=(
+        "Find the largest 4-connected non-zero component and return "
+        "its bounding-box subgrid (other cells in the bbox stay zero). "
+        "Differs from `crop_bbox` (which crops to the bbox of every "
+        "non-background cell jointly): solves ARC tasks where the rule "
+        "is 'extract the dominant shape, drop the rest'."
+    ),
+    examples=(("[[0,1,0,2],[0,1,0,0]]", "[[1],[1]]"),),
+)
+def crop_largest_component(grid: _Grid) -> _Grid:
+    _check_grid(grid, "crop_largest_component")
+    rows, cols = grid.shape
+    visited = np.zeros_like(grid, dtype=bool)
+    components: list[list[tuple[int, int]]] = []
+    for r0 in range(rows):
+        for c0 in range(cols):
+            if visited[r0, c0] or int(grid[r0, c0]) == 0:
+                continue
+            colour = int(grid[r0, c0])
+            stack: list[tuple[int, int]] = [(r0, c0)]
+            visited[r0, c0] = True
+            cells: list[tuple[int, int]] = [(r0, c0)]
+            while stack:
+                r, c = stack.pop()
+                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nr, nc = r + dr, c + dc
+                    if (
+                        0 <= nr < rows
+                        and 0 <= nc < cols
+                        and not visited[nr, nc]
+                        and int(grid[nr, nc]) == colour
+                    ):
+                        visited[nr, nc] = True
+                        stack.append((nr, nc))
+                        cells.append((nr, nc))
+            components.append(cells)
+    if not components:
+        return grid.copy()
+    largest = max(components, key=len)
+    rs = [r for r, _ in largest]
+    cs = [c for _, c in largest]
+    r0, r1 = min(rs), max(rs) + 1
+    c0, c1 = min(cs), max(cs) + 1
+    out = np.zeros((r1 - r0, c1 - c0), dtype=np.int8)
+    for r, c in largest:
+        out[r - r0, c - c0] = grid[r, c]
+    return out
+
+
+@primitive(
     name="remove_singletons",
     signature=Signature(inputs=("Grid",), output="Grid"),
     cost=2.5,
