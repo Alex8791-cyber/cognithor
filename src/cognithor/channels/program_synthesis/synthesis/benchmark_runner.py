@@ -116,7 +116,47 @@ def _build_phase1_engine(success_threshold: float) -> Phase2SynthesisEngine:
 # ---------------------------------------------------------------------------
 
 
-def _build_phase2_engine(*, refiner_min_score: float = 0.0) -> WiredPhase2Engine:
+def _build_dual_prior_stack(
+    *,
+    base_url: str,
+    model_name: str,
+) -> Any:
+    """Construct the production LLM-Prior stack: vLLM → LLMPriorClient → DualPriorMixer.
+
+    Sprint-10 Track B (Owner-Direktive 2026-05-01): wires the
+    `Qwen/Qwen3.6-27B-Instruct` LLM-Prior over a vLLM OpenAI-compat
+    endpoint into the Phase-2 search loop. The mixer combines the
+    LLM signal with the canonical `UniformSymbolicPrior` from Sprint-1
+    until a richer symbolic catalog lands.
+
+    Note: requires a vLLM server actually running with the named model.
+    Without one, the LLM-Prior calls will fail at first task and the
+    `WiredPhase2Engine` falls back to cold-start α (telemetry event
+    ``wired.alpha_fallback``). The wiring is correct either way.
+    """
+    from cognithor.channels.program_synthesis.phase2 import (
+        DualPriorMixer,
+        LLMPriorClient,
+        UniformSymbolicPrior,
+    )
+    from cognithor.channels.program_synthesis.phase2.config import Phase2Config
+    from cognithor.core.vllm_backend import VLLMBackend
+
+    backend = VLLMBackend(base_url=base_url)
+    config = Phase2Config(
+        llm_base_url=base_url,
+        llm_model_name=model_name,
+    )
+    llm_client = LLMPriorClient(backend, config=config)
+    symbolic = UniformSymbolicPrior(config=config)
+    return DualPriorMixer(llm_client, symbolic, config=config)
+
+
+def _build_phase2_engine(
+    *,
+    refiner_min_score: float = 0.0,
+    dual_prior: Any = None,
+) -> WiredPhase2Engine:
     """Build a :class:`WiredPhase2Engine` with the full Sprint-2 stack.
 
     The wiring:
@@ -199,7 +239,7 @@ def _build_phase2_engine(*, refiner_min_score: float = 0.0) -> WiredPhase2Engine
 
     return WiredPhase2Engine(
         phase1_search=phase1_search,
-        dual_prior=None,
+        dual_prior=dual_prior,
         refiner=refiner,
         verifier=evaluator,
         refiner_min_score=refiner_min_score,
@@ -216,9 +256,13 @@ async def _run_phase2_benchmark(
     success_threshold: float,
     *,
     refiner_min_score: float = 0.0,
+    dual_prior: Any = None,
 ) -> BenchmarkSummary:
     """Run the Phase-2 wired engine over every task; aggregate results."""
-    engine = _build_phase2_engine(refiner_min_score=refiner_min_score)
+    engine = _build_phase2_engine(
+        refiner_min_score=refiner_min_score,
+        dual_prior=dual_prior,
+    )
     rows: list[BenchmarkTaskResult] = []
     errors: list[tuple[str, str]] = []
     for task in tasks:
@@ -326,12 +370,20 @@ async def _run_benchmark_async(args: argparse.Namespace) -> int:
         )
         corpus_label = "leak_free"
     if args.phase2:
+        dual_prior = None
+        engine_label = "phase2_wired"
+        if args.llm_prior:
+            dual_prior = _build_dual_prior_stack(
+                base_url=args.llm_base_url,
+                model_name=args.llm_model,
+            )
+            engine_label = f"phase2_wired_llm_prior({args.llm_model})"
         summary = await _run_phase2_benchmark(
             tasks,
             args.success_threshold,
             refiner_min_score=args.refiner_min_score,
+            dual_prior=dual_prior,
         )
-        engine_label = "phase2_wired"
     else:
         engine = _build_phase1_engine(args.success_threshold)
         summary = await run_benchmark(engine, tasks, success_threshold=args.success_threshold)
@@ -470,6 +522,33 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
             "Minimum Phase-1 score that triggers refinement (default: 0.0 — "
             "always refine PARTIAL results; raise to e.g. 0.3 to mimic the "
             "spec §6.6 default)."
+        ),
+    )
+    parser.add_argument(
+        "--llm-prior",
+        action="store_true",
+        default=False,
+        help=(
+            "Sprint-10 Track B: wire the LLM-Prior over a vLLM OpenAI-"
+            "compat endpoint via DualPriorMixer. Requires --phase2. "
+            "Defaults to qwen3.6:27b at http://localhost:8000/v1; "
+            "override via --llm-base-url and --llm-model. Without a "
+            "running vLLM server the LLM call falls back to cold-start alpha."
+        ),
+    )
+    parser.add_argument(
+        "--llm-base-url",
+        type=str,
+        default="http://localhost:8000/v1",
+        help="vLLM OpenAI-compat endpoint URL (default: http://localhost:8000/v1).",
+    )
+    parser.add_argument(
+        "--llm-model",
+        type=str,
+        default="Qwen/Qwen3.6-27B-Instruct",
+        help=(
+            "LLM model name as registered with the vLLM server "
+            "(default: Qwen/Qwen3.6-27B-Instruct)."
         ),
     )
     return parser.parse_args(argv)
