@@ -85,6 +85,11 @@ from cognithor.channels.program_synthesis.phase2.verifier import (
     SuspicionScore,
     compute_suspicion,
 )
+from cognithor.channels.program_synthesis.phase2.verifier_evaluator import (
+    InvariantsCheck,
+    VerifierEvaluation,
+    VerifierEvaluator,
+)
 
 __all__ = [
     "DEFAULT_HEURISTICS_PATH",
@@ -100,6 +105,7 @@ __all__ = [
     "FeatureWithConfidence",
     "HeuristicRule",
     "HeuristicSymbolicPrior",
+    "InvariantsCheck",
     "LLMPrior",
     "LLMPriorClient",
     "LLMPriorError",
@@ -118,6 +124,8 @@ __all__ = [
     "SymbolicPrior",
     "SymbolicPriorResult",
     "UniformSymbolicPrior",
+    "VerifierEvaluation",
+    "VerifierEvaluator",
     "VerifierScoreInputs",
     "VerifierScoreWeights",
     "aggregate_verifier_score",
