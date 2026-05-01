@@ -38,6 +38,12 @@ from cognithor.channels.program_synthesis.refiner.symbolic_repair import (
     RepairSuggestion,
     advise_repairs,
 )
+from cognithor.channels.program_synthesis.refiner.trace_replay import (
+    TraceStep,
+    find_divergence,
+    find_first_failure,
+    replay_trace,
+)
 
 __all__ = [
     "CEGISLoop",
@@ -56,6 +62,10 @@ __all__ = [
     "RepairKind",
     "RepairSuggestion",
     "StructureDiff",
+    "TraceStep",
     "advise_repairs",
     "analyze_diff",
+    "find_divergence",
+    "find_first_failure",
+    "replay_trace",
 ]
