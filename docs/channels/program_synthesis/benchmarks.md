@@ -64,7 +64,7 @@ pre-conditions for the success threshold above.
 
 | Metric | Value |
 |---|---|
-| Base primitives | **67** (56 base + 5 Phase-1.5 higher-order + 5 Sprint-8 object-level + 1 Sprint-10 fractal) |
+| Base primitives | **71** (56 base + 5 Phase-1.5 higher-order + 5 Sprint-8 object-level + 1 Sprint-10 fractal + 4 Sprint-10 symmetry-completion) |
 | Predicate constructors | **13** (10 leaf + 3 combinators) |
 | Lambda constructors | **4** (`identity`, `recolor`, `shift`, `branch`) |
 | Higher-order primitives | **5** (`map_objects`, `filter_objects`, `align_to`, `sort_objects`, `branch`) |

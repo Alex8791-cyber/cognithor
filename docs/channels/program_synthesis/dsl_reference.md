@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**67 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**71 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -13,6 +13,10 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | Name | Signature | Cost | Description |
 |---|---|---|---|
 | `bounding_box` | `(Object) → Grid` | 1.50 | Render the object as a tight grid of size = bbox dimensions. Pixels inside the object get its color, pixels outside get 0. |
+| `complete_symmetry_antidiag` | `(Grid) → Grid` | 2.70 | Fill in the (square) grid so it is symmetric across its anti-diagonal (top-right to bottom-left). Non-square grids fall back to the input unchanged. Existing non-zero cells are preserved; zero cells are filled from their anti-transposed partner. |
+| `complete_symmetry_d` | `(Grid) → Grid` | 2.70 | Fill in the (square) grid so it is symmetric across its main diagonal (transpose mirror). Non-square grids fall back to the input unchanged — Phase-1 search must guard with the shape check upstream. Existing non-zero cells are preserved; zero cells are filled from their transposed partner. |
+| `complete_symmetry_h` | `(Grid) → Grid` | 2.50 | Fill in the grid so it is symmetric across its vertical axis (left-right mirror). Existing non-zero cells are preserved; zero cells are filled from their horizontal partner if that partner is non-zero. Solves ARC tasks with horizontally-defaced symmetric figures. |
+| `complete_symmetry_v` | `(Grid) → Grid` | 2.50 | Fill in the grid so it is symmetric across its horizontal axis (top-bottom mirror). Existing non-zero cells are preserved; zero cells are filled from their vertical partner if that partner is non-zero. Solves ARC tasks with vertically-defaced symmetric figures. |
 | `count_components` | `(Grid) → Grid` | 2.50 | Count the number of 4-connected non-zero components and return a 1×1 grid containing that count as its single colour. Counts saturate at 9 (the ARC colour range). |
 | `crop_bbox` | `(Grid) → Grid` | 1.50 | Crop to the bounding box of all non-background pixels (background = most-common color). Returns a 1×1 grid containing the background color if the grid is uniformly background. |
 | `frame` | `(Grid, Color) → Grid` | 1.80 | Draw a 1-pixel border of *color* around the grid edge, leaving the interior unchanged. Grid must be at least 1×1. |

@@ -179,6 +179,121 @@ def mirror_antidiagonal(grid: _Grid) -> _Grid:
 
 
 # ---------------------------------------------------------------------------
+# 9.5. Symmetry completion (Sprint-10 Wave-1)
+# ---------------------------------------------------------------------------
+#
+# Phase-1 has the four mirror primitives but no way to *complete* a
+# partial pattern into a symmetric one. ARC tasks that show a defaced
+# symmetric figure and ask the solver to fill it back in (a common
+# template — at least 11 unique tasks in the fchollet/ARC-AGI training
+# subset) need a symmetry-aware fill, not a blind mirror.
+#
+# Rule (all four primitives): output[r, c] == input[r, c] when
+# input[r, c] != 0; otherwise output[r, c] == input[partner(r, c)].
+# The partner is the cell related by the chosen axis. Cells where
+# both input and partner are zero stay zero; cells where input and
+# partner conflict (both non-zero, different colours) keep the input
+# colour (no fancy reconciliation — Phase-1 search will pick the
+# right starting orientation).
+
+
+@primitive(
+    name="complete_symmetry_h",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description=(
+        "Fill in the grid so it is symmetric across its vertical axis "
+        "(left-right mirror). Existing non-zero cells are preserved; "
+        "zero cells are filled from their horizontal partner if that "
+        "partner is non-zero. Solves ARC tasks with horizontally-"
+        "defaced symmetric figures."
+    ),
+    examples=(("[[1,0,0],[0,2,0]]", "[[1,0,1],[0,2,0]]"),),
+)
+def complete_symmetry_h(grid: _Grid) -> _Grid:
+    _check_grid(grid, "complete_symmetry_h")
+    out = grid.copy()
+    flipped = grid[:, ::-1]
+    fill_mask = grid == 0
+    out[fill_mask] = flipped[fill_mask]
+    return out
+
+
+@primitive(
+    name="complete_symmetry_v",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description=(
+        "Fill in the grid so it is symmetric across its horizontal "
+        "axis (top-bottom mirror). Existing non-zero cells are "
+        "preserved; zero cells are filled from their vertical partner "
+        "if that partner is non-zero. Solves ARC tasks with "
+        "vertically-defaced symmetric figures."
+    ),
+    examples=(("[[1,2],[0,0]]", "[[1,2],[1,2]]"),),
+)
+def complete_symmetry_v(grid: _Grid) -> _Grid:
+    _check_grid(grid, "complete_symmetry_v")
+    out = grid.copy()
+    flipped = grid[::-1, :]
+    fill_mask = grid == 0
+    out[fill_mask] = flipped[fill_mask]
+    return out
+
+
+@primitive(
+    name="complete_symmetry_d",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.7,
+    description=(
+        "Fill in the (square) grid so it is symmetric across its main "
+        "diagonal (transpose mirror). Non-square grids fall back to "
+        "the input unchanged — Phase-1 search must guard with the "
+        "shape check upstream. Existing non-zero cells are preserved; "
+        "zero cells are filled from their transposed partner."
+    ),
+    examples=(("[[1,2,3],[0,5,6],[0,0,9]]", "[[1,2,3],[2,5,6],[3,6,9]]"),),
+)
+def complete_symmetry_d(grid: _Grid) -> _Grid:
+    _check_grid(grid, "complete_symmetry_d")
+    if grid.shape[0] != grid.shape[1]:
+        return grid.copy()
+    out = grid.copy()
+    transposed = grid.T
+    fill_mask = grid == 0
+    out[fill_mask] = transposed[fill_mask]
+    return out
+
+
+@primitive(
+    name="complete_symmetry_antidiag",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.7,
+    description=(
+        "Fill in the (square) grid so it is symmetric across its "
+        "anti-diagonal (top-right to bottom-left). Non-square grids "
+        "fall back to the input unchanged. Existing non-zero cells "
+        "are preserved; zero cells are filled from their anti-"
+        "transposed partner."
+    ),
+    examples=(("[[1,2,0],[0,5,0],[7,0,9]]", "[[1,2,0],[0,5,2],[7,0,9]]"),),
+)
+def complete_symmetry_antidiag(grid: _Grid) -> _Grid:
+    _check_grid(grid, "complete_symmetry_antidiag")
+    if grid.shape[0] != grid.shape[1]:
+        return grid.copy()
+    out = grid.copy()
+    # Anti-diagonal partner of (r, c) is (n-1-c, n-1-r) where n is the
+    # grid side. Construct the partner grid by reversing both axes
+    # and transposing — that's exactly mirror_antidiagonal applied to
+    # the lookup table.
+    antitransposed = grid[::-1, ::-1].T
+    fill_mask = grid == 0
+    out[fill_mask] = antitransposed[fill_mask]
+    return out
+
+
+# ---------------------------------------------------------------------------
 # 10-15. Color
 # ---------------------------------------------------------------------------
 
