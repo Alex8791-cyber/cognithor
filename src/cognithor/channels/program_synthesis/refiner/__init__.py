@@ -20,6 +20,12 @@ from cognithor.channels.program_synthesis.refiner.diff_analyzer import (
     StructureDiff,
     analyze_diff,
 )
+from cognithor.channels.program_synthesis.refiner.hybrid_repair import (
+    CandidateOrigin,
+    HybridRepairCandidate,
+    HybridRepairResult,
+    run_hybrid_repair,
+)
 from cognithor.channels.program_synthesis.refiner.llm_repair_two_stage import (
     LLMRepairError,
     LLMRepairResult,
@@ -48,9 +54,12 @@ from cognithor.channels.program_synthesis.refiner.trace_replay import (
 __all__ = [
     "CEGISLoop",
     "CEGISResult",
+    "CandidateOrigin",
     "ColorDiff",
     "CounterExample",
     "DiffReport",
+    "HybridRepairCandidate",
+    "HybridRepairResult",
     "LLMRepairError",
     "LLMRepairResult",
     "LLMRepairSuggestion",
@@ -68,4 +77,5 @@ __all__ = [
     "find_divergence",
     "find_first_failure",
     "replay_trace",
+    "run_hybrid_repair",
 ]
