@@ -183,6 +183,22 @@ class Phase2Config:
     mcts_fallback_plateau_iters: int = 30
     mcts_fallback_plateau_delta: float = 0.05
     mcts_fallback_min_node_depth_mean: float = 2.0
+    # Sprint-2 Track E — parallel workers (spec §5.5). Default 1
+    # = single-threaded (Sprint-1 behaviour); production workflow
+    # sets this to 4 per the Sprint-2 directive.
+    mcts_parallelism_workers: int = 1
+    # Sprint-2 Track E — restart-controller (spec §5.7).
+    # The restart fires when the search consumed less than
+    # ``mcts_restart_budget_fraction`` of its wall-clock budget AND
+    # ``best_value < mcts_restart_score_threshold`` — both conditions
+    # together mean "the search converged early on a poor optimum".
+    mcts_restart_budget_fraction: float = 0.3
+    mcts_restart_score_threshold: float = 0.5
+    mcts_restart_c_puct_multiplier: float = 1.5
+    # Sprint-2 Track E — diversity bonus (spec §5.6). Multiplicative
+    # penalty applied to MCTS action priors that are similar to
+    # already-visited subtrees. λ = 0.0 disables.
+    mcts_diversity_bonus_lambda: float = 0.1
 
     # ── Verifier score weights (spec §7.2) ──────────────────────────
     # Five-factor weighted sum that reduces a Phase-2 verifier
@@ -326,6 +342,31 @@ class Phase2Config:
             raise ValueError(
                 f"Phase2Config: mcts_fallback_min_node_depth_mean must be >= 0; "
                 f"got {self.mcts_fallback_min_node_depth_mean}."
+            )
+        if self.mcts_parallelism_workers < 1:
+            raise ValueError(
+                f"Phase2Config: mcts_parallelism_workers must be >= 1; "
+                f"got {self.mcts_parallelism_workers}."
+            )
+        if not 0.0 < self.mcts_restart_budget_fraction <= 1.0:
+            raise ValueError(
+                f"Phase2Config: mcts_restart_budget_fraction must be in (0, 1]; "
+                f"got {self.mcts_restart_budget_fraction}."
+            )
+        if not 0.0 <= self.mcts_restart_score_threshold <= 1.0:
+            raise ValueError(
+                f"Phase2Config: mcts_restart_score_threshold must be in [0, 1]; "
+                f"got {self.mcts_restart_score_threshold}."
+            )
+        if self.mcts_restart_c_puct_multiplier <= 1.0:
+            raise ValueError(
+                f"Phase2Config: mcts_restart_c_puct_multiplier must be > 1.0; "
+                f"got {self.mcts_restart_c_puct_multiplier}."
+            )
+        if not 0.0 <= self.mcts_diversity_bonus_lambda <= 1.0:
+            raise ValueError(
+                f"Phase2Config: mcts_diversity_bonus_lambda must be in [0, 1]; "
+                f"got {self.mcts_diversity_bonus_lambda}."
             )
 
 

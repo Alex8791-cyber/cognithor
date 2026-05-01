@@ -57,6 +57,12 @@ from cognithor.channels.program_synthesis.phase2.mcts_controller import (
     MCTSController,
     MCTSResult,
 )
+from cognithor.channels.program_synthesis.phase2.mcts_extensions import (
+    ParallelMCTSDriver,
+    ParallelMCTSResult,
+    RestartController,
+    apply_diversity_bonus,
+)
 from cognithor.channels.program_synthesis.phase2.pixel_match import (
     average_partial_pixel_match,
     partial_pixel_match,
@@ -116,10 +122,13 @@ __all__ = [
     "MCTSResult",
     "MCTSState",
     "MixedPolicy",
+    "ParallelMCTSDriver",
+    "ParallelMCTSResult",
     "PartitionedBudget",
     "Phase2Config",
     "PriorObservation",
     "PriorPerformanceTracker",
+    "RestartController",
     "SuspicionScore",
     "SymbolicPrior",
     "SymbolicPriorResult",
@@ -130,6 +139,7 @@ __all__ = [
     "VerifierScoreWeights",
     "aggregate_verifier_score",
     "alpha_bounds",
+    "apply_diversity_bonus",
     "apply_sample_size_dampening",
     "average_partial_pixel_match",
     "classify_primitive_name",
