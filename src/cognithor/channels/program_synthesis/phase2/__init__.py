@@ -64,6 +64,11 @@ from cognithor.channels.program_synthesis.phase2.symbolic_prior import (
     SymbolicPriorResult,
     UniformSymbolicPrior,
 )
+from cognithor.channels.program_synthesis.phase2.symbolic_prior_catalog import (
+    DEFAULT_RULES,
+    HeuristicRule,
+    HeuristicSymbolicPrior,
+)
 from cognithor.channels.program_synthesis.phase2.telemetry import (
     phase2_counters,
 )
@@ -78,6 +83,7 @@ from cognithor.channels.program_synthesis.phase2.verifier import (
 __all__ = [
     "DEFAULT_HEURISTICS_PATH",
     "DEFAULT_PHASE2_CONFIG",
+    "DEFAULT_RULES",
     "HIGH_IMPACT_PRIMITIVES",
     "STRUCTURAL_ABSTRACTION_PRIMITIVES",
     "AlphaController",
@@ -85,6 +91,8 @@ __all__ = [
     "DualPriorMixer",
     "DualPriorResult",
     "FeatureWithConfidence",
+    "HeuristicRule",
+    "HeuristicSymbolicPrior",
     "LLMPrior",
     "LLMPriorClient",
     "LLMPriorError",
