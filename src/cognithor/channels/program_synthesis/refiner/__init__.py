@@ -20,6 +20,12 @@ from cognithor.channels.program_synthesis.refiner.diff_analyzer import (
     StructureDiff,
     analyze_diff,
 )
+from cognithor.channels.program_synthesis.refiner.llm_repair_two_stage import (
+    LLMRepairError,
+    LLMRepairResult,
+    LLMRepairSuggestion,
+    LLMRepairTwoStageClient,
+)
 from cognithor.channels.program_synthesis.refiner.local_edit import (
     LocalEditMutator,
 )
@@ -34,6 +40,10 @@ __all__ = [
     "ColorDiff",
     "CounterExample",
     "DiffReport",
+    "LLMRepairError",
+    "LLMRepairResult",
+    "LLMRepairSuggestion",
+    "LLMRepairTwoStageClient",
     "LocalEditMutator",
     "PixelDiff",
     "RefinerMode",
