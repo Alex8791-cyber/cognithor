@@ -20,6 +20,11 @@ from cognithor.channels.program_synthesis.refiner.diff_analyzer import (
     StructureDiff,
     analyze_diff,
 )
+from cognithor.channels.program_synthesis.refiner.escalation import (
+    EscalationResult,
+    RefinementStage,
+    RefinerEscalator,
+)
 from cognithor.channels.program_synthesis.refiner.hybrid_repair import (
     CandidateOrigin,
     HybridRepairCandidate,
@@ -58,6 +63,7 @@ __all__ = [
     "ColorDiff",
     "CounterExample",
     "DiffReport",
+    "EscalationResult",
     "HybridRepairCandidate",
     "HybridRepairResult",
     "LLMRepairError",
@@ -66,6 +72,8 @@ __all__ = [
     "LLMRepairTwoStageClient",
     "LocalEditMutator",
     "PixelDiff",
+    "RefinementStage",
+    "RefinerEscalator",
     "RefinerMode",
     "RefinerModeController",
     "RepairKind",
