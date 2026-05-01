@@ -1,5 +1,5 @@
 {
-  "_description": "Three-step composition: rotate90 then mirror_horizontal then recolor 1→9. Tests deep chain.",
+  "_description": "Three-step composition: rotate90 then mirror_horizontal then recolor 1->9. Tests deep chain.",
   "examples": [
     {
       "input": [[1, 0], [0, 1]],
@@ -7,7 +7,7 @@
     },
     {
       "input": [[1, 1, 0], [0, 0, 1]],
-      "output": [[9, 0, 9], [9, 0, 0], [0, 9, 0]]
+      "output": [[9, 0], [9, 0], [0, 9]]
     }
   ],
   "test": [
