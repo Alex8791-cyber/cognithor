@@ -21,6 +21,10 @@ from cognithor.channels.program_synthesis.synthesis.engine import (
     Phase2SynthesisEngine,
     Phase2SynthesisResult,
 )
+from cognithor.channels.program_synthesis.synthesis.wired_engine import (
+    WiredPhase2Engine,
+    WiredSynthesisResult,
+)
 
 __all__ = [
     "BenchmarkSummary",
@@ -28,5 +32,7 @@ __all__ = [
     "BenchmarkTaskResult",
     "Phase2SynthesisEngine",
     "Phase2SynthesisResult",
+    "WiredPhase2Engine",
+    "WiredSynthesisResult",
     "run_benchmark",
 ]
