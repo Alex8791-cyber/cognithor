@@ -1,0 +1,80 @@
+name: PSE Phase-2 Benchmark
+
+# Sprint-2 Track D — Nightly Phase-2 benchmark on the 20-Task
+# Leak-Free fixture set. Fails the run when success_rate drops by
+# more than 10 percentage points relative to the persisted baseline
+# (committed at .ci/pse_phase2_baseline.json). Reviewer manually
+# updates the baseline by re-running the workflow with
+# `inputs.update_baseline=true` and committing the resulting file.
+
+on:
+  schedule:
+    # 03:00 UTC daily — outside Win-py3.12 quiet-hours window the
+    # main CI uses; reduces actions-runner contention.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      update_baseline:
+        description: "Persist this run's report as the new baseline"
+        required: false
+        type: boolean
+        default: false
+      success_threshold:
+        description: "Score considered a success (default 0.95)"
+        required: false
+        type: string
+        default: "0.95"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      BASELINE_PATH: .ci/pse_phase2_baseline.json
+      REPORT_PATH: pse_phase2_report.json
+      MARKDOWN_PATH: pse_phase2_report.md
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
+
+      - name: Run Phase-2 benchmark on the leak-free set
+        run: |
+          python -m cognithor.channels.program_synthesis.synthesis.benchmark_runner \
+            --output ${{ env.REPORT_PATH }} \
+            --markdown ${{ env.MARKDOWN_PATH }} \
+            --success-threshold ${{ inputs.success_threshold || '0.95' }} \
+            ${{ env.BASELINE_PATH != '' && format('--baseline {0}', env.BASELINE_PATH) || '' }}
+
+      - name: Upload report artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-benchmark-report
+          path: |
+            ${{ env.REPORT_PATH }}
+            ${{ env.MARKDOWN_PATH }}
+
+      - name: Update baseline (manual dispatch only)
+        if: ${{ inputs.update_baseline == true }}
+        run: |
+          mkdir -p .ci
+          cp ${{ env.REPORT_PATH }} ${{ env.BASELINE_PATH }}
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ${{ env.BASELINE_PATH }}
+          git commit -m "chore(pse): update Phase-2 benchmark baseline" || echo "no changes"
+          git push
