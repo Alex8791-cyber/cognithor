@@ -1,0 +1,10 @@
+Tasks under tasks/ are copied bit-for-bit from
+https://github.com/fchollet/ARC-AGI (master branch)
+and are licensed under the Apache License, Version 2.0.
+
+Original copyright: 2019-2024 François Chollet and ARC-AGI contributors.
+
+A full copy of the Apache License 2.0 is at the repository root
+(LICENSE) and at https://www.apache.org/licenses/LICENSE-2.0.
+
+Cognithor's manifest.json + loader integration are also Apache-2.0.
