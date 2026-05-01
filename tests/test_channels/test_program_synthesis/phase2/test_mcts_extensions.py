@@ -124,13 +124,15 @@ class TestParallelMCTSDriver:
 
 class TestRestartController:
     @pytest.mark.asyncio
-    async def test_no_restart_when_budget_threshold_low(self) -> None:
-        # mcts_restart_budget_fraction=0.0 means "budget never counts as
-        # under-used" → restart never fires regardless of score.
+    async def test_no_restart_when_score_threshold_zero(self) -> None:
+        # mcts_restart_score_threshold=0.0 means "score is never below
+        # threshold" (since values are >= 0) → restart never fires
+        # regardless of how much budget was used. Avoids platform clock-
+        # resolution flake (Windows 16ms ticks make elapsed_seconds=0.0).
         actions = {"<root>": [("a", 1.0)]}
         cfg = Phase2Config(
-            mcts_restart_budget_fraction=1e-6,  # effectively never under-used
-            mcts_restart_score_threshold=0.5,
+            mcts_restart_budget_fraction=0.3,
+            mcts_restart_score_threshold=0.0,
             mcts_max_iterations=1,
         )
         rc = RestartController(
