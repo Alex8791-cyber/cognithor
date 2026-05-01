@@ -569,6 +569,86 @@ def crop_largest_component(grid: _Grid) -> _Grid:
 
 
 @primitive(
+    name="crop_smallest_component",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.5,
+    description=(
+        "Find the smallest 4-connected non-zero component and return "
+        "its bounding-box subgrid. Mirror of `crop_largest_component`. "
+        "Solves ARC tasks where the rule is 'extract the rare/marker "
+        "shape, drop the noise'."
+    ),
+    examples=(("[[0,1,0,2,2],[0,1,0,2,0]]", "[[1],[1]]"),),
+)
+def crop_smallest_component(grid: _Grid) -> _Grid:
+    _check_grid(grid, "crop_smallest_component")
+    rows, cols = grid.shape
+    visited = np.zeros_like(grid, dtype=bool)
+    components: list[list[tuple[int, int]]] = []
+    for r0 in range(rows):
+        for c0 in range(cols):
+            if visited[r0, c0] or int(grid[r0, c0]) == 0:
+                continue
+            colour = int(grid[r0, c0])
+            stack: list[tuple[int, int]] = [(r0, c0)]
+            visited[r0, c0] = True
+            cells: list[tuple[int, int]] = [(r0, c0)]
+            while stack:
+                r, c = stack.pop()
+                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nr, nc = r + dr, c + dc
+                    if (
+                        0 <= nr < rows
+                        and 0 <= nc < cols
+                        and not visited[nr, nc]
+                        and int(grid[nr, nc]) == colour
+                    ):
+                        visited[nr, nc] = True
+                        stack.append((nr, nc))
+                        cells.append((nr, nc))
+            components.append(cells)
+    if not components:
+        return grid.copy()
+    smallest = min(components, key=len)
+    rs = [r for r, _ in smallest]
+    cs = [c for _, c in smallest]
+    r0, r1 = min(rs), max(rs) + 1
+    c0, c1 = min(cs), max(cs) + 1
+    out = np.zeros((r1 - r0, c1 - c0), dtype=np.int8)
+    for r, c in smallest:
+        out[r - r0, c - c0] = grid[r, c]
+    return out
+
+
+@primitive(
+    name="neighbor_count_grid",
+    signature=Signature(inputs=("Grid",), output="Grid"),
+    cost=2.0,
+    description=(
+        "Replace each cell with the count of its 8-connected non-zero "
+        "neighbours (including itself if non-zero), capped at 9. "
+        "Output has the same shape as the input. Solves ARC tasks "
+        "where the rule is 'mark each cell with its local density'."
+    ),
+    examples=(("[[1,0,0],[0,1,0],[0,0,1]]", "[[2,2,1],[2,3,2],[1,2,2]]"),),
+)
+def neighbor_count_grid(grid: _Grid) -> _Grid:
+    _check_grid(grid, "neighbor_count_grid")
+    h, w = grid.shape
+    out = np.zeros_like(grid, dtype=np.int8)
+    for r in range(h):
+        for c in range(w):
+            cnt = 0
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < h and 0 <= nc < w and int(grid[nr, nc]) != 0:
+                        cnt += 1
+            out[r, c] = min(cnt, 9)
+    return out
+
+
+@primitive(
     name="remove_singletons",
     signature=Signature(inputs=("Grid",), output="Grid"),
     cost=2.5,
