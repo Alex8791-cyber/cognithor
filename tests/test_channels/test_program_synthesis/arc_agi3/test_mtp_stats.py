@@ -46,6 +46,64 @@ class TestSnapshot:
         assert s.spec_token_efficiency == 1.0
 
 
+class TestConditionalAcceptance:
+    def test_returns_none_without_counts(self) -> None:
+        s = MTPSnapshot(100, 70, 120, 3)
+        assert s.conditional_acceptances is None
+        assert s.mean_accepted_length is None
+
+    def test_conditional_probabilities_match_textbook_formula(self) -> None:
+        # 12 passes accepted 0 drafts, 8 accepted 1, 5 accepted 2, 3 accepted 3.
+        # passes that reached pos-1: 28 (all). Reached pos-1 then accepted: 16 (8+5+3).
+        # passes that reached pos-2: 16. Reached pos-2 then accepted: 8 (5+3).
+        # passes that reached pos-3: 8. Reached pos-3 then accepted: 3.
+        s = MTPSnapshot(
+            drafts_proposed=84,
+            drafts_accepted=27,
+            tokens_emitted=55,
+            num_speculative_tokens=3,
+            acceptance_counts=(12, 8, 5, 3),
+        )
+        cond = s.conditional_acceptances
+        assert cond is not None
+        assert len(cond) == 3
+        assert abs(cond[0] - 16 / 28) < 1e-9
+        assert abs(cond[1] - 8 / 16) < 1e-9
+        assert abs(cond[2] - 3 / 8) < 1e-9
+
+    def test_mean_accepted_length(self) -> None:
+        # Same fixture: E[L] = p1 + p1*p2 + p1*p2*p3
+        # = 16/28 + (16/28)(8/16) + (16/28)(8/16)(3/8)
+        s = MTPSnapshot(
+            drafts_proposed=84,
+            drafts_accepted=27,
+            tokens_emitted=55,
+            num_speculative_tokens=3,
+            acceptance_counts=(12, 8, 5, 3),
+        )
+        expected = 16 / 28 + (16 / 28) * (8 / 16) + (16 / 28) * (8 / 16) * (3 / 8)
+        assert s.mean_accepted_length is not None
+        assert abs(s.mean_accepted_length - expected) < 1e-9
+
+    def test_extract_per_request_preserves_counts(self) -> None:
+        # Verify extract_per_request_acceptance now stores raw counts so
+        # downstream conditional probabilities are computable.
+        from cognithor.channels.program_synthesis.arc_agi3.mtp_stats import (
+            extract_per_request_acceptance,
+        )
+
+        class _Metrics:
+            spec_token_acceptance_counts = (12, 8, 5, 3)
+
+        class _R:
+            metrics = _Metrics()
+
+        snap = extract_per_request_acceptance(_R())
+        assert snap is not None
+        assert snap.acceptance_counts == (12, 8, 5, 3)
+        assert snap.conditional_acceptances is not None
+
+
 class TestExtractPerRequest:
     def test_no_metrics_returns_none(self) -> None:
         class _R:

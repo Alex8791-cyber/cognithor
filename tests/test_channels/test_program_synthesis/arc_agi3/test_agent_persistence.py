@@ -120,6 +120,54 @@ class TestAuditTrailWiring:
         assert trail.events[-1].event_type == "game_end"
         assert trail.events[-1].score == 2.0
 
+    def test_step_picks_up_telemetry_and_mtp_kwargs(self) -> None:
+        # Sprint-15 wiring: when a Telemetry + MTPStats aggregator is
+        # passed in and has at least one entry by the time the agent
+        # logs its step, the audit event carries the new fields on the
+        # same hash chain.
+        from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import (
+            LLMCallRecord,
+            LLMTelemetry,
+        )
+        from cognithor.channels.program_synthesis.arc_agi3.mtp_stats import (
+            MTPSnapshot,
+            MTPStats,
+        )
+
+        trail = ArcAuditTrail(game_id="smoke")
+        tele = LLMTelemetry()
+        # Simulate a choice-fn already having pushed one record.
+        tele.records.append(
+            LLMCallRecord(
+                call_index=0,
+                input_tokens=512,
+                output_tokens=200,
+                think_tokens=140,
+                finish_reason="stop",
+                wall_clock_s=12.5,
+            )
+        )
+        mtp = MTPStats()
+        mtp.snapshots.append(MTPSnapshot(100, 70, 120, 3))
+
+        agent = Sprint10DSLAgent(audit_trail=trail, telemetry=tele, mtp_stats=mtp)
+        f = _frame(np.zeros((3, 3), dtype=np.int8))
+        agent.choose_action([f], f)
+
+        step_events = [e for e in trail.events if e.event_type == "step"]
+        assert len(step_events) == 1
+        ev = step_events[0]
+        assert ev.llm_input_tokens == 512
+        assert ev.llm_output_tokens == 200
+        assert ev.llm_think_tokens == 140
+        assert ev.llm_finish_reason == "stop"
+        assert ev.llm_wall_clock_s == 12.5
+        assert ev.mtp_drafts_proposed == 100
+        assert ev.mtp_drafts_accepted == 70
+        assert ev.mtp_acceptance_rate == 0.7
+        # Hash chain still verifies with the extra fields included.
+        assert trail.verify_integrity() is True
+
     def test_finalize_idempotent(self) -> None:
         trail = ArcAuditTrail(game_id="smoke")
         agent = Sprint10DSLAgent(audit_trail=trail)

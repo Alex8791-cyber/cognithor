@@ -62,6 +62,8 @@ if TYPE_CHECKING:
         FrameAnalyzer,
     )
     from cognithor.channels.program_synthesis.arc_agi3.game_profile import GameProfile
+    from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import LLMTelemetry
+    from cognithor.channels.program_synthesis.arc_agi3.mtp_stats import MTPStats
     from cognithor.channels.program_synthesis.arc_agi3.protocol import (
         FrameDataProtocol,
         GameActionProtocol,
@@ -92,6 +94,8 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         frame_analyzer: FrameAnalyzer | None = None,
         fast_path_enabled: bool = False,
         click_target_sampler: ClickTargetSampler | None = None,
+        telemetry: LLMTelemetry | None = None,
+        mtp_stats: MTPStats | None = None,
     ) -> None:
         self._bridge = bridge if bridge is not None else FrameBridge()
         self._memory = memory if memory is not None else EpisodeMemory()
@@ -144,6 +148,12 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         # Reset on level transition so visited-set doesn't leak across
         # levels.
         self._click_target_sampler = click_target_sampler
+        # Sprint-15: optional LLM-call + MTP-stats aggregators. When wired,
+        # the audit trail picks the most-recent record/snapshot for each
+        # step and rides those telemetry numbers on the same hash chain
+        # (no separate join required at bench-comparison time).
+        self._telemetry = telemetry
+        self._mtp_stats = mtp_stats
 
     @property
     def memory(self) -> EpisodeMemory:
@@ -287,16 +297,48 @@ class Sprint10DSLAgent(CognithorPSEAgent):
                 prior_steps = self._memory.window(2)
                 if len(prior_steps) >= 2 and prior_steps[1].grid.shape == current_grid.shape:
                     pixels_changed = int(np.sum(prior_steps[1].grid != current_grid))
+            telemetry_kwargs = self._latest_telemetry_kwargs()
             self._audit_trail.log_step(
                 level=latest_frame.levels_completed,
                 step=self._step_count,
                 action=chosen.name,
                 game_state=latest_frame.state.name,
                 pixels_changed=pixels_changed,
+                **telemetry_kwargs,
             )
             self._step_count += 1
 
         return chosen
+
+    def _latest_telemetry_kwargs(self) -> dict[str, Any]:
+        """Snapshot the most-recent LLM-call + MTP record as audit kwargs.
+
+        Returns the new Sprint-15 ``llm_*`` and ``mtp_*`` fields when
+        the corresponding aggregator has at least one entry; otherwise
+        empty (so legacy callers stay byte-identical).
+
+        Each call is read-only; the aggregator stays untouched so a
+        subsequent step that doesn't trigger a new LLM call won't
+        re-log stale telemetry — the per-call write happens inside the
+        choice-fn factories, so a step without a fresh record sees
+        ``len(records)`` unchanged and the helper returns the previous
+        record (intentionally; the LLM call drove the prior decision
+        chain too).
+        """
+        kwargs: dict[str, Any] = {}
+        if self._telemetry is not None and self._telemetry.records:
+            rec = self._telemetry.records[-1]
+            kwargs["llm_input_tokens"] = rec.input_tokens
+            kwargs["llm_output_tokens"] = rec.output_tokens
+            kwargs["llm_think_tokens"] = rec.think_tokens
+            kwargs["llm_finish_reason"] = rec.finish_reason
+            kwargs["llm_wall_clock_s"] = rec.wall_clock_s
+        if self._mtp_stats is not None and self._mtp_stats.snapshots:
+            snap = self._mtp_stats.snapshots[-1]
+            kwargs["mtp_drafts_proposed"] = snap.drafts_proposed
+            kwargs["mtp_drafts_accepted"] = snap.drafts_accepted
+            kwargs["mtp_acceptance_rate"] = snap.acceptance_rate
+        return kwargs
 
     @property
     def frame_analyzer(self) -> FrameAnalyzer | None:

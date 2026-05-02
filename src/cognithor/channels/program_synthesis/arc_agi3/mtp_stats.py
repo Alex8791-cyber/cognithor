@@ -55,6 +55,13 @@ class MTPSnapshot:
     drafts_accepted: int  # how many of those drafts the verifier accepted
     tokens_emitted: int  # total tokens output (incl. drafts that got accepted)
     num_speculative_tokens: int  # config: drafts proposed per forward pass
+    # Optional: raw per-position acceptance histogram from
+    # ``RequestOutput.metrics.spec_token_acceptance_counts``. Index ``i``
+    # = number of forward passes that accepted *exactly* ``i``
+    # speculative tokens (so position 0 = drafts rejected at the first
+    # slot). ``None`` for engine-aggregate snapshots that don't expose
+    # the histogram.
+    acceptance_counts: tuple[int, ...] | None = None
 
     @property
     def acceptance_rate(self) -> float | None:
@@ -78,6 +85,55 @@ class MTPSnapshot:
         if passes <= 0:
             return None
         return self.tokens_emitted / passes
+
+    @property
+    def conditional_acceptances(self) -> tuple[float, ...] | None:
+        """Per-position *conditional* draft acceptance probabilities.
+
+        Position ``i`` is only proposed when position ``i-1`` was
+        accepted, so naively dividing per-position accepted counts by
+        total drafts under-reports later positions. This property
+        returns ``(p1, p2|p1, p3|p2, ...)`` from the raw acceptance
+        histogram so plotting MTP-quality across the speculative chain
+        is correct.
+
+        Returns ``None`` if the histogram isn't available.
+        """
+        counts = self.acceptance_counts
+        if not counts or len(counts) < 2:
+            return None
+        # ``counts[i]`` = passes that accepted *exactly* ``i`` drafts.
+        # Passes that reached position ``j`` = sum(counts[j:]).
+        total_passes = sum(counts)
+        if total_passes == 0:
+            return None
+        out: list[float] = []
+        for j in range(1, len(counts)):
+            reached_prev = sum(counts[j - 1 :])
+            reached_here = sum(counts[j:])
+            if reached_prev == 0:
+                out.append(0.0)
+            else:
+                out.append(reached_here / reached_prev)
+        return tuple(out)
+
+    @property
+    def mean_accepted_length(self) -> float | None:
+        """Expected number of accepted draft tokens per forward pass.
+
+        Computed as ``sum(p1 * p2|p1 * ... * pi|pi-1)`` over conditional
+        acceptances. Healthy MTP-3 should land at 2.0–3.0; under 1.5
+        the speculative pass starts losing money.
+        """
+        cond = self.conditional_acceptances
+        if cond is None:
+            return None
+        total = 0.0
+        running = 1.0
+        for p in cond:
+            running *= p
+            total += running
+        return total
 
 
 def extract_per_request_acceptance(request_output: Any) -> MTPSnapshot | None:
@@ -107,6 +163,7 @@ def extract_per_request_acceptance(request_output: Any) -> MTPSnapshot | None:
         drafts_accepted=drafts_accepted,
         tokens_emitted=tokens_emitted,
         num_speculative_tokens=num_spec,
+        acceptance_counts=tuple(int(c) for c in counts),
     )
 
 

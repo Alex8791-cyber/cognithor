@@ -34,6 +34,9 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
     LLMActionDecoder,
     render_grid,
 )
+from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import (
+    record_vllm_request_output,
+)
 
 if TYPE_CHECKING:
     from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
@@ -42,6 +45,8 @@ if TYPE_CHECKING:
     )
     from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import FrameBridge
     from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import ChoiceFn
+    from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import LLMTelemetry
+    from cognithor.channels.program_synthesis.arc_agi3.mtp_stats import MTPStats
     from cognithor.core.llm_backend import LLMBackend
 
 
@@ -158,6 +163,8 @@ def build_inprocess_vllm_choice_fn(
     max_tokens: int = 2048,
     kv_cache_dtype: str | None = None,
     speculative_config: dict[str, Any] | None = None,
+    mtp_stats: MTPStats | None = None,
+    telemetry: LLMTelemetry | None = None,
 ) -> ChoiceFn:
     """Sprint-12 production factory: in-process vLLM (no HTTP).
 
@@ -220,7 +227,10 @@ def build_inprocess_vllm_choice_fn(
         return llm, sampling
 
     def _sync_choice(ctx: FrameContext) -> tuple[str, str]:
+        import time as _time
+
         llm, sampling = _ensure_engine()
+        t0 = _time.monotonic()
         outs = llm.chat(
             messages=[
                 {"role": "system", "content": _build_system_prompt(ctx)},
@@ -228,7 +238,16 @@ def build_inprocess_vllm_choice_fn(
             ],
             sampling_params=sampling,
         )
-        text = outs[0].outputs[0].text
+        wall_clock_s = _time.monotonic() - t0
+        # Sprint-15: capture per-call MTP + token telemetry into the
+        # caller's aggregators if wired. Both side-effects only —
+        # downstream behaviour is unchanged when the kwargs are None.
+        req_out = outs[0]
+        if mtp_stats is not None:
+            mtp_stats.add_request(req_out)
+        if telemetry is not None:
+            record_vllm_request_output(telemetry, req_out, wall_clock_s=wall_clock_s)
+        text = req_out.outputs[0].text
         # Qwen3.6 thinking-mode wraps reasoning in <think>…</think>{json}.
         # Strip the thinking section before JSON parse so the action
         # extraction is unambiguous.
