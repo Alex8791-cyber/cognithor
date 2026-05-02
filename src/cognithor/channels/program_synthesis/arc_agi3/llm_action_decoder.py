@@ -387,7 +387,10 @@ class LLMActionDecoder(ActionDecoder):
 
         memlen = len(self._memory)
         streak_result = None
-        if self._action_streak_detector is not None and memlen >= self._action_streak_detector.window:
+        if (
+            self._action_streak_detector is not None
+            and memlen >= self._action_streak_detector.window
+        ):
             streak_result = self._action_streak_detector.dominant_stuck_action(self._memory)
         print(
             f"[anti-loop-diag] mem_len={memlen} "
