@@ -232,16 +232,28 @@ class LLMReasoningAgent(Sprint10DSLAgent):
         memory: EpisodeMemory | None = None,
         stuck_detector: StuckDetector | None = None,
         history_steps: int = 8,
+        **parent_kwargs: Any,
     ) -> None:
-        super().__init__(bridge=bridge, memory=memory, stuck_detector=stuck_detector)
-        # Override the Wave-4 DSL decoder with the LLM-driven one.
-        # Sprint10DSLAgent's choose_action delegates to ``self._decoder``,
-        # so swapping it is sufficient — no additional override needed.
+        # Forward every Sprint10DSLAgent kwarg (audit_trail, game_profile,
+        # strategy_name, frame_analyzer, fast_path_enabled,
+        # click_target_sampler, state_counter, state_graph) to the parent
+        # so the LLM agent automatically gets the same persistence +
+        # analyzer + click-sampler plumbing as the heuristic agent.
+        super().__init__(
+            bridge=bridge,
+            memory=memory,
+            stuck_detector=stuck_detector,
+            **parent_kwargs,
+        )
+        # Override the Wave-4 DSL decoder with the LLM-driven one. The
+        # decoder also takes an optional frame_analyzer for prompt-side
+        # action-effects rendering (Sprint-12 PR-12).
         self._decoder = LLMActionDecoder(
             bridge=self._bridge,
             memory=self._memory,
             choice_fn=choice_fn,
             history_steps=history_steps,
+            frame_analyzer=self._frame_analyzer,
         )
 
 

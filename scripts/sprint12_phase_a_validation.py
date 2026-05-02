@@ -121,13 +121,17 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     except RuntimeError as exc:
         print(f"  [llm_full] vLLM init failed ({exc}); falling back to dsl_full")
         return _make_dsl_full(game_id, results_dir)
+    # LLM agent intentionally has NO ClickTargetSampler — the LLM is
+    # the click strategy, and a sampler would short-circuit every
+    # ACTION6 emission before the LLM is queried. fast_path_enabled
+    # stays True (toggle fast-path is cheaper than LLM and only fires
+    # when a clean toggle pair is observed).
     agent = LLMReasoningAgent(
         choice_fn=choice_fn,
         audit_trail=trail,
         game_profile=profile,
         strategy_name="llm_full",
         frame_analyzer=FrameAnalyzer(),
-        click_target_sampler=ClickTargetSampler(),
         fast_path_enabled=True,
     )
     agent.__dict__["_phase_a_trail"] = trail
