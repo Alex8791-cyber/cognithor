@@ -83,7 +83,7 @@ class _StubBackend(LLMBackend):
         return True
 
     async def list_models(self) -> list[str]:
-        return ["Qwen/Qwen3.6-27B-Instruct"]
+        return ["Qwen/Qwen3.6-27B-FP8"]
 
     async def close(self) -> None:
         pass
@@ -157,10 +157,10 @@ class TestTwoStageHappyPath:
         backend = _StubBackend(
             queued=["reasoning", json.dumps({"recolor": 1.0, "alpha_entropy_hint": 0.5})]
         )
-        config = Phase2Config(llm_model_name="Qwen/Qwen3.6-27B-Instruct-AWQ")
+        config = Phase2Config(llm_model_name="Qwen/Qwen3.6-27B")
         client = LLMPriorClient(backend, primitive_whitelist=["recolor"], config=config)
         await client.get_prior(_examples())
-        assert all(call["model"] == "Qwen/Qwen3.6-27B-Instruct-AWQ" for call in backend.calls)
+        assert all(call["model"] == "Qwen/Qwen3.6-27B" for call in backend.calls)
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +348,6 @@ class TestConfigValidation:
             DEFAULT_PHASE2_CONFIG,
         )
 
-        assert DEFAULT_PHASE2_CONFIG.llm_model_name == "Qwen/Qwen3.6-27B-Instruct"
-        assert DEFAULT_PHASE2_CONFIG.llm_fallback_model_name == "Qwen/Qwen3.6-27B-Instruct-AWQ"
+        assert DEFAULT_PHASE2_CONFIG.llm_model_name == "Qwen/Qwen3.6-27B-FP8"
+        assert DEFAULT_PHASE2_CONFIG.llm_fallback_model_name == "Qwen/Qwen3.6-27B"
         assert DEFAULT_PHASE2_CONFIG.llm_base_url == "http://localhost:8000/v1"

@@ -70,8 +70,8 @@ class TestDefaultHeuristicsYaml:
         # ``model_path``.
         cfg = load_heuristics().phase2_config
         assert cfg.llm_base_url == "http://localhost:8000/v1"
-        assert cfg.llm_model_name == "Qwen/Qwen3.6-27B-Instruct"
-        assert cfg.llm_fallback_model_name == "Qwen/Qwen3.6-27B-Instruct-AWQ"
+        assert cfg.llm_model_name == "Qwen/Qwen3.6-27B-FP8"
+        assert cfg.llm_fallback_model_name == "Qwen/Qwen3.6-27B"
         # llm.sampling.temperature_repair_cot / .temperature_repair_edit
         # populate the Phase2Config stage temperatures.
         assert cfg.llm_temperature_stage1 == 0.3
@@ -181,7 +181,7 @@ reserved_fixes:
 
 llm_prior:
   base_url: "http://localhost:8000/v1"
-  model_name: "Qwen/Qwen3.6-27B-Instruct"
+  model_name: "Qwen/Qwen3.6-27B-FP8"
   inference: {}
   sampling:
     temperature_repair_cot: 0.3

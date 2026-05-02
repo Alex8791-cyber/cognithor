@@ -67,7 +67,7 @@ class _StubBackend(LLMBackend):
         return True
 
     async def list_models(self) -> list[str]:
-        return ["Qwen/Qwen3.6-27B-Instruct"]
+        return ["Qwen/Qwen3.6-27B-FP8"]
 
     async def close(self) -> None:
         pass

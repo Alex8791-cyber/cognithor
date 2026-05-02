@@ -103,7 +103,7 @@ uv run main.py --agent=cognithor_llm    --game=ls20
 ## Hardware-gated wiring (Wave-5)
 
 The LLM agent's call adapter `build_vllm_choice_fn` is hardware-gated
-on a running vLLM server with `Qwen/Qwen3.6-27B-Instruct` loaded —
+on a running vLLM server with `Qwen/Qwen3.6-27B-FP8` loaded —
 same constraint as Sprint-10 Track B. **Without one, the first call
 raises and the decoder transparently falls back to Wave-4's
 DSLActionDecoder policy.** Tests use deterministic stub `choice_fn`

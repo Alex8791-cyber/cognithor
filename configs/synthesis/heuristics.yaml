@@ -33,12 +33,16 @@ llm_prior:
   # llama.cpp paths kept for posterity / fallback.
   backend: "vllm"
   base_url: "http://localhost:8000/v1"
-  model_name: "Qwen/Qwen3.6-27B-Instruct"
-  fallback_model_name: "Qwen/Qwen3.6-27B-Instruct-AWQ"
+  # No instruct variant of Qwen3.6-27B exists upstream — base + FP8
+  # quantisation are the canonical HuggingFace repos. FP8 fits in 32 GB
+  # VRAM (RTX 5090) with KV-cache headroom; base BF16 is ~54 GB and
+  # only fits on multi-GPU / A100-class hardware.
+  model_name: "Qwen/Qwen3.6-27B-FP8"
+  fallback_model_name: "Qwen/Qwen3.6-27B"
   call_timeout_seconds: 8.0
   # llama.cpp-specific paths, kept for the alternate-backend
   # contingency the plan called out.
-  model_path: "./models/Qwen3.6-27B-Instruct-Q5_K_M.gguf"
+  model_path: "./models/Qwen3.6-27B-FP8"
   fallback_model_path: "./models/Qwen3.5-7B-Coder-Q5_K_M.gguf"
 
   inference:
