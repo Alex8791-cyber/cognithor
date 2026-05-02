@@ -126,25 +126,32 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     mtp_stats = MTPStats()
     telemetry = LLMTelemetry()
     try:
-        # Sprint-15 Phase-A run #10: num_speculative_tokens=1.
+        # Sprint-15 Phase-A finalised config (post runs #7-#10).
         #
-        # Run #9 surfaced vLLM's own warning at engine-init:
-        # "Enabling num_speculative_tokens > 1 will run multiple
-        # times of forward on same MTP layer, which may result in
-        # lower acceptance rate" — and the
-        # ``Qwen3.6-27B-Text-NVFP4-MTP`` config carries
-        # ``mtp_num_hidden_layers: 1``. The MTP head was trained
-        # to predict ONE token ahead; asking for 3 tokens makes
-        # vLLM run that single layer iteratively, with compounding
-        # prediction error — Position 2 and 3 are out-of-training-
-        # distribution, so 0 % acceptance was the *expected*
-        # behaviour, not a bug.
+        # Apples-to-apples LLM-call benchmark over 40 steps on bp35:
+        #   MTP=3 (run #7):  2487 s wall, 23.6 tok/s, 0 % acceptance
+        #   MTP=1 (run #10): 2600 s wall, 22.7 tok/s, 0 % acceptance
+        #   MTP off (run #8):3030 s wall, 17.5 tok/s, n/a
         #
-        # ``num_speculative_tokens=1`` is the only configuration
-        # the model was actually trained for. Trade-off: max
-        # theoretical speedup drops from ~1.9× to ~1.4×, but
-        # acceptance should jump from 0 % to the trained-quality
-        # range (typically 60-80 %).
+        # Acceptance is 0 % across ALL spec-decode configurations.
+        # This rules out:
+        #   * Sampling-mismatch (run #7 was already greedy, still 0 %)
+        #   * Out-of-training-position (run #10 with MTP=1 still 0 %)
+        # Remaining cause: separate NVFP4 quantisation passes of
+        # main + drafter checkpoints. FP4 has minimal numerical
+        # headroom (~3 bits of precision per weight); independent
+        # quantisation runs accumulate enough rounding drift that
+        # the drafter's argmax never aligns with the verifier's.
+        #
+        # The throughput win (+30 % over MTP-off) is purely from
+        # spec-decode pipeline activation: vLLM compiles separate
+        # CUDA graphs for the spec-decode path and runs the
+        # forward pass with different memory-access patterns that
+        # happen to be more efficient for our single-stream
+        # workload. MTP=1 and MTP=3 deliver essentially equivalent
+        # throughput (within 4 %); MTP=1 is the more honest config
+        # because it matches the head's training distribution and
+        # uses less GPU power per pass.
         choice_fn = build_inprocess_vllm_choice_fn(
             speculative_config={
                 "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
