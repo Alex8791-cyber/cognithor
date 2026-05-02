@@ -54,14 +54,23 @@ Do not output anything outside the JSON block."""
 
 
 def _build_user_prompt(ctx: FrameContext) -> str:
-    return (
-        f"Current grid ({ctx.grid.shape[0]}x{ctx.grid.shape[1]}):\n"
-        f"{render_grid(ctx.grid)}\n\n"
-        f"Available actions: {', '.join(ctx.available_action_names)}\n"
-        f"Recent history: {ctx.history_summary}\n"
-        f"Progress: {ctx.levels_completed}/{ctx.win_levels} levels\n\n"
-        f"Pick one action and respond as JSON."
+    parts = [
+        f"Current grid ({ctx.grid.shape[0]}x{ctx.grid.shape[1]}):",
+        render_grid(ctx.grid),
+        "",
+        f"Available actions: {', '.join(ctx.available_action_names)}",
+        f"Recent history: {ctx.history_summary}",
+    ]
+    if ctx.action_effects_summary:
+        parts.append(f"Learned action effects: {ctx.action_effects_summary}")
+    parts.extend(
+        [
+            f"Progress: {ctx.levels_completed}/{ctx.win_levels} levels",
+            "",
+            "Pick one action and respond as JSON.",
+        ]
     )
+    return "\n".join(parts)
 
 
 def build_vllm_choice_fn(
@@ -158,7 +167,7 @@ def build_inprocess_vllm_choice_fn(
         if "llm" in _engine_state:
             return _engine_state["llm"], _engine_state["sampling"]
         try:
-            from vllm import LLM, SamplingParams  # type: ignore[import-not-found]
+            from vllm import LLM, SamplingParams
         except ImportError as exc:
             raise RuntimeError(
                 "vllm is not installed. Run `pip install vllm` inside a "
