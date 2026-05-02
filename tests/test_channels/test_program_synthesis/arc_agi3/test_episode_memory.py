@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+    ActionStreakDetector,
     ChangeDetector,
     EpisodeMemory,
     StuckDetector,
@@ -242,3 +243,69 @@ class TestCountActions:
         c2 = count_actions(m)
         c1["X"] = 999
         assert "X" not in c2
+
+
+# ---------------------------------------------------------------------------
+# ActionStreakDetector — Sprint-16 Hebel 2
+# ---------------------------------------------------------------------------
+
+
+class TestActionStreakDetector:
+    def test_rejects_invalid_window(self) -> None:
+        with pytest.raises(ValueError, match="window must be >= 2"):
+            ActionStreakDetector(window=1)
+
+    def test_rejects_threshold_above_window(self) -> None:
+        with pytest.raises(ValueError, match=r"threshold must be in \[2, window=5\]"):
+            ActionStreakDetector(window=5, threshold=6)
+
+    def test_returns_none_when_memory_too_short(self) -> None:
+        d = ActionStreakDetector(window=5, threshold=4)
+        m = EpisodeMemory()
+        for _ in range(4):  # one less than window
+            m.append(grid=_g([[1]]), action_name="ACTION6", levels_completed=0)
+        assert d.dominant_stuck_action(m) is None
+
+    def test_flags_dominant_action_no_progress(self) -> None:
+        # ACTION6 picked 4 of last 5 steps, level frozen → flagged.
+        d = ActionStreakDetector(window=5, threshold=4)
+        m = EpisodeMemory()
+        for action in ("ACTION1", "ACTION6", "ACTION6", "ACTION6", "ACTION6"):
+            m.append(grid=_g([[1]]), action_name=action, levels_completed=0)
+        assert d.dominant_stuck_action(m) == "ACTION6"
+
+    def test_does_not_flag_when_level_advanced(self) -> None:
+        # Same action 4×/5 BUT level went up — that's a winning streak,
+        # not a stuck loop.
+        d = ActionStreakDetector(window=5, threshold=4)
+        m = EpisodeMemory()
+        m.append(grid=_g([[1]]), action_name="ACTION1", levels_completed=0)
+        for _ in range(4):
+            m.append(grid=_g([[1]]), action_name="ACTION6", levels_completed=1)
+        assert d.dominant_stuck_action(m) is None
+
+    def test_does_not_flag_diverse_window(self) -> None:
+        d = ActionStreakDetector(window=5, threshold=4)
+        m = EpisodeMemory()
+        for action in ("A", "B", "C", "D", "E"):
+            m.append(grid=_g([[1]]), action_name=action, levels_completed=0)
+        assert d.dominant_stuck_action(m) is None
+
+    def test_only_considers_recent_window(self) -> None:
+        # Earlier streak shouldn't matter — only the last `window`.
+        d = ActionStreakDetector(window=5, threshold=4)
+        m = EpisodeMemory()
+        for _ in range(10):  # noisy older history
+            m.append(grid=_g([[1]]), action_name="ACTION6", levels_completed=0)
+        for action in ("A", "B", "C", "D", "E"):  # diverse recent
+            m.append(grid=_g([[1]]), action_name=action, levels_completed=0)
+        assert d.dominant_stuck_action(m) is None
+
+    def test_phase_a_signature_caught(self) -> None:
+        # Reproduce Phase-A run #11's signature: 39× ACTION6, level=0.
+        # Should always flag ACTION6 once the window fills.
+        d = ActionStreakDetector(window=5, threshold=4)
+        m = EpisodeMemory(capacity=64)
+        for _ in range(39):
+            m.append(grid=_g([[1]]), action_name="ACTION6", levels_completed=0)
+        assert d.dominant_stuck_action(m) == "ACTION6"

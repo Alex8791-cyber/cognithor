@@ -170,7 +170,7 @@ def build_inprocess_vllm_choice_fn(
     model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
     max_model_len: int = 32768,
     max_num_seqs: int = 64,
-    gpu_memory_utilization: float = 0.92,
+    gpu_memory_utilization: float = 0.97,
     enforce_eager: bool = False,
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
@@ -364,16 +364,25 @@ class LLMReasoningAgent(Sprint10DSLAgent):
         # cost is negligible (one int).
         if goal_inferer is None:
             goal_inferer = GoalInferer()
+        # Sprint-16 Hebel 2: state-agnostic action-streak detector.
+        # Hebel 1 (state_counter) didn't break the click-game loop
+        # because each pick mutates the cursor pixel → new state hash
+        # → counter resets. The streak detector instead looks at
+        # recent action *names* (independent of state) and forbids any
+        # action that dominates the last 4-of-5 picks while
+        # ``levels_completed`` stays flat.
+        from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+            ActionStreakDetector,
+        )
+
         # Override the Wave-4 DSL decoder with the LLM-driven one. The
         # decoder also takes an optional frame_analyzer for prompt-side
         # action-effects rendering (Sprint-12 PR-12) and a goal_inferer
-        # for goal-hypothesis injection (Sprint-13 PR-1).
-        # Sprint-16: forward the parent's state_counter so the decoder
-        # can filter dead/repeat-saturated actions out of the LLM's
-        # choice set + override the LLM if it ignores the constraint.
-        # Without this the LLMActionDecoder produced the
-        # deterministic-loop trap that picked ACTION6 40× in a row in
-        # Phase-A.
+        # for goal-hypothesis injection (Sprint-13 PR-1). Sprint-16
+        # forwards both the parent's state_counter (Hebel 1) and a
+        # default ActionStreakDetector (Hebel 2) so the LLM agent
+        # automatically gets the loop-breaking machinery without
+        # opt-in.
         self._decoder = LLMActionDecoder(
             bridge=self._bridge,
             memory=self._memory,
@@ -382,6 +391,7 @@ class LLMReasoningAgent(Sprint10DSLAgent):
             goal_inferer=goal_inferer,
             frame_analyzer=self._frame_analyzer,
             state_counter=self._state_counter,
+            action_streak_detector=ActionStreakDetector(),
         )
 
 
