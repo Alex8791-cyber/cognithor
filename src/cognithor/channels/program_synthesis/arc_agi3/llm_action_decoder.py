@@ -150,7 +150,15 @@ def summarise_action_effects(analyzer: FrameAnalyzer, *, max_actions: int = 6) -
 def summarise_history(memory: EpisodeMemory, max_steps: int = 8) -> str:
     """Compact text description of the last ``max_steps`` actions.
 
-    Format: ``"step -3: ACTION1 (no change), step -2: RESET (level up), ..."``
+    Format: ``"step -3: ACTION1 (Δ23), step -2: RESET (level up, Δ0), ..."``
+    The ``Δ<N>`` field is the pixel-change count *after* that action,
+    computed on-the-fly by diffing consecutive grids in the window.
+    Sprint-17 addition: lets the LLM see which actions actually moved
+    the game state (large Δ) vs which were no-ops (Δ=0 or Δ=1, only
+    the cursor moved). Critical for click-target games where ACTION6
+    with arbitrary coords looks the same as a meaningful action without
+    this signal.
+
     Used in the Stage-1 prompt so the LLM knows what's been tried.
     Empty history yields ``"(no actions yet)"``.
     """
@@ -164,8 +172,18 @@ def summarise_history(memory: EpisodeMemory, max_steps: int = 8) -> str:
         # ``window`` is most-recent first; show step -1 for the
         # most recent, step -2 for the prior, etc.
         idx = -(i + 1)
+        # pixels_changed = diff to the *next-older* grid in the window.
+        # Last entry has no older neighbour to diff against → omit.
+        delta_marker = ""
+        if i + 1 < len(window):
+            prev = window[i + 1]
+            if prev.grid.shape == step.grid.shape:
+                import numpy as _np
+
+                delta = int(_np.sum(prev.grid != step.grid))
+                delta_marker = f", Δ{delta}"
         levels_marker = f", level={step.levels_completed}" if step.levels_completed > 0 else ""
-        parts.append(f"step {idx}: {step.action_name}{levels_marker}")
+        parts.append(f"step {idx}: {step.action_name}{levels_marker}{delta_marker}")
     return "; ".join(parts)
 
 

@@ -97,12 +97,44 @@ CLICK_FAMILY_HINT = (
     "  exactly N clicks of certain types to win\n"
 )
 
+# bp35-specific hints derived from Sprint-16 Run #20 observations on this
+# very game-family. Empirical (40-step LLM trace + per-step pixΔ from the
+# audit JSONL):
+#
+# * Available actions = [ACTION3, ACTION4, ACTION6, ACTION7]
+# * ACTION3 / ACTION4 / ACTION7 produce LARGE state changes (pixΔ ≈ 19-25
+#   per step on the 64×64 grid)
+# * ACTION6 with arbitrary coords moves only the cursor pixel (pixΔ = 1)
+# * Greedy LLMs default to ACTION6 every step → 100 % loop → score 0
+#
+# Strategy this hint pushes: try the non-click actions FIRST to understand
+# the macro dynamics. Reserve ACTION6 for when you have a concrete cell
+# you want to commit-click on (after a non-click action has revealed the
+# board's structure).
+BP35_OBSERVED_RULES = (
+    "You are playing a game in the bp35 family. Observed behaviour from\n"
+    "prior episodes:\n"
+    "* Available actions are typically ACTION3, ACTION4, ACTION6, ACTION7.\n"
+    "* ACTION3, ACTION4 and ACTION7 cause LARGE grid changes (~20+ pixels\n"
+    "  out of 4096 changing per step) — they advance the game state.\n"
+    "* ACTION6 is the click action (takes x/y coordinates). Without a\n"
+    "  specific target cell it usually only moves the cursor (1-pixel\n"
+    "  change) and does NOT advance the game.\n"
+    "* Strategy: use ACTION3 / ACTION4 / ACTION7 first to discover the\n"
+    "  game's transformation rules; reserve ACTION6 only for committing a\n"
+    "  click on a cell you have a concrete reason to target.\n"
+    "* The ``pixels_changed`` field in your action history shows which\n"
+    "  actions actually moved the game forward — favour repeating actions\n"
+    "  with large pixΔ over ACTION6 with pixΔ ≤ 1.\n"
+)
+
 # Game family → rule scaffold. Add entries as you understand new games.
 GAME_PROMPTS: dict[str, str] = {
     "ls20": LS20_LOCKSMITH_RULES,
     "ft09": FT09_RULES,
-    # Click-family heuristic (better than nothing for unknown click games)
-    "bp35": CLICK_FAMILY_HINT,
+    # Sprint-17: bp35 has its own observed-behaviour hint (replaces the
+    # generic CLICK_FAMILY_HINT after we've seen real bp35 episodes).
+    "bp35": BP35_OBSERVED_RULES,
     "cn04": CLICK_FAMILY_HINT,
     "sk48": CLICK_FAMILY_HINT,
     "ar25": CLICK_FAMILY_HINT,
@@ -160,6 +192,7 @@ def build_system_prompt(game_id: str, action_options: str) -> str:
 
 
 __all__ = [
+    "BP35_OBSERVED_RULES",
     "CLICK_FAMILY_HINT",
     "FT09_RULES",
     "GAME_PROMPTS",
