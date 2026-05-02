@@ -126,25 +126,29 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     mtp_stats = MTPStats()
     telemetry = LLMTelemetry()
     try:
-        # Sprint-15 Phase-A run #9: MTP-variant AS MAIN model.
+        # Sprint-15 Phase-A run #10: num_speculative_tokens=1.
         #
-        # Run #7 (separate main + drafter checkpoints): 0 % acceptance
-        # over 58 671 drafts. Hypothesised cause: independent NVFP4
-        # quantisation passes of main vs drafter produce enough
-        # numerical drift for the drafter's argmax pick to never
-        # match the verifier's pick.
+        # Run #9 surfaced vLLM's own warning at engine-init:
+        # "Enabling num_speculative_tokens > 1 will run multiple
+        # times of forward on same MTP layer, which may result in
+        # lower acceptance rate" — and the
+        # ``Qwen3.6-27B-Text-NVFP4-MTP`` config carries
+        # ``mtp_num_hidden_layers: 1``. The MTP head was trained
+        # to predict ONE token ahead; asking for 3 tokens makes
+        # vLLM run that single layer iteratively, with compounding
+        # prediction error — Position 2 and 3 are out-of-training-
+        # distribution, so 0 % acceptance was the *expected*
+        # behaviour, not a bug.
         #
-        # Mitigation: load the MTP-aware checkpoint as the *main*
-        # model. vLLM logs from earlier runs already showed
-        # "Sharing target model embedding/lm_head weights with the
-        # draft model" — by making target and draft come from the
-        # SAME checkpoint, the MTP-head sees the same quantised
-        # weights as the verifier, so the argmax should align.
+        # ``num_speculative_tokens=1`` is the only configuration
+        # the model was actually trained for. Trade-off: max
+        # theoretical speedup drops from ~1.9× to ~1.4×, but
+        # acceptance should jump from 0 % to the trained-quality
+        # range (typically 60-80 %).
         choice_fn = build_inprocess_vllm_choice_fn(
-            model_name="sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
             speculative_config={
                 "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
-                "num_speculative_tokens": 3,
+                "num_speculative_tokens": 1,
             },
             kv_cache_dtype="fp8",
             temperature=0.0,
