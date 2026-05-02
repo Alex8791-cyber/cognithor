@@ -41,6 +41,15 @@ from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
     StuckDetector,
     count_actions,
 )
+from cognithor.channels.program_synthesis.arc_agi3.fast_grid_planner import (
+    Cluster,
+    detect_toggle_pair,
+    find_clusters,
+    is_level_complete,
+    plan_click_solution,
+    simulate_combo,
+    simulate_toggle,
+)
 from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import (
     ClampPolicy,
     FrameBridge,
@@ -82,6 +91,7 @@ __all__ = [
     "ChangeDetector",
     "ChoiceFn",
     "ClampPolicy",
+    "Cluster",
     "CognithorPSEAgent",
     "DSLActionDecoder",
     "EpisodeMemory",
@@ -107,8 +117,14 @@ __all__ = [
     "build_vllm_choice_fn",
     "cognithor_agent_factory",
     "count_actions",
+    "detect_toggle_pair",
+    "find_clusters",
+    "is_level_complete",
     "parse_scorecard",
+    "plan_click_solution",
     "render_grid",
+    "simulate_combo",
+    "simulate_toggle",
     "summarise",
     "summarise_history",
 ]
