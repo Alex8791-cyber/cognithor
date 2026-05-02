@@ -189,7 +189,7 @@ def build_vllm_planning_choice_fn(
 def build_inprocess_vllm_planning_choice_fn(
     *,
     model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
-    max_model_len: int = 131072,
+    max_model_len: int = 32768,
     max_num_seqs: int = 4,
     gpu_memory_utilization: float = 0.95,
     enforce_eager: bool = False,
@@ -336,7 +336,7 @@ def _build_vision_user_content(ctx: FrameContext) -> list[dict[str, Any]]:
 def build_inprocess_vllm_vision_planning_choice_fn(
     *,
     model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
-    max_model_len: int = 131072,
+    max_model_len: int = 32768,
     max_num_seqs: int = 4,
     gpu_memory_utilization: float = 0.95,
     enforce_eager: bool = False,
