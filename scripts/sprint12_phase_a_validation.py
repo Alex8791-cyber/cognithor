@@ -128,10 +128,13 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     try:
         # MTP speculative decoding for ~1.9× decode lift. The MTP-aware
         # checkpoint and the speculative_config are matched: both must
-        # use the same num_speculative_tokens.
+        # use the same num_speculative_tokens. The Text-NVFP4-MTP
+        # variant pairs with the base NVFP4 model — note the explicit
+        # `-Text-` infix (not the bare `-NVFP4-MTP` we initially
+        # assumed; that path 401s on HF as of 2026-05-02).
         choice_fn = build_inprocess_vllm_choice_fn(
             speculative_config={
-                "model": "sakamakismile/Qwen3.6-27B-NVFP4-MTP",
+                "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
                 "num_speculative_tokens": 3,
             },
             kv_cache_dtype="fp8",
