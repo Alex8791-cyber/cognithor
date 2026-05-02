@@ -34,6 +34,10 @@ from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
     StuckDetector,
     count_actions,
 )
+from cognithor.channels.program_synthesis.arc_agi3.state_action_counts import (
+    StateActionCounter,
+    hash_state,
+)
 
 if TYPE_CHECKING:
     from cognithor.channels.program_synthesis.arc_agi3.protocol import (
@@ -54,13 +58,22 @@ class DSLActionDecoder(ActionDecoder):
         *,
         memory: EpisodeMemory,
         stuck_detector: StuckDetector | None = None,
+        state_counter: StateActionCounter | None = None,
     ) -> None:
         self._memory = memory
         self._stuck = stuck_detector if stuck_detector is not None else StuckDetector()
+        # Sprint-12: Blind-Squirrel-style state-keyed counts. When None,
+        # falls back to global episode counting (Wave-4 behaviour).
+        self._state_counter = state_counter
 
     @property
     def memory(self) -> EpisodeMemory:
         return self._memory
+
+    @property
+    def state_counter(self) -> StateActionCounter | None:
+        """Read-only access for the agent's pre/post-step bookkeeping."""
+        return self._state_counter
 
     def pick_action(
         self,
@@ -77,20 +90,39 @@ class DSLActionDecoder(ActionDecoder):
                         "RESET to escape the loop"
                     )
 
-        # Step 2 — least-tried non-RESET action.
+        # Step 2 — Sprint-12 state-keyed prioritisation when available.
+        # Picks the action that has been tried fewest times **from the
+        # current state**, skipping any action proven dead from that
+        # state (no-op transition). This mirrors the Blind-Squirrel
+        # state-graph exploration policy.
+        last_step = self._memory.last
+        if self._state_counter is not None and last_step is not None:
+            current_hash = hash_state(last_step.grid)
+            dead_here = self._state_counter.all_dead_actions(current_hash)
+            live = [a for a in available_actions if a.name != "RESET" and a.name not in dead_here]
+            if live:
+                best = min(
+                    live,
+                    key=lambda a: self._state_counter.count(current_hash, a.name),
+                )
+                best_count = self._state_counter.count(current_hash, best.name)
+                return best, (
+                    f"DSLActionDecoder: least-tried-from-state "
+                    f"({best.name} picked {best_count}× from this state, "
+                    f"{len(dead_here)} known-dead skipped)"
+                )
+
+        # Step 3 — fallback (Wave-4): least-tried globally.
         counts = count_actions(self._memory)
         candidates = [a for a in available_actions if a.name != "RESET"]
         if candidates:
-            # Pick the candidate with the smallest historical count.
-            # ``min`` is stable, so the first candidate with the
-            # minimum count wins on ties.
             best = min(candidates, key=lambda a: counts.get(a.name, 0))
             best_count = counts.get(best.name, 0)
             return best, (
                 f"DSLActionDecoder: least-tried non-RESET ({best.name} picked {best_count}× so far)"
             )
 
-        # Step 3 — fall back to first available (likely RESET only).
+        # Step 4 — only RESET available.
         return available_actions[0], ("DSLActionDecoder: only RESET available, picking it")
 
 
