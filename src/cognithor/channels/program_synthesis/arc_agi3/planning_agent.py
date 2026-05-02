@@ -246,6 +246,11 @@ def build_inprocess_vllm_planning_choice_fn(
             llm_kwargs["kv_cache_dtype"] = kv_cache_dtype
         if speculative_config is not None:
             llm_kwargs["speculative_config"] = speculative_config
+        # Re-enable stats logging when telemetry/MTP-stats wired —
+        # offline LLM defaults `disable_log_stats=True` which strips
+        # RequestOutput.metrics and raises on get_metrics().
+        if mtp_stats is not None or telemetry is not None:
+            llm_kwargs["disable_log_stats"] = False
         llm = LLM(**llm_kwargs)
         sampling = SamplingParams(temperature=temperature, max_tokens=max_tokens)
         _engine_state["llm"] = llm
@@ -379,6 +384,11 @@ def build_inprocess_vllm_vision_planning_choice_fn(
         # don't exist as of 2026-05-02 (MTP variants are text-only).
         if kv_cache_dtype is not None:
             llm_kwargs["kv_cache_dtype"] = kv_cache_dtype
+        # Re-enable stats logging for the vision path too — without it
+        # RequestOutput.metrics is stripped and TTFT capture silently
+        # falls to zero.
+        if telemetry is not None:
+            llm_kwargs["disable_log_stats"] = False
         llm = LLM(**llm_kwargs)
         sampling = SamplingParams(temperature=temperature, max_tokens=max_tokens)
         _engine_state["llm"] = llm

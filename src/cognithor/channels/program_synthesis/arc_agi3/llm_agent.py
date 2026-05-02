@@ -220,6 +220,15 @@ def build_inprocess_vllm_choice_fn(
         # MTP-aware checkpoint (e.g. *-NVFP4-MTP family).
         if speculative_config is not None:
             llm_kwargs["speculative_config"] = speculative_config
+        # Sprint-15 telemetry: vLLM's offline LLM class defaults
+        # ``disable_log_stats=True`` which strips ``RequestOutput.metrics``
+        # AND raises on ``LLM.get_metrics()``. Both are pre-conditions for
+        # capturing TTFT and per-call MTP deltas. Re-enable when MTP or
+        # telemetry is wired so the plumbing actually receives data; leave
+        # it alone otherwise so callers that didn't ask for telemetry don't
+        # pay the (small) logging overhead.
+        if mtp_stats is not None or telemetry is not None:
+            llm_kwargs["disable_log_stats"] = False
         llm = LLM(**llm_kwargs)
         sampling = SamplingParams(temperature=temperature, max_tokens=max_tokens)
         _engine_state["llm"] = llm
