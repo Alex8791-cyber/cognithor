@@ -60,6 +60,7 @@ try:
         Sprint10DSLAgent,
         build_inprocess_vllm_choice_fn,
         build_inprocess_vllm_planning_choice_fn,
+        build_inprocess_vllm_vision_planning_choice_fn,
     )
 except ImportError as exc:
     print(f"FATAL: cognithor.channels.program_synthesis.arc_agi3 not importable: {exc}")
@@ -323,12 +324,65 @@ def _empty_profile(game_id: str) -> GameProfile:
     )
 
 
+def _make_llm_vision(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
+    """Sprint-19: vision-mode planning agent.
+
+    THE root-cause fix the user identified: prior llm_full / llm_planning
+    agents fed the LLM the 64×64 grid as ASCII text. A 27 B vision-
+    capable model is at its weakest with that representation; it's at
+    its strongest with PNG input. This factory uses the existing
+    ``build_inprocess_vllm_vision_planning_choice_fn`` which:
+
+    * Loads the multimodal ``Qwen3.6-27B-NVFP4`` (no MTP — the
+      MTP-NVFP4 variant is text-only, can't accept images)
+    * Renders each frame as a 16-colour ARC-palette PNG (scale=8,
+      so 64×64 grid → 512×512 image)
+    * Sends a multimodal chat message: ``[image, text-prompt]``
+    * Same plan-horizon=5 as ``_make_llm_planning``
+
+    Trade-off: no MTP speculative decoding (~30 % throughput loss
+    measured in Sprint-15). Win: the LLM can finally SEE the grid
+    structure visually instead of parsing 4 K ASCII tokens.
+    """
+    audit_path = results_dir / f"{game_id}_llm_vision.jsonl"
+    trail = ArcAuditTrail(game_id=game_id)
+    profile = GameProfile.load(game_id) or _empty_profile(game_id)
+    telemetry = LLMTelemetry()
+    try:
+        choice_fn = build_inprocess_vllm_vision_planning_choice_fn(
+            kv_cache_dtype="fp8",
+            temperature=0.0,
+            max_tokens=2048,
+            grid_scale=8,
+            telemetry=telemetry,
+        )
+    except RuntimeError as exc:
+        print(f"  [llm_vision] vLLM init failed ({exc}); falling back to dsl_full")
+        return _make_dsl_full(game_id, results_dir)
+    agent = PlanningLLMReasoningAgent(
+        choice_fn=choice_fn,
+        audit_trail=trail,
+        game_profile=profile,
+        strategy_name="llm_vision",
+        frame_analyzer=FrameAnalyzer(),
+        fast_path_enabled=False,
+        plan_horizon=5,
+        telemetry=telemetry,
+    )
+    agent.__dict__["_phase_a_trail"] = trail
+    agent.__dict__["_phase_a_audit_path"] = audit_path
+    agent.__dict__["_phase_a_profile"] = profile
+    agent.__dict__["_phase_a_telemetry"] = telemetry
+    return agent, str(audit_path)
+
+
 _AGENT_FACTORIES = {
     "random_baseline": _make_random_agent,
     "dsl_baseline": _make_dsl_baseline,
     "dsl_full": _make_dsl_full,
     "llm_full": _make_llm_full,
     "llm_planning": _make_llm_planning,
+    "llm_vision": _make_llm_vision,
 }
 
 
