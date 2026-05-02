@@ -22,24 +22,31 @@ Sources for individual rules:
 from __future__ import annotations
 
 GENERIC_CONTEXT = (
-    "You are an agent playing a dynamic ARC-AGI-3 game. Two outcomes:\n"
-    "* WIN — ``levels_completed`` reaches ``win_levels`` (score = 1.0)\n"
-    "* GAME_OVER — episode ENDS, score = 0.0, NO further actions possible\n"
+    "You are an agent playing a dynamic game. Your objective is to\n"
+    "WIN and avoid GAME_OVER while minimizing actions.\n\n"
+    "One action produces one Frame. One Frame is made of one or more sequential\n"
+    "Grids. Each Grid is a matrix size INT<0,63> by INT<0,63> filled with\n"
+    "INT<0,15> values."
+)
+
+
+# Sprint-19 Run #24 finding: vision-mode agent on bp35 escalated pixΔ
+# from 25 → 391 → 528 → 635 across steps and triggered GAME_OVER at
+# step 40. The agent had no signal that GAME_OVER is FATAL or that
+# monotonic-pixΔ-growth is the empirical loss trajectory. This block is
+# appended by ``build_system_prompt`` to every game's prompt so the
+# agent learns the rule once for all games.
+GAME_OVER_AVOIDANCE_HINT = (
+    "FATAL FAILURE MODE: GAME_OVER ends the episode (score = 0, no\n"
+    "recovery). Empirical evidence from prior runs on bp35: agents that\n"
+    "aggressively manipulate the grid (pixΔ > 500 per step, monotonic-\n"
+    "growth trajectories) reliably trigger GAME_OVER around step 35-40.\n"
+    "**Massive state change is NOT automatically progress — it is often\n"
+    "the path to GAME_OVER.**\n"
     "\n"
-    "GAME_OVER is FATAL. It is not a setback to recover from — once the\n"
-    "state is GAME_OVER the game is OVER. Empirical evidence from prior\n"
-    "Cognithor runs on bp35: agents that aggressively manipulate the\n"
-    "grid (pixΔ > 500 per step, monotonic-growth trajectories) reliably\n"
-    "trigger GAME_OVER around step 35-40. **Massive state change is NOT\n"
-    "automatically progress — it is often the path to GAME_OVER.**\n"
-    "\n"
-    "One action produces one Frame. One Frame is made of one or more\n"
-    "sequential Grids. Each Grid is a matrix size INT<0,63> by\n"
-    "INT<0,63> filled with INT<0,15> values.\n"
-    "\n"
-    "WIN-DETECTION RULE OF THUMB: if your last 5 actions changed pixels\n"
-    "but ``levels_completed`` did NOT increase, you are NOT winning. Try\n"
-    "structurally-different actions or RESET (if available) — keep going\n"
+    "WIN-DETECTION RULE: if your last 5 actions changed pixels but\n"
+    "``levels_completed`` did NOT increase, you are NOT winning. Try\n"
+    "structurally-different actions or RESET (if available). Continuing\n"
     "in the same direction at increasing intensity is the GAME_OVER\n"
     "trajectory."
 )
@@ -217,7 +224,7 @@ def build_system_prompt(game_id: str, action_options: str) -> str:
         f"  action: must be exactly one of [{action_options}]\n"
         f"  reasoning: one short sentence describing why you chose it"
     )
-    parts = [GENERIC_CONTEXT, behavioural]
+    parts = [GENERIC_CONTEXT, GAME_OVER_AVOIDANCE_HINT, behavioural]
     if game_rules:
         parts.append(game_rules)
     parts.append(output_schema)
@@ -228,6 +235,7 @@ __all__ = [
     "BP35_OBSERVED_RULES",
     "CLICK_FAMILY_HINT",
     "FT09_RULES",
+    "GAME_OVER_AVOIDANCE_HINT",
     "GAME_PROMPTS",
     "GENERIC_CONTEXT",
     "LS20_LOCKSMITH_RULES",
