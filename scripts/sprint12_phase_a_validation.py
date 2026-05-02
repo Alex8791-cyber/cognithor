@@ -167,16 +167,26 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
         return _make_dsl_full(game_id, results_dir)
     # LLM agent intentionally has NO ClickTargetSampler — the LLM is
     # the click strategy, and a sampler would short-circuit every
-    # ACTION6 emission before the LLM is queried. fast_path_enabled
-    # stays True (toggle fast-path is cheaper than LLM and only fires
-    # when a clean toggle pair is observed).
+    # ACTION6 emission before the LLM is queried.
+    #
+    # Sprint-16 ROOT-CAUSE: ``fast_path_enabled=True`` was making the
+    # toggle-fast-path fire after step 1 and bypass the LLM decoder
+    # entirely for the rest of the episode. That's why all anti-loop
+    # hebels (state_counter + action_streak_detector) wired into
+    # LLMActionDecoder NEVER GOT A CHANCE TO RUN. Run #19 diag printed
+    # only 2× across 10 steps — confirming the LLM decoder path was
+    # short-circuited after the toggle pair was detected.
+    #
+    # Disabling fast_path on llm_full so the LLM + Hebel 1+2 always
+    # drive every step. The DSL agent still uses fast_path (cheaper),
+    # but for the LLM path we want the hebels active.
     agent = LLMReasoningAgent(
         choice_fn=choice_fn,
         audit_trail=trail,
         game_profile=profile,
         strategy_name="llm_full",
         frame_analyzer=FrameAnalyzer(),
-        fast_path_enabled=True,
+        fast_path_enabled=False,
         telemetry=telemetry,
         mtp_stats=mtp_stats,
     )
