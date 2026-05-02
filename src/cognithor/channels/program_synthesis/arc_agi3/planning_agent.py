@@ -32,6 +32,9 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
     FrameContext,
     render_grid,
 )
+from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import (
+    record_vllm_request_output,
+)
 from cognithor.channels.program_synthesis.arc_agi3.planning_decoder import (
     PlanningLLMActionDecoder,
     PlanStep,
@@ -44,6 +47,8 @@ if TYPE_CHECKING:
     )
     from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import FrameBridge
     from cognithor.channels.program_synthesis.arc_agi3.goal_inferer import GoalInferer
+    from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import LLMTelemetry
+    from cognithor.channels.program_synthesis.arc_agi3.mtp_stats import MTPStats
     from cognithor.core.llm_backend import LLMBackend
 
 
@@ -193,6 +198,8 @@ def build_inprocess_vllm_planning_choice_fn(
     max_tokens: int = 4096,
     kv_cache_dtype: str | None = None,
     speculative_config: dict[str, Any] | None = None,
+    mtp_stats: MTPStats | None = None,
+    telemetry: LLMTelemetry | None = None,
 ) -> Any:
     """In-process vLLM planning choice-fn — production path.
 
@@ -246,7 +253,10 @@ def build_inprocess_vllm_planning_choice_fn(
         return llm, sampling
 
     def _sync_choice(ctx: FrameContext) -> tuple[list[PlanStep], str]:
+        import time as _time
+
         llm, sampling = _ensure_engine()
+        t0 = _time.monotonic()
         outs = llm.chat(
             messages=[
                 {"role": "system", "content": _build_planning_system_prompt(ctx)},
@@ -254,7 +264,13 @@ def build_inprocess_vllm_planning_choice_fn(
             ],
             sampling_params=sampling,
         )
-        return parse_plan_response(outs[0].outputs[0].text)
+        wall_clock_s = _time.monotonic() - t0
+        req_out = outs[0]
+        if mtp_stats is not None:
+            mtp_stats.add_request(req_out)
+        if telemetry is not None:
+            record_vllm_request_output(telemetry, req_out, wall_clock_s=wall_clock_s)
+        return parse_plan_response(req_out.outputs[0].text)
 
     return _sync_choice
 
@@ -321,6 +337,7 @@ def build_inprocess_vllm_vision_planning_choice_fn(
     max_tokens: int = 4096,
     grid_scale: int = 8,
     kv_cache_dtype: str | None = None,
+    telemetry: LLMTelemetry | None = None,
 ) -> Any:
     """Vision-mode planning choice-fn: feed Qwen3.6 the grid as a PNG.
 
@@ -392,6 +409,9 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             levels=ctx.levels_completed,
             win_levels=ctx.win_levels,
         )
+        import time as _time
+
+        t0 = _time.monotonic()
         outs = llm.chat(
             messages=[
                 {"role": "system", "content": _build_planning_system_prompt(ctx)},
@@ -405,7 +425,14 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             ],
             sampling_params=sampling,
         )
-        return parse_plan_response(outs[0].outputs[0].text)
+        wall_clock_s = _time.monotonic() - t0
+        req_out = outs[0]
+        # Vision factory: no MTP (no multimodal MTP-NVFP4 ckpt as of
+        # 2026-05-02), but token + finish-reason telemetry is still
+        # actionable for tuning the vision pass.
+        if telemetry is not None:
+            record_vllm_request_output(telemetry, req_out, wall_clock_s=wall_clock_s)
+        return parse_plan_response(req_out.outputs[0].text)
 
     return _sync_choice
 

@@ -53,6 +53,8 @@ try:
         FrameAnalyzer,
         GameProfile,
         LLMReasoningAgent,
+        LLMTelemetry,
+        MTPStats,
         RandomActionAgent,
         Sprint10DSLAgent,
         build_inprocess_vllm_choice_fn,
@@ -116,8 +118,26 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     audit_path = results_dir / f"{game_id}_llm_full.jsonl"
     trail = ArcAuditTrail(game_id=game_id)
     profile = GameProfile.load(game_id) or _empty_profile(game_id)
+    # Sprint-15 telemetry aggregators. Both threaded into the choice_fn
+    # (so each llm.chat() pushes a record/snapshot) AND into the agent
+    # (so the audit trail picks them up at log_step time). Without
+    # this dual-wiring the audit fields stay None despite correct
+    # code on main — the silent-None failure mode the reviewer flagged.
+    mtp_stats = MTPStats()
+    telemetry = LLMTelemetry()
     try:
-        choice_fn = build_inprocess_vllm_choice_fn()
+        # MTP speculative decoding for ~1.9× decode lift. The MTP-aware
+        # checkpoint and the speculative_config are matched: both must
+        # use the same num_speculative_tokens.
+        choice_fn = build_inprocess_vllm_choice_fn(
+            speculative_config={
+                "model": "sakamakismile/Qwen3.6-27B-NVFP4-MTP",
+                "num_speculative_tokens": 3,
+            },
+            kv_cache_dtype="fp8",
+            mtp_stats=mtp_stats,
+            telemetry=telemetry,
+        )
     except RuntimeError as exc:
         print(f"  [llm_full] vLLM init failed ({exc}); falling back to dsl_full")
         return _make_dsl_full(game_id, results_dir)
@@ -133,11 +153,59 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
         strategy_name="llm_full",
         frame_analyzer=FrameAnalyzer(),
         fast_path_enabled=True,
+        telemetry=telemetry,
+        mtp_stats=mtp_stats,
     )
     agent.__dict__["_phase_a_trail"] = trail
     agent.__dict__["_phase_a_audit_path"] = audit_path
     agent.__dict__["_phase_a_profile"] = profile
+    agent.__dict__["_phase_a_mtp_stats"] = mtp_stats
+    agent.__dict__["_phase_a_telemetry"] = telemetry
     return agent, str(audit_path)
+
+
+def assert_telemetry_active(agent: Any, *, strict: bool = True) -> None:
+    """Sanity-check after the first episode that the telemetry wiring
+    actually catches data.
+
+    Silent-None failure mode: if the choice-fn factory's kwargs aren't
+    threaded through correctly, every code path runs green but the
+    aggregators stay empty. This assertion fails loudly after the
+    first run rather than 20 episodes later when the JSONL is
+    inspected.
+
+    Set ``strict=False`` for debugging when you genuinely expect zero
+    LLM calls (e.g. a pure-DSL fallback episode).
+    """
+    mtp = agent.__dict__.get("_phase_a_mtp_stats")
+    tele = agent.__dict__.get("_phase_a_telemetry")
+    if mtp is None or tele is None:
+        return  # not an llm_full agent
+    issues: list[str] = []
+    if len(tele.records) == 0:
+        issues.append(
+            "LLMTelemetry.records is empty — choice_fn never fired or telemetry kwarg lost"
+        )
+    if len(mtp.snapshots) == 0:
+        issues.append(
+            "MTPStats.snapshots is empty — either MTP off, or mtp_stats kwarg "
+            "lost (check build_inprocess_vllm_choice_fn signature)"
+        )
+    # TTFT coverage check — flags the disable_log_stats trap.
+    if tele.records:
+        with_ttft = sum(1 for r in tele.records if r.ttft_s is not None)
+        coverage = with_ttft / len(tele.records)
+        if coverage < 0.8:
+            issues.append(
+                f"TTFT coverage = {coverage:.0%} — vLLM RequestOutput.metrics not "
+                "populated. Check engine_args.disable_log_stats=False (or the "
+                "vLLM-version-specific equivalent)."
+            )
+    if issues:
+        msg = "; ".join(issues)
+        if strict:
+            raise RuntimeError(f"Sprint-15 telemetry sanity-check failed: {msg}")
+        print(f"  [warn] telemetry sanity-check: {msg}")
 
 
 def _empty_profile(game_id: str) -> GameProfile:
@@ -172,6 +240,15 @@ def run_one(agent_label: str, game_id: str, max_steps: int, results_dir: Path) -
     runner = EpisodeRunner(agent=agent, game_id=game_id, max_steps=max_steps)
     result = runner.run()
     wall_clock = time.monotonic() - t0
+
+    # Sprint-15: sanity-check telemetry after the first episode of any
+    # llm_full run so silent-None failures (kwargs not threaded, vLLM
+    # disable_log_stats trap) surface immediately. Non-strict so a
+    # pure-DSL-fallback episode doesn't tank the whole driver run.
+    try:
+        assert_telemetry_active(agent, strict=False)
+    except Exception as exc:
+        print(f"\n    telemetry sanity-check error: {exc}")
 
     # Export audit + persist profile if wired.
     trail = agent.__dict__.get("_phase_a_trail") if hasattr(agent, "__dict__") else None

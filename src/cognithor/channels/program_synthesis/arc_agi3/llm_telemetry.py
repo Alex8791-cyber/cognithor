@@ -61,7 +61,14 @@ __all__ = [
 
 @dataclass(frozen=True)
 class LLMCallRecord:
-    """One LLM call's measurements."""
+    """One LLM call's measurements.
+
+    Sprint-15 follow-up: ``ttft_s`` (time-to-first-token) is the
+    cleanest way to separate prefill from decode — multiplicative MTP
+    speedup applies to the decode phase only, so any t/s comparison
+    that lumps both together under-reports MTP wins on short outputs
+    where prefill dominates wall-clock.
+    """
 
     call_index: int
     input_tokens: int
@@ -69,11 +76,35 @@ class LLMCallRecord:
     think_tokens: int
     finish_reason: str
     wall_clock_s: float
+    # vLLM's ``RequestOutput.metrics.first_token_time - arrival_time``.
+    # ``None`` when the metrics object isn't available (e.g. older
+    # vLLM, HTTP backend) — analyzers must tolerate the gap rather
+    # than reject the record.
+    ttft_s: float | None = None
 
     @property
     def post_think_tokens(self) -> int:
         """Output tokens that were NOT inside the ``<think>`` block."""
         return max(0, self.output_tokens - self.think_tokens)
+
+    @property
+    def decode_time_s(self) -> float | None:
+        """Decode-only wall-clock = total - prefill (= TTFT).
+
+        Returns ``None`` when ``ttft_s`` isn't available; the prefill
+        share is too workload-dependent to safely guess.
+        """
+        if self.ttft_s is None:
+            return None
+        return max(0.0, self.wall_clock_s - self.ttft_s)
+
+    @property
+    def decode_tps(self) -> float | None:
+        """Decode-phase tokens-per-second — the MTP-speedup-comparable rate."""
+        decode = self.decode_time_s
+        if decode is None or decode <= 0 or self.output_tokens <= 0:
+            return None
+        return self.output_tokens / decode
 
 
 @dataclass
@@ -119,7 +150,14 @@ class LLMTelemetry:
         out_t = [r.output_tokens for r in self.records]
         think_t = [r.think_tokens for r in self.records]
         wall = [r.wall_clock_s for r in self.records]
-        return {
+        # Decode-only stats are MTP-speedup-comparable; pure
+        # ``output_tokens / wall_clock_s`` mixes prefill + decode and
+        # under-reports MTP wins on short outputs where prefill
+        # dominates. Calls without ``ttft_s`` are skipped (not zero-
+        # imputed) so the average isn't biased downward.
+        decode_tps = [r.decode_tps for r in self.records if r.decode_tps is not None]
+        ttft_vals = [r.ttft_s for r in self.records if r.ttft_s is not None]
+        out: dict[str, Any] = {
             "calls": n,
             "finish_reason_dist": finish_dist,
             "length_truncation_rate": finish_dist.get("length", 0) / n,
@@ -136,6 +174,15 @@ class LLMTelemetry:
             "wall_clock_s_max": max(wall),
             "wall_clock_s_total": sum(wall),
         }
+        if ttft_vals:
+            out["ttft_s_avg"] = sum(ttft_vals) / len(ttft_vals)
+            out["ttft_s_max"] = max(ttft_vals)
+            out["ttft_coverage"] = len(ttft_vals) / n
+        if decode_tps:
+            out["decode_tps_avg"] = sum(decode_tps) / len(decode_tps)
+            out["decode_tps_max"] = max(decode_tps)
+            out["decode_tps_min"] = min(decode_tps)
+        return out
 
 
 # --------------------------------------------------------------------------
@@ -161,8 +208,21 @@ def extract_think_tokens(text: str) -> int:
     Qwen3.6 wraps its reasoning trace in ``<think>...</think>{json}``;
     this helper isolates the reasoning portion so the summary can
     distinguish "model thought a lot" from "model produced a long
-    answer". Returns 0 if no think block is present.
+    answer".
+
+    Edge case (length-truncation): when the model hits ``max_tokens``
+    mid-``<think>`` and never emits the closing ``</think>``, the
+    *entire* output is reasoning. Treat that as "all output is think"
+    rather than "no think" — those long-truncated calls are exactly
+    the diagnostic-richest ones for the workload-MTP-mismatch
+    hypothesis, and silently dropping them to ``think_tokens=0`` would
+    invert the signal in the Reasoning-vs-Output split.
     """
+    if "<think>" in text and "</think>" not in text:
+        # Truncation case: open tag but no close — count from after
+        # ``<think>`` to EOF.
+        head = text.split("<think>", 1)[1]
+        return estimate_token_count(head)
     if "</think>" not in text:
         return 0
     head, _, _ = text.partition("</think>")
@@ -260,6 +320,25 @@ def record_vllm_request_output(
     if output_tokens == 0:
         output_tokens = estimate_token_count(output_text)
 
+    # vLLM's RequestMetrics carries arrival_time + first_token_time as
+    # absolute timestamps. TTFT = first_token_time - arrival_time, but
+    # both fields are optional and may be None on older versions or
+    # when metrics aren't enabled. Keep the failure path quiet — the
+    # downstream analyzer treats ``ttft_s = None`` as "decode-rate
+    # unmeasured for this call" rather than rejecting the record.
+    ttft_s: float | None = None
+    try:
+        metrics = getattr(request_output, "metrics", None)
+        if metrics is not None:
+            arrival = getattr(metrics, "arrival_time", None)
+            first_token = getattr(metrics, "first_token_time", None)
+            if arrival is not None and first_token is not None:
+                delta = float(first_token) - float(arrival)
+                if delta >= 0:
+                    ttft_s = delta
+    except Exception:
+        pass
+
     record = LLMCallRecord(
         call_index=len(telemetry.records),
         input_tokens=input_tokens,
@@ -267,6 +346,7 @@ def record_vllm_request_output(
         think_tokens=extract_think_tokens(output_text),
         finish_reason=str(finish_reason),
         wall_clock_s=wall_clock_s,
+        ttft_s=ttft_s,
     )
     telemetry.records.append(record)
 

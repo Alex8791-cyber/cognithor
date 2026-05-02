@@ -25,7 +25,14 @@ __all__ = ["ArcAuditEvent", "ArcAuditTrail"]
 
 @dataclass
 class ArcAuditEvent:
-    """A single auditable event in an ARC game session."""
+    """A single auditable event in an ARC game session.
+
+    Sprint-15 added the optional ``llm_*`` fields so Phase-3 telemetry
+    rides on the existing hash chain — no separate schema, no join
+    needed at bench-comparison time. All defaults are ``None`` so old
+    JSONL exports stay readable and the verifier doesn't break on
+    legacy events.
+    """
 
     timestamp: float
     event_type: str  # "game_start", "step", "level_complete", "game_end", "error"
@@ -38,6 +45,16 @@ class ArcAuditEvent:
     score: float | None = None
     error: str | None = None
     metadata: dict[str, Any] | None = None
+    # Sprint-15 telemetry — populated when an LLM call drove the step.
+    llm_input_tokens: int | None = None
+    llm_output_tokens: int | None = None
+    llm_think_tokens: int | None = None
+    llm_finish_reason: str | None = None  # "stop"/"length"/"tool_calls"/"abort"
+    llm_wall_clock_s: float | None = None
+    # Sprint-15 MTP — present when speculative decoding fired this step.
+    mtp_drafts_proposed: int | None = None
+    mtp_drafts_accepted: int | None = None
+    mtp_acceptance_rate: float | None = None
 
 
 def _event_to_json(event: ArcAuditEvent) -> str:
@@ -110,8 +127,23 @@ class ArcAuditTrail:
         action: str,
         game_state: str,
         pixels_changed: int,
+        *,
+        llm_input_tokens: int | None = None,
+        llm_output_tokens: int | None = None,
+        llm_think_tokens: int | None = None,
+        llm_finish_reason: str | None = None,
+        llm_wall_clock_s: float | None = None,
+        mtp_drafts_proposed: int | None = None,
+        mtp_drafts_accepted: int | None = None,
+        mtp_acceptance_rate: float | None = None,
     ) -> str:
-        """Log a single agent step and return its chain hash."""
+        """Log a single agent step and return its chain hash.
+
+        Sprint-15: optional ``llm_*`` and ``mtp_*`` kwargs ride on the
+        same hash-chained event so per-step token counts + speculative-
+        decoding stats are tamper-evident alongside the action history.
+        All defaults ``None`` preserve backwards compatibility.
+        """
         event = ArcAuditEvent(
             timestamp=time.time(),
             event_type="step",
@@ -121,6 +153,14 @@ class ArcAuditTrail:
             action=action,
             game_state=game_state,
             pixels_changed=pixels_changed,
+            llm_input_tokens=llm_input_tokens,
+            llm_output_tokens=llm_output_tokens,
+            llm_think_tokens=llm_think_tokens,
+            llm_finish_reason=llm_finish_reason,
+            llm_wall_clock_s=llm_wall_clock_s,
+            mtp_drafts_proposed=mtp_drafts_proposed,
+            mtp_drafts_accepted=mtp_drafts_accepted,
+            mtp_acceptance_rate=mtp_acceptance_rate,
         )
         return self.log_event(event)
 
@@ -128,11 +168,51 @@ class ArcAuditTrail:
     # Export
     # ------------------------------------------------------------------
 
-    def export_jsonl(self, filepath: str) -> None:
-        """Write all events as JSONL (one JSON object per line)."""
+    def export_jsonl(
+        self,
+        filepath: str,
+        *,
+        seal_into_hashline: bool = False,
+        hashline_data_dir: Any = None,
+    ) -> str | None:
+        """Write all events as JSONL (one JSON object per line).
+
+        Sprint-15: when ``seal_into_hashline=True`` the export hashes
+        the JSONL payload (SHA-256 over its bytes) and appends a
+        single chained entry to Cognithor's :class:`HashlineAuditor`
+        so the per-episode artefact has cross-system tamper-evidence.
+        Returns the audit entry's SHA-256 hash on seal, ``None``
+        otherwise.
+        """
         with open(filepath, "w", encoding="utf-8") as fh:
             for event in self.events:
                 fh.write(_event_to_json(event) + "\n")
+
+        if not seal_into_hashline:
+            return None
+
+        # Lazy import to keep audit.py importable without the
+        # hashline subsystem (used by the new program_synthesis
+        # stack standalone in unit tests).
+        from cognithor.hashline.audit import HashlineAuditor
+
+        with open(filepath, "rb") as rb:
+            payload = rb.read()
+        digest = hashlib.sha256(payload).hexdigest()
+        auditor = HashlineAuditor(data_dir=hashline_data_dir)
+        return auditor._append(
+            {
+                "timestamp": time.time(),
+                "type": "arc_episode_export",
+                "game_id": self.game_id,
+                "run_id": self.run_id,
+                "agent_version": self.agent_version,
+                "events_count": len(self.events),
+                "jsonl_path": str(filepath),
+                "jsonl_sha256": digest,
+                "agent_id": "cognithor.channels.program_synthesis.arc_agi3",
+            }
+        )
 
     # ------------------------------------------------------------------
     # Integrity verification
