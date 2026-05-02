@@ -380,23 +380,30 @@ class LLMActionDecoder(ActionDecoder):
                     "no level progress)"
                 )
 
+        # Sprint-16 diagnostic: print on EVERY call so the live run
+        # tells us whether _compute_forbidden runs at all + what each
+        # detector sees. Removed once Hebel firing is confirmed.
+        import sys
+
+        memlen = len(self._memory)
+        streak_result = None
+        if self._action_streak_detector is not None and memlen >= self._action_streak_detector.window:
+            streak_result = self._action_streak_detector.dominant_stuck_action(self._memory)
+        print(
+            f"[anti-loop-diag] mem_len={memlen} "
+            f"avail={[a.name for a in available_actions]} "
+            f"streak_detector={streak_result!r} "
+            f"forbidden_set={sorted(forbidden_set)!r}",
+            file=sys.stderr,
+            flush=True,
+        )
+
         if not forbidden_set and not rows:
             return (), ""
         # Stable order — use the available_actions list order so the
         # summary matches what the prompt enumerates.
         forbidden = tuple(a.name for a in available_actions if a.name in forbidden_set)
         summary = "; ".join(rows)
-        # Sprint-16 diagnostic: print to stderr so live runs surface
-        # whether the override gets a chance. To be removed once Hebel
-        # 1+2 are confirmed firing; harmless until then.
-        if forbidden:
-            import sys
-
-            print(
-                f"[anti-loop-diag] available={[a.name for a in available_actions]} "
-                f"forbidden={forbidden} (len_avail={len(available_actions)})",
-                file=sys.stderr,
-            )
         return forbidden, summary
 
 
