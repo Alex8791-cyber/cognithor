@@ -55,6 +55,9 @@ if TYPE_CHECKING:
         ActionDecoder,
     )
     from cognithor.channels.program_synthesis.arc_agi3.audit import ArcAuditTrail
+    from cognithor.channels.program_synthesis.arc_agi3.click_target_sampler import (
+        ClickTargetSampler,
+    )
     from cognithor.channels.program_synthesis.arc_agi3.frame_analyzer import (
         FrameAnalyzer,
     )
@@ -88,6 +91,7 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         strategy_name: str = "sprint10_dsl",
         frame_analyzer: FrameAnalyzer | None = None,
         fast_path_enabled: bool = False,
+        click_target_sampler: ClickTargetSampler | None = None,
     ) -> None:
         self._bridge = bridge if bridge is not None else FrameBridge()
         self._memory = memory if memory is not None else EpisodeMemory()
@@ -133,6 +137,13 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         # search when the most recent transition reveals a toggle pair.
         self._fast_path_enabled = fast_path_enabled
         self._click_cache: ClickPlanCache | None = ClickPlanCache() if fast_path_enabled else None
+        # Sprint-12 PR-13: salience-ranked click-target sampler. When
+        # ACTION6 is available and the toggle fast-path can't fire (no
+        # toggle pair observed), this picks a click coordinate from the
+        # smallest non-background object instead of a uniform-random one.
+        # Reset on level transition so visited-set doesn't leak across
+        # levels.
+        self._click_target_sampler = click_target_sampler
 
     @property
     def memory(self) -> EpisodeMemory:
@@ -194,6 +205,8 @@ class Sprint10DSLAgent(CognithorPSEAgent):
             self._state_graph = type(self._state_graph)()  # fresh graph
             if self._frame_analyzer is not None:
                 self._frame_analyzer.reset_for_new_level()
+            if self._click_target_sampler is not None:
+                self._click_target_sampler.reset_for_new_level()
             self._pending_action_name = None
             self._prev_grid = None
             self._prev_state_hash = None
@@ -232,17 +245,23 @@ class Sprint10DSLAgent(CognithorPSEAgent):
                 if self._prev_state_hash == current_hash:
                     self._state_counter.mark_dead(self._prev_state_hash, self._pending_action_name)
 
-        # Step 3a — try the fast-path planner if enabled. The planner
-        # only fires when ACTION6 is available AND we've seen a clean
-        # toggle pair in the last two frames AND the planner finds a
-        # winning click sequence. On a miss it returns None and we fall
-        # through to the regular DSL decoder unchanged.
+        # Step 3a — try the toggle-fast-path planner if enabled. The
+        # planner only fires when ACTION6 is available AND we've seen a
+        # clean toggle pair in the last two frames AND the planner finds
+        # a winning click sequence. On a miss it returns None.
         chosen: GameActionProtocol | None = None
         if self._click_cache is not None:
             chosen = self._try_fast_path(latest_frame, current_grid, current_hash)
 
-        # Step 3b — delegate to the DSL decoder when the fast-path
-        # didn't fire.
+        # Step 3b — try the salience-based click sampler. Fires only when
+        # the toggle fast-path didn't, ACTION6 is available, and the
+        # sampler has a non-empty queue. Useful for "click target"
+        # games where there's no toggle pair to detect.
+        if chosen is None and self._click_target_sampler is not None:
+            chosen = self._try_click_target(latest_frame, current_grid)
+
+        # Step 3c — delegate to the DSL decoder when no click sampler
+        # fired.
         if chosen is None:
             chosen = self._decoder.decode(frames, latest_frame)
 
@@ -353,6 +372,35 @@ class Sprint10DSLAgent(CognithorPSEAgent):
             f"Sprint10DSLAgent fast-path: plan_click_solution "
             f"({source_color}->{target_color}) → click ({x},{y})"
         )
+        return click_action
+
+    def _try_click_target(
+        self,
+        latest_frame: FrameDataProtocol,
+        current_grid: np.ndarray[Any, Any],
+    ) -> GameActionProtocol | None:
+        """Salience-based click target sampling.
+
+        For "click target" games (no toggle pair, just "click the right
+        object"). Returns ACTION6 with the next salient ``(x, y)`` from
+        :class:`ClickTargetSampler`, or ``None`` when ACTION6 isn't
+        available or the sampler queue is empty.
+        """
+        if self._click_target_sampler is None:
+            return None
+        click_action: GameActionProtocol | None = None
+        for action in latest_frame.available_actions:
+            if action.name == "ACTION6":
+                click_action = action
+                break
+        if click_action is None:
+            return None
+        click_xy = self._click_target_sampler.next_click(current_grid)
+        if click_xy is None:
+            return None
+        x, y = click_xy
+        click_action.set_data({"x": int(x), "y": int(y)})
+        click_action.reasoning = f"Sprint10DSLAgent click-target sampler → click ({x},{y})"
         return click_action
 
 
