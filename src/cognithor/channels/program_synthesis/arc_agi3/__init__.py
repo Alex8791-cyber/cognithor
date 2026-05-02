@@ -57,6 +57,7 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
 )
 from cognithor.channels.program_synthesis.arc_agi3.llm_agent import (
     LLMReasoningAgent,
+    build_inprocess_vllm_choice_fn,
     build_vllm_choice_fn,
 )
 from cognithor.channels.program_synthesis.arc_agi3.protocol import (
@@ -94,6 +95,7 @@ __all__ = [
     "Sprint10DSLAgent",
     "StuckDetector",
     "UniformActionDecoder",
+    "build_inprocess_vllm_choice_fn",
     "build_vllm_choice_fn",
     "cognithor_agent_factory",
     "count_actions",

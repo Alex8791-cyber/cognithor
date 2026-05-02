@@ -67,7 +67,7 @@ def _build_user_prompt(ctx: FrameContext) -> str:
 def build_vllm_choice_fn(
     *,
     backend: LLMBackend,
-    model_name: str = "Qwen/Qwen3.6-27B-FP8",
+    model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
     temperature: float = 0.3,
     timeout_seconds: float = 8.0,
 ) -> ChoiceFn:
@@ -116,6 +116,96 @@ def build_vllm_choice_fn(
     return _sync_choice
 
 
+def build_inprocess_vllm_choice_fn(
+    *,
+    model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
+    max_model_len: int = 32768,
+    max_num_seqs: int = 64,
+    gpu_memory_utilization: float = 0.92,
+    enforce_eager: bool = False,
+    cuda_home: str = "/usr/local/cuda-13.0",
+    temperature: float = 0.3,
+    max_tokens: int = 2048,
+) -> ChoiceFn:
+    """Sprint-12 production factory: in-process vLLM (no HTTP).
+
+    Validated 2026-05-02 on RTX 5090 + WSL2 + CUDA 13.0:
+    50 tok/s decode, 240 tok/s prefill, 370-400 W sustained. The
+    in-process path sidesteps the WSL2 mirror-mode networking quirk
+    that breaks vLLM's uvicorn HTTP server (TCP listen but accept()
+    deadlocks).
+
+    Loads the engine on first call. Subsequent calls reuse the
+    warmed-up model. Parses Qwen3.6's ``<think>...</think>{json}``
+    output format — the thinking block is stripped before JSON parse.
+
+    Use this when running Cognithor inside the same Python process as
+    vLLM (typical: WSL2 with vllm + cognithor in one venv). Use the
+    HTTP-based :func:`build_vllm_choice_fn` only if vLLM runs in a
+    separate process on a host where TCP works.
+    """
+    import os as _os
+
+    if cuda_home and _os.path.isdir(cuda_home):
+        _os.environ.setdefault("CUDA_HOME", cuda_home)
+        _os.environ["PATH"] = f"{cuda_home}/bin:{_os.environ.get('PATH', '')}"
+
+    # Heavy imports at first call to keep the module import-clean on
+    # hosts without vllm installed.
+    _engine_state: dict[str, Any] = {}
+
+    def _ensure_engine() -> tuple[Any, Any]:
+        if "llm" in _engine_state:
+            return _engine_state["llm"], _engine_state["sampling"]
+        try:
+            from vllm import LLM, SamplingParams  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise RuntimeError(
+                "vllm is not installed. Run `pip install vllm` inside a "
+                "Linux + CUDA-capable venv (WSL2 Ubuntu 24.04 verified)."
+            ) from exc
+        llm = LLM(
+            model=model_name,
+            max_model_len=max_model_len,
+            gpu_memory_utilization=gpu_memory_utilization,
+            max_num_seqs=max_num_seqs,
+            enforce_eager=enforce_eager,
+            dtype="auto",
+        )
+        sampling = SamplingParams(temperature=temperature, max_tokens=max_tokens)
+        _engine_state["llm"] = llm
+        _engine_state["sampling"] = sampling
+        return llm, sampling
+
+    def _sync_choice(ctx: FrameContext) -> tuple[str, str]:
+        llm, sampling = _ensure_engine()
+        outs = llm.chat(
+            messages=[
+                {"role": "system", "content": _LLM_SYSTEM_PROMPT},
+                {"role": "user", "content": _build_user_prompt(ctx)},
+            ],
+            sampling_params=sampling,
+        )
+        text = outs[0].outputs[0].text
+        # Qwen3.6 thinking-mode wraps reasoning in <think>…</think>{json}.
+        # Strip the thinking section before JSON parse so the action
+        # extraction is unambiguous.
+        if "</think>" in text:
+            text = text.split("</think>", 1)[1].strip()
+        start = text.find("{")
+        end = text.rfind("}")
+        if start < 0 or end <= start:
+            raise ValueError(f"LLM response missing JSON block: {text[:200]!r}")
+        parsed: dict[str, Any] = json.loads(text[start : end + 1])
+        action_name = str(parsed.get("action", "")).strip()
+        reasoning = str(parsed.get("reasoning", "")).strip()
+        if not action_name:
+            raise ValueError(f"LLM response missing 'action' field: {parsed!r}")
+        return action_name, reasoning
+
+    return _sync_choice
+
+
 class LLMReasoningAgent(Sprint10DSLAgent):
     """Wave-5: Sprint10DSLAgent with the decoder swapped for an LLM-driven one.
 
@@ -148,5 +238,6 @@ class LLMReasoningAgent(Sprint10DSLAgent):
 
 __all__ = [
     "LLMReasoningAgent",
+    "build_inprocess_vllm_choice_fn",
     "build_vllm_choice_fn",
 ]
