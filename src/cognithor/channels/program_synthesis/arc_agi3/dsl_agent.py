@@ -55,6 +55,9 @@ if TYPE_CHECKING:
         ActionDecoder,
     )
     from cognithor.channels.program_synthesis.arc_agi3.audit import ArcAuditTrail
+    from cognithor.channels.program_synthesis.arc_agi3.frame_analyzer import (
+        FrameAnalyzer,
+    )
     from cognithor.channels.program_synthesis.arc_agi3.game_profile import GameProfile
     from cognithor.channels.program_synthesis.arc_agi3.protocol import (
         FrameDataProtocol,
@@ -83,6 +86,7 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         audit_trail: ArcAuditTrail | None = None,
         game_profile: GameProfile | None = None,
         strategy_name: str = "sprint10_dsl",
+        frame_analyzer: FrameAnalyzer | None = None,
         fast_path_enabled: bool = False,
     ) -> None:
         self._bridge = bridge if bridge is not None else FrameBridge()
@@ -113,6 +117,17 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         self._strategy_name = strategy_name
         self._audit_started = False
         self._step_count = 0
+        # Sprint-12 PR-11: track levels_completed so we can detect a
+        # level-transition and reset per-level state (memory, state-keyed
+        # counts, state-graph) without losing the cross-level audit trail
+        # or game-profile aggregates.
+        self._last_levels_seen: int | None = None
+        # Sprint-12 PR-5: per-action movement-signature tracker. When a
+        # FrameAnalyzer is wired in, choose_action feeds it each
+        # observation so it can build a model of "ACTION3 → moves down"
+        # over time. Action effects survive level boundaries; positions
+        # don't.
+        self._frame_analyzer = frame_analyzer
         # Sprint-12 PR-8: pure-NumPy click-toggle fast-path. Disabled by
         # default; enable via constructor flag to short-circuit the DSL
         # search when the most recent transition reveals a toggle pair.
@@ -156,6 +171,32 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         # harness logs and retries one frame later if this happens.
         current_grid = self._bridge.extract_grid(latest_frame)
         current_hash = hash_state(current_grid)
+
+        # Step 1a — feed the FrameAnalyzer (if wired) so the per-action
+        # movement-signature model stays current. The action tag is the
+        # PREVIOUS action (the one whose result we are now observing),
+        # which matches FrameAnalyzer's semantics.
+        if self._frame_analyzer is not None:
+            self._frame_analyzer.analyze(current_grid, action=self._pending_action_name)
+
+        # Step 1b — detect a level transition. When ``levels_completed``
+        # increased since the last call, reset the per-level state
+        # (EpisodeMemory + StateActionCounter + StateGraph). The
+        # FrameAnalyzer's reset_for_new_level() preserves learned action
+        # effects but clears position tracking. Audit trail + GameProfile
+        # are deliberately NOT reset — they aggregate across levels.
+        if (
+            self._last_levels_seen is not None
+            and latest_frame.levels_completed > self._last_levels_seen
+        ):
+            self._memory.clear()
+            self._state_counter.clear()
+            self._state_graph = type(self._state_graph)()  # fresh graph
+            if self._frame_analyzer is not None:
+                self._frame_analyzer.reset_for_new_level()
+            self._pending_action_name = None
+            self._prev_grid = None
+            self._prev_state_hash = None
 
         # Step 2 — record the previous step in the memory if we
         # already chose an action. The grid we pair with the
@@ -214,6 +255,7 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         self._pending_levels = latest_frame.levels_completed
         self._prev_grid = current_grid
         self._prev_state_hash = current_hash
+        self._last_levels_seen = latest_frame.levels_completed
 
         # Step 6 — log the step into the audit trail when one is wired.
         if self._audit_trail is not None:
@@ -236,6 +278,11 @@ class Sprint10DSLAgent(CognithorPSEAgent):
             self._step_count += 1
 
         return chosen
+
+    @property
+    def frame_analyzer(self) -> FrameAnalyzer | None:
+        """Read-only access to the wired FrameAnalyzer (or None)."""
+        return self._frame_analyzer
 
     def finalize_episode(
         self,

@@ -38,6 +38,9 @@ if TYPE_CHECKING:
     from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
         EpisodeMemory,
     )
+    from cognithor.channels.program_synthesis.arc_agi3.frame_analyzer import (
+        FrameAnalyzer,
+    )
     from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import FrameBridge
     from cognithor.channels.program_synthesis.arc_agi3.protocol import (
         FrameDataProtocol,
@@ -56,6 +59,11 @@ class FrameContext:
     callable returns ``(action_name, reasoning)``; the decoder
     matches the name against ``available_actions`` and returns the
     matching action.
+
+    ``action_effects_summary`` is an optional one-line description of
+    what each action has historically done (Sprint-12 PR-12 — fed by
+    a wired :class:`FrameAnalyzer`). Empty string when no analyser is
+    wired or no observations have been recorded yet.
     """
 
     grid: _Grid
@@ -63,6 +71,7 @@ class FrameContext:
     history_summary: str
     levels_completed: int
     win_levels: int
+    action_effects_summary: str = ""
 
 
 # A callable that takes a :class:`FrameContext` and returns
@@ -82,6 +91,31 @@ def render_grid(grid: _Grid) -> str:
     if grid.ndim != 2:
         raise ValueError(f"render_grid: expected 2-D grid, got {grid.ndim}-D")
     return "\n".join(" ".join(str(int(c)) for c in row) for row in grid)
+
+
+def summarise_action_effects(analyzer: FrameAnalyzer, *, max_actions: int = 6) -> str:
+    """Compact one-line summary of FrameAnalyzer's per-action effect model.
+
+    Format: ``"ACTION1: row+1, col+0 (n=4); ACTION3: row+0, col-1 (n=2); ..."``.
+    Empty observations yield ``"(no action effects observed yet)"``.
+
+    The Sprint-12 :class:`Sprint10DSLAgent` feeds a wired :class:`FrameAnalyzer`
+    each frame; this helper formats its accumulated knowledge into a string the
+    LLM can read in the next prompt. Knowing "ACTION3 has historically moved
+    your sprite down" is critical for keyboard-controlled games where the
+    upstream API doesn't announce what each ``ACTIONx`` does.
+    """
+    summary = analyzer.get_action_summary()
+    if not summary:
+        return "(no action effects observed yet)"
+    items = sorted(summary.items(), key=lambda kv: -kv[1]["count"])[:max_actions]
+    parts: list[str] = []
+    for name, stats in items:
+        row = stats["avg_direction_row"]
+        col = stats["avg_direction_col"]
+        n = int(stats["count"])
+        parts.append(f"{name}: row{row:+.0f}, col{col:+.0f} (n={n})")
+    return "; ".join(parts)
 
 
 def summarise_history(memory: EpisodeMemory, max_steps: int = 8) -> str:
@@ -132,12 +166,16 @@ class LLMActionDecoder(ActionDecoder):
         choice_fn: ChoiceFn,
         fallback: ActionDecoder | None = None,
         history_steps: int = 8,
+        frame_analyzer: FrameAnalyzer | None = None,
     ) -> None:
         self._bridge = bridge
         self._memory = memory
         self._choice_fn = choice_fn
         self._fallback = fallback if fallback is not None else DSLActionDecoder(memory=memory)
         self._history_steps = history_steps
+        # Sprint-12 PR-12: optional FrameAnalyzer for per-action movement
+        # signatures fed into the LLM prompt. Default None preserves baseline.
+        self._frame_analyzer = frame_analyzer
 
     def pick_action(
         self,
@@ -153,12 +191,18 @@ class LLMActionDecoder(ActionDecoder):
                 f" [LLM bridge failed: {type(exc).__name__}]",
             )[0:0] or self._fallback.pick_action(frames, latest_frame, available_actions)
 
+        action_effects_summary = (
+            summarise_action_effects(self._frame_analyzer)
+            if self._frame_analyzer is not None
+            else ""
+        )
         ctx = FrameContext(
             grid=grid,
             available_action_names=[a.name for a in available_actions],
             history_summary=summarise_history(self._memory, self._history_steps),
             levels_completed=latest_frame.levels_completed,
             win_levels=latest_frame.win_levels,
+            action_effects_summary=action_effects_summary,
         )
 
         # Call the LLM (or stub). Failures fall back to the DSL decoder.
@@ -192,5 +236,6 @@ __all__ = [
     "FrameContext",
     "LLMActionDecoder",
     "render_grid",
+    "summarise_action_effects",
     "summarise_history",
 ]

@@ -33,6 +33,9 @@ from cognithor.channels.program_synthesis.arc_agi3.audit import (
     ArcAuditEvent,
     ArcAuditTrail,
 )
+from cognithor.channels.program_synthesis.arc_agi3.click_target_sampler import (
+    ClickTargetSampler,
+)
 from cognithor.channels.program_synthesis.arc_agi3.dsl_action_decoder import (
     DSLActionDecoder,
 )
@@ -86,6 +89,11 @@ from cognithor.channels.program_synthesis.arc_agi3.protocol import (
     GameActionProtocol,
     GameStateProtocol,
 )
+from cognithor.channels.program_synthesis.arc_agi3.runner import (
+    EpisodeResult,
+    EpisodeRunner,
+    run_episode,
+)
 from cognithor.channels.program_synthesis.arc_agi3.scorecard import (
     GameResult,
     ScorecardSummary,
@@ -105,10 +113,13 @@ __all__ = [
     "ChangeDetector",
     "ChoiceFn",
     "ClampPolicy",
+    "ClickTargetSampler",
     "Cluster",
     "CognithorPSEAgent",
     "DSLActionDecoder",
     "EpisodeMemory",
+    "EpisodeResult",
+    "EpisodeRunner",
     "EpisodeStep",
     "FrameAnalyzer",
     "FrameBridge",
@@ -141,6 +152,7 @@ __all__ = [
     "parse_scorecard",
     "plan_click_solution",
     "render_grid",
+    "run_episode",
     "simulate_combo",
     "simulate_toggle",
     "summarise",
