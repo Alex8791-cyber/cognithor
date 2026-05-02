@@ -191,12 +191,24 @@ def build_inprocess_vllm_planning_choice_fn(
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
     max_tokens: int = 4096,
+    kv_cache_dtype: str | None = None,
+    speculative_config: dict[str, Any] | None = None,
 ) -> Any:
     """In-process vLLM planning choice-fn — production path.
 
     Loads the engine on first call; reuses on subsequent. ``max_tokens``
     defaults higher than the single-step variant because a 5-step plan
     needs more room.
+
+    Sprint-15 vLLM tuning knobs:
+
+    * ``kv_cache_dtype="fp8"`` — halves KV memory for ~5-10% decode
+      overhead. Big concurrency win on 32 GB GPUs.
+    * ``speculative_config={"model": "...", "num_speculative_tokens": 3}``
+      — MTP speculative decoding gives ~1.9× decode throughput on
+      Blackwell. Requires an MTP-aware checkpoint (e.g. ``*-NVFP4-MTP``
+      family). Note: those checkpoints are text-only — incompatible
+      with the vision factory.
     """
     import os as _os
 
@@ -215,14 +227,19 @@ def build_inprocess_vllm_planning_choice_fn(
             raise RuntimeError(
                 "vllm is not installed. Run `pip install vllm` inside a Linux + CUDA-capable venv."
             ) from exc
-        llm = LLM(
-            model=model_name,
-            max_model_len=max_model_len,
-            gpu_memory_utilization=gpu_memory_utilization,
-            max_num_seqs=max_num_seqs,
-            enforce_eager=enforce_eager,
-            dtype="auto",
-        )
+        llm_kwargs: dict[str, Any] = {
+            "model": model_name,
+            "max_model_len": max_model_len,
+            "gpu_memory_utilization": gpu_memory_utilization,
+            "max_num_seqs": max_num_seqs,
+            "enforce_eager": enforce_eager,
+            "dtype": "auto",
+        }
+        if kv_cache_dtype is not None:
+            llm_kwargs["kv_cache_dtype"] = kv_cache_dtype
+        if speculative_config is not None:
+            llm_kwargs["speculative_config"] = speculative_config
+        llm = LLM(**llm_kwargs)
         sampling = SamplingParams(temperature=temperature, max_tokens=max_tokens)
         _engine_state["llm"] = llm
         _engine_state["sampling"] = sampling
@@ -303,6 +320,7 @@ def build_inprocess_vllm_vision_planning_choice_fn(
     temperature: float = 0.3,
     max_tokens: int = 4096,
     grid_scale: int = 8,
+    kv_cache_dtype: str | None = None,
 ) -> Any:
     """Vision-mode planning choice-fn: feed Qwen3.6 the grid as a PNG.
 
@@ -331,14 +349,20 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             raise RuntimeError(
                 "vllm is not installed. Run `pip install vllm` inside a Linux + CUDA-capable venv."
             ) from exc
-        llm = LLM(
-            model=model_name,
-            max_model_len=max_model_len,
-            gpu_memory_utilization=gpu_memory_utilization,
-            max_num_seqs=max_num_seqs,
-            enforce_eager=enforce_eager,
-            dtype="auto",
-        )
+        llm_kwargs: dict[str, Any] = {
+            "model": model_name,
+            "max_model_len": max_model_len,
+            "gpu_memory_utilization": gpu_memory_utilization,
+            "max_num_seqs": max_num_seqs,
+            "enforce_eager": enforce_eager,
+            "dtype": "auto",
+        }
+        # Sprint-15 vLLM tuning: opt-in FP8 KV cache. MTP not supported
+        # for the vision factory because vision-NVFP4-MTP checkpoints
+        # don't exist as of 2026-05-02 (MTP variants are text-only).
+        if kv_cache_dtype is not None:
+            llm_kwargs["kv_cache_dtype"] = kv_cache_dtype
+        llm = LLM(**llm_kwargs)
         sampling = SamplingParams(temperature=temperature, max_tokens=max_tokens)
         _engine_state["llm"] = llm
         _engine_state["sampling"] = sampling

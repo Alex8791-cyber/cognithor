@@ -156,6 +156,8 @@ def build_inprocess_vllm_choice_fn(
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
     max_tokens: int = 2048,
+    kv_cache_dtype: str | None = None,
+    speculative_config: dict[str, Any] | None = None,
 ) -> ChoiceFn:
     """Sprint-12 production factory: in-process vLLM (no HTTP).
 
@@ -194,14 +196,24 @@ def build_inprocess_vllm_choice_fn(
                 "vllm is not installed. Run `pip install vllm` inside a "
                 "Linux + CUDA-capable venv (WSL2 Ubuntu 24.04 verified)."
             ) from exc
-        llm = LLM(
-            model=model_name,
-            max_model_len=max_model_len,
-            gpu_memory_utilization=gpu_memory_utilization,
-            max_num_seqs=max_num_seqs,
-            enforce_eager=enforce_eager,
-            dtype="auto",
-        )
+        llm_kwargs: dict[str, Any] = {
+            "model": model_name,
+            "max_model_len": max_model_len,
+            "gpu_memory_utilization": gpu_memory_utilization,
+            "max_num_seqs": max_num_seqs,
+            "enforce_eager": enforce_eager,
+            "dtype": "auto",
+        }
+        # Sprint-15 vLLM tuning: opt-in FP8 KV cache halves KV memory
+        # footprint at <1% quality loss, enables much higher concurrency.
+        if kv_cache_dtype is not None:
+            llm_kwargs["kv_cache_dtype"] = kv_cache_dtype
+        # Sprint-15 vLLM tuning: opt-in MTP speculative decoding gives
+        # ~1.9× decode throughput on Blackwell-class GPUs. Requires an
+        # MTP-aware checkpoint (e.g. *-NVFP4-MTP family).
+        if speculative_config is not None:
+            llm_kwargs["speculative_config"] = speculative_config
+        llm = LLM(**llm_kwargs)
         sampling = SamplingParams(temperature=temperature, max_tokens=max_tokens)
         _engine_state["llm"] = llm
         _engine_state["sampling"] = sampling
