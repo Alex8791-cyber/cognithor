@@ -88,6 +88,17 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_agent import (
     build_inprocess_vllm_choice_fn,
     build_vllm_choice_fn,
 )
+from cognithor.channels.program_synthesis.arc_agi3.planning_agent import (
+    PlanningLLMReasoningAgent,
+    build_inprocess_vllm_planning_choice_fn,
+    build_inprocess_vllm_vision_planning_choice_fn,
+    build_vllm_planning_choice_fn,
+    parse_plan_response,
+)
+from cognithor.channels.program_synthesis.arc_agi3.planning_decoder import (
+    PlanningLLMActionDecoder,
+    PlanStep,
+)
 from cognithor.channels.program_synthesis.arc_agi3.protocol import (
     FrameDataProtocol,
     GameActionProtocol,
@@ -109,8 +120,15 @@ from cognithor.channels.program_synthesis.arc_agi3.state_graph import (
     StateGraphNavigator,
     StateNode,
 )
+from cognithor.channels.program_synthesis.arc_agi3.vision_render import (
+    ARC_PALETTE,
+    render_grid_data_uri,
+    render_grid_image,
+    render_grid_png_bytes,
+)
 
 __all__ = [
+    "ARC_PALETTE",
     "ActionDecoder",
     "ArcAuditEvent",
     "ArcAuditTrail",
@@ -138,6 +156,9 @@ __all__ = [
     "LLMActionDecoder",
     "LLMReasoningAgent",
     "MovementInfo",
+    "PlanStep",
+    "PlanningLLMActionDecoder",
+    "PlanningLLMReasoningAgent",
     "RandomActionAgent",
     "ScorecardSummary",
     "Sprint10DSLAgent",
@@ -148,16 +169,23 @@ __all__ = [
     "StuckDetector",
     "UniformActionDecoder",
     "build_inprocess_vllm_choice_fn",
+    "build_inprocess_vllm_planning_choice_fn",
+    "build_inprocess_vllm_vision_planning_choice_fn",
     "build_vllm_choice_fn",
+    "build_vllm_planning_choice_fn",
     "cognithor_agent_factory",
     "count_actions",
     "detect_toggle_pair",
     "find_clusters",
     "infer_goal_summary",
     "is_level_complete",
+    "parse_plan_response",
     "parse_scorecard",
     "plan_click_solution",
     "render_grid",
+    "render_grid_data_uri",
+    "render_grid_image",
+    "render_grid_png_bytes",
     "run_episode",
     "simulate_combo",
     "simulate_toggle",
