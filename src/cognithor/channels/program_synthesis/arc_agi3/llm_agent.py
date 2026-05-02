@@ -170,7 +170,7 @@ def build_inprocess_vllm_choice_fn(
     model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
     max_model_len: int = 32768,
     max_num_seqs: int = 4,
-    gpu_memory_utilization: float = 0.90,
+    gpu_memory_utilization: float = 0.95,
     enforce_eager: bool = False,
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
