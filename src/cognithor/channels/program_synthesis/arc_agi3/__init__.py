@@ -21,9 +21,17 @@ plugs in the live arcengine types when running against the official
 harness.
 """
 
+from cognithor.channels.program_synthesis.arc_agi3.action_decoder import (
+    ActionDecoder,
+    UniformActionDecoder,
+)
 from cognithor.channels.program_synthesis.arc_agi3.agent import (
     CognithorPSEAgent,
     RandomActionAgent,
+)
+from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import (
+    ClampPolicy,
+    FrameBridge,
 )
 from cognithor.channels.program_synthesis.arc_agi3.protocol import (
     FrameDataProtocol,
@@ -32,9 +40,13 @@ from cognithor.channels.program_synthesis.arc_agi3.protocol import (
 )
 
 __all__ = [
+    "ActionDecoder",
+    "ClampPolicy",
     "CognithorPSEAgent",
+    "FrameBridge",
     "FrameDataProtocol",
     "GameActionProtocol",
     "GameStateProtocol",
     "RandomActionAgent",
+    "UniformActionDecoder",
 ]
