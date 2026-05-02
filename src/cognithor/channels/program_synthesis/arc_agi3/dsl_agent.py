@@ -25,7 +25,7 @@ GAME_OVER policies (e.g. retry loops).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -94,7 +94,7 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         self._pending_levels: int | None = None
         # Cache the previous-frame grid so we can detect no-op transitions
         # and feed the StateGraphNavigator with full (from, action, to) tuples.
-        self._prev_grid: np.ndarray | None = None
+        self._prev_grid: np.ndarray[Any, Any] | None = None
         self._prev_state_hash: str | None = None
 
     @property
@@ -141,8 +141,14 @@ class Sprint10DSLAgent(CognithorPSEAgent):
                 action_name=self._pending_action_name,
                 levels_completed=latest_frame.levels_completed,
             )
-            # State-graph: record the (from, action, to) edge.
-            if self._prev_grid is not None and self._prev_state_hash is not None:
+            # State-graph: record the (from, action, to) edge. Skip when
+            # the grid shape changed (e.g. across a level boundary) — the
+            # graph only models intra-level transitions.
+            if (
+                self._prev_grid is not None
+                and self._prev_state_hash is not None
+                and self._prev_grid.shape == current_grid.shape
+            ):
                 pixels_changed = int(np.sum(self._prev_grid != current_grid))
                 self._state_graph.add_transition(
                     from_grid=self._prev_grid,
