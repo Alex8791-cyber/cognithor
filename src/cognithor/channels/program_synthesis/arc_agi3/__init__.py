@@ -70,6 +70,11 @@ from cognithor.channels.program_synthesis.arc_agi3.scorecard import (
     parse_scorecard,
     summarise,
 )
+from cognithor.channels.program_synthesis.arc_agi3.state_graph import (
+    StateEdge,
+    StateGraphNavigator,
+    StateNode,
+)
 
 __all__ = [
     "ActionDecoder",
@@ -92,6 +97,9 @@ __all__ = [
     "RandomActionAgent",
     "ScorecardSummary",
     "Sprint10DSLAgent",
+    "StateEdge",
+    "StateGraphNavigator",
+    "StateNode",
     "StuckDetector",
     "UniformActionDecoder",
     "build_vllm_choice_fn",
