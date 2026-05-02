@@ -43,6 +43,10 @@ from typing import Any
 # the Markdown output. Wilson 95 % CI at p≈0.6, n=100 ≈ ±0.095 — the
 # coarsest cut we'll still treat as informative for visual comparison.
 MIN_DRAFTS_PER_POSITION = 100
+# Minimum step count for the within-episode acceptance drift split
+# (1st half vs 2nd half). Below 8 steps the half-mean is dominated
+# by single outliers and produces false-positive drift flags.
+MIN_STEPS_FOR_DRIFT_SPLIT = 8
 
 
 def _load_episode(path: Path) -> list[dict[str, Any]]:
@@ -81,7 +85,10 @@ def _per_episode_stats(events: list[dict[str, Any]]) -> dict[str, Any]:
     if rates:
         out["acceptance_rate_per_step_mean"] = statistics.fmean(rates)
         # Drift inside the episode: split first-half vs second-half.
-        if len(rates) >= 4:
+        # Skip below MIN_STEPS_FOR_DRIFT_SPLIT — short episodes let a
+        # single noisy step swing the half-mean by 0.2+ and produce
+        # false-positive drift flags.
+        if len(rates) >= MIN_STEPS_FOR_DRIFT_SPLIT:
             mid = len(rates) // 2
             out["acceptance_first_half"] = statistics.fmean(rates[:mid])
             out["acceptance_second_half"] = statistics.fmean(rates[mid:])
