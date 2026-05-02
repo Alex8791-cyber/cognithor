@@ -546,7 +546,10 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         "--llm-model",
         type=str,
         default="sakamakismile/Qwen3.6-27B-NVFP4",
-        help=("LLM model name as registered with the vLLM server (default: sakamakismile/Qwen3.6-27B-NVFP4)."),
+        help=(
+            "LLM model name as registered with the vLLM server "
+            "(default: sakamakismile/Qwen3.6-27B-NVFP4)."
+        ),
     )
     return parser.parse_args(argv)
 
