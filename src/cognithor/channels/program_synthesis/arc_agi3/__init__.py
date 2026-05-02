@@ -89,6 +89,11 @@ from cognithor.channels.program_synthesis.arc_agi3.protocol import (
     GameActionProtocol,
     GameStateProtocol,
 )
+from cognithor.channels.program_synthesis.arc_agi3.runner import (
+    EpisodeResult,
+    EpisodeRunner,
+    run_episode,
+)
 from cognithor.channels.program_synthesis.arc_agi3.scorecard import (
     GameResult,
     ScorecardSummary,
@@ -113,6 +118,8 @@ __all__ = [
     "CognithorPSEAgent",
     "DSLActionDecoder",
     "EpisodeMemory",
+    "EpisodeResult",
+    "EpisodeRunner",
     "EpisodeStep",
     "FrameAnalyzer",
     "FrameBridge",
@@ -145,6 +152,7 @@ __all__ = [
     "parse_scorecard",
     "plan_click_solution",
     "render_grid",
+    "run_episode",
     "simulate_combo",
     "simulate_toggle",
     "summarise",
