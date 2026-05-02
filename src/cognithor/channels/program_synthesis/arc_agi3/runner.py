@@ -177,9 +177,7 @@ class EpisodeRunner:
                 # test-stub) or ``action_data`` (live arcengine).
                 step_action, step_data = self._action_payload(action)
                 if step_data is not None:
-                    latest = self._normalize_frame(
-                        env.step(step_action, data=step_data)
-                    )
+                    latest = self._normalize_frame(env.step(step_action, data=step_data))
                 else:
                     latest = self._normalize_frame(env.step(step_action))
                 frames.append(latest)
