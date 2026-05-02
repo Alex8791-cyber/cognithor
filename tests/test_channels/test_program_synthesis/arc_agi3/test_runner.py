@@ -202,15 +202,15 @@ class TestEpisodeRunnerErrorPaths:
 
 
 class TestActionPayload:
-    def test_simple_action_passes_value_only(self) -> None:
+    def test_simple_action_returns_action_and_no_data(self) -> None:
         action = _StubAction(name="ACTION1", value=1)
-        payload = EpisodeRunner._action_payload(action)
-        assert payload == (1,)
+        step_action, step_data = EpisodeRunner._action_payload(action)
+        assert step_action is action
+        assert step_data is None
 
-    def test_complex_action_passes_data(self) -> None:
+    def test_complex_action_returns_action_and_data(self) -> None:
         action = _StubAction(name="ACTION6", value=6, _is_simple=False)
         action.set_data({"x": 5, "y": 7})
-        payload = EpisodeRunner._action_payload(action)
-        assert payload[0] == 6
-        assert payload[1]["data"]["x"] == 5
-        assert payload[1]["data"]["y"] == 7
+        step_action, step_data = EpisodeRunner._action_payload(action)
+        assert step_action is action
+        assert step_data == {"x": 5, "y": 7}

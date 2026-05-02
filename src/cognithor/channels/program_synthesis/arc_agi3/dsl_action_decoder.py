@@ -90,6 +90,15 @@ class DSLActionDecoder(ActionDecoder):
                         "RESET to escape the loop"
                     )
 
+        # Filter out complex actions (ACTION6, ACTION7) — they need
+        # ``set_data({"x": .., "y": ..})`` coords, which the DSL decoder
+        # does NOT produce. The fast-path / click-target sampler / LLM
+        # are the only paths that should ever emit complex actions. If
+        # we let one slip through, env.step crashes with KeyError 'x'.
+        simple_actions = [
+            a for a in available_actions if not getattr(a, "is_complex", lambda: False)()
+        ]
+
         # Step 2 — Sprint-12 state-keyed prioritisation when available.
         # Picks the action that has been tried fewest times **from the
         # current state**, skipping any action proven dead from that
@@ -99,7 +108,7 @@ class DSLActionDecoder(ActionDecoder):
         if self._state_counter is not None and last_step is not None:
             current_hash = hash_state(last_step.grid)
             dead_here = self._state_counter.all_dead_actions(current_hash)
-            live = [a for a in available_actions if a.name != "RESET" and a.name not in dead_here]
+            live = [a for a in simple_actions if a.name != "RESET" and a.name not in dead_here]
             if live:
                 best = min(
                     live,
@@ -114,7 +123,7 @@ class DSLActionDecoder(ActionDecoder):
 
         # Step 3 — fallback (Wave-4): least-tried globally.
         counts = count_actions(self._memory)
-        candidates = [a for a in available_actions if a.name != "RESET"]
+        candidates = [a for a in simple_actions if a.name != "RESET"]
         if candidates:
             best = min(candidates, key=lambda a: counts.get(a.name, 0))
             best_count = counts.get(best.name, 0)
@@ -122,8 +131,16 @@ class DSLActionDecoder(ActionDecoder):
                 f"DSLActionDecoder: least-tried non-RESET ({best.name} picked {best_count}× so far)"
             )
 
-        # Step 4 — only RESET available.
-        return available_actions[0], ("DSLActionDecoder: only RESET available, picking it")
+        # Step 4 — only RESET (or only complex actions) available.
+        # Prefer a simple action when one exists (RESET); otherwise the
+        # first available is the only choice.
+        if simple_actions:
+            return simple_actions[0], (
+                "DSLActionDecoder: only RESET available among simple actions, picking it"
+            )
+        return available_actions[0], (
+            "DSLActionDecoder: no simple actions available, falling back to first option"
+        )
 
 
 __all__ = ["DSLActionDecoder"]
