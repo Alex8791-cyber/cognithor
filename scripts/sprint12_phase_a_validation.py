@@ -126,21 +126,26 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     mtp_stats = MTPStats()
     telemetry = LLMTelemetry()
     try:
-        # Sprint-15 Phase-A diagnostic baseline (run #8): MTP DISABLED.
+        # Sprint-15 Phase-A run #9: MTP-variant AS MAIN model.
         #
-        # Earlier Phase-A runs with MTP enabled (incl. greedy
-        # decoding) showed 0 % acceptance over 58 671 drafts —
-        # Outcome C in its extreme form, the drafter never agreed
-        # with the verifier. Hypothesised root cause: separate
-        # NVFP4 quantisation of main (`Qwen3.6-27B-NVFP4`) vs
-        # drafter (`Qwen3.6-27B-Text-NVFP4-MTP`) checkpoints
-        # produces enough numerical drift that even greedy argmax
-        # picks diverge.
+        # Run #7 (separate main + drafter checkpoints): 0 % acceptance
+        # over 58 671 drafts. Hypothesised cause: independent NVFP4
+        # quantisation passes of main vs drafter produce enough
+        # numerical drift for the drafter's argmax pick to never
+        # match the verifier's pick.
         #
-        # This run measures the no-MTP baseline so the next
-        # comparison (MTP-variant-as-main, MTP=2, etc.) has a
-        # ground-truth tokens/s to beat.
+        # Mitigation: load the MTP-aware checkpoint as the *main*
+        # model. vLLM logs from earlier runs already showed
+        # "Sharing target model embedding/lm_head weights with the
+        # draft model" — by making target and draft come from the
+        # SAME checkpoint, the MTP-head sees the same quantised
+        # weights as the verifier, so the argmax should align.
         choice_fn = build_inprocess_vllm_choice_fn(
+            model_name="sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
+            speculative_config={
+                "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
+                "num_speculative_tokens": 3,
+            },
             kv_cache_dtype="fp8",
             temperature=0.0,
             mtp_stats=mtp_stats,
