@@ -126,25 +126,21 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     mtp_stats = MTPStats()
     telemetry = LLMTelemetry()
     try:
-        # MTP speculative decoding for ~1.9× decode lift. The MTP-aware
-        # checkpoint and the speculative_config are matched: both must
-        # use the same num_speculative_tokens. The Text-NVFP4-MTP
-        # variant pairs with the base NVFP4 model — note the explicit
-        # `-Text-` infix (not the bare `-NVFP4-MTP` we initially
-        # assumed; that path 401s on HF as of 2026-05-02).
+        # Sprint-15 Phase-A diagnostic baseline (run #8): MTP DISABLED.
         #
-        # ``temperature=0.0`` (greedy): MTP-Acceptance kollabiert bei
-        # Sampling auf 0% (Live-Run 2026-05-02 Outcome C — 58 671
-        # Drafts, 0 akzeptiert). Greedy decoding macht den Verify-
-        # Schritt deterministisch und ist die einzige Konfiguration
-        # mit der MTP überhaupt eine Chance hat. Trade-Off: weniger
-        # Output-Diversität, aber für ARC-Reasoning ist Konsistenz
-        # ohnehin wertvoller als Sampling-Streuung.
+        # Earlier Phase-A runs with MTP enabled (incl. greedy
+        # decoding) showed 0 % acceptance over 58 671 drafts —
+        # Outcome C in its extreme form, the drafter never agreed
+        # with the verifier. Hypothesised root cause: separate
+        # NVFP4 quantisation of main (`Qwen3.6-27B-NVFP4`) vs
+        # drafter (`Qwen3.6-27B-Text-NVFP4-MTP`) checkpoints
+        # produces enough numerical drift that even greedy argmax
+        # picks diverge.
+        #
+        # This run measures the no-MTP baseline so the next
+        # comparison (MTP-variant-as-main, MTP=2, etc.) has a
+        # ground-truth tokens/s to beat.
         choice_fn = build_inprocess_vllm_choice_fn(
-            speculative_config={
-                "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
-                "num_speculative_tokens": 3,
-            },
             kv_cache_dtype="fp8",
             temperature=0.0,
             mtp_stats=mtp_stats,
