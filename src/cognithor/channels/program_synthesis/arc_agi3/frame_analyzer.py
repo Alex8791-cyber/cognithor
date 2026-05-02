@@ -77,7 +77,7 @@ class FrameAnalyzer:
         self._frame_count += 1
         movement: MovementInfo | None = None
 
-        if self._prev_grid is not None:
+        if self._prev_grid is not None and self._prev_grid.shape == grid.shape:
             diff = grid != self._prev_grid
             n_changed = int(np.sum(diff))
 

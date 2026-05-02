@@ -73,6 +73,9 @@ from cognithor.channels.program_synthesis.arc_agi3.goal_inferer import (
     GoalInferer,
     infer_goal_summary,
 )
+from cognithor.channels.program_synthesis.arc_agi3.graph_explorer import (
+    GraphExplorerAgent,
+)
 from cognithor.channels.program_synthesis.arc_agi3.harness_shim import (
     cognithor_agent_factory,
 )
@@ -135,6 +138,7 @@ __all__ = [
     "GameResult",
     "GameStateProtocol",
     "GoalInferer",
+    "GraphExplorerAgent",
     "LLMActionDecoder",
     "LLMReasoningAgent",
     "MovementInfo",
