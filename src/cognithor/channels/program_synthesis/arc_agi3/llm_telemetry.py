@@ -161,8 +161,21 @@ def extract_think_tokens(text: str) -> int:
     Qwen3.6 wraps its reasoning trace in ``<think>...</think>{json}``;
     this helper isolates the reasoning portion so the summary can
     distinguish "model thought a lot" from "model produced a long
-    answer". Returns 0 if no think block is present.
+    answer".
+
+    Edge case (length-truncation): when the model hits ``max_tokens``
+    mid-``<think>`` and never emits the closing ``</think>``, the
+    *entire* output is reasoning. Treat that as "all output is think"
+    rather than "no think" — those long-truncated calls are exactly
+    the diagnostic-richest ones for the workload-MTP-mismatch
+    hypothesis, and silently dropping them to ``think_tokens=0`` would
+    invert the signal in the Reasoning-vs-Output split.
     """
+    if "<think>" in text and "</think>" not in text:
+        # Truncation case: open tag but no close — count from after
+        # ``<think>`` to EOF.
+        head = text.split("<think>", 1)[1]
+        return estimate_token_count(head)
     if "</think>" not in text:
         return 0
     head, _, _ = text.partition("</think>")

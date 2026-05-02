@@ -59,6 +59,22 @@ class TestThinkExtraction:
         b = "<think>x" + "y" * 200 + "</think>after"
         assert extract_think_tokens(b) > extract_think_tokens(a)
 
+    def test_truncated_think_block_counts_full_output(self) -> None:
+        # length-truncation edge case: model hits max_tokens mid-think
+        # and never emits the closing tag. The whole output is
+        # reasoning — must NOT collapse to 0 (which would invert the
+        # Reasoning-vs-Output split exactly on the diagnostic-richest
+        # episodes).
+        long_reasoning = "Step by step analysis. " * 100
+        truncated = "<think>" + long_reasoning  # no closing </think>
+        n = extract_think_tokens(truncated)
+        assert n > 100  # roughly proportional to the reasoning length
+        # Sanity: complete block of the same content gives a similar
+        # count (within a small constant — the difference is whether
+        # the closing tag's chars are counted, which they shouldn't).
+        complete = truncated + "</think>{json}"
+        assert abs(extract_think_tokens(complete) - n) <= 2
+
 
 class TestTextWrapper:
     def test_records_one_call(self) -> None:
