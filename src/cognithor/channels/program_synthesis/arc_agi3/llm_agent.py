@@ -89,6 +89,20 @@ def _build_user_prompt(ctx: FrameContext) -> str:
         parts.append(f"Learned action effects: {ctx.action_effects_summary}")
     if ctx.goal_summary:
         parts.append(f"Goal hypothesis: {ctx.goal_summary}")
+    # Sprint-16 anti-loop: surface per-state action counts + the
+    # forbidden list so the LLM has a fighting chance of breaking out
+    # of the deterministic-loop trap. The post-LLM override enforces
+    # this even if the LLM ignores it, but the prompt-side hint is
+    # what gives the LLM enough state to reason about *why* it's
+    # being constrained.
+    if ctx.state_action_summary:
+        parts.append(f"At this state — action history: {ctx.state_action_summary}")
+    if ctx.forbidden_action_names:
+        forbidden_list = ", ".join(ctx.forbidden_action_names)
+        parts.append(
+            f"DO NOT pick: {forbidden_list} (already tried at this state without "
+            "useful effect; pick a DIFFERENT action)."
+        )
     parts.extend(
         [
             f"Progress: {ctx.levels_completed}/{ctx.win_levels} levels",
@@ -354,6 +368,12 @@ class LLMReasoningAgent(Sprint10DSLAgent):
         # decoder also takes an optional frame_analyzer for prompt-side
         # action-effects rendering (Sprint-12 PR-12) and a goal_inferer
         # for goal-hypothesis injection (Sprint-13 PR-1).
+        # Sprint-16: forward the parent's state_counter so the decoder
+        # can filter dead/repeat-saturated actions out of the LLM's
+        # choice set + override the LLM if it ignores the constraint.
+        # Without this the LLMActionDecoder produced the
+        # deterministic-loop trap that picked ACTION6 40× in a row in
+        # Phase-A.
         self._decoder = LLMActionDecoder(
             bridge=self._bridge,
             memory=self._memory,
@@ -361,6 +381,7 @@ class LLMReasoningAgent(Sprint10DSLAgent):
             history_steps=history_steps,
             goal_inferer=goal_inferer,
             frame_analyzer=self._frame_analyzer,
+            state_counter=self._state_counter,
         )
 
 

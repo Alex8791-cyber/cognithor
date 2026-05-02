@@ -30,6 +30,7 @@ from cognithor.channels.program_synthesis.arc_agi3.action_decoder import ActionD
 from cognithor.channels.program_synthesis.arc_agi3.dsl_action_decoder import (
     DSLActionDecoder,
 )
+from cognithor.channels.program_synthesis.arc_agi3.state_action_counts import hash_state
 
 if TYPE_CHECKING:
     import numpy as np
@@ -47,8 +48,21 @@ if TYPE_CHECKING:
         FrameDataProtocol,
         GameActionProtocol,
     )
+    from cognithor.channels.program_synthesis.arc_agi3.state_action_counts import (
+        StateActionCounter,
+    )
 
     _Grid = NDArray[np.int8]
+
+
+# Sprint-16 anti-loop: how many times the SAME (state, action) combo
+# may be picked before the decoder treats it as dead even without an
+# explicit no-op observation. Conservative — `mark_dead` from the
+# parent agent's no-op detector usually fires faster, this is a
+# fallback for states where the action *does* change pixels but not
+# in a way that helps progress (e.g. a click that toggles a useless
+# light on and off).
+_REPEAT_THRESHOLD = 3
 
 
 @dataclass(frozen=True)
@@ -79,6 +93,13 @@ class FrameContext:
     # Sprint-13 PR-1: game_id lets per-game prompt fragments
     # (game_prompts.GAME_PROMPTS) be looked up by the prompt builder.
     game_id: str = ""
+    # Sprint-16 anti-loop: per-(current state, action) counts with the
+    # actions the LLM is forbidden to pick at this state because they
+    # are dead (no-op observed) or repeat-saturated. Empty string when
+    # no state-counter is wired so legacy prompt builders stay
+    # byte-identical.
+    state_action_summary: str = ""
+    forbidden_action_names: tuple[str, ...] = ()
 
 
 # A callable that takes a :class:`FrameContext` and returns
@@ -175,6 +196,7 @@ class LLMActionDecoder(ActionDecoder):
         history_steps: int = 8,
         frame_analyzer: FrameAnalyzer | None = None,
         goal_inferer: GoalInferer | None = None,
+        state_counter: StateActionCounter | None = None,
     ) -> None:
         self._bridge = bridge
         self._memory = memory
@@ -187,6 +209,14 @@ class LLMActionDecoder(ActionDecoder):
         # Sprint-13 PR-1: optional GoalInferer for evidence-driven
         # goal-hypothesis text in the LLM prompt.
         self._goal_inferer = goal_inferer
+        # Sprint-16: per-(state, action) counter so the decoder can
+        # filter dead/repeat-saturated combos out of the LLM's choice
+        # set AND override the LLM if it ignores the constraint. The
+        # parent ``Sprint10DSLAgent`` already feeds increments +
+        # mark_dead on no-ops; until now the LLMActionDecoder ignored
+        # both signals, producing the deterministic-loop trap that
+        # made every Phase-A run pick ACTION6 40 times in a row.
+        self._state_counter = state_counter
 
     def pick_action(
         self,
@@ -212,6 +242,20 @@ class LLMActionDecoder(ActionDecoder):
             if self._goal_inferer is not None
             else ""
         )
+
+        # Sprint-16 anti-loop: ask the state-counter which actions are
+        # already dead (mark_dead from no-op observations) or
+        # repeat-saturated at the current state. ``forbidden`` is fed
+        # back to the LLM via the prompt + used to override the LLM's
+        # choice if it picks one anyway.
+        forbidden, state_action_summary = self._compute_forbidden(grid, available_actions)
+        # If everything is forbidden the agent is genuinely stuck —
+        # return all actions to the LLM rather than crashing on an
+        # empty choice set; the prompt then shows every action as
+        # "all-tried" so the LLM can pick the least-bad one.
+        if len(forbidden) == len(available_actions):
+            forbidden = ()
+
         ctx = FrameContext(
             grid=grid,
             available_action_names=[a.name for a in available_actions],
@@ -221,6 +265,8 @@ class LLMActionDecoder(ActionDecoder):
             action_effects_summary=action_effects_summary,
             goal_summary=goal_summary,
             game_id=getattr(latest_frame, "game_id", ""),
+            state_action_summary=state_action_summary,
+            forbidden_action_names=forbidden,
         )
 
         # Call the LLM (or stub). Failures fall back to the DSL decoder.
@@ -233,6 +279,29 @@ class LLMActionDecoder(ActionDecoder):
             return fallback_action, (
                 f"LLMActionDecoder fallback ({type(exc).__name__}): {fb_reasoning}"
             )
+
+        # Sprint-16 post-LLM override: if the LLM picked a forbidden
+        # action despite being told, swap to the least-tried allowed
+        # alternative. This is what actually breaks the
+        # deterministic-loop trap — the prompt-side warning alone is
+        # advisory; the override is what makes the constraint binding.
+        if forbidden and chosen_name in forbidden:
+            allowed = [a for a in available_actions if a.name not in forbidden]
+            if allowed:
+                state_hash = hash_state(grid) if self._state_counter is not None else ""
+                fallback_pick = min(
+                    allowed,
+                    key=lambda a: (
+                        self._state_counter.count(state_hash, a.name)
+                        if self._state_counter is not None
+                        else 0
+                    ),
+                )
+                return fallback_pick, (
+                    f"LLMActionDecoder anti-loop override: LLM picked {chosen_name!r} "
+                    f"but it's forbidden at this state (dead/repeat); "
+                    f"fell back to least-tried allowed action {fallback_pick.name!r}"
+                )
 
         # Validate the LLM's name against the whitelist.
         for action in available_actions:
@@ -247,6 +316,41 @@ class LLMActionDecoder(ActionDecoder):
             f"LLMActionDecoder fallback (LLM returned {chosen_name!r} which is "
             f"not available): {fb_reasoning}"
         )
+
+    def _compute_forbidden(
+        self,
+        grid: _Grid,
+        available_actions: list[GameActionProtocol],
+    ) -> tuple[tuple[str, ...], str]:
+        """Decide which available action names are forbidden at the
+        current state, and produce the LLM-facing summary line.
+
+        Returns ``(forbidden_tuple, summary_string)``.
+        ``forbidden_tuple`` is empty when no counter is wired or
+        nothing is currently dead/repeat-saturated.
+        """
+        if self._state_counter is None:
+            return (), ""
+        state_hash = hash_state(grid)
+        dead = self._state_counter.all_dead_actions(state_hash)
+        forbidden_set: set[str] = set(dead)
+        rows: list[str] = []
+        for action in available_actions:
+            count = self._state_counter.count(state_hash, action.name)
+            is_dead = action.name in dead
+            if not is_dead and count >= _REPEAT_THRESHOLD:
+                forbidden_set.add(action.name)
+            tag = (
+                "DEAD"
+                if is_dead
+                else ("REPEAT-SATURATED" if count >= _REPEAT_THRESHOLD else f"{count}×")
+            )
+            rows.append(f"{action.name}: {tag}")
+        # Stable order — use the available_actions list order so the
+        # summary matches what the prompt enumerates.
+        forbidden = tuple(a.name for a in available_actions if a.name in forbidden_set)
+        summary = "; ".join(rows)
+        return forbidden, summary
 
 
 __all__ = [

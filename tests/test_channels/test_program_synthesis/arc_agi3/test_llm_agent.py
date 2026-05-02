@@ -205,6 +205,110 @@ class TestLLMActionDecoder:
         assert ctx.levels_completed == 1
         assert ctx.win_levels == 3
 
+    def test_anti_loop_overrides_dead_action(self) -> None:
+        # Sprint-16: when the state-counter has marked an action dead
+        # at the current state, the LLM's pick is overridden to a
+        # least-tried allowed alternative — even if the stub LLM
+        # insists on the dead action.
+        from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
+            hash_state,
+        )
+        from cognithor.channels.program_synthesis.arc_agi3.state_action_counts import (
+            StateActionCounter,
+        )
+
+        bridge = FrameBridge()
+        memory = EpisodeMemory()
+        counter = StateActionCounter()
+        grid = _g([[7]])
+        # Bridge converts to int8 and the counter keys off that.
+        state_hash = hash_state(bridge.extract_grid(_frame(grid)))
+        counter.mark_dead(state_hash, "ACTION6")
+
+        captured: list[FrameContext] = []
+
+        def _stuck_llm(ctx: FrameContext) -> tuple[str, str]:
+            captured.append(ctx)
+            # LLM ignores the constraint and picks the dead action anyway.
+            return "ACTION6", "stub picks the dead action"
+
+        decoder = LLMActionDecoder(
+            bridge=bridge,
+            memory=memory,
+            choice_fn=_stuck_llm,
+            state_counter=counter,
+        )
+        frame = _frame(
+            grid,
+            available_actions=[
+                _StubAction(name="ACTION1", value=1),
+                _StubAction(name="ACTION6", value=6),
+            ],
+        )
+        chosen = decoder.decode([frame], frame)
+
+        # Override fired; chosen action is NOT ACTION6.
+        assert chosen.name == "ACTION1"
+        assert "anti-loop override" in chosen.reasoning
+        # Prompt context surfaced the constraint to the LLM.
+        ctx = captured[0]
+        assert "ACTION6" in ctx.forbidden_action_names
+        assert "DEAD" in ctx.state_action_summary
+
+    def test_anti_loop_repeat_threshold_filters(self) -> None:
+        # Sprint-16: even without an explicit mark_dead, picking the
+        # same action 3+ times at the same state forbids it (repeat-
+        # saturation). Mirrors the ACTION6×40 deterministic-loop trap.
+        from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
+            hash_state,
+        )
+        from cognithor.channels.program_synthesis.arc_agi3.state_action_counts import (
+            StateActionCounter,
+        )
+
+        bridge = FrameBridge()
+        memory = EpisodeMemory()
+        counter = StateActionCounter()
+        grid = _g([[3]])
+        state_hash = hash_state(bridge.extract_grid(_frame(grid)))
+        for _ in range(3):
+            counter.increment(state_hash, "ACTION6")
+
+        decoder = LLMActionDecoder(
+            bridge=bridge,
+            memory=memory,
+            choice_fn=lambda ctx: ("ACTION6", "stuck"),
+            state_counter=counter,
+        )
+        frame = _frame(
+            grid,
+            available_actions=[
+                _StubAction(name="ACTION1", value=1),
+                _StubAction(name="ACTION6", value=6),
+            ],
+        )
+        chosen = decoder.decode([frame], frame)
+        assert chosen.name != "ACTION6"
+        assert "anti-loop override" in chosen.reasoning
+
+    def test_anti_loop_passes_through_when_counter_quiet(self) -> None:
+        # When nothing is dead/saturated, behaviour is identical to
+        # the pre-Sprint-16 code path.
+        from cognithor.channels.program_synthesis.arc_agi3.state_action_counts import (
+            StateActionCounter,
+        )
+
+        decoder = LLMActionDecoder(
+            bridge=FrameBridge(),
+            memory=EpisodeMemory(),
+            choice_fn=lambda ctx: ("ACTION2", "ok"),
+            state_counter=StateActionCounter(),
+        )
+        frame = _frame(_g([[1]]))
+        chosen = decoder.decode([frame], frame)
+        assert chosen.name == "ACTION2"
+        assert "override" not in chosen.reasoning
+
 
 # ---------------------------------------------------------------------------
 # LLMReasoningAgent — full episode loop
