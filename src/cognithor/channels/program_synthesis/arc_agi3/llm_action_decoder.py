@@ -42,6 +42,7 @@ if TYPE_CHECKING:
         FrameAnalyzer,
     )
     from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import FrameBridge
+    from cognithor.channels.program_synthesis.arc_agi3.goal_inferer import GoalInferer
     from cognithor.channels.program_synthesis.arc_agi3.protocol import (
         FrameDataProtocol,
         GameActionProtocol,
@@ -72,6 +73,12 @@ class FrameContext:
     levels_completed: int
     win_levels: int
     action_effects_summary: str = ""
+    # Sprint-13 PR-1: goal hypothesis from the new GoalInferer (reads
+    # the EpisodeMemory + FrameAnalyzer). Empty when no inferer wired.
+    goal_summary: str = ""
+    # Sprint-13 PR-1: game_id lets per-game prompt fragments
+    # (game_prompts.GAME_PROMPTS) be looked up by the prompt builder.
+    game_id: str = ""
 
 
 # A callable that takes a :class:`FrameContext` and returns
@@ -167,6 +174,7 @@ class LLMActionDecoder(ActionDecoder):
         fallback: ActionDecoder | None = None,
         history_steps: int = 8,
         frame_analyzer: FrameAnalyzer | None = None,
+        goal_inferer: GoalInferer | None = None,
     ) -> None:
         self._bridge = bridge
         self._memory = memory
@@ -176,6 +184,9 @@ class LLMActionDecoder(ActionDecoder):
         # Sprint-12 PR-12: optional FrameAnalyzer for per-action movement
         # signatures fed into the LLM prompt. Default None preserves baseline.
         self._frame_analyzer = frame_analyzer
+        # Sprint-13 PR-1: optional GoalInferer for evidence-driven
+        # goal-hypothesis text in the LLM prompt.
+        self._goal_inferer = goal_inferer
 
     def pick_action(
         self,
@@ -196,6 +207,11 @@ class LLMActionDecoder(ActionDecoder):
             if self._frame_analyzer is not None
             else ""
         )
+        goal_summary = (
+            self._goal_inferer.infer(self._memory, self._frame_analyzer)
+            if self._goal_inferer is not None
+            else ""
+        )
         ctx = FrameContext(
             grid=grid,
             available_action_names=[a.name for a in available_actions],
@@ -203,6 +219,8 @@ class LLMActionDecoder(ActionDecoder):
             levels_completed=latest_frame.levels_completed,
             win_levels=latest_frame.win_levels,
             action_effects_summary=action_effects_summary,
+            goal_summary=goal_summary,
+            game_id=getattr(latest_frame, "game_id", ""),
         )
 
         # Call the LLM (or stub). Failures fall back to the DSL decoder.

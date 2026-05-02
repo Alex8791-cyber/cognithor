@@ -24,6 +24,11 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from cognithor.channels.program_synthesis.arc_agi3.dsl_agent import Sprint10DSLAgent
+from cognithor.channels.program_synthesis.arc_agi3.game_prompts import (
+    build_system_prompt,
+    game_prefix,
+)
+from cognithor.channels.program_synthesis.arc_agi3.goal_inferer import GoalInferer
 from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
     FrameContext,
     LLMActionDecoder,
@@ -53,6 +58,20 @@ Respond with strict JSON:
 Do not output anything outside the JSON block."""
 
 
+def _build_system_prompt(ctx: FrameContext) -> str:
+    """System prompt = generic JSON contract + per-game rules.
+
+    The Sprint-12 :mod:`game_prompts` module ships verbatim per-game
+    rule sets (LS20 Locksmith mechanics, FT09 click hint, etc.). When
+    ``ctx.game_id`` matches a known prefix, those rules are appended
+    to the generic system prompt so the LLM gets game-specific
+    grounding.
+    """
+    if ctx.game_id and game_prefix(ctx.game_id):
+        return build_system_prompt(ctx.game_id, ", ".join(ctx.available_action_names))
+    return _LLM_SYSTEM_PROMPT
+
+
 def _build_user_prompt(ctx: FrameContext) -> str:
     parts = [
         f"Current grid ({ctx.grid.shape[0]}x{ctx.grid.shape[1]}):",
@@ -63,6 +82,8 @@ def _build_user_prompt(ctx: FrameContext) -> str:
     ]
     if ctx.action_effects_summary:
         parts.append(f"Learned action effects: {ctx.action_effects_summary}")
+    if ctx.goal_summary:
+        parts.append(f"Goal hypothesis: {ctx.goal_summary}")
     parts.extend(
         [
             f"Progress: {ctx.levels_completed}/{ctx.win_levels} levels",
@@ -99,7 +120,7 @@ def build_vllm_choice_fn(
             backend.chat(
                 model=model_name,
                 messages=[
-                    {"role": "system", "content": _LLM_SYSTEM_PROMPT},
+                    {"role": "system", "content": _build_system_prompt(ctx)},
                     {"role": "user", "content": _build_user_prompt(ctx)},
                 ],
                 temperature=temperature,
@@ -190,7 +211,7 @@ def build_inprocess_vllm_choice_fn(
         llm, sampling = _ensure_engine()
         outs = llm.chat(
             messages=[
-                {"role": "system", "content": _LLM_SYSTEM_PROMPT},
+                {"role": "system", "content": _build_system_prompt(ctx)},
                 {"role": "user", "content": _build_user_prompt(ctx)},
             ],
             sampling_params=sampling,
@@ -232,6 +253,7 @@ class LLMReasoningAgent(Sprint10DSLAgent):
         memory: EpisodeMemory | None = None,
         stuck_detector: StuckDetector | None = None,
         history_steps: int = 8,
+        goal_inferer: GoalInferer | None = None,
         **parent_kwargs: Any,
     ) -> None:
         # Forward every Sprint10DSLAgent kwarg (audit_trail, game_profile,
@@ -245,14 +267,21 @@ class LLMReasoningAgent(Sprint10DSLAgent):
             stuck_detector=stuck_detector,
             **parent_kwargs,
         )
+        # Sprint-13: GoalInferer defaults to a stateless one when None
+        # so the LLM always gets a goal-hypothesis line. Construction
+        # cost is negligible (one int).
+        if goal_inferer is None:
+            goal_inferer = GoalInferer()
         # Override the Wave-4 DSL decoder with the LLM-driven one. The
         # decoder also takes an optional frame_analyzer for prompt-side
-        # action-effects rendering (Sprint-12 PR-12).
+        # action-effects rendering (Sprint-12 PR-12) and a goal_inferer
+        # for goal-hypothesis injection (Sprint-13 PR-1).
         self._decoder = LLMActionDecoder(
             bridge=self._bridge,
             memory=self._memory,
             choice_fn=choice_fn,
             history_steps=history_steps,
+            goal_inferer=goal_inferer,
             frame_analyzer=self._frame_analyzer,
         )
 
