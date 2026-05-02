@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+        ActionStreakDetector,
         EpisodeMemory,
     )
     from cognithor.channels.program_synthesis.arc_agi3.frame_analyzer import (
@@ -197,6 +198,7 @@ class LLMActionDecoder(ActionDecoder):
         frame_analyzer: FrameAnalyzer | None = None,
         goal_inferer: GoalInferer | None = None,
         state_counter: StateActionCounter | None = None,
+        action_streak_detector: ActionStreakDetector | None = None,
     ) -> None:
         self._bridge = bridge
         self._memory = memory
@@ -209,14 +211,19 @@ class LLMActionDecoder(ActionDecoder):
         # Sprint-13 PR-1: optional GoalInferer for evidence-driven
         # goal-hypothesis text in the LLM prompt.
         self._goal_inferer = goal_inferer
-        # Sprint-16: per-(state, action) counter so the decoder can
-        # filter dead/repeat-saturated combos out of the LLM's choice
-        # set AND override the LLM if it ignores the constraint. The
-        # parent ``Sprint10DSLAgent`` already feeds increments +
-        # mark_dead on no-ops; until now the LLMActionDecoder ignored
-        # both signals, producing the deterministic-loop trap that
-        # made every Phase-A run pick ACTION6 40 times in a row.
+        # Sprint-16 Hebel 1: per-(state, action) counter so the decoder
+        # can filter dead/repeat-saturated combos out of the LLM's
+        # choice set AND override the LLM if it ignores the constraint.
+        # Doesn't catch click-game loops where each pick changes the
+        # state hash — that's what Hebel 2 covers below.
         self._state_counter = state_counter
+        # Sprint-16 Hebel 2: state-agnostic action-streak detector.
+        # Looks at recent memory and forbids any action that dominated
+        # the last ``window`` picks while ``levels_completed`` stayed
+        # flat. This catches click-game ACTION6×40 loops where Hebel 1
+        # silently passes (each click changes the cursor pixel → new
+        # state hash → counter resets).
+        self._action_streak_detector = action_streak_detector
 
     def pick_action(
         self,
@@ -326,26 +333,55 @@ class LLMActionDecoder(ActionDecoder):
         current state, and produce the LLM-facing summary line.
 
         Returns ``(forbidden_tuple, summary_string)``.
-        ``forbidden_tuple`` is empty when no counter is wired or
-        nothing is currently dead/repeat-saturated.
+        ``forbidden_tuple`` is empty when no detector is wired or
+        nothing is currently dead/repeat-saturated/streak-stuck.
+
+        Combines two complementary signals:
+
+        * Hebel 1 — :class:`StateActionCounter`: per-(state, action)
+          dead/repeat tracking. Catches "ACTION1 always no-ops at
+          this exact frame".
+        * Hebel 2 — :class:`ActionStreakDetector`: state-agnostic
+          recent-window dominance. Catches "ACTION6 picked 4/5 of
+          the last steps with no level progress" — the click-game
+          loop signature where each pick mutates the state hash so
+          Hebel 1 silently passes.
         """
-        if self._state_counter is None:
-            return (), ""
-        state_hash = hash_state(grid)
-        dead = self._state_counter.all_dead_actions(state_hash)
-        forbidden_set: set[str] = set(dead)
+        forbidden_set: set[str] = set()
         rows: list[str] = []
-        for action in available_actions:
-            count = self._state_counter.count(state_hash, action.name)
-            is_dead = action.name in dead
-            if not is_dead and count >= _REPEAT_THRESHOLD:
-                forbidden_set.add(action.name)
-            tag = (
-                "DEAD"
-                if is_dead
-                else ("REPEAT-SATURATED" if count >= _REPEAT_THRESHOLD else f"{count}×")
-            )
-            rows.append(f"{action.name}: {tag}")
+
+        # Hebel 1 — per-(state, action) signals.
+        if self._state_counter is not None:
+            state_hash = hash_state(grid)
+            dead = self._state_counter.all_dead_actions(state_hash)
+            forbidden_set.update(dead)
+            for action in available_actions:
+                count = self._state_counter.count(state_hash, action.name)
+                is_dead = action.name in dead
+                if not is_dead and count >= _REPEAT_THRESHOLD:
+                    forbidden_set.add(action.name)
+                tag = (
+                    "DEAD"
+                    if is_dead
+                    else ("REPEAT-SATURATED" if count >= _REPEAT_THRESHOLD else f"{count}×")
+                )
+                rows.append(f"{action.name}: {tag}")
+
+        # Hebel 2 — recent-window streak with no level progress.
+        # Read-only; the detector inspects ``self._memory``.
+        if self._action_streak_detector is not None:
+            stuck_action = self._action_streak_detector.dominant_stuck_action(self._memory)
+            if stuck_action is not None and any(a.name == stuck_action for a in available_actions):
+                forbidden_set.add(stuck_action)
+                rows.append(
+                    f"{stuck_action}: STREAK-STUCK "
+                    f"({self._action_streak_detector.threshold}+/"
+                    f"{self._action_streak_detector.window} recent picks, "
+                    "no level progress)"
+                )
+
+        if not forbidden_set and not rows:
+            return (), ""
         # Stable order — use the available_actions list order so the
         # summary matches what the prompt enumerates.
         forbidden = tuple(a.name for a in available_actions if a.name in forbidden_set)

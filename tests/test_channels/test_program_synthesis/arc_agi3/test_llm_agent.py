@@ -309,6 +309,74 @@ class TestLLMActionDecoder:
         assert chosen.name == "ACTION2"
         assert "override" not in chosen.reasoning
 
+    def test_streak_detector_overrides_state_agnostic_loop(self) -> None:
+        # Sprint-16 Hebel 2: catches the click-game loop that Hebel 1
+        # silently passes — each pick changes the state hash so per-
+        # state counts never reach the threshold, but the streak
+        # detector flags ACTION6 dominating the recent window with
+        # frozen level progress.
+        from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+            ActionStreakDetector,
+        )
+
+        memory = EpisodeMemory()
+        # Simulate the run #11 trace: ACTION6 picked 4 of last 5 with
+        # different grids each time, level frozen at 0.
+        for i, action in enumerate(("ACTION1", "ACTION6", "ACTION6", "ACTION6", "ACTION6")):
+            memory.append(grid=_g([[i]]), action_name=action, levels_completed=0)
+
+        captured: list[FrameContext] = []
+
+        def _stuck_llm(ctx: FrameContext) -> tuple[str, str]:
+            captured.append(ctx)
+            # LLM still wants ACTION6; Hebel 2 must override.
+            return "ACTION6", "stub picks the streak-stuck action"
+
+        decoder = LLMActionDecoder(
+            bridge=FrameBridge(),
+            memory=memory,
+            choice_fn=_stuck_llm,
+            action_streak_detector=ActionStreakDetector(),
+        )
+        frame = _frame(
+            _g([[7]]),
+            available_actions=[
+                _StubAction(name="ACTION1", value=1),
+                _StubAction(name="ACTION6", value=6),
+            ],
+        )
+        chosen = decoder.decode([frame], frame)
+
+        assert chosen.name == "ACTION1"
+        assert "anti-loop override" in chosen.reasoning
+        ctx = captured[0]
+        assert "ACTION6" in ctx.forbidden_action_names
+        assert "STREAK-STUCK" in ctx.state_action_summary
+
+    def test_llm_agent_auto_wires_streak_detector(self) -> None:
+        # Sprint-16: the agent's __init__ should hand the decoder a
+        # default ActionStreakDetector so callers don't have to opt
+        # in. Smoke-check by triggering the loop signature on the
+        # public LLMReasoningAgent.
+        agent = LLMReasoningAgent(choice_fn=lambda ctx: ("ACTION6", "stuck"))
+        # Pre-fill the agent's memory with the loop signature.
+        for i in range(5):
+            agent.memory.append(
+                grid=_g([[i]]),
+                action_name="ACTION6",
+                levels_completed=0,
+            )
+        frame = _frame(
+            _g([[9]]),
+            available_actions=[
+                _StubAction(name="ACTION1", value=1),
+                _StubAction(name="ACTION6", value=6),
+            ],
+        )
+        chosen = agent.choose_action([frame], frame)
+        # Override fired through the auto-wired detector.
+        assert chosen.name == "ACTION1"
+
 
 # ---------------------------------------------------------------------------
 # LLMReasoningAgent — full episode loop

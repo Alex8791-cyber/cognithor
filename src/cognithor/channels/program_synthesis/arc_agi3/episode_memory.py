@@ -226,7 +226,86 @@ def count_actions(memory: EpisodeMemory) -> dict[str, int]:
     return counts
 
 
+class ActionStreakDetector:
+    """Sprint-16 Hebel 2 — level-progress-aware action-streak detection.
+
+    The Hebel-1 ``StateActionCounter`` keys on ``(state_hash, action)``
+    so it never trips when each pick *also* changes the state (e.g.
+    a cursor-click in a click-target game shifts the cursor pixel,
+    making the next state hash distinct, resetting the count). Phase-A
+    run #11 confirmed this empirically: ACTION6 picked 39 / 40 with
+    Hebel 1 active because the click moved the cursor pixel each time
+    and the per-state count never reached the threshold.
+
+    This detector instead tracks the most-recent action *names* in
+    memory order and asks: did one action dominate the last ``window``
+    picks **without any level progress in that window**? If yes, that
+    action is "stuck" and the decoder should forbid it.
+
+    The level-progress guard is what keeps this from over-firing on a
+    legitimate strategy that picks the same action 5 times in a row
+    *while levels are advancing*. Stuck = same action + flat level
+    count.
+    """
+
+    DEFAULT_WINDOW: int = 5
+    DEFAULT_THRESHOLD: int = 4
+
+    def __init__(
+        self,
+        *,
+        window: int = DEFAULT_WINDOW,
+        threshold: int = DEFAULT_THRESHOLD,
+    ) -> None:
+        if window < 2:
+            raise ValueError(f"ActionStreakDetector: window must be >= 2, got {window}")
+        if threshold < 2 or threshold > window:
+            raise ValueError(
+                f"ActionStreakDetector: threshold must be in [2, window={window}], got {threshold}"
+            )
+        self._window = window
+        self._threshold = threshold
+
+    @property
+    def window(self) -> int:
+        return self._window
+
+    @property
+    def threshold(self) -> int:
+        return self._threshold
+
+    def dominant_stuck_action(self, memory: EpisodeMemory) -> str | None:
+        """Return the action name that dominates a stuck window, or ``None``.
+
+        "Dominates" = picked at least ``threshold`` times in the last
+        ``window`` steps. "Stuck" = ``levels_completed`` did not
+        increase across that window.
+
+        Returns ``None`` when:
+        * memory has fewer than ``window`` steps yet,
+        * no single action reached the threshold,
+        * level progressed during the window (so the streak is fine).
+        """
+        if len(memory) < self._window:
+            return None
+        recent = memory.window(self._window)  # most-recent first
+        # Level progress check first — cheap, common short-circuit.
+        first_level = recent[-1].levels_completed
+        last_level = recent[0].levels_completed
+        if last_level > first_level:
+            return None
+        # Action dominance.
+        counts: dict[str, int] = {}
+        for step in recent:
+            counts[step.action_name] = counts.get(step.action_name, 0) + 1
+        for name, count in counts.items():
+            if count >= self._threshold:
+                return name
+        return None
+
+
 __all__ = [
+    "ActionStreakDetector",
     "ChangeDetector",
     "EpisodeMemory",
     "EpisodeStep",
