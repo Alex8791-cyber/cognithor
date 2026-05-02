@@ -15,6 +15,7 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import (
     LLMTelemetry,
     estimate_token_count,
     extract_think_tokens,
+    record_vllm_request_output,
     wrap_planning_choice_fn,
     wrap_text_choice_fn,
 )
@@ -102,6 +103,45 @@ class TestPlanningWrapper:
         assert plan == [{"action": "ACTION1"}]
         assert reasoning == "two-step plan"
         assert len(tele) == 1
+
+
+class TestVllmRequestOutput:
+    def test_records_real_finish_reason(self) -> None:
+        # Mock a vLLM RequestOutput-shaped object.
+        class _Out:
+            text = "<think>some reasoning</think>{json}"
+            token_ids = list(range(120))
+            finish_reason = "length"
+
+        class _Req:
+            prompt_token_ids = list(range(450))
+            outputs = [_Out()]
+
+        tele = LLMTelemetry()
+        record_vllm_request_output(tele, _Req(), wall_clock_s=12.5)
+        rec = tele.records[0]
+        assert rec.finish_reason == "length"
+        assert rec.input_tokens == 450
+        assert rec.output_tokens == 120
+        assert rec.think_tokens > 0
+        assert rec.wall_clock_s == 12.5
+
+    def test_handles_tool_calls_finish_reason(self) -> None:
+        class _Out:
+            text = '{"action": "call_tool"}'
+            token_ids = [1, 2, 3]
+            finish_reason = "tool_calls"
+
+        class _Req:
+            prompt_token_ids = [0] * 200
+            outputs = [_Out()]
+
+        tele = LLMTelemetry()
+        record_vllm_request_output(tele, _Req(), wall_clock_s=1.0)
+        s = tele.summary()
+        assert s["finish_reason_dist"]["tool_calls"] == 1
+        # tool_calls is NOT length → truncation rate stays 0.
+        assert s["length_truncation_rate"] == 0.0
 
 
 class TestSummary:

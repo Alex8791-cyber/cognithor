@@ -93,6 +93,7 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import (
     LLMTelemetry,
     estimate_token_count,
     extract_think_tokens,
+    record_vllm_request_output,
     wrap_planning_choice_fn,
     wrap_text_choice_fn,
 )
@@ -194,6 +195,7 @@ __all__ = [
     "parse_plan_response",
     "parse_scorecard",
     "plan_click_solution",
+    "record_vllm_request_output",
     "render_grid",
     "render_grid_data_uri",
     "render_grid_image",

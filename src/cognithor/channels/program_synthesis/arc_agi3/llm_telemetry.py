@@ -53,6 +53,7 @@ __all__ = [
     "LLMTelemetry",
     "estimate_token_count",
     "extract_think_tokens",
+    "record_vllm_request_output",
     "wrap_planning_choice_fn",
     "wrap_text_choice_fn",
 ]
@@ -210,6 +211,64 @@ def _ctx_to_input_text(ctx: FrameContext) -> str:
     if hasattr(ctx, "grid") and ctx.grid is not None:
         parts.append("X" * (4 * ctx.grid.size))
     return "\n".join(parts)
+
+
+def record_vllm_request_output(
+    telemetry: LLMTelemetry,
+    request_output: Any,
+    *,
+    wall_clock_s: float,
+    input_text_for_estimate: str = "",
+) -> None:
+    """Record a real vLLM ``RequestOutput`` into the telemetry.
+
+    Use this from inside an in-process choice-fn (where you have the
+    actual ``llm.chat(...)`` return value) to capture vLLM's
+    authoritative numbers:
+
+    * ``request_output.prompt_token_ids`` length → exact ``input_tokens``
+    * ``request_output.outputs[0].token_ids`` length → exact
+      ``output_tokens``
+    * ``request_output.outputs[0].finish_reason`` → exact reason
+      (``stop`` / ``length`` / ``tool_calls`` / ``abort``)
+
+    The ``input_text_for_estimate`` fallback is used when
+    ``prompt_token_ids`` isn't accessible (some vLLM versions hide it).
+    """
+    out = None
+    finish_reason = "stop"
+    output_text = ""
+    output_tokens = 0
+    try:
+        if request_output.outputs:
+            out = request_output.outputs[0]
+            output_text = getattr(out, "text", "") or ""
+            output_tokens = len(getattr(out, "token_ids", []) or [])
+            finish_reason = getattr(out, "finish_reason", "stop") or "stop"
+    except Exception:
+        finish_reason = "abort"
+
+    input_tokens = 0
+    try:
+        prompt_ids = getattr(request_output, "prompt_token_ids", None)
+        if prompt_ids:
+            input_tokens = len(prompt_ids)
+    except Exception:
+        pass
+    if input_tokens == 0:
+        input_tokens = estimate_token_count(input_text_for_estimate)
+    if output_tokens == 0:
+        output_tokens = estimate_token_count(output_text)
+
+    record = LLMCallRecord(
+        call_index=len(telemetry.records),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        think_tokens=extract_think_tokens(output_text),
+        finish_reason=str(finish_reason),
+        wall_clock_s=wall_clock_s,
+    )
+    telemetry.records.append(record)
 
 
 def wrap_text_choice_fn(
