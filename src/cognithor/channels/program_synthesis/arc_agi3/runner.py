@@ -171,11 +171,17 @@ class EpisodeRunner:
                 if self._agent.is_done(frames, latest):
                     break
                 action = self._agent.choose_action(frames, latest)
-                # The arc_agi env.step accepts the GameAction value (or
-                # ``(value, data)`` for click actions). Action6/Action7
-                # carry click coords via set_data() inside the agent.
-                payload = self._action_payload(action)
-                latest = self._normalize_frame(env.step(*payload))
+                # arc_agi.LocalEnvironmentWrapper.step(action, data=...)
+                # expects the GameAction enum (not its int value). Click
+                # actions carry coords via either ``_data`` (Cognithor
+                # test-stub) or ``action_data`` (live arcengine).
+                step_action, step_data = self._action_payload(action)
+                if step_data is not None:
+                    latest = self._normalize_frame(
+                        env.step(step_action, data=step_data)
+                    )
+                else:
+                    latest = self._normalize_frame(env.step(step_action))
                 frames.append(latest)
                 steps_taken += 1
         except Exception as exc:
@@ -223,18 +229,35 @@ class EpisodeRunner:
         )
 
     @staticmethod
-    def _action_payload(action: Any) -> tuple[Any, ...]:
-        """Convert a Cognithor action object into ``env.step()`` args.
+    def _action_payload(action: Any) -> tuple[Any, dict[str, Any] | None]:
+        """Return ``(action_to_pass_to_env_step, data_kwarg_or_None)``.
 
-        Simple actions (``RESET``, ``ACTION1``..``ACTION5``) take just
-        the value. Complex actions (``ACTION6``, ``ACTION7``) carry
-        ``(x, y)`` data the agent attached via ``set_data()``.
+        ``arc_agi.LocalEnvironmentWrapper.step(action, data=None, ...)``
+        wants the **GameAction enum itself** as ``action`` (not the
+        int value — using the int would crash arc_agi's error handler
+        which assumes ``.name``). For complex actions the ``data``
+        kwarg is the dict.
+
+        Click coords live in one of two places:
+
+        * ``action._data`` — Cognithor's :class:`_StubAction` (tests).
+        * ``action.action_data`` — live :class:`arcengine.GameAction`
+          after ``set_data({...})``. We pull ``x`` / ``y`` off it via
+          attribute access.
         """
-        value = getattr(action, "value", action)
-        data = getattr(action, "_data", None)
-        if data:
-            return (value, {"data": dict(data)})
-        return (value,)
+        # Build the data kwarg.
+        data: dict[str, Any] | None = None
+        stub_data = getattr(action, "_data", None)
+        if stub_data:
+            data = dict(stub_data)
+        else:
+            action_data = getattr(action, "action_data", None)
+            if action_data is not None:
+                x = getattr(action_data, "x", None)
+                y = getattr(action_data, "y", None)
+                if x is not None and y is not None:
+                    data = {"x": int(x), "y": int(y)}
+        return (action, data)
 
 
 def run_episode(
