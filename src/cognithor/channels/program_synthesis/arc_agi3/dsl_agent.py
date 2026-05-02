@@ -38,6 +38,9 @@ from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
 from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import FrameBridge
 
 if TYPE_CHECKING:
+    from cognithor.channels.program_synthesis.arc_agi3.action_decoder import (
+        ActionDecoder,
+    )
     from cognithor.channels.program_synthesis.arc_agi3.protocol import (
         FrameDataProtocol,
         GameActionProtocol,
@@ -64,7 +67,9 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         self._bridge = bridge if bridge is not None else FrameBridge()
         self._memory = memory if memory is not None else EpisodeMemory()
         self._stuck = stuck_detector if stuck_detector is not None else StuckDetector()
-        self._decoder = DSLActionDecoder(memory=self._memory, stuck_detector=self._stuck)
+        self._decoder: ActionDecoder = DSLActionDecoder(
+            memory=self._memory, stuck_detector=self._stuck
+        )
         # Tracks the most-recently-chosen action's name so we can
         # record it in the memory when the next frame arrives.
         # ``None`` until the first ``choose_action`` call.

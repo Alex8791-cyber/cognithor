@@ -45,6 +45,17 @@ from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import (
     ClampPolicy,
     FrameBridge,
 )
+from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
+    ChoiceFn,
+    FrameContext,
+    LLMActionDecoder,
+    render_grid,
+    summarise_history,
+)
+from cognithor.channels.program_synthesis.arc_agi3.llm_agent import (
+    LLMReasoningAgent,
+    build_vllm_choice_fn,
+)
 from cognithor.channels.program_synthesis.arc_agi3.protocol import (
     FrameDataProtocol,
     GameActionProtocol,
@@ -54,6 +65,7 @@ from cognithor.channels.program_synthesis.arc_agi3.protocol import (
 __all__ = [
     "ActionDecoder",
     "ChangeDetector",
+    "ChoiceFn",
     "ClampPolicy",
     "CognithorPSEAgent",
     "DSLActionDecoder",
@@ -61,12 +73,18 @@ __all__ = [
     "EpisodeStep",
     "FrameBridge",
     "FrameChange",
+    "FrameContext",
     "FrameDataProtocol",
     "GameActionProtocol",
     "GameStateProtocol",
+    "LLMActionDecoder",
+    "LLMReasoningAgent",
     "RandomActionAgent",
     "Sprint10DSLAgent",
     "StuckDetector",
     "UniformActionDecoder",
+    "build_vllm_choice_fn",
     "count_actions",
+    "render_grid",
+    "summarise_history",
 ]
