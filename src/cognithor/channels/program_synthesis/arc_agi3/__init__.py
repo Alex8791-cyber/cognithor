@@ -91,6 +91,15 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_agent import (
     build_inprocess_vllm_choice_fn,
     build_vllm_choice_fn,
 )
+from cognithor.channels.program_synthesis.arc_agi3.llm_telemetry import (
+    LLMCallRecord,
+    LLMTelemetry,
+    estimate_token_count,
+    extract_think_tokens,
+    record_vllm_request_output,
+    wrap_planning_choice_fn,
+    wrap_text_choice_fn,
+)
 from cognithor.channels.program_synthesis.arc_agi3.planning_agent import (
     PlanningLLMReasoningAgent,
     build_inprocess_vllm_planning_choice_fn,
@@ -158,7 +167,9 @@ __all__ = [
     "GoalInferer",
     "GraphExplorerAgent",
     "LLMActionDecoder",
+    "LLMCallRecord",
     "LLMReasoningAgent",
+    "LLMTelemetry",
     "MovementInfo",
     "PlanStep",
     "PlanningLLMActionDecoder",
@@ -180,12 +191,15 @@ __all__ = [
     "cognithor_agent_factory",
     "count_actions",
     "detect_toggle_pair",
+    "estimate_token_count",
+    "extract_think_tokens",
     "find_clusters",
     "infer_goal_summary",
     "is_level_complete",
     "parse_plan_response",
     "parse_scorecard",
     "plan_click_solution",
+    "record_vllm_request_output",
     "render_grid",
     "render_grid_data_uri",
     "render_grid_image",
@@ -195,4 +209,6 @@ __all__ = [
     "simulate_toggle",
     "summarise",
     "summarise_history",
+    "wrap_planning_choice_fn",
+    "wrap_text_choice_fn",
 ]
