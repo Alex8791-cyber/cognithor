@@ -118,8 +118,49 @@ class EpisodeRunner:
         env = arcade.make(self._game_id)
         if env is None:
             raise RuntimeError(f"arc_agi.Arcade.make({self._game_id!r}) returned None")
-        first_frame = env.reset()
+        first_frame = self._normalize_frame(env.reset())
         return arcade, env, first_frame
+
+    @staticmethod
+    def _normalize_frame(frame: Any) -> Any:
+        """Ensure ``frame.available_actions`` are GameAction enum members.
+
+        The pydantic-validated ``FrameData`` from arc_agi 0.9.x coerces
+        the enum to bare ints. Cognithor agents read ``action.name`` /
+        ``action.value`` / call ``action.set_data(...)`` — all attribute
+        accesses that fail on raw ints. We re-wrap each available action
+        as ``arcengine.GameAction.from_id(int)`` so the agent sees real
+        enum members again. Same for ``frame.state`` if it's a bare str.
+        """
+        try:
+            from arcengine import GameAction, GameState
+        except ImportError:
+            return frame  # arcengine missing — let downstream code fail naturally
+        actions = getattr(frame, "available_actions", None)
+        if actions is not None:
+            normalized = []
+            for a in actions:
+                if isinstance(a, int):
+                    normalized.append(GameAction.from_id(a))
+                else:
+                    normalized.append(a)
+            try:
+                frame.available_actions = normalized
+            except Exception:
+                # Pydantic frame may be frozen — try replace via model_copy.
+                if hasattr(frame, "model_copy"):
+                    frame = frame.model_copy(update={"available_actions": normalized})
+        state = getattr(frame, "state", None)
+        if isinstance(state, str):
+            import contextlib
+
+            try:
+                frame.state = GameState(state)
+            except Exception:
+                if hasattr(frame, "model_copy"):
+                    with contextlib.suppress(Exception):
+                        frame = frame.model_copy(update={"state": GameState(state)})
+        return frame
 
     def _loop(self, env: Any, first_frame: FrameDataProtocol) -> EpisodeResult:
         frames: list[FrameDataProtocol] = [first_frame]
@@ -134,7 +175,7 @@ class EpisodeRunner:
                 # ``(value, data)`` for click actions). Action6/Action7
                 # carry click coords via set_data() inside the agent.
                 payload = self._action_payload(action)
-                latest = env.step(*payload)
+                latest = self._normalize_frame(env.step(*payload))
                 frames.append(latest)
                 steps_taken += 1
         except Exception as exc:
