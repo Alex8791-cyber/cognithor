@@ -29,6 +29,9 @@ from cognithor.channels.program_synthesis.arc_agi3.agent import (
     CognithorPSEAgent,
     RandomActionAgent,
 )
+from cognithor.channels.program_synthesis.arc_agi3.click_target_sampler import (
+    ClickTargetSampler,
+)
 from cognithor.channels.program_synthesis.arc_agi3.dsl_action_decoder import (
     DSLActionDecoder,
 )
@@ -91,6 +94,7 @@ __all__ = [
     "ChangeDetector",
     "ChoiceFn",
     "ClampPolicy",
+    "ClickTargetSampler",
     "Cluster",
     "CognithorPSEAgent",
     "DSLActionDecoder",
