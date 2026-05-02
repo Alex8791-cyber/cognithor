@@ -124,7 +124,7 @@ def _build_dual_prior_stack(
     """Construct the production LLM-Prior stack: vLLM → LLMPriorClient → DualPriorMixer.
 
     Sprint-10 Track B (Owner-Direktive 2026-05-01): wires the
-    `Qwen/Qwen3.6-27B-FP8` LLM-Prior over a vLLM OpenAI-compat
+    `sakamakismile/Qwen3.6-27B-NVFP4` LLM-Prior over a vLLM OpenAI-compat
     endpoint into the Phase-2 search loop. The mixer combines the
     LLM signal with the canonical `UniformSymbolicPrior` from Sprint-1
     until a richer symbolic catalog lands.
@@ -545,8 +545,11 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--llm-model",
         type=str,
-        default="Qwen/Qwen3.6-27B-FP8",
-        help=("LLM model name as registered with the vLLM server (default: Qwen/Qwen3.6-27B-FP8)."),
+        default="sakamakismile/Qwen3.6-27B-NVFP4",
+        help=(
+            "LLM model name as registered with the vLLM server "
+            "(default: sakamakismile/Qwen3.6-27B-NVFP4)."
+        ),
     )
     return parser.parse_args(argv)
 

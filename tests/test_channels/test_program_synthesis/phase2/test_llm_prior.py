@@ -83,7 +83,7 @@ class _StubBackend(LLMBackend):
         return True
 
     async def list_models(self) -> list[str]:
-        return ["Qwen/Qwen3.6-27B-FP8"]
+        return ["sakamakismile/Qwen3.6-27B-NVFP4"]
 
     async def close(self) -> None:
         pass
@@ -348,6 +348,6 @@ class TestConfigValidation:
             DEFAULT_PHASE2_CONFIG,
         )
 
-        assert DEFAULT_PHASE2_CONFIG.llm_model_name == "Qwen/Qwen3.6-27B-FP8"
+        assert DEFAULT_PHASE2_CONFIG.llm_model_name == "sakamakismile/Qwen3.6-27B-NVFP4"
         assert DEFAULT_PHASE2_CONFIG.llm_fallback_model_name == "Qwen/Qwen3.6-27B"
         assert DEFAULT_PHASE2_CONFIG.llm_base_url == "http://localhost:8000/v1"

@@ -169,7 +169,7 @@ def _project_to_phase2_config(raw: dict[str, Any]) -> Phase2Config:
             llm_model_name=_first_str(
                 llm,
                 ("model_name", "model_path"),
-                default="Qwen/Qwen3.6-27B-FP8",
+                default="sakamakismile/Qwen3.6-27B-NVFP4",
             ),
             llm_fallback_model_name=_first_str(
                 llm,
