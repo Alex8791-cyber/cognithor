@@ -149,8 +149,8 @@ class Phase2Config:
     # RTX 5090 (32 GB VRAM); Q5_K_M is the default quantisation,
     # Q4_K_M is the fallback for tighter VRAM budgets.
     llm_base_url: str = "http://localhost:8000/v1"
-    llm_model_name: str = "Qwen/Qwen3.6-27B-Instruct"
-    llm_fallback_model_name: str = "Qwen/Qwen3.6-27B-Instruct-AWQ"
+    llm_model_name: str = "Qwen/Qwen3.6-27B-FP8"
+    llm_fallback_model_name: str = "Qwen/Qwen3.6-27B"
     # Two-Stage prompting (spec §4.7): Stage-1 free-form CoT, Stage-2
     # constrained JSON. Different temperatures because Stage-1 wants
     # exploration (default 0.7) and Stage-2 wants determinism (0.1).

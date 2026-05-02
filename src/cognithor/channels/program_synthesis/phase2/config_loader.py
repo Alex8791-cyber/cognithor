@@ -169,12 +169,12 @@ def _project_to_phase2_config(raw: dict[str, Any]) -> Phase2Config:
             llm_model_name=_first_str(
                 llm,
                 ("model_name", "model_path"),
-                default="Qwen/Qwen3.6-27B-Instruct",
+                default="Qwen/Qwen3.6-27B-FP8",
             ),
             llm_fallback_model_name=_first_str(
                 llm,
                 ("fallback_model_name", "fallback_model_path"),
-                default="Qwen/Qwen3.6-27B-Instruct-AWQ",
+                default="Qwen/Qwen3.6-27B",
             ),
             llm_temperature_stage1=_expect_float(
                 llm_sampling, "temperature_repair_cot", parent="llm_prior.sampling"

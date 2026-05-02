@@ -67,7 +67,7 @@ def _build_user_prompt(ctx: FrameContext) -> str:
 def build_vllm_choice_fn(
     *,
     backend: LLMBackend,
-    model_name: str = "Qwen/Qwen3.6-27B-Instruct",
+    model_name: str = "Qwen/Qwen3.6-27B-FP8",
     temperature: float = 0.3,
     timeout_seconds: float = 8.0,
 ) -> ChoiceFn:
