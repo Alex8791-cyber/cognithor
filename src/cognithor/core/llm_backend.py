@@ -45,6 +45,7 @@ class LLMBackendType(StrEnum):
     CLAUDE_CODE = "claude-code"
     CLAUDE_CODE_SUPERVISED = "claude-code-supervised"
     VLLM = "vllm"
+    VLLM_INPROCESS = "vllm-inprocess"
 
 
 @dataclass

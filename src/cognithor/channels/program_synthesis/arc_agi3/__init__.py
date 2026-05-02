@@ -41,6 +41,15 @@ from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
     StuckDetector,
     count_actions,
 )
+from cognithor.channels.program_synthesis.arc_agi3.fast_grid_planner import (
+    Cluster,
+    detect_toggle_pair,
+    find_clusters,
+    is_level_complete,
+    plan_click_solution,
+    simulate_combo,
+    simulate_toggle,
+)
 from cognithor.channels.program_synthesis.arc_agi3.frame_analyzer import (
     FrameAnalyzer,
     MovementInfo,
@@ -61,6 +70,7 @@ from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
 )
 from cognithor.channels.program_synthesis.arc_agi3.llm_agent import (
     LLMReasoningAgent,
+    build_inprocess_vllm_choice_fn,
     build_vllm_choice_fn,
 )
 from cognithor.channels.program_synthesis.arc_agi3.protocol import (
@@ -74,12 +84,18 @@ from cognithor.channels.program_synthesis.arc_agi3.scorecard import (
     parse_scorecard,
     summarise,
 )
+from cognithor.channels.program_synthesis.arc_agi3.state_graph import (
+    StateEdge,
+    StateGraphNavigator,
+    StateNode,
+)
 
 __all__ = [
     "ActionDecoder",
     "ChangeDetector",
     "ChoiceFn",
     "ClampPolicy",
+    "Cluster",
     "CognithorPSEAgent",
     "DSLActionDecoder",
     "EpisodeMemory",
@@ -98,13 +114,23 @@ __all__ = [
     "RandomActionAgent",
     "ScorecardSummary",
     "Sprint10DSLAgent",
+    "StateEdge",
+    "StateGraphNavigator",
+    "StateNode",
     "StuckDetector",
     "UniformActionDecoder",
+    "build_inprocess_vllm_choice_fn",
     "build_vllm_choice_fn",
     "cognithor_agent_factory",
     "count_actions",
+    "detect_toggle_pair",
+    "find_clusters",
+    "is_level_complete",
     "parse_scorecard",
+    "plan_click_solution",
     "render_grid",
+    "simulate_combo",
+    "simulate_toggle",
     "summarise",
     "summarise_history",
 ]

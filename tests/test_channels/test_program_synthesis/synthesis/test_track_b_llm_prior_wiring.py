@@ -26,7 +26,7 @@ class TestDualPriorStackConstruction:
         # Default vLLM endpoint + qwen3.6:27b. No actual call is made.
         mixer = _build_dual_prior_stack(
             base_url="http://localhost:8000/v1",
-            model_name="Qwen/Qwen3.6-27B-FP8",
+            model_name="sakamakismile/Qwen3.6-27B-NVFP4",
         )
         # Mixer wraps an LLMPriorClient + UniformSymbolicPrior; both
         # private but we can check it's the right class.
@@ -48,7 +48,7 @@ class TestPhase2EngineAcceptsDualPrior:
     def test_engine_built_with_dual_prior(self) -> None:
         mixer = _build_dual_prior_stack(
             base_url="http://localhost:8000/v1",
-            model_name="Qwen/Qwen3.6-27B-FP8",
+            model_name="sakamakismile/Qwen3.6-27B-NVFP4",
         )
         engine = _build_phase2_engine(dual_prior=mixer)
         # WiredPhase2Engine — exact class assertion via private attr.
@@ -64,7 +64,7 @@ class TestCLIFlags:
         args = _parse_args(["--output", "out.json"])
         assert args.llm_prior is False
         assert args.llm_base_url == "http://localhost:8000/v1"
-        assert args.llm_model == "Qwen/Qwen3.6-27B-FP8"
+        assert args.llm_model == "sakamakismile/Qwen3.6-27B-NVFP4"
 
     def test_llm_prior_flag(self) -> None:
         args = _parse_args(
