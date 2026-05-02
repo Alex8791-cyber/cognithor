@@ -22,11 +22,26 @@ Sources for individual rules:
 from __future__ import annotations
 
 GENERIC_CONTEXT = (
-    "You are an agent playing a dynamic game. Your objective is to\n"
-    "WIN and avoid GAME_OVER while minimizing actions.\n\n"
-    "One action produces one Frame. One Frame is made of one or more sequential\n"
-    "Grids. Each Grid is a matrix size INT<0,63> by INT<0,63> filled with\n"
-    "INT<0,15> values."
+    "You are an agent playing a dynamic ARC-AGI-3 game. Two outcomes:\n"
+    "* WIN — ``levels_completed`` reaches ``win_levels`` (score = 1.0)\n"
+    "* GAME_OVER — episode ENDS, score = 0.0, NO further actions possible\n"
+    "\n"
+    "GAME_OVER is FATAL. It is not a setback to recover from — once the\n"
+    "state is GAME_OVER the game is OVER. Empirical evidence from prior\n"
+    "Cognithor runs on bp35: agents that aggressively manipulate the\n"
+    "grid (pixΔ > 500 per step, monotonic-growth trajectories) reliably\n"
+    "trigger GAME_OVER around step 35-40. **Massive state change is NOT\n"
+    "automatically progress — it is often the path to GAME_OVER.**\n"
+    "\n"
+    "One action produces one Frame. One Frame is made of one or more\n"
+    "sequential Grids. Each Grid is a matrix size INT<0,63> by\n"
+    "INT<0,63> filled with INT<0,15> values.\n"
+    "\n"
+    "WIN-DETECTION RULE OF THUMB: if your last 5 actions changed pixels\n"
+    "but ``levels_completed`` did NOT increase, you are NOT winning. Try\n"
+    "structurally-different actions or RESET (if available) — keep going\n"
+    "in the same direction at increasing intensity is the GAME_OVER\n"
+    "trajectory."
 )
 
 # Verbatim from arcprize/ARC-AGI-3-Agents agents/templates/llm_agents.py
