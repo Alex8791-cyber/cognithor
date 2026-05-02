@@ -29,6 +29,14 @@ from cognithor.channels.program_synthesis.arc_agi3.agent import (
     CognithorPSEAgent,
     RandomActionAgent,
 )
+from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+    ChangeDetector,
+    EpisodeMemory,
+    EpisodeStep,
+    FrameChange,
+    StuckDetector,
+    count_actions,
+)
 from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import (
     ClampPolicy,
     FrameBridge,
@@ -41,12 +49,18 @@ from cognithor.channels.program_synthesis.arc_agi3.protocol import (
 
 __all__ = [
     "ActionDecoder",
+    "ChangeDetector",
     "ClampPolicy",
     "CognithorPSEAgent",
+    "EpisodeMemory",
+    "EpisodeStep",
     "FrameBridge",
+    "FrameChange",
     "FrameDataProtocol",
     "GameActionProtocol",
     "GameStateProtocol",
     "RandomActionAgent",
+    "StuckDetector",
     "UniformActionDecoder",
+    "count_actions",
 ]
