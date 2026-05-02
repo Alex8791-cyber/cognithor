@@ -51,6 +51,11 @@ class ArcAuditEvent:
     llm_think_tokens: int | None = None
     llm_finish_reason: str | None = None  # "stop"/"length"/"tool_calls"/"abort"
     llm_wall_clock_s: float | None = None
+    # Sprint-15 follow-up: time-to-first-token from vLLM's
+    # ``RequestStateStats.first_token_latency``. Captured on every
+    # call so the analyzer can split prefill from decode and run
+    # the multiplicative MTP-speedup formula correctly.
+    llm_ttft_s: float | None = None
     # Sprint-15 MTP — present when speculative decoding fired this step.
     mtp_drafts_proposed: int | None = None
     mtp_drafts_accepted: int | None = None
@@ -133,6 +138,7 @@ class ArcAuditTrail:
         llm_think_tokens: int | None = None,
         llm_finish_reason: str | None = None,
         llm_wall_clock_s: float | None = None,
+        llm_ttft_s: float | None = None,
         mtp_drafts_proposed: int | None = None,
         mtp_drafts_accepted: int | None = None,
         mtp_acceptance_rate: float | None = None,
@@ -158,6 +164,7 @@ class ArcAuditTrail:
             llm_think_tokens=llm_think_tokens,
             llm_finish_reason=llm_finish_reason,
             llm_wall_clock_s=llm_wall_clock_s,
+            llm_ttft_s=llm_ttft_s,
             mtp_drafts_proposed=mtp_drafts_proposed,
             mtp_drafts_accepted=mtp_drafts_accepted,
             mtp_acceptance_rate=mtp_acceptance_rate,

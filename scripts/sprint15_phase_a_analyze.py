@@ -71,6 +71,7 @@ def _per_episode_stats(events: list[dict[str, Any]]) -> dict[str, Any]:
     out_tokens = [s["llm_output_tokens"] for s in steps if s.get("llm_output_tokens") is not None]
     think_tokens = [s["llm_think_tokens"] for s in steps if s.get("llm_think_tokens") is not None]
     wall = [s["llm_wall_clock_s"] for s in steps if s.get("llm_wall_clock_s") is not None]
+    ttft = [s["llm_ttft_s"] for s in steps if s.get("llm_ttft_s") is not None]
     finish = [s["llm_finish_reason"] for s in steps if s.get("llm_finish_reason") is not None]
     out: dict[str, Any] = {
         "steps": len(steps),
@@ -114,6 +115,19 @@ def _per_episode_stats(events: list[dict[str, Any]]) -> dict[str, Any]:
         total_tokens = sum(out_tokens)
         if total_wall > 0:
             out["measured_tps"] = total_tokens / total_wall
+    if ttft and len(ttft) == len(wall) and out_tokens:
+        # Decode-only throughput = output_tokens / (wall - ttft).
+        # MTP-speedup applies multiplicatively to the decode phase
+        # only; including prefill in the rate under-reports MTP wins
+        # on short outputs where prefill dominates wall-clock.
+        decode_walls = [w - t for w, t in zip(wall, ttft, strict=False) if w > t]
+        if decode_walls:
+            decode_tokens = sum(out_tokens[: len(decode_walls)])
+            decode_total = sum(decode_walls)
+            if decode_total > 0:
+                out["decode_tps"] = decode_tokens / decode_total
+                out["mean_ttft_s"] = statistics.fmean(ttft)
+                out["ttft_coverage"] = len(ttft) / len(wall)
     if finish:
         from collections import Counter
 

@@ -145,6 +145,7 @@ class TestAuditTrailWiring:
                 think_tokens=140,
                 finish_reason="stop",
                 wall_clock_s=12.5,
+                ttft_s=2.7,
             )
         )
         mtp = MTPStats()
@@ -162,6 +163,7 @@ class TestAuditTrailWiring:
         assert ev.llm_think_tokens == 140
         assert ev.llm_finish_reason == "stop"
         assert ev.llm_wall_clock_s == 12.5
+        assert ev.llm_ttft_s == 2.7
         assert ev.mtp_drafts_proposed == 100
         assert ev.mtp_drafts_accepted == 70
         assert ev.mtp_acceptance_rate == 0.7
