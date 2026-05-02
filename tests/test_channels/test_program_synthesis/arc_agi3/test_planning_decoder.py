@@ -239,4 +239,4 @@ class TestPlanningAgent:
         chosen = agent.choose_action([f], f)
         assert chosen.name == "ACTION6"
         # set_data was called.
-        assert chosen._data == {"x": 9, "y": 11}  # noqa: SLF001
+        assert chosen._data == {"x": 9, "y": 11}
