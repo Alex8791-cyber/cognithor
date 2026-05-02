@@ -29,6 +29,10 @@ from cognithor.channels.program_synthesis.arc_agi3.agent import (
     CognithorPSEAgent,
     RandomActionAgent,
 )
+from cognithor.channels.program_synthesis.arc_agi3.audit import (
+    ArcAuditEvent,
+    ArcAuditTrail,
+)
 from cognithor.channels.program_synthesis.arc_agi3.dsl_action_decoder import (
     DSLActionDecoder,
 )
@@ -53,6 +57,10 @@ from cognithor.channels.program_synthesis.arc_agi3.fast_grid_planner import (
 from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import (
     ClampPolicy,
     FrameBridge,
+)
+from cognithor.channels.program_synthesis.arc_agi3.game_profile import (
+    GameProfile,
+    StrategyMetrics,
 )
 from cognithor.channels.program_synthesis.arc_agi3.harness_shim import (
     cognithor_agent_factory,
@@ -88,6 +96,8 @@ from cognithor.channels.program_synthesis.arc_agi3.state_graph import (
 
 __all__ = [
     "ActionDecoder",
+    "ArcAuditEvent",
+    "ArcAuditTrail",
     "ChangeDetector",
     "ChoiceFn",
     "ClampPolicy",
@@ -101,6 +111,7 @@ __all__ = [
     "FrameContext",
     "FrameDataProtocol",
     "GameActionProtocol",
+    "GameProfile",
     "GameResult",
     "GameStateProtocol",
     "LLMActionDecoder",
@@ -111,6 +122,7 @@ __all__ = [
     "StateEdge",
     "StateGraphNavigator",
     "StateNode",
+    "StrategyMetrics",
     "StuckDetector",
     "UniformActionDecoder",
     "build_inprocess_vllm_choice_fn",
