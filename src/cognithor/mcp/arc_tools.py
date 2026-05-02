@@ -30,7 +30,13 @@ _active_sessions: dict[str, dict[str, Any]] = {}
 
 
 async def handle_arc_play(**kwargs: Any) -> str:
-    """Start or resume an ARC-AGI-3 game session."""
+    """Start or resume an ARC-AGI-3 game session.
+
+    Sprint-12: rewired to the new ``program_synthesis.arc_agi3`` stack
+    via :class:`EpisodeRunner`. ``use_llm=True`` selects
+    :class:`LLMReasoningAgent` (vLLM/qwen3.6:27b in-process); ``use_llm=False``
+    selects :class:`Sprint10DSLAgent` (heuristic, no LLM dependency).
+    """
     game_id: str = kwargs.get("game_id", "").strip()
     if not game_id:
         return "Error: 'game_id' is required."
@@ -39,12 +45,19 @@ async def handle_arc_play(**kwargs: Any) -> str:
     if isinstance(use_llm, str):
         use_llm = use_llm.lower() not in ("false", "0", "no")
 
-    max_steps: int = int(kwargs.get("max_steps", 500))
+    max_steps: int = int(kwargs.get("max_steps", 80))
 
     try:
-        from cognithor.arc.agent import CognithorArcAgent
+        from cognithor.channels.program_synthesis.arc_agi3 import (
+            ArcAuditTrail,
+            EpisodeRunner,
+            GameProfile,
+            LLMReasoningAgent,
+            Sprint10DSLAgent,
+            build_inprocess_vllm_choice_fn,
+        )
     except ImportError as exc:
-        return f"Error: ARC-AGI-3 module not available ({exc}). Install jarvis[arc] dependencies."
+        return f"Error: PSE arc_agi3 module not available ({exc})."
 
     log.info("arc_play.start", game_id=game_id, use_llm=use_llm, max_steps=max_steps)
 
@@ -53,12 +66,64 @@ async def handle_arc_play(**kwargs: Any) -> str:
     loop = asyncio.get_running_loop()
 
     def _run() -> dict[str, Any]:
-        agent = CognithorArcAgent(
+        # Cross-episode profile + per-run audit trail.
+        profile = GameProfile.load(game_id) or GameProfile(
             game_id=game_id,
-            use_llm_planner=use_llm,
-            max_steps_per_level=max_steps,
+            game_type="mixed",
+            available_actions=[],
+            click_zones=[],
+            target_colors=[],
+            movement_effects={},
+            win_condition="",
+            vision_description="",
+            vision_strategy="",
+            strategy_metrics={},
         )
-        return agent.run()
+        trail = ArcAuditTrail(game_id=game_id)
+
+        if use_llm:
+            try:
+                choice_fn = build_inprocess_vllm_choice_fn()
+            except RuntimeError as exc:
+                log.warning("arc_play.vllm_unavailable", error=str(exc))
+                # vLLM not available → fall through to DSL agent.
+                use_llm_local = False
+            else:
+                use_llm_local = True
+        else:
+            use_llm_local = False
+
+        if use_llm_local:
+            agent = LLMReasoningAgent(  # type: ignore[call-arg]
+                choice_fn=choice_fn,
+                audit_trail=trail,
+                game_profile=profile,
+                strategy_name="llm_reasoning",
+                fast_path_enabled=True,
+            )
+        else:
+            agent = Sprint10DSLAgent(
+                audit_trail=trail,
+                game_profile=profile,
+                strategy_name="dsl_full",
+                fast_path_enabled=True,
+            )
+
+        result = EpisodeRunner(agent=agent, game_id=game_id, max_steps=max_steps).run()
+        # Persist the updated profile so the next run inherits the metrics.
+        try:
+            profile.save()
+        except Exception as save_exc:  # pragma: no cover — defensive
+            log.warning("arc_play.profile_save_failed", error=str(save_exc))
+
+        return {
+            "score": result.score,
+            "levels_completed": result.levels_completed,
+            "total_steps": result.total_steps,
+            "final_state": result.final_state,
+            "won": result.won,
+            "error": result.error,
+        }
 
     try:
         result: dict[str, Any] = await loop.run_in_executor(None, _run)
@@ -103,7 +168,16 @@ async def handle_arc_status(**kwargs: Any) -> str:
 
 
 async def handle_arc_replay(**kwargs: Any) -> str:
-    """Replay a completed ARC game session from its audit trail."""
+    """Replay a completed ARC game session from its audit trail JSONL.
+
+    Sprint-12: reads the JSONL exported by the new
+    :class:`ArcAuditTrail.export_jsonl`. By default looks for
+    ``~/.cognithor/arc/audits/<game_id>.jsonl``; override via
+    ``audit_path``.
+    """
+    import json
+    from pathlib import Path
+
     game_id: str = kwargs.get("game_id", "").strip()
     if not game_id:
         return "Error: 'game_id' is required."
@@ -112,28 +186,41 @@ async def handle_arc_replay(**kwargs: Any) -> str:
     if isinstance(verbose, str):
         verbose = verbose.lower() in ("true", "1", "yes")
 
-    try:
-        from cognithor.arc.audit import ArcAuditTrail
-    except ImportError as exc:
-        return f"Error: ARC audit module not available ({exc})."
+    audit_path_arg = kwargs.get("audit_path")
+    if audit_path_arg:
+        audit_path = Path(str(audit_path_arg))
+    else:
+        audit_path = Path.home() / ".cognithor" / "arc" / "audits" / f"{game_id}.jsonl"
+
+    if not audit_path.exists():
+        return (
+            f"No audit trail found for game_id='{game_id}' at {audit_path}. "
+            f"Pass 'audit_path' to override."
+        )
 
     try:
-        trail = ArcAuditTrail(game_id)
-        events = trail.load_events()
+        events = [
+            json.loads(line)
+            for line in audit_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
     except Exception as exc:
-        return f"Error: Could not load audit trail for '{game_id}': {exc}"
+        return f"Error: Could not parse audit trail for '{game_id}': {exc}"
 
     if not events:
-        return f"No audit trail found for game_id='{game_id}'."
+        return f"Audit trail for '{game_id}' is empty."
 
     total = len(events)
     summary_lines = [
-        f"Replay of '{game_id}': {total} recorded event(s).",
+        f"Replay of '{game_id}': {total} recorded event(s) from {audit_path}.",
     ]
 
     if verbose:
-        for i, evt in enumerate(events[:20]):  # cap at 20 for output safety
-            summary_lines.append(f"  [{i + 1:>4}] {evt}")
+        for i, evt in enumerate(events[:20]):
+            summary_lines.append(
+                f"  [{i + 1:>4}] {evt.get('event_type', '?')} "
+                f"step={evt.get('step', '?')} action={evt.get('action', '-')}"
+            )
         if total > 20:
             summary_lines.append(f"  ... ({total - 20} more events)")
 
