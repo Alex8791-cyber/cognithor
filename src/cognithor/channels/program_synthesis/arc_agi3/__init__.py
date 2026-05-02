@@ -45,6 +45,9 @@ from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import (
     ClampPolicy,
     FrameBridge,
 )
+from cognithor.channels.program_synthesis.arc_agi3.harness_shim import (
+    cognithor_agent_factory,
+)
 from cognithor.channels.program_synthesis.arc_agi3.llm_action_decoder import (
     ChoiceFn,
     FrameContext,
@@ -61,6 +64,12 @@ from cognithor.channels.program_synthesis.arc_agi3.protocol import (
     GameActionProtocol,
     GameStateProtocol,
 )
+from cognithor.channels.program_synthesis.arc_agi3.scorecard import (
+    GameResult,
+    ScorecardSummary,
+    parse_scorecard,
+    summarise,
+)
 
 __all__ = [
     "ActionDecoder",
@@ -76,15 +85,20 @@ __all__ = [
     "FrameContext",
     "FrameDataProtocol",
     "GameActionProtocol",
+    "GameResult",
     "GameStateProtocol",
     "LLMActionDecoder",
     "LLMReasoningAgent",
     "RandomActionAgent",
+    "ScorecardSummary",
     "Sprint10DSLAgent",
     "StuckDetector",
     "UniformActionDecoder",
     "build_vllm_choice_fn",
+    "cognithor_agent_factory",
     "count_actions",
+    "parse_scorecard",
     "render_grid",
+    "summarise",
     "summarise_history",
 ]
