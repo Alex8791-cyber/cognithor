@@ -189,9 +189,9 @@ def build_vllm_planning_choice_fn(
 def build_inprocess_vllm_planning_choice_fn(
     *,
     model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
-    max_model_len: int = 32768,
-    max_num_seqs: int = 64,
-    gpu_memory_utilization: float = 0.97,
+    max_model_len: int = 131072,
+    max_num_seqs: int = 4,
+    gpu_memory_utilization: float = 0.95,
     enforce_eager: bool = False,
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
@@ -241,6 +241,9 @@ def build_inprocess_vllm_planning_choice_fn(
             "max_num_seqs": max_num_seqs,
             "enforce_eager": enforce_eager,
             "dtype": "auto",
+            # Sprint-16 perf: shared prefix across iterative planning
+            # calls. See llm_agent.py for the full rationale.
+            "enable_prefix_caching": True,
         }
         if kv_cache_dtype is not None:
             llm_kwargs["kv_cache_dtype"] = kv_cache_dtype
@@ -333,9 +336,9 @@ def _build_vision_user_content(ctx: FrameContext) -> list[dict[str, Any]]:
 def build_inprocess_vllm_vision_planning_choice_fn(
     *,
     model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
-    max_model_len: int = 32768,
-    max_num_seqs: int = 64,
-    gpu_memory_utilization: float = 0.97,
+    max_model_len: int = 131072,
+    max_num_seqs: int = 4,
+    gpu_memory_utilization: float = 0.95,
     enforce_eager: bool = False,
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
@@ -378,6 +381,9 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             "max_num_seqs": max_num_seqs,
             "enforce_eager": enforce_eager,
             "dtype": "auto",
+            # Sprint-16 perf: shared prefix across iterative planning
+            # calls. See llm_agent.py for the full rationale.
+            "enable_prefix_caching": True,
         }
         # Sprint-15 vLLM tuning: opt-in FP8 KV cache. MTP not supported
         # for the vision factory because vision-NVFP4-MTP checkpoints

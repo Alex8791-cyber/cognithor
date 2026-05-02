@@ -168,9 +168,9 @@ def build_vllm_choice_fn(
 def build_inprocess_vllm_choice_fn(
     *,
     model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4",
-    max_model_len: int = 32768,
-    max_num_seqs: int = 64,
-    gpu_memory_utilization: float = 0.97,
+    max_model_len: int = 131072,
+    max_num_seqs: int = 4,
+    gpu_memory_utilization: float = 0.95,
     enforce_eager: bool = False,
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
@@ -224,6 +224,14 @@ def build_inprocess_vllm_choice_fn(
             "max_num_seqs": max_num_seqs,
             "enforce_eager": enforce_eager,
             "dtype": "auto",
+            # Sprint-16 perf: ARC-AGI-3 step prompts share ~8 KB of
+            # system prompt + accumulated history across consecutive
+            # calls; prefix caching reuses the prefill KV blocks for
+            # the shared portion → 10-30 % wall-clock reduction on
+            # iterative chat without changing acceptance/throughput
+            # otherwise. Phase-A baseline showed
+            # ``Prefix cache hit rate: 0.0 %`` (off by default).
+            "enable_prefix_caching": True,
         }
         # Sprint-15 vLLM tuning: opt-in FP8 KV cache halves KV memory
         # footprint at <1% quality loss, enables much higher concurrency.
