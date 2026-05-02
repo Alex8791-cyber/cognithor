@@ -386,6 +386,17 @@ class LLMActionDecoder(ActionDecoder):
         # summary matches what the prompt enumerates.
         forbidden = tuple(a.name for a in available_actions if a.name in forbidden_set)
         summary = "; ".join(rows)
+        # Sprint-16 diagnostic: print to stderr so live runs surface
+        # whether the override gets a chance. To be removed once Hebel
+        # 1+2 are confirmed firing; harmless until then.
+        if forbidden:
+            import sys
+
+            print(
+                f"[anti-loop-diag] available={[a.name for a in available_actions]} "
+                f"forbidden={forbidden} (len_avail={len(available_actions)})",
+                file=sys.stderr,
+            )
         return forbidden, summary
 
 
