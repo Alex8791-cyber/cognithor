@@ -174,7 +174,7 @@ def build_inprocess_vllm_choice_fn(
     enforce_eager: bool = False,
     cuda_home: str = "/usr/local/cuda-13.0",
     temperature: float = 0.3,
-    max_tokens: int = 1024,
+    max_tokens: int = 2048,
     kv_cache_dtype: str | None = None,
     speculative_config: dict[str, Any] | None = None,
     mtp_stats: MTPStats | None = None,
