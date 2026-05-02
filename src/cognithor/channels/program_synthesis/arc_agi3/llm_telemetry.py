@@ -320,22 +320,32 @@ def record_vllm_request_output(
     if output_tokens == 0:
         output_tokens = estimate_token_count(output_text)
 
-    # vLLM's RequestMetrics carries arrival_time + first_token_time as
-    # absolute timestamps. TTFT = first_token_time - arrival_time, but
-    # both fields are optional and may be None on older versions or
-    # when metrics aren't enabled. Keep the failure path quiet — the
+    # vLLM TTFT plumbing changed across versions:
+    # * v0 (RequestMetrics): ``first_token_time - arrival_time``.
+    # * v1 (RequestStateStats): ``first_token_latency`` is computed +
+    #   exposed directly; ``first_token_ts - arrival_time`` is the
+    #   fallback if the field name shifted again.
+    # Both paths are defensive — keep the failure quiet so the
     # downstream analyzer treats ``ttft_s = None`` as "decode-rate
     # unmeasured for this call" rather than rejecting the record.
     ttft_s: float | None = None
     try:
         metrics = getattr(request_output, "metrics", None)
         if metrics is not None:
-            arrival = getattr(metrics, "arrival_time", None)
-            first_token = getattr(metrics, "first_token_time", None)
-            if arrival is not None and first_token is not None:
-                delta = float(first_token) - float(arrival)
-                if delta >= 0:
-                    ttft_s = delta
+            # Preferred — direct latency field on v1.
+            latency = getattr(metrics, "first_token_latency", None)
+            if latency is not None:
+                ttft_s = float(latency)
+            else:
+                arrival = getattr(metrics, "arrival_time", None)
+                # v1 stat name is ``first_token_ts``; v0 was ``first_token_time``.
+                first_token = getattr(metrics, "first_token_ts", None)
+                if first_token is None:
+                    first_token = getattr(metrics, "first_token_time", None)
+                if arrival is not None and first_token is not None:
+                    delta = float(first_token) - float(arrival)
+                    if delta >= 0:
+                        ttft_s = delta
     except Exception:
         pass
 

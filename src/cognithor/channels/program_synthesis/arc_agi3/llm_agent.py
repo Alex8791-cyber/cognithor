@@ -226,8 +226,21 @@ def build_inprocess_vllm_choice_fn(
         _engine_state["sampling"] = sampling
         return llm, sampling
 
+    # vLLM 0.20-v1 doesn't carry ``spec_token_acceptance_counts`` per
+    # ``RequestOutput`` — the spec-decode counts live on the engine's
+    # cumulative Prometheus metrics. Track a running snapshot of the
+    # cumulative counter and compute per-call deltas inside the
+    # closure so ``mtp_stats.snapshots`` ends up with per-call entries
+    # comparable to the per-request path on older vLLM.
+    _last_engine_stats: dict[str, int] = {"drafts": 0, "accepted": 0, "emitted": 0}
+
     def _sync_choice(ctx: FrameContext) -> tuple[str, str]:
         import time as _time
+
+        from cognithor.channels.program_synthesis.arc_agi3.mtp_stats import (
+            MTPSnapshot,
+            poll_engine_mtp_metrics,
+        )
 
         llm, sampling = _ensure_engine()
         t0 = _time.monotonic()
@@ -244,7 +257,32 @@ def build_inprocess_vllm_choice_fn(
         # downstream behaviour is unchanged when the kwargs are None.
         req_out = outs[0]
         if mtp_stats is not None:
-            mtp_stats.add_request(req_out)
+            # Prefer the per-request acceptance histogram if vLLM
+            # exposes it (older vLLM); fall back to engine-cumulative
+            # delta polling on vLLM 0.20-v1 which only ships
+            # `SpecDecodingStats` engine-side.
+            per_req = mtp_stats.add_request(req_out)
+            if per_req is None:
+                cumulative = poll_engine_mtp_metrics(llm)
+                if cumulative is not None:
+                    delta = MTPSnapshot(
+                        drafts_proposed=max(
+                            0, cumulative.drafts_proposed - _last_engine_stats["drafts"]
+                        ),
+                        drafts_accepted=max(
+                            0,
+                            cumulative.drafts_accepted - _last_engine_stats["accepted"],
+                        ),
+                        tokens_emitted=max(
+                            0, cumulative.tokens_emitted - _last_engine_stats["emitted"]
+                        ),
+                        num_speculative_tokens=cumulative.num_speculative_tokens,
+                    )
+                    if delta.drafts_proposed > 0:
+                        mtp_stats.snapshots.append(delta)
+                    _last_engine_stats["drafts"] = cumulative.drafts_proposed
+                    _last_engine_stats["accepted"] = cumulative.drafts_accepted
+                    _last_engine_stats["emitted"] = cumulative.tokens_emitted
         if telemetry is not None:
             record_vllm_request_output(telemetry, req_out, wall_clock_s=wall_clock_s)
         text = req_out.outputs[0].text

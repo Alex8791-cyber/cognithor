@@ -190,13 +190,29 @@ def poll_engine_mtp_metrics(llm: Any) -> MTPSnapshot | None:
                 value = getattr(metric, "value", None)
                 if value is None:
                     continue
-                if name.endswith("spec_decode_num_drafts_total"):
+                # vLLM 0.20+ Prometheus counters drop the ``_total``
+                # suffix; older releases keep it. Accept both so the
+                # same poll works on either engine. Names: drafts +
+                # draft_tokens + accepted_tokens (no separate emitted
+                # counter on v1 — derive emitted from the others).
+                if name.endswith(("spec_decode_num_drafts", "spec_decode_num_drafts_total")):
                     drafts = int(value)
                     found_any = True
-                elif name.endswith("spec_decode_num_accepted_tokens_total"):
+                elif name.endswith(
+                    (
+                        "spec_decode_num_accepted_tokens",
+                        "spec_decode_num_accepted_tokens_total",
+                    )
+                ):
                     accepted = int(value)
                     found_any = True
-                elif name.endswith("spec_decode_num_emitted_tokens_total"):
+                elif name.endswith(
+                    (
+                        "spec_decode_num_draft_tokens",
+                        "spec_decode_num_emitted_tokens",
+                        "spec_decode_num_emitted_tokens_total",
+                    )
+                ):
                     emitted = int(value)
                     found_any = True
         except Exception:
