@@ -20,6 +20,7 @@ or replace them, then update :data:`DEFAULT_PHASE2_CONFIG`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -144,13 +145,41 @@ class Phase2Config:
     cegis_sub_budget_per_iter_fraction: float = 0.33
 
     # ── Module A — LLM-Prior over vLLM (spec §4.2 / §4.3 / §4.7) ────
-    # Backend: vLLM exposing OpenAI-compat /v1/chat/completions.
-    # Default model is the spec-anchored Qwen3.6-27B-Instruct on the
-    # RTX 5090 (32 GB VRAM); Q5_K_M is the default quantisation,
-    # Q4_K_M is the fallback for tighter VRAM budgets.
+    # Backend: vLLM with NVFP4-quantised Qwen3.6-27B on RTX 5090
+    # (32 GB VRAM, Blackwell SM_120, native FP4 tensor-cores).
+    # Validated end-to-end 2026-05-02 in WSL2 Ubuntu 24.04 + CUDA 13.0:
+    #   * NVFP4 weights = ~14 GiB VRAM, leaves headroom for KV-cache
+    #   * 50 tok/s output, 240 tok/s input prefill
+    #   * sustained 370-400 W (memory-bound at single batch)
+    # See scripts/arc_agi3_live_validation.md for the full runbook.
+    #
+    # WSL2 networking quirk: uvicorn's TCP listen socket on port 8000
+    # gets opened but `accept()` deadlocks under WSL2 mirror-mode
+    # networking. The cognithor side defaults to `inprocess` backend
+    # (vLLM Python API directly, same process) which sidesteps HTTP
+    # entirely. Set llm_backend_kind="http" only if running vLLM in a
+    # separate environment (Docker, remote host) where HTTP works.
+    llm_backend_kind: Literal["http", "inprocess"] = "inprocess"
     llm_base_url: str = "http://localhost:8000/v1"
-    llm_model_name: str = "Qwen/Qwen3.6-27B-FP8"
+    llm_model_name: str = "sakamakismile/Qwen3.6-27B-NVFP4"
     llm_fallback_model_name: str = "Qwen/Qwen3.6-27B"
+    # vLLM engine knobs validated on RTX 5090 (32 GB VRAM, Blackwell
+    # SM_120). max_num_seqs=64 is the Mamba-cache-block ceiling for
+    # this VRAM budget; raising it triggers
+    # "max_num_seqs exceeds available Mamba cache blocks" at startup.
+    # max_model_len=32768 keeps KV-cache + cudagraph capture comfortably
+    # under the 32 GB envelope; raise to 65536 only with FP8 KV-cache.
+    # gpu_memory_utilization=0.92 reserves ~1.6 GiB for the Windows
+    # display + WSL2 overhead. enforce_eager=False activates CUDA
+    # graphs (10-30× speedup at the cost of 2-3 min startup capture).
+    llm_max_num_seqs: int = 64
+    llm_max_model_len: int = 32768
+    llm_gpu_memory_utilization: float = 0.92
+    llm_enforce_eager: bool = False
+    # CUDA toolkit path for FlashInfer NVFP4 JIT compilation. Blackwell
+    # SM_120 needs CUDA 12.8+ or 13.x. Override per env if installed
+    # at a non-default location.
+    llm_cuda_home: str = "/usr/local/cuda-13.0"
     # Two-Stage prompting (spec §4.7): Stage-1 free-form CoT, Stage-2
     # constrained JSON. Different temperatures because Stage-1 wants
     # exploration (default 0.7) and Stage-2 wants determinism (0.1).

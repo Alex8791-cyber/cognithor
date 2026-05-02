@@ -12,7 +12,7 @@ OpenAI-compat endpoint** into the PSE benchmark runner. The
 `WiredPhase2Engine`'s search loop.
 
 **The wiring is fully constructed and tested at module level.** What's
-missing is a *running* vLLM server with `Qwen/Qwen3.6-27B-FP8`
+missing is a *running* vLLM server with `sakamakismile/Qwen3.6-27B-NVFP4`
 loaded — that requires a 32+ GB GPU (RTX 5090 / A100 / H100) and is
 out of scope for the autonomous-mode session.
 
@@ -25,7 +25,7 @@ python -m cognithor.channels.program_synthesis.synthesis.benchmark_runner \
     --phase2 \
     --llm-prior \
     --llm-base-url http://localhost:8000/v1 \
-    --llm-model Qwen/Qwen3.6-27B-FP8 \
+    --llm-model sakamakismile/Qwen3.6-27B-NVFP4 \
     --output sprint10_track_b_training.json
 ```
 
@@ -33,7 +33,7 @@ Flags introduced this PR:
 
 - `--llm-prior` — opt-in switch. Without it, `--phase2` runs without an LLM (cold-start α, identical to pre-Track-B behaviour).
 - `--llm-base-url` — vLLM endpoint URL. Default `http://localhost:8000/v1`.
-- `--llm-model` — model name as registered with vLLM. Default `Qwen/Qwen3.6-27B-FP8`.
+- `--llm-model` — model name as registered with vLLM. Default `sakamakismile/Qwen3.6-27B-NVFP4`.
 
 ## Server-side deployment
 
@@ -56,7 +56,7 @@ pip install vllm==0.6.3
 
 ```bash
 # Q5_K_M quantisation (preferred):
-vllm serve Qwen/Qwen3.6-27B-FP8 \
+vllm serve sakamakismile/Qwen3.6-27B-NVFP4 \
     --quantization awq \
     --port 8000 \
     --max-model-len 8192 \
@@ -74,7 +74,7 @@ Verify:
 
 ```bash
 curl http://localhost:8000/v1/models
-# expected: list with Qwen/Qwen3.6-27B-FP8
+# expected: list with sakamakismile/Qwen3.6-27B-NVFP4
 curl http://localhost:8000/health
 # expected: 200 OK
 ```

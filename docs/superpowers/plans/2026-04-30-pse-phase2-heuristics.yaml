@@ -28,7 +28,7 @@ spec_version: "phase2_spec_v1.4"
 
 llm_prior:
   # vLLM-preferred fields (HuggingFace repo ids).
-  model_name: "Qwen/Qwen3.6-27B-FP8"
+  model_name: "sakamakismile/Qwen3.6-27B-NVFP4"
   fallback_model_name: "Qwen/Qwen3.6-27B"
   # llama.cpp-style fallbacks (kept for backend-swap without YAML rewrite).
   model_path: "./models/Qwen3.6-27B-FP8"
