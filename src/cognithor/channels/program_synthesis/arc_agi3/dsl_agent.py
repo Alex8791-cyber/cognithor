@@ -25,7 +25,7 @@ GAME_OVER policies (e.g. retry loops).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -50,6 +50,8 @@ if TYPE_CHECKING:
     from cognithor.channels.program_synthesis.arc_agi3.action_decoder import (
         ActionDecoder,
     )
+    from cognithor.channels.program_synthesis.arc_agi3.audit import ArcAuditTrail
+    from cognithor.channels.program_synthesis.arc_agi3.game_profile import GameProfile
     from cognithor.channels.program_synthesis.arc_agi3.protocol import (
         FrameDataProtocol,
         GameActionProtocol,
@@ -74,6 +76,9 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         stuck_detector: StuckDetector | None = None,
         state_counter: StateActionCounter | None = None,
         state_graph: StateGraphNavigator | None = None,
+        audit_trail: ArcAuditTrail | None = None,
+        game_profile: GameProfile | None = None,
+        strategy_name: str = "sprint10_dsl",
     ) -> None:
         self._bridge = bridge if bridge is not None else FrameBridge()
         self._memory = memory if memory is not None else EpisodeMemory()
@@ -94,8 +99,15 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         self._pending_levels: int | None = None
         # Cache the previous-frame grid so we can detect no-op transitions
         # and feed the StateGraphNavigator with full (from, action, to) tuples.
-        self._prev_grid: np.ndarray | None = None
+        self._prev_grid: np.ndarray[Any, Any] | None = None
         self._prev_state_hash: str | None = None
+        # Sprint-12 PR-6+7: optional cross-episode persistence hooks.
+        # Both default to None (no-op); pass instances to enable.
+        self._audit_trail = audit_trail
+        self._game_profile = game_profile
+        self._strategy_name = strategy_name
+        self._audit_started = False
+        self._step_count = 0
 
     @property
     def memory(self) -> EpisodeMemory:
@@ -124,6 +136,11 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         frames: list[FrameDataProtocol],
         latest_frame: FrameDataProtocol,
     ) -> GameActionProtocol:
+        # Step 0 — start the audit trail on the very first call.
+        if self._audit_trail is not None and not self._audit_started:
+            self._audit_trail.log_game_start()
+            self._audit_started = True
+
         # Step 1 — bridge the current frame to a Cognithor grid.
         # Errors (out-of-range, wrong shape) propagate; the upstream
         # harness logs and retries one frame later if this happens.
@@ -141,8 +158,14 @@ class Sprint10DSLAgent(CognithorPSEAgent):
                 action_name=self._pending_action_name,
                 levels_completed=latest_frame.levels_completed,
             )
-            # State-graph: record the (from, action, to) edge.
-            if self._prev_grid is not None and self._prev_state_hash is not None:
+            # State-graph: record the (from, action, to) edge. Skip when
+            # the grid shape changed (e.g. across a level boundary) — the
+            # graph only models intra-level transitions.
+            if (
+                self._prev_grid is not None
+                and self._prev_state_hash is not None
+                and self._prev_grid.shape == current_grid.shape
+            ):
                 pixels_changed = int(np.sum(self._prev_grid != current_grid))
                 self._state_graph.add_transition(
                     from_grid=self._prev_grid,
@@ -170,7 +193,55 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         self._pending_levels = latest_frame.levels_completed
         self._prev_grid = current_grid
         self._prev_state_hash = current_hash
+
+        # Step 6 — log the step into the audit trail when one is wired.
+        if self._audit_trail is not None:
+            pixels_changed = 0
+            if self._prev_grid is not None and len(self._memory) > 1:
+                # Compare against the prior memory entry's grid for the
+                # delta (we just appended current_grid as the "result of
+                # the previous action", so its predecessor is the old
+                # state).
+                prior_steps = self._memory.window(2)
+                if len(prior_steps) >= 2 and prior_steps[1].grid.shape == current_grid.shape:
+                    pixels_changed = int(np.sum(prior_steps[1].grid != current_grid))
+            self._audit_trail.log_step(
+                level=latest_frame.levels_completed,
+                step=self._step_count,
+                action=chosen.name,
+                game_state=latest_frame.state.name,
+                pixels_changed=pixels_changed,
+            )
+            self._step_count += 1
+
         return chosen
+
+    def finalize_episode(
+        self,
+        *,
+        score: int,
+        won: bool,
+        levels_solved: int,
+        budget_ratio: float = 0.0,
+    ) -> None:
+        """Close out the episode: log game_end + roll up the GameProfile.
+
+        Idempotent across multiple calls; subsequent calls after the
+        first are no-ops.
+        """
+        if self._audit_trail is not None and self._audit_started:
+            self._audit_trail.log_game_end(final_score=float(score))
+            # Mark closed so a second finalize_episode() is silent.
+            self._audit_started = False
+        if self._game_profile is not None:
+            self._game_profile.update_run(score=score)
+            self._game_profile.update_metrics(
+                self._strategy_name,
+                won=won,
+                levels_solved=levels_solved,
+                steps=self._step_count,
+                budget_ratio=budget_ratio,
+            )
 
 
 __all__ = ["Sprint10DSLAgent"]
