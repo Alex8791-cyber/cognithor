@@ -29,6 +29,10 @@ from cognithor.channels.program_synthesis.arc_agi3.agent import (
     CognithorPSEAgent,
     RandomActionAgent,
 )
+from cognithor.channels.program_synthesis.arc_agi3.dsl_action_decoder import (
+    DSLActionDecoder,
+)
+from cognithor.channels.program_synthesis.arc_agi3.dsl_agent import Sprint10DSLAgent
 from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
     ChangeDetector,
     EpisodeMemory,
@@ -52,6 +56,7 @@ __all__ = [
     "ChangeDetector",
     "ClampPolicy",
     "CognithorPSEAgent",
+    "DSLActionDecoder",
     "EpisodeMemory",
     "EpisodeStep",
     "FrameBridge",
@@ -60,6 +65,7 @@ __all__ = [
     "GameActionProtocol",
     "GameStateProtocol",
     "RandomActionAgent",
+    "Sprint10DSLAgent",
     "StuckDetector",
     "UniformActionDecoder",
     "count_actions",
