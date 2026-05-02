@@ -69,6 +69,10 @@ from cognithor.channels.program_synthesis.arc_agi3.game_profile import (
     GameProfile,
     StrategyMetrics,
 )
+from cognithor.channels.program_synthesis.arc_agi3.goal_inferer import (
+    GoalInferer,
+    infer_goal_summary,
+)
 from cognithor.channels.program_synthesis.arc_agi3.harness_shim import (
     cognithor_agent_factory,
 )
@@ -130,6 +134,7 @@ __all__ = [
     "GameProfile",
     "GameResult",
     "GameStateProtocol",
+    "GoalInferer",
     "LLMActionDecoder",
     "LLMReasoningAgent",
     "MovementInfo",
@@ -148,6 +153,7 @@ __all__ = [
     "count_actions",
     "detect_toggle_pair",
     "find_clusters",
+    "infer_goal_summary",
     "is_level_complete",
     "parse_scorecard",
     "plan_click_solution",
