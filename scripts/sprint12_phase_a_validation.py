@@ -55,9 +55,11 @@ try:
         LLMReasoningAgent,
         LLMTelemetry,
         MTPStats,
+        PlanningLLMReasoningAgent,
         RandomActionAgent,
         Sprint10DSLAgent,
         build_inprocess_vllm_choice_fn,
+        build_inprocess_vllm_planning_choice_fn,
     )
 except ImportError as exc:
     print(f"FATAL: cognithor.channels.program_synthesis.arc_agi3 not importable: {exc}")
@@ -242,6 +244,70 @@ def assert_telemetry_active(agent: Any, *, strict: bool = True) -> None:
         print(f"  [warn] telemetry sanity-check: {msg}")
 
 
+def _make_llm_planning(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
+    """Sprint-18: planning-agent variant of llm_full.
+
+    Same engine + same telemetry plumbing as ``_make_llm_full``, but
+    swaps the single-step ``LLMReasoningAgent`` for the multi-step
+    ``PlanningLLMReasoningAgent``. The LLM produces a 3-5 step plan
+    per call; the decoder executes the plan one step at a time and
+    re-plans on level transition / stuck-detection.
+
+    Hypothesis (post Run #21): single-step LLM picks productive
+    actions but doesn't sequence them strategically — pixΔ grew
+    monotonically into 600+ destruction, then GAME_OVER at step 35.
+    Plan-horizon should give the LLM a chance to commit to a
+    coherent sequence (e.g. "ACTION3, ACTION3, ACTION7" to
+    accomplish a specific local objective) instead of one-step
+    greedy.
+    """
+    audit_path = results_dir / f"{game_id}_llm_planning.jsonl"
+    trail = ArcAuditTrail(game_id=game_id)
+    profile = GameProfile.load(game_id) or _empty_profile(game_id)
+    mtp_stats = MTPStats()
+    telemetry = LLMTelemetry()
+    try:
+        # Same Sprint-15/16/17 vLLM config as llm_full — only the
+        # decoder differs. Note ``max_tokens=2048`` here (planning
+        # response is multi-step JSON, needs more room than the
+        # single-action JSON of llm_full).
+        choice_fn = build_inprocess_vllm_planning_choice_fn(
+            speculative_config={
+                "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
+                "num_speculative_tokens": 1,
+            },
+            kv_cache_dtype="fp8",
+            temperature=0.0,
+            max_tokens=2048,
+            mtp_stats=mtp_stats,
+            telemetry=telemetry,
+        )
+    except RuntimeError as exc:
+        print(f"  [llm_planning] vLLM init failed ({exc}); falling back to dsl_full")
+        return _make_dsl_full(game_id, results_dir)
+    # fast_path_enabled=False matches llm_full's Sprint-16 lesson —
+    # the toggle-fast-path bypasses the LLM decoder + anti-loop
+    # hebels. Planning agent has the same reason to keep all decisions
+    # going through the LLM-driven path.
+    agent = PlanningLLMReasoningAgent(
+        choice_fn=choice_fn,
+        audit_trail=trail,
+        game_profile=profile,
+        strategy_name="llm_planning",
+        frame_analyzer=FrameAnalyzer(),
+        fast_path_enabled=False,
+        plan_horizon=5,
+        telemetry=telemetry,
+        mtp_stats=mtp_stats,
+    )
+    agent.__dict__["_phase_a_trail"] = trail
+    agent.__dict__["_phase_a_audit_path"] = audit_path
+    agent.__dict__["_phase_a_profile"] = profile
+    agent.__dict__["_phase_a_mtp_stats"] = mtp_stats
+    agent.__dict__["_phase_a_telemetry"] = telemetry
+    return agent, str(audit_path)
+
+
 def _empty_profile(game_id: str) -> GameProfile:
     return GameProfile(
         game_id=game_id,
@@ -262,6 +328,7 @@ _AGENT_FACTORIES = {
     "dsl_baseline": _make_dsl_baseline,
     "dsl_full": _make_dsl_full,
     "llm_full": _make_llm_full,
+    "llm_planning": _make_llm_planning,
 }
 
 
