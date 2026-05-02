@@ -101,6 +101,18 @@ class FrameContext:
     # byte-identical.
     state_action_summary: str = ""
     forbidden_action_names: tuple[str, ...] = ()
+    # Sprint-19 Hebel B (vision delta): the previous frame's grid +
+    # the action that led from prev → current. Lets the vision-prompt
+    # builder send a side-by-side "before/after" image pair so the LLM
+    # can visually diff. ``None`` when no prior frame exists yet.
+    prev_grid: _Grid | None = None
+    prev_action_name: str = ""
+    # Sprint-19 Hebel D (structured text): pre-rendered cluster
+    # decomposition + recent-window delta-summary. Optional — empty
+    # strings disable the corresponding prompt sections so legacy
+    # prompts stay byte-identical.
+    cluster_summary: str = ""
+    delta_window_summary: str = ""
 
 
 # A callable that takes a :class:`FrameContext` and returns

@@ -117,6 +117,8 @@ class PlanningLLMActionDecoder(ActionDecoder):
         plan_horizon: int = 5,
         frame_analyzer: FrameAnalyzer | None = None,
         goal_inferer: GoalInferer | None = None,
+        state_counter: Any = None,
+        action_streak_detector: Any = None,
     ) -> None:
         if plan_horizon < 1:
             raise ValueError(f"plan_horizon must be >= 1, got {plan_horizon}")
@@ -128,6 +130,13 @@ class PlanningLLMActionDecoder(ActionDecoder):
         self._plan_horizon = plan_horizon
         self._frame_analyzer = frame_analyzer
         self._goal_inferer = goal_inferer
+        # Sprint-19 Hebel C: mirror the LLMActionDecoder's anti-loop
+        # signals into the planning decoder. Without these, a planning
+        # LLM that emits "ACTION6 ACTION6 ACTION6 ACTION6 ACTION6" as
+        # a 5-step plan executes ALL 5 sequentially (post Sprint-16 the
+        # single-step decoder caught this; planning decoder didn't).
+        self._state_counter = state_counter
+        self._action_streak_detector = action_streak_detector
         self._state = _PlanState()
 
     @property
@@ -180,6 +189,28 @@ class PlanningLLMActionDecoder(ActionDecoder):
         # Pop the next plan step.
         step = self._state.plan[self._state.cursor]
         self._state.cursor += 1
+
+        # Sprint-19 Hebel C: anti-loop check for the chosen plan-step.
+        # If the same action has dominated the recent window without
+        # level progress, the plan is reinforcing a stuck pattern —
+        # skip this step + invalidate rest of plan + force fallback
+        # so the LLM is consulted again next call.
+        if self._action_streak_detector is not None:
+            stuck = self._action_streak_detector.dominant_stuck_action(self._memory)
+            if (
+                stuck is not None
+                and stuck == step.action_name
+                and any(a.name != stuck for a in available_actions)
+            ):
+                self._state = _PlanState()
+                fallback_action, fb_reasoning = self._fallback.pick_action(
+                    frames, latest_frame, available_actions
+                )
+                return fallback_action, (
+                    f"PlanningLLMActionDecoder anti-loop override: plan named "
+                    f"{step.action_name!r} but it dominated the recent window "
+                    f"without level progress; falling back to {fallback_action.name!r}"
+                )
 
         # Match the planned action name against the per-frame whitelist.
         # If the LLM hallucinated an unavailable action, fall back to DSL
@@ -252,6 +283,30 @@ class PlanningLLMActionDecoder(ActionDecoder):
             ctx_kwargs["goal_summary"] = goal_summary
         if "game_id" in existing:
             ctx_kwargs["game_id"] = getattr(latest_frame, "game_id", "")
+        # Sprint-19 Hebel B + D: populate prev-frame + structured-text
+        # fields if FrameContext schema supports them. The vision
+        # planning factory reads these to build a 2-image multimodal
+        # prompt + cluster/delta annotation.
+        if "prev_grid" in existing and len(self._memory) > 0:
+            try:
+                prev_step = self._memory.window(1)[0]
+                ctx_kwargs["prev_grid"] = prev_step.grid
+                ctx_kwargs["prev_action_name"] = prev_step.action_name
+            except Exception:
+                pass
+        if "cluster_summary" in existing:
+            try:
+                from cognithor.channels.program_synthesis.arc_agi3.state_renderer import (
+                    render_cluster_summary,
+                    render_state_changes_in_window,
+                )
+
+                ctx_kwargs["cluster_summary"] = render_cluster_summary(grid)
+                ctx_kwargs["delta_window_summary"] = render_state_changes_in_window(
+                    self._memory, max_steps=5
+                )
+            except Exception:
+                pass
         ctx = FrameContext(**ctx_kwargs)
 
         try:

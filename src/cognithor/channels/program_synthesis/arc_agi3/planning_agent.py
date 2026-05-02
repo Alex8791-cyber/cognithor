@@ -284,42 +284,112 @@ def build_inprocess_vllm_planning_choice_fn(
 
 
 _VISION_PLANNING_USER_TEMPLATE = (
-    "The image above is the current game grid (64x64 cells, ARC-AGI-3 16-colour"
-    " palette). "
-    "Available actions: {actions}. "
-    "Recent history: {history}. "
+    "Image 1 (latest frame) shows the current game grid (64x64 cells, "
+    "ARC-AGI-3 16-colour palette).\n"
+    "{prev_image_note}"
+    "\n"
+    "Cluster decomposition of latest frame:\n"
+    "{cluster_summary}\n"
+    "\n"
+    "Trajectory (most-recent first, what each action did):\n"
+    "{delta_window}\n"
+    "\n"
+    "Available actions: {actions}\n"
+    "Recent action sequence: {history}\n"
     "{effects_line}"
     "{goal_line}"
     "Progress: {levels}/{win_levels} levels.\n\n"
+    "PLAN-PRINCIPLE:\n"
+    "- If the same action has been picked many times without level "
+    "progress, the strategy is wrong — pick something else.\n"
+    "- If pixΔ keeps growing without level change, you are likely "
+    "destroying the structure rather than completing it; try a "
+    "structurally-different action.\n"
+    "- Always note: have you SEEN the win-state? If not, prioritise "
+    "exploration over exploitation.\n\n"
     "Plan the next 3-5 actions and respond as JSON with the "
     '{{"reasoning": "...", "plan": [...]}} schema.'
 )
 
 
-def _build_vision_user_content(ctx: FrameContext) -> list[dict[str, Any]]:
-    """Multimodal content list: image + text describing what to plan.
+def _build_vision_user_content(
+    ctx: FrameContext,
+    *,
+    grid_scale: int = 8,
+    memory: Any = None,
+) -> list[dict[str, Any]]:
+    """Multimodal content list: image(s) + structured text.
 
-    The image is the rendered grid PNG; the text describes the
-    available actions, history, effects, and goal hypothesis. This
-    lets vision-capable LLMs (Qwen3.6) "see" the grid directly
-    rather than parsing 4096 ASCII characters.
+    Sprint-19 enhancements:
+    * Hebel B: Includes a SECOND image (previous frame) when ``memory``
+      is provided so the LLM can visually compare before/after.
+    * Hebel D: Cluster summary + delta-window text alongside the image.
+
+    The image carries spatial gestalt; the text carries symbolic
+    decomposition (which colour clusters exist, what each recent
+    action changed).
     """
+    from cognithor.channels.program_synthesis.arc_agi3.state_renderer import (
+        render_cluster_summary,
+        render_state_changes_in_window,
+    )
     from cognithor.channels.program_synthesis.arc_agi3.vision_render import (
         render_grid_data_uri,
     )
 
-    image_url = render_grid_data_uri(ctx.grid, scale=8)
+    image_url = render_grid_data_uri(ctx.grid, scale=grid_scale)
+    images: list[dict[str, Any]] = [{"type": "image_url", "image_url": {"url": image_url}}]
+    prev_image_note = ""
+    # Hebel B: prepend the most-recent prior frame as image #0 so the
+    # LLM can visually diff. Only include if memory has at least one
+    # entry (the current grid is appended *after* decoder runs, so the
+    # most-recent memory entry is the previous frame).
+    if memory is not None:
+        try:
+            from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+                EpisodeMemory as _EM,
+            )
+
+            if isinstance(memory, _EM) and len(memory) > 0:
+                prev_step = memory.window(1)[0]
+                if prev_step.grid.shape == ctx.grid.shape:
+                    prev_url = render_grid_data_uri(prev_step.grid, scale=grid_scale)
+                    images = [
+                        {"type": "image_url", "image_url": {"url": prev_url}},
+                        *images,
+                    ]
+                    prev_image_note = (
+                        "Image 0 (previous frame, BEFORE the latest action): "
+                        f"action just executed was {prev_step.action_name}.\n"
+                    )
+        except Exception:
+            pass
+
+    cluster_summary = (
+        render_cluster_summary(ctx.grid)
+        if ctx.grid is not None and ctx.grid.size > 0
+        else "(no grid)"
+    )
+    delta_window = (
+        render_state_changes_in_window(memory, max_steps=5)
+        if memory is not None
+        else "(no memory wired)"
+    )
+
     effects_line = (
-        f"Learned action effects: {ctx.action_effects_summary}. "
+        f"Learned action effects: {ctx.action_effects_summary}.\n"
         if ctx.action_effects_summary
         else ""
     )
     goal_line = (
-        f"Goal hypothesis: {getattr(ctx, 'goal_summary', '')}. "
+        f"Goal hypothesis: {getattr(ctx, 'goal_summary', '')}.\n"
         if getattr(ctx, "goal_summary", "")
         else ""
     )
     text = _VISION_PLANNING_USER_TEMPLATE.format(
+        prev_image_note=prev_image_note,
+        cluster_summary=cluster_summary,
+        delta_window=delta_window,
         actions=", ".join(ctx.available_action_names),
         history=ctx.history_summary,
         effects_line=effects_line,
@@ -327,10 +397,7 @@ def _build_vision_user_content(ctx: FrameContext) -> list[dict[str, Any]]:
         levels=ctx.levels_completed,
         win_levels=ctx.win_levels,
     )
-    return [
-        {"type": "image_url", "image_url": {"url": image_url}},
-        {"type": "text", "text": text},
-    ]
+    return [*images, {"type": "text", "text": text}]
 
 
 def build_inprocess_vllm_vision_planning_choice_fn(
@@ -402,30 +469,57 @@ def build_inprocess_vllm_vision_planning_choice_fn(
         return llm, sampling
 
     def _sync_choice(ctx: FrameContext) -> tuple[list[PlanStep], str]:
-        llm, sampling = _ensure_engine()
-        # Override grid_scale per-call by building content here.
+        import time as _time
+
         from cognithor.channels.program_synthesis.arc_agi3.vision_render import (
             render_grid_data_uri,
         )
 
-        image_url = render_grid_data_uri(ctx.grid, scale=grid_scale)
+        llm, sampling = _ensure_engine()
+
+        # Sprint-19 Hebel B+D: build multimodal content reading
+        # ``ctx.prev_grid`` + ``ctx.cluster_summary`` + ``ctx.delta_window_summary``
+        # populated by ``PlanningLLMActionDecoder._consult_llm``.
+        images: list[dict[str, Any]] = [
+            {
+                "type": "image_url",
+                "image_url": {"url": render_grid_data_uri(ctx.grid, scale=grid_scale)},
+            }
+        ]
+        prev_image_note = ""
+        prev_grid = getattr(ctx, "prev_grid", None)
+        if prev_grid is not None and prev_grid.shape == ctx.grid.shape:
+            prev_url = render_grid_data_uri(prev_grid, scale=grid_scale)
+            images = [
+                {"type": "image_url", "image_url": {"url": prev_url}},
+                *images,
+            ]
+            prev_action = getattr(ctx, "prev_action_name", "")
+            prev_image_note = (
+                f"Image 0 (previous frame, BEFORE the latest action): "
+                f"the action just executed was {prev_action!r}.\n"
+            )
+        cluster_summary = getattr(ctx, "cluster_summary", "") or "(not annotated)"
+        delta_window = getattr(ctx, "delta_window_summary", "") or "(no completed transitions yet)"
         text_after_image = _VISION_PLANNING_USER_TEMPLATE.format(
+            prev_image_note=prev_image_note,
+            cluster_summary=cluster_summary,
+            delta_window=delta_window,
             actions=", ".join(ctx.available_action_names),
             history=ctx.history_summary,
             effects_line=(
-                f"Learned action effects: {ctx.action_effects_summary}. "
+                f"Learned action effects: {ctx.action_effects_summary}.\n"
                 if ctx.action_effects_summary
                 else ""
             ),
             goal_line=(
-                f"Goal hypothesis: {getattr(ctx, 'goal_summary', '')}. "
+                f"Goal hypothesis: {getattr(ctx, 'goal_summary', '')}.\n"
                 if getattr(ctx, "goal_summary", "")
                 else ""
             ),
             levels=ctx.levels_completed,
             win_levels=ctx.win_levels,
         )
-        import time as _time
 
         t0 = _time.monotonic()
         outs = llm.chat(
@@ -433,10 +527,7 @@ def build_inprocess_vllm_vision_planning_choice_fn(
                 {"role": "system", "content": _build_planning_system_prompt(ctx)},
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                        {"type": "text", "text": text_after_image},
-                    ],
+                    "content": [*images, {"type": "text", "text": text_after_image}],
                 },
             ],
             sampling_params=sampling,
@@ -489,6 +580,14 @@ class PlanningLLMReasoningAgent(Sprint10DSLAgent):
                 goal_inferer = _GI()
             except ImportError:
                 goal_inferer = None
+        # Sprint-19 Hebel C: forward the parent's anti-loop wirings so
+        # the planning decoder can also catch state-saturated /
+        # streak-stuck plans. Without this, a planning LLM that emits
+        # "ACTION6 ×5" as a plan executes all 5 unconditionally.
+        from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+            ActionStreakDetector,
+        )
+
         self._decoder = PlanningLLMActionDecoder(
             bridge=self._bridge,
             memory=self._memory,
@@ -497,6 +596,8 @@ class PlanningLLMReasoningAgent(Sprint10DSLAgent):
             plan_horizon=plan_horizon,
             frame_analyzer=self._frame_analyzer,
             goal_inferer=goal_inferer,
+            state_counter=self._state_counter,
+            action_streak_detector=ActionStreakDetector(),
         )
 
     @property
