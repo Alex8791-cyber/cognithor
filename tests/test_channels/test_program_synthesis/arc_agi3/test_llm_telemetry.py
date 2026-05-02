@@ -159,6 +159,61 @@ class TestVllmRequestOutput:
         # tool_calls is NOT length → truncation rate stays 0.
         assert s["length_truncation_rate"] == 0.0
 
+    def test_extracts_ttft_from_request_metrics(self) -> None:
+        # vLLM RequestOutput.metrics carries arrival_time + first_token_time
+        # as absolute timestamps. TTFT = first - arrival.
+        class _Out:
+            text = "{json}"
+            token_ids = list(range(80))
+            finish_reason = "stop"
+
+        class _Metrics:
+            arrival_time = 1000.0
+            first_token_time = 1002.5  # 2.5 s prefill
+
+        class _Req:
+            prompt_token_ids = [0] * 500
+            outputs = [_Out()]
+            metrics = _Metrics()
+
+        tele = LLMTelemetry()
+        record_vllm_request_output(tele, _Req(), wall_clock_s=10.0)
+        rec = tele.records[0]
+        assert rec.ttft_s == 2.5
+        # Decode time = wall - ttft = 7.5 s; decode_tps = 80 / 7.5
+        assert rec.decode_time_s == 7.5
+        assert rec.decode_tps is not None
+        assert abs(rec.decode_tps - 80 / 7.5) < 1e-9
+        # Summary reports decode_tps + ttft when present.
+        s = tele.summary()
+        assert "decode_tps_avg" in s
+        assert "ttft_s_avg" in s
+        assert s["ttft_coverage"] == 1.0
+
+    def test_ttft_none_when_metrics_missing(self) -> None:
+        # Backward-compat: legacy request objects without ``metrics``
+        # don't crash the recorder; TTFT stays None and decode rate is
+        # unmeasured rather than zero-imputed.
+        class _Out:
+            text = "{json}"
+            token_ids = [1, 2, 3]
+            finish_reason = "stop"
+
+        class _Req:
+            prompt_token_ids = [0] * 100
+            outputs = [_Out()]
+
+        tele = LLMTelemetry()
+        record_vllm_request_output(tele, _Req(), wall_clock_s=1.0)
+        rec = tele.records[0]
+        assert rec.ttft_s is None
+        assert rec.decode_time_s is None
+        assert rec.decode_tps is None
+        s = tele.summary()
+        # TTFT keys absent when no record carried it.
+        assert "ttft_s_avg" not in s
+        assert "decode_tps_avg" not in s
+
 
 class TestSummary:
     def test_empty_summary(self) -> None:
