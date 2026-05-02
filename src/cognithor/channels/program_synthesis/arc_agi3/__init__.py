@@ -54,6 +54,10 @@ from cognithor.channels.program_synthesis.arc_agi3.fast_grid_planner import (
     simulate_combo,
     simulate_toggle,
 )
+from cognithor.channels.program_synthesis.arc_agi3.frame_analyzer import (
+    FrameAnalyzer,
+    MovementInfo,
+)
 from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import (
     ClampPolicy,
     FrameBridge,
@@ -106,6 +110,7 @@ __all__ = [
     "DSLActionDecoder",
     "EpisodeMemory",
     "EpisodeStep",
+    "FrameAnalyzer",
     "FrameBridge",
     "FrameChange",
     "FrameContext",
@@ -116,6 +121,7 @@ __all__ = [
     "GameStateProtocol",
     "LLMActionDecoder",
     "LLMReasoningAgent",
+    "MovementInfo",
     "RandomActionAgent",
     "ScorecardSummary",
     "Sprint10DSLAgent",

@@ -37,6 +37,10 @@ from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
     EpisodeMemory,
     StuckDetector,
 )
+from cognithor.channels.program_synthesis.arc_agi3.fast_path import (
+    ClickPlanCache,
+    detect_toggle_pair_from_memory,
+)
 from cognithor.channels.program_synthesis.arc_agi3.frame_bridge import FrameBridge
 from cognithor.channels.program_synthesis.arc_agi3.state_action_counts import (
     StateActionCounter,
@@ -79,6 +83,7 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         audit_trail: ArcAuditTrail | None = None,
         game_profile: GameProfile | None = None,
         strategy_name: str = "sprint10_dsl",
+        fast_path_enabled: bool = False,
     ) -> None:
         self._bridge = bridge if bridge is not None else FrameBridge()
         self._memory = memory if memory is not None else EpisodeMemory()
@@ -108,6 +113,11 @@ class Sprint10DSLAgent(CognithorPSEAgent):
         self._strategy_name = strategy_name
         self._audit_started = False
         self._step_count = 0
+        # Sprint-12 PR-8: pure-NumPy click-toggle fast-path. Disabled by
+        # default; enable via constructor flag to short-circuit the DSL
+        # search when the most recent transition reveals a toggle pair.
+        self._fast_path_enabled = fast_path_enabled
+        self._click_cache: ClickPlanCache | None = ClickPlanCache() if fast_path_enabled else None
 
     @property
     def memory(self) -> EpisodeMemory:
@@ -181,8 +191,19 @@ class Sprint10DSLAgent(CognithorPSEAgent):
                 if self._prev_state_hash == current_hash:
                     self._state_counter.mark_dead(self._prev_state_hash, self._pending_action_name)
 
-        # Step 3 — delegate to the DSL decoder.
-        chosen = self._decoder.decode(frames, latest_frame)
+        # Step 3a — try the fast-path planner if enabled. The planner
+        # only fires when ACTION6 is available AND we've seen a clean
+        # toggle pair in the last two frames AND the planner finds a
+        # winning click sequence. On a miss it returns None and we fall
+        # through to the regular DSL decoder unchanged.
+        chosen: GameActionProtocol | None = None
+        if self._click_cache is not None:
+            chosen = self._try_fast_path(latest_frame, current_grid, current_hash)
+
+        # Step 3b — delegate to the DSL decoder when the fast-path
+        # didn't fire.
+        if chosen is None:
+            chosen = self._decoder.decode(frames, latest_frame)
 
         # Step 4 — bookkeeping: increment the (current_state, chosen) count
         # so the next decode skips it if alternatives exist.
@@ -242,6 +263,50 @@ class Sprint10DSLAgent(CognithorPSEAgent):
                 steps=self._step_count,
                 budget_ratio=budget_ratio,
             )
+
+    def _try_fast_path(
+        self,
+        latest_frame: FrameDataProtocol,
+        current_grid: np.ndarray[Any, Any],
+        current_hash: str,
+    ) -> GameActionProtocol | None:
+        """Click-toggle fast-path. Returns ACTION6 with click coordinates
+        when a winning plan exists, ``None`` otherwise.
+
+        Side-effect-free on miss; the cache is keyed by ``(state_hash,
+        source, target)`` so repeated calls on the same state don't
+        re-run the NumPy search.
+        """
+        if self._click_cache is None:
+            return None
+        # ACTION6 must be available for clicks.
+        click_action: GameActionProtocol | None = None
+        for action in latest_frame.available_actions:
+            if action.name == "ACTION6":
+                click_action = action
+                break
+        if click_action is None:
+            return None
+        # Need a toggle pair signal from the last two grids.
+        toggle = detect_toggle_pair_from_memory(self._memory)
+        if toggle is None:
+            return None
+        source_color, target_color = toggle
+        click_xy = self._click_cache.next_click(
+            state_hash=current_hash,
+            grid=current_grid,
+            source_color=source_color,
+            target_color=target_color,
+        )
+        if click_xy is None:
+            return None
+        x, y = click_xy
+        click_action.set_data({"x": int(x), "y": int(y)})
+        click_action.reasoning = (
+            f"Sprint10DSLAgent fast-path: plan_click_solution "
+            f"({source_color}->{target_color}) → click ({x},{y})"
+        )
+        return click_action
 
 
 __all__ = ["Sprint10DSLAgent"]
