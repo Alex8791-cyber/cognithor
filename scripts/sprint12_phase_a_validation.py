@@ -132,12 +132,21 @@ def _make_llm_full(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
         # variant pairs with the base NVFP4 model — note the explicit
         # `-Text-` infix (not the bare `-NVFP4-MTP` we initially
         # assumed; that path 401s on HF as of 2026-05-02).
+        #
+        # ``temperature=0.0`` (greedy): MTP-Acceptance kollabiert bei
+        # Sampling auf 0% (Live-Run 2026-05-02 Outcome C — 58 671
+        # Drafts, 0 akzeptiert). Greedy decoding macht den Verify-
+        # Schritt deterministisch und ist die einzige Konfiguration
+        # mit der MTP überhaupt eine Chance hat. Trade-Off: weniger
+        # Output-Diversität, aber für ARC-Reasoning ist Konsistenz
+        # ohnehin wertvoller als Sampling-Streuung.
         choice_fn = build_inprocess_vllm_choice_fn(
             speculative_config={
                 "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
                 "num_speculative_tokens": 3,
             },
             kv_cache_dtype="fp8",
+            temperature=0.0,
             mtp_stats=mtp_stats,
             telemetry=telemetry,
         )
