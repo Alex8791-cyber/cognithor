@@ -307,6 +307,23 @@ class PlanningLLMActionDecoder(ActionDecoder):
                 )
             except Exception:
                 pass
+        if "steps_at_current_level" in existing:
+            # Sprint-19 Hebel O: count how many consecutive recent memory
+            # entries share the current ``levels_completed``. The vision
+            # prompt template reads this to decide whether to inject a
+            # stalled-progress warning. Walk memory.window() from most
+            # recent backwards while the level matches.
+            try:
+                current_level = latest_frame.levels_completed
+                steps_at = 0
+                for step_entry in self._memory.window(80):
+                    if step_entry.levels_completed == current_level:
+                        steps_at += 1
+                    else:
+                        break
+                ctx_kwargs["steps_at_current_level"] = steps_at
+            except Exception:
+                pass
         if "action_pixel_history" in existing:
             # Sprint-19 Hebel S: per-action pixΔ histogram (avg / max /
             # n with DANGER / CAUTION suffixes) so the vision prompt

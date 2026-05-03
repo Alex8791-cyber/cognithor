@@ -190,6 +190,71 @@ class TestVllmRequestOutput:
         assert "ttft_s_avg" in s
         assert s["ttft_coverage"] == 1.0
 
+    def test_extracts_reasoning_from_planning_json(self) -> None:
+        """Hebel P: if the output text is the JSON-with-think-block
+        format the planning factory uses, the recorder extracts the
+        top-level ``reasoning`` field and stores it on the record.
+        """
+
+        class _Out:
+            text = (
+                "<think>weighing options</think>"
+                '{"reasoning": "explore right corridor first", '
+                '"plan": [{"action": "ACTION3", "data": null}]}'
+            )
+            token_ids = [0] * 50
+            finish_reason = "stop"
+
+        class _Req:
+            prompt_token_ids = [0] * 100
+            outputs = [_Out()]
+
+        tele = LLMTelemetry()
+        record_vllm_request_output(tele, _Req(), wall_clock_s=1.0)
+        rec = tele.records[0]
+        assert rec.reasoning == "explore right corridor first"
+
+    def test_reasoning_truncated_at_4000_chars(self) -> None:
+        """Hebel P: oversized reasoning fields are truncated to 4000
+        chars at record-construction time so audit JSONL stays
+        parse-friendly.
+        """
+        long_reason = "x" * 5000
+
+        class _Out:
+            text = f'{{"reasoning": "{long_reason}", "plan": []}}'
+            token_ids = [0] * 50
+            finish_reason = "stop"
+
+        class _Req:
+            prompt_token_ids = [0] * 100
+            outputs = [_Out()]
+
+        tele = LLMTelemetry()
+        record_vllm_request_output(tele, _Req(), wall_clock_s=1.0)
+        rec = tele.records[0]
+        assert rec.reasoning is not None
+        assert len(rec.reasoning) == 4000
+
+    def test_reasoning_falls_back_to_post_think_body_when_no_json(self) -> None:
+        """Hebel P: when output isn't strict JSON, the recorder still
+        captures the post-think body as the reasoning trace.
+        """
+
+        class _Out:
+            text = "<think>reasoning trace</think>final answer is X"
+            token_ids = [0] * 20
+            finish_reason = "stop"
+
+        class _Req:
+            prompt_token_ids = [0] * 50
+            outputs = [_Out()]
+
+        tele = LLMTelemetry()
+        record_vllm_request_output(tele, _Req(), wall_clock_s=1.0)
+        rec = tele.records[0]
+        assert rec.reasoning == "final answer is X"
+
     def test_ttft_none_when_metrics_missing(self) -> None:
         # Backward-compat: legacy request objects without ``metrics``
         # don't crash the recorder; TTFT stays None and decode rate is

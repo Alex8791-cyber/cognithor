@@ -113,6 +113,13 @@ class FrameContext:
     # prompts stay byte-identical.
     cluster_summary: str = ""
     delta_window_summary: str = ""
+    # Sprint-19 Hebel O (stalled-progress signal): how many consecutive
+    # recent memory entries have the same ``levels_completed`` as the
+    # current frame. Computed by the decoder from memory; lets the
+    # prompt builder inject a "you've been stuck for N steps" warning
+    # when the agent is failing for too long. ``0`` means "no stall
+    # observed yet" so legacy prompt builders stay byte-identical.
+    steps_at_current_level: int = 0
     # Sprint-19 Hebel S (per-action pixΔ histogram): one line per
     # action seen in the episode showing avg / max pixΔ + count, with
     # DANGER / CAUTION suffixes matching Hebel M's risk vocabulary.

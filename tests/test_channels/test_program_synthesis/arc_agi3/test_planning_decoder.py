@@ -135,6 +135,152 @@ class TestPlanningDecoder:
         chosen, _ = decoder.pick_action([f], f, f.available_actions)
         assert len(calls) == 2
 
+    def test_populates_steps_at_current_level(self) -> None:
+        """Sprint-19 Hebel O: decoder must count consecutive recent
+        memory entries with the same ``levels_completed`` and pass the
+        count via ``FrameContext.steps_at_current_level`` so the prompt
+        builder can decide whether to inject the stalled-progress
+        warning. Builds a memory of 25 frames at level 0, then verifies
+        the choice-fn sees ``steps_at_current_level == 25``.
+        """
+        captured: list[int] = []
+
+        def _planner(ctx: Any) -> tuple[list[PlanStep], str]:
+            captured.append(getattr(ctx, "steps_at_current_level", -1))
+            return [PlanStep("ACTION1")], ""
+
+        memory = EpisodeMemory()
+        # 25 prior frames all at level 0; memory capacity is 16 so the
+        # counter caps at the buffer size, which is the working
+        # assumption for the prompt-side stalled-progress threshold.
+        for _ in range(25):
+            memory.append(
+                grid=np.zeros((2, 2), dtype=np.int8),
+                action_name="ACTION1",
+                levels_completed=0,
+            )
+
+        decoder = PlanningLLMActionDecoder(
+            bridge=FrameBridge(),
+            memory=memory,
+            choice_fn=_planner,
+        )
+        f = _frame(np.zeros((2, 2), dtype=np.int8))
+        decoder.pick_action([f], f, f.available_actions)
+        assert captured == [16]
+
+    def test_steps_at_current_level_does_not_inject_warning_when_below_threshold(
+        self,
+    ) -> None:
+        """Hebel O: ``_VISION_PLANNING_USER_TEMPLATE`` has a
+        ``{stalled_warning}`` slot. When ``steps_at_current_level`` is
+        below the threshold OR ``levels_completed > 0``, the slot stays
+        empty so legacy prompts are byte-identical.
+        """
+        from cognithor.channels.program_synthesis.arc_agi3.planning_agent import (
+            _STALLED_THRESHOLD,
+        )
+
+        # Build a plausible context with a sub-threshold count.
+        memory = EpisodeMemory()
+        for _ in range(_STALLED_THRESHOLD - 1):
+            memory.append(
+                grid=np.zeros((2, 2), dtype=np.int8),
+                action_name="ACTION1",
+                levels_completed=0,
+            )
+
+        captured_text: list[str] = []
+
+        def _planner(ctx: Any) -> tuple[list[PlanStep], str]:
+            from cognithor.channels.program_synthesis.arc_agi3.planning_agent import (
+                _build_vision_user_content,
+            )
+
+            content = _build_vision_user_content(ctx, memory=memory)
+            text = next(item["text"] for item in content if item.get("type") == "text")
+            captured_text.append(text)
+            return [PlanStep("ACTION1")], ""
+
+        decoder = PlanningLLMActionDecoder(
+            bridge=FrameBridge(),
+            memory=memory,
+            choice_fn=_planner,
+        )
+        f = _frame(np.zeros((2, 2), dtype=np.int8))
+        decoder.pick_action([f], f, f.available_actions)
+        assert "STALLED-PROGRESS WARNING" not in captured_text[0]
+
+    def test_steps_at_current_level_injects_warning_when_above_threshold(self) -> None:
+        """Hebel O: when memory is full of same-level entries beyond
+        the threshold AND ``levels_completed == 0``, the warning is
+        rendered into the user prompt.
+        """
+        memory = EpisodeMemory()
+        for _ in range(20):  # ≥ _STALLED_THRESHOLD; capacity is 16 so caps there
+            memory.append(
+                grid=np.zeros((2, 2), dtype=np.int8),
+                action_name="ACTION1",
+                levels_completed=0,
+            )
+
+        captured_text: list[str] = []
+
+        def _planner(ctx: Any) -> tuple[list[PlanStep], str]:
+            from cognithor.channels.program_synthesis.arc_agi3.planning_agent import (
+                _build_vision_user_content,
+            )
+
+            content = _build_vision_user_content(ctx, memory=memory)
+            text = next(item["text"] for item in content if item.get("type") == "text")
+            captured_text.append(text)
+            return [PlanStep("ACTION1")], ""
+
+        decoder = PlanningLLMActionDecoder(
+            bridge=FrameBridge(),
+            memory=memory,
+            choice_fn=_planner,
+        )
+        f = _frame(np.zeros((2, 2), dtype=np.int8))
+        decoder.pick_action([f], f, f.available_actions)
+        assert "STALLED-PROGRESS WARNING" in captured_text[0]
+        # The warning quotes the actual count.
+        assert "16 consecutive steps" in captured_text[0]
+
+    def test_steps_at_current_level_resets_on_level_change(self) -> None:
+        """Sprint-19 Hebel O: the consecutive-same-level counter must
+        STOP at the last level transition. Memory of 5 frames at level 0
+        then 3 frames at level 1 → counter is 3, not 8.
+        """
+        captured: list[int] = []
+
+        def _planner(ctx: Any) -> tuple[list[PlanStep], str]:
+            captured.append(getattr(ctx, "steps_at_current_level", -1))
+            return [PlanStep("ACTION1")], ""
+
+        memory = EpisodeMemory()
+        for _ in range(5):
+            memory.append(
+                grid=np.zeros((2, 2), dtype=np.int8),
+                action_name="ACTION1",
+                levels_completed=0,
+            )
+        for _ in range(3):
+            memory.append(
+                grid=np.zeros((2, 2), dtype=np.int8),
+                action_name="ACTION1",
+                levels_completed=1,
+            )
+
+        decoder = PlanningLLMActionDecoder(
+            bridge=FrameBridge(),
+            memory=memory,
+            choice_fn=_planner,
+        )
+        f = _frame(np.zeros((2, 2), dtype=np.int8), levels=1)
+        decoder.pick_action([f], f, f.available_actions)
+        assert captured == [3]
+
     def test_invalidates_plan_on_level_change(self) -> None:
         calls: list[int] = []
 

@@ -334,6 +334,11 @@ class Sprint10DSLAgent(CognithorPSEAgent):
             kwargs["llm_finish_reason"] = rec.finish_reason
             kwargs["llm_wall_clock_s"] = rec.wall_clock_s
             kwargs["llm_ttft_s"] = rec.ttft_s
+            # Sprint-19 Hebel P: forward the model's top-level
+            # reasoning when the telemetry-wrapped choice-fn captured
+            # it. ``None`` is the legacy default and stays JSONL-clean.
+            if getattr(rec, "reasoning", None) is not None:
+                kwargs["llm_reasoning"] = rec.reasoning
         if self._mtp_stats is not None and self._mtp_stats.snapshots:
             snap = self._mtp_stats.snapshots[-1]
             kwargs["mtp_drafts_proposed"] = snap.drafts_proposed
