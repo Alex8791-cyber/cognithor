@@ -16,10 +16,12 @@ Bible reference: §8 (Model Router)
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import dataclasses
 import json
 import time
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -703,6 +705,44 @@ class ModelRouter:
     def get_context_profile_spec(profile_name: str) -> ContextProfile | None:
         """Look up a context profile by name. Returns ``None`` if unknown."""
         return CONTEXT_PROFILES.get(profile_name)
+
+    @contextlib.contextmanager
+    def context_profile_scope(self, profile_name: str) -> Iterator[None]:
+        """Temporarily activate a context profile, then restore on exit.
+
+        Usage::
+
+            with router.context_profile_scope("arc_agi3"):
+                response = await router.chat(messages, ...)
+            # ← previous profile (or None) restored here, even on exception.
+
+        This is the safe way to flip the profile inside a single
+        request — manual ``set_context_profile`` / ``clear_context_profile``
+        pairs are easy to leak across an early ``return`` or a raised
+        exception, which would carry the wider window into the *next*
+        request and trigger GPU OOM.
+
+        ContextVar isolation still applies: a ``contextvars.copy_context()``
+        around concurrent asyncio tasks keeps each task's scope its own.
+
+        Args:
+            profile_name: Any key in :data:`CONTEXT_PROFILES`. Same
+                validation as :meth:`set_context_profile` — unknown
+                names raise :class:`ValueError` *before* the ``with``
+                body runs.
+        """
+        if profile_name not in CONTEXT_PROFILES:
+            raise ValueError(
+                f"Unknown context profile {profile_name!r}. "
+                f"Valid options: {sorted(CONTEXT_PROFILES)}"
+            )
+        token = _context_profile_var.set(profile_name)
+        log.info("context_profile_scope_entered", profile=profile_name)
+        try:
+            yield
+        finally:
+            _context_profile_var.reset(token)
+            log.info("context_profile_scope_exited", profile=profile_name)
 
     async def initialize(self) -> None:
         """Check which models are available.
