@@ -158,11 +158,11 @@ class RealityCheck:
 
     def __init__(
         self,
-        llm_client=None,
+        llm_client: Any = None,
         memory_store: "MemoryStore | None" = None,
         vector_store: "VectorStore | None" = None,
         enabled: bool = True,
-        embedder=None,
+        embedder: Any = None,
     ) -> None:
         self.llm_client = llm_client
         self.memory_store = memory_store

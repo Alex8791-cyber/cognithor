@@ -193,7 +193,7 @@ class HIMAgent:
         except Exception:
             log.debug("him_vault_save_failed", exc_info=True)
 
-    def _generate_summary(self, request, trust_score, claims, evidence) -> str:
+    def _generate_summary(self, request: Any, trust_score: Any, claims: Any, evidence: Any) -> str:
         confirmed = sum(1 for c in claims if c.status == VerificationStatus.CONFIRMED)
         contradicted = sum(1 for c in claims if c.status == VerificationStatus.CONTRADICTED)
         if not evidence:
@@ -208,7 +208,7 @@ class HIMAgent:
             + "."
         )
 
-    def _generate_recommendation(self, trust_score) -> str:
+    def _generate_recommendation(self, trust_score: Any) -> str:
         if trust_score.label == "high":
             return "Credentials appear credible. Proceed with normal engagement."
         if trust_score.label == "mixed":

@@ -113,6 +113,8 @@ class GovernanceAgent:
         )
         self._conn.commit()
         proposal_id = cursor.lastrowid
+        if proposal_id is None:
+            raise RuntimeError("INSERT did not return a lastrowid")
         logger.info("Created proposal #%d: %s", proposal_id, title)
         return proposal_id
 
@@ -157,7 +159,9 @@ class GovernanceAgent:
             return proposals
 
         try:
-            tool_stats = getattr(self.task_telemetry, "get_tool_stats", lambda: {})()
+            tool_stats: dict[str, dict[str, Any]] = getattr(
+                self.task_telemetry, "get_tool_stats", lambda: {}
+            )()
             for tool_name, stats in tool_stats.items():
                 total = stats.get("total", 0)
                 errors = stats.get("errors", 0)
@@ -248,7 +252,9 @@ class GovernanceAgent:
             return proposals
 
         try:
-            clusters = getattr(self.error_clusterer, "get_clusters", lambda: [])()
+            clusters: list[dict[str, Any]] = getattr(
+                self.error_clusterer, "get_clusters", lambda: []
+            )()
             for cluster in clusters:
                 count = cluster.get("count", 0)
                 if count > 5:
@@ -292,7 +298,9 @@ class GovernanceAgent:
             return proposals
 
         try:
-            latency_stats = getattr(self.task_profiler, "get_latency_stats", lambda: {})()
+            latency_stats: dict[str, dict[str, Any]] = getattr(
+                self.task_profiler, "get_latency_stats", lambda: {}
+            )()
             for tool_name, stats in latency_stats.items():
                 p95 = stats.get("p95", 0)
                 if p95 > 10.0:
@@ -335,7 +343,7 @@ class GovernanceAgent:
 
         try:
             cutoff = datetime.now(UTC) - timedelta(days=7)
-            unused_tools = getattr(
+            unused_tools: list[str] = getattr(
                 self.task_telemetry,
                 "get_unused_tools",
                 lambda since: [],

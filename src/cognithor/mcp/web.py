@@ -1343,7 +1343,7 @@ class _TextExtractor(HTMLParser):
         self._texts: list[str] = []
         self._in_script_or_style = False
 
-    def handle_starttag(self, tag: str, attrs) -> None:
+    def handle_starttag(self, tag: str, attrs: Any) -> None:
         tag_lower = tag.lower()
         if tag_lower in ("script", "style"):
             self._in_script_or_style = True

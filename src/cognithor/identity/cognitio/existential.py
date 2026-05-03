@@ -97,7 +97,7 @@ class ExistentialLayer:
 
     def existential_checkin(
         self,
-        llm_client,
+        llm_client: Any,
         dream_summary: str = "",
         narrative_excerpt: str = "",
     ) -> str:

@@ -70,7 +70,7 @@ class EmotionShield:
         "gaslighting_threshold": 0.60,  # Cosine similarity threshold
     }
 
-    def __init__(self, config: dict[str, Any] | None = None, embedder=None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None, embedder: Any = None) -> None:
         self.config = {**self.DEFAULT_CONFIG, **(config or {})}
 
         # Session emotional history

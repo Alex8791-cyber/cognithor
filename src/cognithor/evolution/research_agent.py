@@ -6,7 +6,7 @@ import asyncio
 import re
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urljoin, urlparse
 
 from cognithor.utils.logging import get_logger
@@ -35,8 +35,8 @@ class ResearchAgent:
 
     def __init__(
         self,
-        mcp_client,
-        idle_detector=None,
+        mcp_client: Any,
+        idle_detector: Any = None,
         rate_limit_seconds: float = 2.0,
         max_retries: int = 3,
     ) -> None:

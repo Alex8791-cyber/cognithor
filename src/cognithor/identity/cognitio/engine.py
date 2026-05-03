@@ -234,7 +234,7 @@ class CognitioEngine:
 
     def __init__(
         self,
-        llm_client=None,
+        llm_client: Any = None,
         config: dict[str, Any] | None = None,
         data_dir: str = "data",
     ) -> None:

@@ -188,7 +188,7 @@ def _downscale_if_needed(png_bytes: bytes, width: int, height: int) -> tuple[byt
         ratio = min(_MAX_SCREENSHOT_WIDTH / width, _MAX_SCREENSHOT_HEIGHT / height)
         new_w = int(width * ratio)
         new_h = int(height * ratio)
-        img = img.resize((new_w, new_h), Image.LANCZOS)
+        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
         buf = BytesIO()
         img.save(buf, format="PNG")
         return buf.getvalue(), new_w, new_h

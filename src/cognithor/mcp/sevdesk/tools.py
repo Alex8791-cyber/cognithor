@@ -15,7 +15,7 @@ from typing import Any
 from cognithor.mcp.sevdesk.client import SevdeskClient
 
 
-def mcp_tool(fn):
+def mcp_tool(fn: Any) -> Any:
     """Marker decorator — no-op. The integrations-catalog generator finds
     functions tagged with this decorator via AST parsing.
     """

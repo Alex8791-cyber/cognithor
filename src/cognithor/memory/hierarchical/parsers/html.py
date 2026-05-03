@@ -63,8 +63,10 @@ class HtmlParser(DocumentParser):
             sections.append(RawSection(level=level, title=title, content="", position=position))
             position += 1
 
+        from bs4 import Tag
+
         for element in body.descendants:
-            if element.name is None:
+            if not isinstance(element, Tag) or element.name is None:
                 continue
 
             # Check if it's a heading
@@ -92,7 +94,9 @@ class HtmlParser(DocumentParser):
             }:
                 # Only collect if this element has no heading descendants
                 has_heading_child = any(
-                    _HEADING_RE.match(child.name) for child in element.descendants if child.name
+                    _HEADING_RE.match(child.name)
+                    for child in element.descendants
+                    if isinstance(child, Tag) and child.name
                 )
                 if not has_heading_child:
                     text = element.get_text(separator=" ", strip=True)
@@ -150,14 +154,17 @@ class HtmlParser(DocumentParser):
             if not isinstance(el, Tag):
                 continue
             try:
-                classes = el.get("class", [])
+                raw_classes = el.get("class", "")
             except (AttributeError, TypeError):
                 continue
-            if classes is None:
+            if raw_classes is None:
                 continue
-            if isinstance(classes, str):
-                classes = [classes]
-            for cls in classes:
+            classes_list: list[str]
+            if isinstance(raw_classes, str):
+                classes_list = [raw_classes] if raw_classes else []
+            else:
+                classes_list = [str(c) for c in raw_classes]
+            for cls in classes_list:
                 if any(pat in cls.lower() for pat in _REMOVE_CLASS_PATTERNS):
                     el.decompose()
                     break

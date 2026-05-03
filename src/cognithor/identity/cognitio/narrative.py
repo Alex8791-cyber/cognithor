@@ -67,7 +67,7 @@ class NarrativeSelf:
 
     def generate(
         self,
-        llm_client,
+        llm_client: Any,
         memories: list[MemoryRecord],
         state: CognitiveState,
         epistemic: EpistemicMap,
@@ -157,7 +157,7 @@ class NarrativeSelf:
 
     def generate_differential(
         self,
-        llm_client,
+        llm_client: Any,
         personality_dict: dict[str, Any],
         epistemic_confidences: dict[str, Any],
         interaction_count: int,
