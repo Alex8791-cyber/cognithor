@@ -46,7 +46,7 @@ def is_retryable_error(error: Exception) -> bool:
     """Return *True* if *error* looks like a transient LLM/network failure."""
     msg = str(error)
     if hasattr(error, "status_code"):
-        status = error.status_code  # type: ignore[union-attr]
+        status = error.status_code
         if status is not None and (status == 429 or 500 <= status <= 504):
             return True
     return bool(TRANSIENT_ERROR_RE.search(msg))
@@ -61,7 +61,7 @@ def should_fallback_stream_to_sync(error: Exception) -> bool:
     msg = str(error)
     if "429" in msg or "rate" in msg.lower():
         return False
-    if hasattr(error, "status_code") and error.status_code == 429:  # type: ignore[union-attr]
+    if hasattr(error, "status_code") and error.status_code == 429:
         return False
     return is_retryable_error(error)
 

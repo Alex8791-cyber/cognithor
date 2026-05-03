@@ -561,7 +561,7 @@ class LatencyTracker:
 
     def __init__(self, max_samples: int = 1000) -> None:
         self._samples: deque[float] = deque(maxlen=max_samples)
-        self._by_operation: dict[str, deque] = {}
+        self._by_operation: dict[str, deque[float]] = {}
 
     def record(self, latency_ms: float, operation: str = "inference") -> None:
         self._samples.append(latency_ms)

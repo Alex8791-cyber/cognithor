@@ -7,7 +7,7 @@ SYSTEM_PROMPT, making Jarvis feel less robotic and more human.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.config import PersonalityConfig
@@ -82,7 +82,7 @@ class PersonalityEngine:
 
         return "\n".join(directives)
 
-    def enhance_response(self, text: str, context: dict | None = None) -> str:
+    def enhance_response(self, text: str, context: dict[str, Any] | None = None) -> str:
         """Post-process a response with personality touches.
 
         Currently a pass-through. Can be extended to add greeting

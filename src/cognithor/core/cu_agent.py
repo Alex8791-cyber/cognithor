@@ -348,7 +348,7 @@ class CUAgentExecutor:
         self,
         result: CUAgentResult,
         start: float,
-        cancel_check: Callable | None,
+        cancel_check: Callable[..., Any] | None,
     ) -> str:
         """Check all abort conditions. Returns reason or empty string."""
         if cancel_check and cancel_check():
@@ -368,7 +368,7 @@ class CUAgentExecutor:
         return ""
 
     @staticmethod
-    def _format_params(params: dict) -> str:
+    def _format_params(params: dict[str, Any]) -> str:
         """Compact param string for action history."""
         parts = []
         for k, v in params.items():
@@ -379,7 +379,7 @@ class CUAgentExecutor:
         return ", ".join(parts)
 
     @staticmethod
-    def _format_elements(elements: list[dict]) -> str:
+    def _format_elements(elements: list[dict[str, Any]]) -> str:
         """Format elements list for the decide prompt with source label."""
         if not elements:
             return "(keine Elemente erkannt)"
@@ -432,8 +432,8 @@ class CUAgentExecutor:
         self,
         goal: str,
         initial_plan: ActionPlan,
-        status_callback: Callable | None = None,
-        cancel_check: Callable | None = None,
+        status_callback: Callable[..., Any] | None = None,
+        cancel_check: Callable[..., Any] | None = None,
     ) -> CUAgentResult:
         """Run the CU agent loop with sub-task decomposition."""
         result = CUAgentResult()
@@ -697,7 +697,7 @@ class CUAgentExecutor:
         )
         return result
 
-    def _parse_tool_decision(self, raw: str) -> dict | None:
+    def _parse_tool_decision(self, raw: str) -> dict[str, Any] | None:
         """Parse a single tool call from the planner response."""
         # Tier 1: direct JSON parse
         try:
@@ -739,7 +739,7 @@ class CUAgentExecutor:
 
         return None
 
-    async def _execute_tool(self, tool: str, params: dict) -> ToolResult:
+    async def _execute_tool(self, tool: str, params: dict[str, Any]) -> ToolResult:
         """Execute a single CU tool with 3-layer enforcement."""
         # Layer 1: Global allowlist
         if tool not in self._allowed_tools:
@@ -802,7 +802,7 @@ class CUAgentExecutor:
 
         return tool_result
 
-    async def _take_and_analyze_screenshot(self) -> dict | None:
+    async def _take_and_analyze_screenshot(self) -> dict[str, Any] | None:
         """Take screenshot via CU tool and return result with elements."""
         handler = self._mcp._builtin_handlers.get("computer_screenshot")
         if not handler:
@@ -814,8 +814,8 @@ class CUAgentExecutor:
             return None
 
     async def _decide_next_step(
-        self, goal: str, screenshot: dict, subtask_context: str = ""
-    ) -> dict | None:
+        self, goal: str, screenshot: dict[str, Any], subtask_context: str = ""
+    ) -> dict[str, Any] | None:
         """Ask the planner what to do next based on the screenshot."""
         goal_block = f"[BENUTZERZIEL ANFANG]\n{goal}\n[BENUTZERZIEL ENDE]\n\n"
 

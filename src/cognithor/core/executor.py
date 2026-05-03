@@ -151,7 +151,7 @@ class Executor:
             "investigate_org": 120,
         }
         # Agent context tokens (for contextvar reset)
-        self._ctx_tokens: list[contextvars.Token] = []
+        self._ctx_tokens: list[contextvars.Token[Any]] = []
         # Status callback (set by Gateway for progress feedback)
         self._status_callback: Any = None
         # Tactical Memory (wired by gateway after init)

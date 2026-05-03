@@ -877,7 +877,11 @@ class ClaudeCodeSupervisedBackend(LLMBackend):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
+        # Sprint-23: Claude Code (supervised) has model-intrinsic
+        # context windows; ``num_ctx`` is informational here.
+        del num_ctx
         prompt = self._flatten_messages(messages)
         supervisor = self._build_supervisor(model)
         result = await supervisor.run(prompt)
@@ -914,7 +918,9 @@ class ClaudeCodeSupervisedBackend(LLMBackend):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
+        del num_ctx  # see chat() — model-intrinsic window
         # Coarse-grained streaming: yield each turn's final text. Stays
         # within the LLMBackend contract without requiring token-level
         # parsing of stream-json content blocks.

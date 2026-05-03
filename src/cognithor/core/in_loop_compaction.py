@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 PROTECT_HEAD_MESSAGES = 4
 PROTECT_TAIL_MESSAGES = 8
@@ -19,15 +23,15 @@ SUMMARY_LABEL = "[In-loop compaction summary]"
 class InLoopCompactionResult:
     """Return value of :func:`compact_in_loop`."""
 
-    history: list[dict]
+    history: list[dict[str, Any]]
     changed: bool
     compacted_messages: int
     summary_source: str  # "llm" | "heuristic" | "none"
 
 
 async def compact_in_loop(
-    history: list[dict],
-    summarize_fn=None,  # async (messages, max_tokens) -> str
+    history: list[dict[str, Any]],
+    summarize_fn: Callable[[list[dict[str, Any]], int], Awaitable[str]] | None = None,
     context_window_tokens: int = 128_000,
 ) -> InLoopCompactionResult:
     """Compact the middle of *history* into a single summary message.
@@ -100,7 +104,7 @@ async def compact_in_loop(
 # ---------------------------------------------------------------------------
 
 
-def _build_summary_prompt(messages: list[dict]) -> list[dict]:
+def _build_summary_prompt(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build an LLM prompt that asks for a concise compaction summary."""
     transcript = "\n\n".join(
         f"---\nrole={m['role']}\n{str(m.get('content', ''))[:2000]}" for m in messages
@@ -123,7 +127,7 @@ def _build_summary_prompt(messages: list[dict]) -> list[dict]:
     ]
 
 
-def _build_heuristic_summary(messages: list[dict]) -> str:
+def _build_heuristic_summary(messages: list[dict[str, Any]]) -> str:
     """Deterministic fallback when LLM summarization is unavailable."""
     roles = Counter(m.get("role", "unknown") for m in messages)
     role_str = ", ".join(f"{r}: {c}" for r, c in roles.items())

@@ -185,7 +185,7 @@ class LLMBackend(ABC):
         ...
 
     @abstractmethod
-    async def chat_stream(
+    def chat_stream(
         self,
         model: str,
         messages: list[dict[str, Any]],
@@ -197,6 +197,14 @@ class LLMBackend(ABC):
         """Stream the response token by token.
 
         ``num_ctx`` semantics match :meth:`chat`.
+
+        Note the absence of ``async`` here. Subclasses implement this
+        as ``async def`` with ``yield`` statements (i.e. async
+        generators) which return ``AsyncIterator[str]`` directly. An
+        ``async def`` declaration in the base would type-check as
+        ``Coroutine[Any, Any, AsyncIterator[str]]`` and force every
+        subclass override to disagree. See
+        https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators
         """
         ...
 

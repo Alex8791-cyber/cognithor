@@ -264,7 +264,7 @@ class MessageBinding:
     enabled: bool = True
 
     # --- Compiled patterns (internal) ---
-    _compiled_patterns: list[re.Pattern] = field(
+    _compiled_patterns: list[re.Pattern[str]] = field(
         default_factory=list,
         repr=False,
         compare=False,
@@ -587,7 +587,7 @@ class BindingEngine:
         Args:
             path: Path to the YAML file.
         """
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         bindings_data = []
         for binding in self._sorted_bindings:

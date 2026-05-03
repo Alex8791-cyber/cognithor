@@ -135,7 +135,7 @@ class ConsentManager:
         else:
             self._counter = 0
 
-    def _row_to_consent(self, row: tuple) -> UserConsent:
+    def _row_to_consent(self, row: tuple[Any, ...]) -> UserConsent:
         return UserConsent(
             consent_id=row[0],
             user_id=row[1],

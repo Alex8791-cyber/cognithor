@@ -54,13 +54,13 @@ class ToolHookRunner:
     """Fuehrt registrierte Hooks vor/nach Tool-Ausfuehrung aus."""
 
     def __init__(self) -> None:
-        self._hooks: dict[HookEvent, list[tuple[str, Callable]]] = {
+        self._hooks: dict[HookEvent, list[tuple[str, Callable[..., Any]]]] = {
             HookEvent.PRE_TOOL_USE: [],
             HookEvent.POST_TOOL_USE: [],
             HookEvent.POST_TOOL_USE_FAILURE: [],
         }
 
-    def register(self, event: HookEvent, name: str, hook: Callable) -> None:
+    def register(self, event: HookEvent, name: str, hook: Callable[..., Any]) -> None:
         """Registriert einen Hook fuer ein Event."""
         self._hooks[event].append((name, hook))
         log.debug("tool_hook_registered", hook_event=event.value, hook_name=name)

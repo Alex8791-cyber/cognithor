@@ -917,7 +917,7 @@ Regeln:
             return results[0] if results else None
 
         def _ensure_entity(
-            name: str, entity_type: str, source: str, attrs: dict | None = None
+            name: str, entity_type: str, source: str, attrs: dict[str, Any] | None = None
         ) -> str:
             """Erstellt oder findet eine Entitaet, gibt die ID zurueck."""
             existing = _find_entity_by_name(name)
