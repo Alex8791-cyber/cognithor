@@ -6,16 +6,17 @@ for the Cognithor VS Code Extension.
 
 from __future__ import annotations
 
-import logging
 import time
 from typing import TYPE_CHECKING, Any
 
 from fastapi.responses import JSONResponse
 
+from cognithor.utils.logging import get_logger
+
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 def register_vscode_routes(
@@ -109,7 +110,7 @@ def register_vscode_routes(
         try:
             response = await gateway.handle_message(incoming)
         except Exception as exc:
-            log.error("vscode_chat_error", error=str(exc))  # type: ignore[call-arg]
+            log.error("vscode_chat_error", error=str(exc))
             return JSONResponse(
                 status_code=500,
                 content={"error": str(exc)},
@@ -128,7 +129,7 @@ def register_vscode_routes(
             "durationMs": duration_ms,
         }
 
-        log.info(  # type: ignore[call-arg]
+        log.info(
             "vscode_chat_completion",
             session=session_id[:8],
             duration_ms=duration_ms,

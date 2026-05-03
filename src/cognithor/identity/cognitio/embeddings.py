@@ -10,7 +10,7 @@ Model: all-MiniLM-L6-v2 (lightweight, fast, 384-dimensional)
 """
 
 import logging
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 
@@ -29,6 +29,8 @@ class EmbeddingEngine:
     DEFAULT_MODEL = "all-MiniLM-L6-v2"
     EMBEDDING_DIM = 384
 
+    _model: Any
+
     def __init__(
         self,
         model_name: str = DEFAULT_MODEL,
@@ -45,7 +47,7 @@ class EmbeddingEngine:
             try:
                 from sentence_transformers import SentenceTransformer
 
-                self._model = SentenceTransformer(self.model_name, device=self.device)  # type: ignore[assignment]
+                self._model = SentenceTransformer(self.model_name, device=self.device)
                 logger.info(f"Model loaded: {self.model_name}")
             except ImportError:
                 logger.error(
@@ -68,7 +70,7 @@ class EmbeddingEngine:
         """
         self._load_model()
         try:
-            embedding = self._model.encode(text, convert_to_numpy=True)  # type: ignore[attr-defined]
+            embedding = self._model.encode(text, convert_to_numpy=True)
             return cast("list[float]", embedding.tolist())
 
         except Exception as e:
@@ -88,7 +90,7 @@ class EmbeddingEngine:
         """
         self._load_model()
         try:
-            embeddings = self._model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
+            embeddings = self._model.encode(texts, convert_to_numpy=True, batch_size=32)
             return cast("list[list[float]]", embeddings.tolist())
 
         except Exception as e:

@@ -41,7 +41,7 @@ try:
 
     _FERNET_AVAILABLE = True
 except ImportError:
-    Fernet = None  # type: ignore
+    Fernet = None  # type: ignore[assignment,misc]
 
 
 class EncryptedFileIO:
@@ -90,7 +90,7 @@ class EncryptedFileIO:
             ]
             for cfg_path in candidates:
                 if cfg_path.is_file():
-                    import yaml  # type: ignore[import-untyped]
+                    import yaml
 
                     with open(cfg_path) as f:
                         data = yaml.safe_load(f) or {}

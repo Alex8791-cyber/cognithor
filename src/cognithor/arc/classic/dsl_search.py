@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from typing import Literal
 
 from cognithor.arc.classic import dsl
 from cognithor.arc.classic.task_parser import ArcTask, Grid, Solution
@@ -79,66 +80,53 @@ def build_candidates(
     # Determine color palette
     colors = sorted(_collect_colors(examples)) if examples else list(_COLORS)
 
+    def _recolor(a: int, b: int) -> TransformFn:
+        return lambda g: dsl.recolor(g, a, b)
+
+    def _swap(a: int, b: int) -> TransformFn:
+        return lambda g: dsl.swap_colors(g, a, b)
+
+    def _replace_bg(c: int) -> TransformFn:
+        return lambda g: dsl.replace_background(g, c)
+
+    def _by_color(c: int) -> TransformFn:
+        return lambda g: dsl.get_by_color(g, c)
+
+    def _scale(f: int) -> TransformFn:
+        return lambda g: dsl.scale_up(g, f)
+
+    def _tile(nx: int, ny: int) -> TransformFn:
+        return lambda g: dsl.tile(g, nx, ny)
+
+    def _pad(n: int) -> TransformFn:
+        return lambda g: dsl.pad(g, n)
+
+    def _gravity(d: Literal["down", "up", "left", "right"]) -> TransformFn:
+        return lambda g: dsl.gravity(g, d)
+
     # --- Color-param ops ---
     for a in colors:
         for b in colors:
             if a != b:
-                candidates.append(
-                    (
-                        f"recolor({a},{b})",
-                        lambda g, _a=a, _b=b: dsl.recolor(g, _a, _b),  # type: ignore[misc]
-                    )
-                )
+                candidates.append((f"recolor({a},{b})", _recolor(a, b)))
     for a in colors:
         for b in colors:
             if a < b:
-                candidates.append(
-                    (
-                        f"swap_colors({a},{b})",
-                        lambda g, _a=a, _b=b: dsl.swap_colors(g, _a, _b),  # type: ignore[misc]
-                    )
-                )
+                candidates.append((f"swap_colors({a},{b})", _swap(a, b)))
     for c in colors:
-        candidates.append(
-            (
-                f"replace_background({c})",
-                lambda g, _c=c: dsl.replace_background(g, _c),  # type: ignore[misc]
-            )
-        )
+        candidates.append((f"replace_background({c})", _replace_bg(c)))
     for c in colors:
-        candidates.append(
-            (
-                f"get_by_color({c})",
-                lambda g, _c=c: dsl.get_by_color(g, _c),  # type: ignore[misc]
-            )
-        )
+        candidates.append((f"get_by_color({c})", _by_color(c)))
 
     # --- Shape-param ops ---
     for factor in (2, 3):
-        candidates.append(
-            (
-                f"scale_up({factor})",
-                lambda g, _f=factor: dsl.scale_up(g, _f),  # type: ignore[misc]
-            )
-        )
+        candidates.append((f"scale_up({factor})", _scale(factor)))
     for nx, ny in ((2, 1), (1, 2), (2, 2)):
-        candidates.append(
-            (
-                f"tile({nx},{ny})",
-                lambda g, _nx=nx, _ny=ny: dsl.tile(g, _nx, _ny),  # type: ignore[misc]
-            )
-        )
+        candidates.append((f"tile({nx},{ny})", _tile(nx, ny)))
     for n in (1, 2):
-        candidates.append(
-            (f"pad({n})", lambda g, _n=n: dsl.pad(g, _n)),  # type: ignore[misc]
-        )
+        candidates.append((f"pad({n})", _pad(n)))
     for direction in ("down", "up", "left", "right"):
-        candidates.append(
-            (
-                f"gravity({direction})",
-                lambda g, _d=direction: dsl.gravity(g, _d),  # type: ignore[misc]
-            )
-        )
+        candidates.append((f"gravity({direction})", _gravity(direction)))
 
     return candidates
 

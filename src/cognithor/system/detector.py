@@ -159,7 +159,7 @@ class SystemDetector:
         cores = os.cpu_count() or 1
         physical = cores // 2 if cores > 1 else 1
         try:
-            import psutil  # type: ignore[import-untyped]
+            import psutil
 
             physical = psutil.cpu_count(logical=False) or physical
             freq = psutil.cpu_freq()
@@ -179,9 +179,9 @@ class SystemDetector:
         )
 
     def detect_ram(self) -> DetectionResult:
-        total_gb = 0
-        available_gb = 0
-        percent = 0
+        total_gb: float = 0
+        available_gb: float = 0
+        percent: float = 0
         try:
             import psutil
 
@@ -199,7 +199,7 @@ class SystemDetector:
 
                     mem_kb = ctypes.c_ulonglong(0)
                     ctypes.windll.kernel32.GetPhysicallyInstalledSystemMemory(ctypes.byref(mem_kb))
-                    total_gb = round(mem_kb.value / (1024 * 1024), 1)  # type: ignore[assignment]
+                    total_gb = round(mem_kb.value / (1024 * 1024), 1)
                 except Exception:
                     log.debug("detector_win32_memory_query_failed", exc_info=True)
         status = "ok" if total_gb >= 16 else "warn" if total_gb >= 8 else "fail"

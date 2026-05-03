@@ -60,7 +60,7 @@ class PostgreSQLBackend:
     async def _ensure_pool(self) -> Any:
         if self._pool is None:
             try:
-                from psycopg_pool import AsyncConnectionPool  # type: ignore[import-not-found]
+                from psycopg_pool import AsyncConnectionPool
 
                 self._pool = AsyncConnectionPool(
                     conninfo=self._conninfo,

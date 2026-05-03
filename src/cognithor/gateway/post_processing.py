@@ -45,9 +45,9 @@ async def run_post_processing(
     run_id: str | None,
 ) -> None:
     """Phase 4: Reflection, Skill-Tracking, Telemetry, Profiler, Run-Recording."""
-    if gw._reflector and gw._reflector.should_reflect(agent_result):  # type: ignore[attr-defined]
+    if gw._reflector and gw._reflector.should_reflect(agent_result):
         try:
-            reflection = await gw._reflector.reflect(session, wm, agent_result)  # type: ignore[attr-defined]
+            reflection = await gw._reflector.reflect(session, wm, agent_result)
             agent_result.reflection = reflection
             log.info(
                 "reflection_done",
@@ -55,9 +55,9 @@ async def run_post_processing(
                 score=reflection.success_score,
             )
             # Apply reflection to memory tiers (episodic, semantic, procedural)
-            if gw._memory_manager:  # type: ignore[attr-defined]
+            if gw._memory_manager:
                 try:
-                    counts = await gw._reflector.apply(reflection, gw._memory_manager)  # type: ignore[attr-defined]
+                    counts = await gw._reflector.apply(reflection, gw._memory_manager)
                     log.info(
                         "reflection_applied",
                         session=session.session_id[:8],
@@ -67,9 +67,9 @@ async def run_post_processing(
                     )
                 except Exception as apply_exc:
                     log.error("reflection_apply_error", error=str(apply_exc))
-            if run_id and gw._run_recorder:  # type: ignore[attr-defined]
+            if run_id and gw._run_recorder:
                 try:
-                    gw._run_recorder.record_reflection(run_id, reflection)  # type: ignore[attr-defined]
+                    gw._run_recorder.record_reflection(run_id, reflection)
                 except Exception:
                     log.debug("run_recorder_reflection_failed", exc_info=True)
             # ── Feed weak results into Evolution Engine ──────────
@@ -83,9 +83,7 @@ async def run_post_processing(
                 and gw._evolution_loop
             ):
                 try:
-                    user_msg = (session.messages[-1].content[:200] if session.messages else "")[  # type: ignore[attr-defined]
-                        :200
-                    ]
+                    user_msg = (wm.chat_history[-1].content[:200] if wm.chat_history else "")[:200]
                     gap_description = (
                         f"Schwache Antwort (Score {reflection.success_score:.1f}) auf: {user_msg}"
                     )
@@ -121,7 +119,7 @@ async def run_post_processing(
                 strategy = " -> ".join(dict.fromkeys(tools_used))
                 success = any(r.success for r in agent_result.tool_results)
                 total_ms = sum(getattr(r, "duration_ms", 0) or 0 for r in agent_result.tool_results)
-                gw._strategy_memory.record(  # type: ignore[attr-defined]
+                gw._strategy_memory.record(
                     StrategyRecord(
                         task_type=task_type,
                         strategy=strategy[:200],
@@ -139,7 +137,7 @@ async def run_post_processing(
         except Exception:
             log.debug("strategy_record_failed", exc_info=True)
 
-    if active_skill and gw._skill_registry:  # type: ignore[attr-defined]
+    if active_skill and gw._skill_registry:
         try:
             success = agent_result.success
             score = (
@@ -147,16 +145,16 @@ async def run_post_processing(
                 if agent_result.reflection
                 else (0.8 if success else 0.3)
             )
-            gw._skill_registry.record_usage(  # type: ignore[attr-defined]
+            gw._skill_registry.record_usage(
                 active_skill.skill.slug,
                 success=success,
                 score=score,
             )
             # Store failure pattern in procedure (for learning effect)
-            if not success and gw._memory_manager and active_skill.procedure_name:  # type: ignore[attr-defined]
+            if not success and gw._memory_manager and active_skill.procedure_name:
                 try:
                     error_summary = agent_result.error[:200] if agent_result.error else "unknown"
-                    gw._memory_manager.procedural.add_failure_pattern(  # type: ignore[attr-defined]
+                    gw._memory_manager.procedural.add_failure_pattern(
                         active_skill.procedure_name,
                         error_summary,
                     )
@@ -226,16 +224,16 @@ async def run_post_processing(
             log.debug("run_recorder_finish_failed", exc_info=True)
 
     # Prompt-Evolution: Record session reward for A/B testing
-    if getattr(gw, "_prompt_evolution", None) and gw._planner:  # type: ignore[attr-defined]
+    if getattr(gw, "_prompt_evolution", None) and gw._planner:
         try:
-            version_id = getattr(gw._planner, "_current_prompt_version_id", None)  # type: ignore[attr-defined]
+            version_id = getattr(gw._planner, "_current_prompt_version_id", None)
             if version_id:
                 reward_score = (
                     agent_result.reflection.success_score
                     if agent_result.reflection
                     else (0.8 if agent_result.success else 0.3)
                 )
-                gw._prompt_evolution.record_session(  # type: ignore[attr-defined]
+                gw._prompt_evolution.record_session(
                     session_id=session.session_id,
                     prompt_version_id=version_id,
                     reward=reward_score,
@@ -253,7 +251,7 @@ async def run_post_processing(
 
             # Extract user goal from working memory
             _goal = ""
-            for _m in wm.messages:  # type: ignore[attr-defined]
+            for _m in wm.chat_history:
                 if getattr(_m, "role", None) and _m.role.value == "user":
                     _goal = getattr(_m, "content", "")[:1000]
                     break
@@ -288,7 +286,7 @@ async def run_post_processing(
                     timestamp=_time.time(),
                 )
                 trace.steps.append(step)
-            gw._trace_store.save_trace(trace)  # type: ignore[attr-defined]
+            gw._trace_store.save_trace(trace)
             log.debug("gepa_trace_saved", trace_id=trace.trace_id, steps=len(trace.steps))
         except Exception:
             log.debug("gepa_trace_save_failed", exc_info=True)
@@ -300,7 +298,7 @@ async def run_post_processing(
                 if getattr(tr, "is_error", False) or getattr(tr, "error", None):
                     tool = getattr(tr, "tool_name", "") or str(getattr(tr, "name", ""))
                     error_msg = str(getattr(tr, "error", "") or getattr(tr, "error_type", ""))
-                    known = gw._reflexion_memory.get_solution(tool, "unknown", error_msg)  # type: ignore[attr-defined]
+                    known = gw._reflexion_memory.get_solution(tool, "unknown", error_msg)
                     if known:
                         log.info(
                             "reflexion_known_error",
@@ -309,11 +307,11 @@ async def run_post_processing(
                         )
                     else:
                         _msg_text = ""
-                        for _m in wm.messages:  # type: ignore[attr-defined]
+                        for _m in wm.chat_history:
                             if getattr(_m, "role", None) and _m.role.value == "user":
                                 _msg_text = getattr(_m, "content", "")
                                 break
-                        gw._reflexion_memory.record_error(  # type: ignore[attr-defined]
+                        gw._reflexion_memory.record_error(
                             tool_name=tool,
                             error_category="unknown",
                             error_message=error_msg,
@@ -330,7 +328,7 @@ async def run_post_processing(
         try:
             import time as _time
 
-            orch = gw._evolution_orchestrator  # type: ignore[attr-defined]
+            orch = gw._evolution_orchestrator
             gepa_cfg = getattr(gw._config, "gepa", None)
             interval = (gepa_cfg.evolution_interval_hours * 3600) if gepa_cfg else 21600
             if _time.time() - getattr(orch, "_last_cycle_time", 0) > interval:
@@ -349,7 +347,7 @@ async def run_post_processing(
     # Session-Analyse: Failure-Clustering und Feedback-Loop
     if getattr(gw, "_session_analyzer", None):
         try:
-            improvements = await gw._session_analyzer.analyze_session(  # type: ignore[attr-defined]
+            improvements = await gw._session_analyzer.analyze_session(
                 session_id=session.session_id,
                 agent_result=agent_result,
                 reflection=agent_result.reflection,
@@ -362,7 +360,7 @@ async def run_post_processing(
                     priority=imp.priority,
                 )
                 try:
-                    applied = gw._session_analyzer.apply_improvement(imp)  # type: ignore[attr-defined]
+                    applied = gw._session_analyzer.apply_improvement(imp)
                     if applied:
                         log.info(
                             "session_improvement_applied",
@@ -375,7 +373,7 @@ async def run_post_processing(
             log.debug("session_analysis_failed", exc_info=True)
 
     # Pattern Documentation: record successful tool sequences
-    if gw._memory_manager:  # type: ignore[attr-defined]
+    if gw._memory_manager:
         try:
             gw._maybe_record_pattern(session, wm, agent_result)
         except Exception:
@@ -505,8 +503,8 @@ def maybe_record_pattern(
         keywords_str = ", ".join(keywords)
 
         # Check if similar pattern exists (fuzzy match via procedural memory)
-        if gw._memory_manager:  # type: ignore[attr-defined]
-            procedural = getattr(gw._memory_manager, "procedural", None)  # type: ignore[attr-defined]
+        if gw._memory_manager:
+            procedural = getattr(gw._memory_manager, "procedural", None)
             if procedural is not None:
                 # Check for existing procedures with similar tool sequences
                 existing = getattr(procedural, "search_procedures", None)
@@ -589,25 +587,25 @@ async def persist_session(
     """Phase 5: Session persistieren."""
     # Incognito: nur Session-Metadaten speichern, keine Chat-History
     if session.incognito:
-        if gw._session_store:  # type: ignore[attr-defined]
+        if gw._session_store:
             try:
-                gw._session_store.save_session(session)  # type: ignore[attr-defined]
+                gw._session_store.save_session(session)
             except Exception as exc:
                 log.warning("session_persist_error", error=str(exc))
         return
-    if gw._session_store:  # type: ignore[attr-defined]
+    if gw._session_store:
         try:
-            gw._session_store.save_session(session)  # type: ignore[attr-defined]
-            gw._session_store.save_chat_history(  # type: ignore[attr-defined]
+            gw._session_store.save_session(session)
+            gw._session_store.save_chat_history(
                 session.session_id,
                 wm.chat_history,
             )
         except Exception as exc:
             log.warning("session_persist_error", error=str(exc))
         # Auto-Titel aus erster User-Message generieren
-        if hasattr(gw._session_store, "auto_title"):  # type: ignore[attr-defined]
+        if hasattr(gw._session_store, "auto_title"):
             try:
-                gw._session_store.auto_title(session.session_id)  # type: ignore[attr-defined]
+                gw._session_store.auto_title(session.session_id)
             except Exception:
                 log.debug("auto_title_failed", exc_info=True)
 

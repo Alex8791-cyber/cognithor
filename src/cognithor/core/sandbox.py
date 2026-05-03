@@ -395,7 +395,7 @@ class WindowsJobObjectSandbox:
             JobObjectExtendedLimitInformation,
         )
 
-        kernel32 = ctypes.windll.kernel32
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined, unused-ignore]
         job_handle = None
         proc_handle = None
 
@@ -404,7 +404,7 @@ class WindowsJobObjectSandbox:
             job_handle = kernel32.CreateJobObjectW(None, None)
             if not job_handle:
                 return SandboxResult(
-                    error=f"CreateJobObjectW fehlgeschlagen: {ctypes.get_last_error()}",
+                    error=f"CreateJobObjectW fehlgeschlagen: {ctypes.get_last_error()}",  # type: ignore[attr-defined, unused-ignore]
                     sandbox_level="jobobject",
                     exit_code=-1,
                 )
@@ -437,7 +437,7 @@ class WindowsJobObjectSandbox:
             if not success:
                 kernel32.CloseHandle(job_handle)
                 return SandboxResult(
-                    error=f"SetInformationJobObject fehlgeschlagen: {ctypes.get_last_error()}",
+                    error=f"SetInformationJobObject fehlgeschlagen: {ctypes.get_last_error()}",  # type: ignore[attr-defined, unused-ignore]
                     sandbox_level="jobobject",
                     exit_code=-1,
                 )
@@ -464,7 +464,7 @@ class WindowsJobObjectSandbox:
                 log.warning(
                     "jobobject_assign_failed",
                     pid=proc.pid,
-                    error=ctypes.get_last_error(),
+                    error=ctypes.get_last_error(),  # type: ignore[attr-defined, unused-ignore]
                 )
 
             # 6. Auf Abschluss warten (mit Timeout)

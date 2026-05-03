@@ -18,7 +18,10 @@ from __future__ import annotations
 import contextlib
 import os
 import sqlite3
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from cognithor.utils.logging import get_logger
 
@@ -34,7 +37,7 @@ __all__ = [
 ]
 
 
-class _DictRow(dict):  # type: ignore[type-arg]
+class _DictRow(dict[Any, Any]):
     """Dict that also supports integer index access like sqlite3.Row."""
 
     __slots__ = ("_values",)
@@ -72,12 +75,12 @@ def compatible_row_factory() -> Any:
 
 _sqlcipher_available = False
 try:
-    import sqlcipher3 as sqlcipher  # type: ignore[import-untyped]
+    import sqlcipher3 as sqlcipher
 
     _sqlcipher_available = True
 except ImportError:
     try:
-        from pysqlcipher3 import dbapi2 as sqlcipher  # type: ignore[import-not-found]
+        from pysqlcipher3 import dbapi2 as sqlcipher
 
         _sqlcipher_available = True
     except ImportError:
@@ -123,7 +126,7 @@ def _check_encryption_enabled() -> bool:
         ]
         for cfg_path in candidates:
             if cfg_path.is_file():
-                import yaml  # type: ignore[import-untyped]
+                import yaml
 
                 with open(cfg_path) as f:
                     data = yaml.safe_load(f) or {}
@@ -272,7 +275,7 @@ def _migrate_to_encrypted(
 
 
 def encrypted_connect(
-    db_path: str,
+    db_path: str | Path,
     key: str | None = None,
     check_same_thread: bool = False,
     timeout: float = 5.0,
@@ -332,7 +335,7 @@ def encrypted_connect(
                                 path=db_path[-40:],
                                 hint="DB still encrypted despite encryption_enabled=false",
                             )
-                            return conn
+                            return cast("sqlite3.Connection", conn)
                         except Exception:
                             log.debug("encrypted_db_legacy_open_failed", exc_info=True)
                 # Re-raise if nothing worked
@@ -353,7 +356,7 @@ def encrypted_connect(
             # Test that the key works
             conn.execute("SELECT count(*) FROM sqlite_master")
             log.debug("encrypted_db_opened", path=db_path[-30:])
-            return conn
+            return cast("sqlite3.Connection", conn)
         except Exception:
             # DB exists but is unencrypted — migrate it to encrypted
             if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
@@ -376,7 +379,7 @@ def encrypted_connect(
                     conn.execute("PRAGMA cipher_memory_security = OFF")
                     conn.execute("PRAGMA journal_mode=WAL")
                     log.debug("encrypted_db_created", path=db_path[-30:])
-                    return conn
+                    return cast("sqlite3.Connection", conn)
                 except Exception:
                     log.debug("encrypted_db_new_file_create_failed", exc_info=True)
 

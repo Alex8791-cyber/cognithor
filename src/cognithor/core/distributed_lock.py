@@ -308,7 +308,7 @@ class RedisLockBackend(DistributedLock):
             try:
                 import redis.asyncio as aioredis
 
-                self._client = aioredis.from_url(  # type: ignore[no-untyped-call]
+                self._client = aioredis.from_url(  # type: ignore[no-untyped-call, unused-ignore]
                     self._redis_url,
                     decode_responses=True,
                     socket_connect_timeout=3,

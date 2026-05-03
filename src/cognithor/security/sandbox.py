@@ -304,7 +304,7 @@ class Sandbox:
             JobObjectExtendedLimitInformation,
         )
 
-        kernel32 = ctypes.windll.kernel32
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined, unused-ignore]
         job_handle = None
         proc_handle = None
 
@@ -312,7 +312,7 @@ class Sandbox:
             # 1. Create Job Object
             job_handle = kernel32.CreateJobObjectW(None, None)
             if not job_handle:
-                last_err = ctypes.get_last_error()
+                last_err = ctypes.get_last_error()  # type: ignore[attr-defined, unused-ignore]
                 if not self._config.allow_degraded_sandbox:
                     log.error(
                         "jobobject_create_failed_execution_refused",
@@ -699,7 +699,7 @@ class Sandbox:
             JobObjectExtendedLimitInformation,
         )
 
-        kernel32 = ctypes.windll.kernel32
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined, unused-ignore]
         job_handle = None
         proc_handle = None
         merged_env = self._build_env(env)
@@ -708,7 +708,7 @@ class Sandbox:
             # 1. Job Object erstellen
             job_handle = kernel32.CreateJobObjectW(None, None)
             if not job_handle:
-                log.warning("jobobject_create_failed", error=ctypes.get_last_error())
+                log.warning("jobobject_create_failed", error=ctypes.get_last_error())  # type: ignore[attr-defined, unused-ignore]
                 return await self._exec_process(
                     command, working_dir=working_dir, env=env, timeout=timeout
                 )
@@ -741,7 +741,7 @@ class Sandbox:
                 ctypes.sizeof(info),
             )
             if not success:
-                log.warning("jobobject_setinfo_failed", error=ctypes.get_last_error())
+                log.warning("jobobject_setinfo_failed", error=ctypes.get_last_error())  # type: ignore[attr-defined, unused-ignore]
 
             # 4. Subprocess starten
             _created_job_tmp = not working_dir
@@ -764,7 +764,7 @@ class Sandbox:
                 log.warning(
                     "jobobject_openprocess_failed",
                     pid=proc.pid,
-                    error=ctypes.get_last_error(),
+                    error=ctypes.get_last_error(),  # type: ignore[attr-defined, unused-ignore]
                 )
 
             # 6. Auf Abschluss warten

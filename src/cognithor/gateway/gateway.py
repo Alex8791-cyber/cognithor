@@ -35,8 +35,8 @@ from cognithor.core.observer import (  # noqa: TC001
 # `monkeypatch.setattr(gateway_module, "run_pge_with_observer_directive", ...)`
 # intercepts the call as before. See `tests/test_integration/test_observer_flow.py::
 # TestGatewayEndToEnd::test_gateway_uses_observer_wrapper`.
-from cognithor.gateway.observer_directive import (  # noqa: F401
-    run_pge_with_observer_directive,
+from cognithor.gateway.observer_directive import (
+    run_pge_with_observer_directive as run_pge_with_observer_directive,
 )
 from cognithor.gateway.phases import (
     apply_phase,
@@ -245,6 +245,174 @@ class Gateway:
     # Minimum interval between stale-session cleanup sweeps
     _CLEANUP_INTERVAL_SECONDS: float = 60 * 60  # 1h
 
+    # ------------------------------------------------------------------
+    # Subsystem attribute declarations
+    # ------------------------------------------------------------------
+    # The Gateway uses a dynamic-composition pattern: the eight
+    # ``declare_*_attrs`` / ``init_*`` helpers in :mod:`cognithor.gateway.phases`
+    # produce ``PhaseResult`` dicts that ``apply_phase()`` flushes onto
+    # ``self`` via ``setattr``. mypy cannot trace ``setattr``, so each
+    # attribute that ever lands on a Gateway instance is enumerated here
+    # at class level. The type is ``Any`` because the value comes from
+    # heterogeneous subsystem factories and the interface surface is
+    # documented per-attribute in the phase module that creates it. This
+    # is *not* type-erasure — it's the truthful type of a dynamic
+    # composition root.
+
+    # Phase A — core (declare_core_attrs / init_core)
+    _ollama: Any = None
+    _llm: Any = None
+    _model_router: Any = None
+    _session_store: Any = None
+    _vllm_orchestrator: Any = None
+
+    # Phase B — security (declare_security_attrs / init_security)
+    _audit_logger: Any = None
+    _runtime_monitor: Any = None
+    _hashline: Any = None
+    _kill_switch: Any = None
+    _security_scanner: Any = None
+    _decision_log: Any = None
+    _policy_store: Any = None
+    _pii_redactor: Any = None
+    _redteam_loop: Any = None
+    _ecosystem_policy: Any = None
+    _ecosystem_handler: Any = None
+    _security_pipeline: Any = None
+    _security_metrics: Any = None
+    _security_team: Any = None
+    _posture_scorer: Any = None
+    _security_gate: Any = None
+    _continuous_redteam: Any = None
+    _code_auditor: Any = None
+    _consent_manager: Any = None
+    _compliance_framework: Any = None
+    _compliance_exporter: Any = None
+    _remediation_tracker: Any = None
+    _system_profile: Any = None
+    _resource_monitor: Any = None
+
+    # Phase C — memory (declare_memory_attrs / init_memory)
+    _memory_manager: Any = None
+    _strategy_memory: Any = None
+    _knowledge_ingest: Any = None
+    _vault_manager: Any = None
+    _isolated_sessions: Any = None
+    _session_guard: Any = None
+    _isolation_enforcer: Any = None
+    _semantic_memory: Any = None
+    _memory_hygiene: Any = None
+    _integrity_checker: Any = None
+    _decision_explainer: Any = None
+    _episodic_store: Any = None
+
+    # Phase D — tools (declare_tools_attrs / init_tools)
+    _mcp_client: Any = None
+    _mcp_bridge: Any = None
+    _interop: Any = None
+    _vault_tools: Any = None
+    _exploration_executor: Any = None
+
+    # Phase E — pge (declare_pge_attrs / init_pge)
+    _planner: Any = None
+    _gatekeeper: Any = None
+    _executor: Any = None
+    _reflector: Any = None
+    _orchestrator: Any = None
+    _personality_engine: Any = None
+    _llm_call: Any = None
+
+    # Phase F — agents (declare_agents_attrs / init_agents)
+    _agent_router: Any = None
+    _identity_layer: Any = None
+    _governance_agent: Any = None
+    _kanban_engine: Any = None
+    _browser_agent: Any = None
+    _hitl_manager: Any = None
+    _telemetry_hub: Any = None
+    _task_profiler: Any = None
+    _task_telemetry: Any = None
+    _user_pref_store: Any = None
+    _causal_analyzer: Any = None
+    _error_clusterer: Any = None
+    _cost_tracker: Any = None
+    _skill_generator: Any = None
+    _skill_registry: Any = None
+    _a2a_adapter: Any = None
+    _graph_engine: Any = None
+    _pack_loader: Any = None
+
+    # Phase G — compliance (declare_compliance_attrs / init_compliance)
+    _gdpr: Any = None
+    _retention: Any = None
+    _audit_chain: Any = None
+    _privacy_dashboard: Any = None
+    _data_governance: Any = None
+    _ml_governance: Any = None
+    _explainability: Any = None
+    _hyperparameter_log: Any = None
+    _evolution_engine: Any = None
+    _confidence_manager: Any = None
+    _curiosity_engine: Any = None
+    _active_learner: Any = None
+    _self_improvement: Any = None
+    _gepa_evolution: Any = None
+    _prompt_evolution: Any = None
+    _correction_memory: Any = None
+    _feedback_store: Any = None
+    _conversation_tree: Any = None
+
+    # Phase H — advanced (declare_advanced_attrs / init_advanced)
+    _idle_detector: Any = None
+    _trace_bus: Any = None
+    _heartbeat_scheduler: Any = None
+    _idle_loop: Any = None
+    _flow_engine: Any = None
+    _workflow_engine: Any = None
+    _backup_scheduler: Any = None
+    _retention_scheduler: Any = None
+    _conversation_topic_classifier: Any = None
+    _topic_classifier: Any = None
+    _context_pipeline: Any = None
+    _ml_classifier: Any = None
+    _knowledge_qa: Any = None
+    _hierarchical_memory: Any = None
+    _community_validator: Any = None
+    _registry_sync: Any = None
+    _community_registry: Any = None
+    _publisher_verifier: Any = None
+    _tool_enforcer: Any = None
+    _skill_validator: Any = None
+    _media_server: Any = None
+    _video_cleanup: Any = None
+    _kanban_review: Any = None
+    _session_analyzer: Any = None
+    _run_recorder: Any = None
+    _run_retention_enforcement: Any = None
+    # ``_run_reddit_learner`` / ``_track_reddit_replies`` /
+    # ``_make_status_callback`` / ``_publish_app_state`` /
+    # ``_sync_core_inventory`` / ``_sync_core_inventory_legacy`` are
+    # bound as nested-function attributes in initialisation paths;
+    # don't redeclare here or mypy reports ``[no-redef]``.
+
+    # Phase I — runtime extras populated outside the phase pipeline
+    _dag_workflow_engine: Any = None
+    _cron_engine: Any = None
+    _process_monitor: Any = None
+    _breach_detector: Any = None
+    _skill_lifecycle: Any = None
+    _deep_learner: Any = None
+    _evolution_loop: Any = None
+    _checkpoint_store: Any = None
+    _gdpr_manager: Any = None
+    _gdpr_compliance_manager: Any = None
+    _compliance_engine: Any = None
+    _reddit_lead_service: Any = None
+    _trace_store: Any = None
+    _reflexion_memory: Any = None
+    _evolution_orchestrator: Any = None
+    _autonomous_orchestrator: Any = None
+
     def __init__(self, config: CognithorConfig | None = None) -> None:
         """Initialisiert das Gateway mit PGE-Trinitaet, MCP-Client und Memory."""
         self._config = config or load_config()
@@ -282,7 +450,7 @@ class Gateway:
                 ttl_hours=self._config.vllm.video_upload_ttl_hours,
             )
         else:
-            self._vllm_orchestrator = None  # type: ignore[assignment]
+            self._vllm_orchestrator = None
 
         # Declare all subsystem attributes via phase modules
         apply_phase(self, declare_core_attrs(self._config))
@@ -329,11 +497,11 @@ class Gateway:
         apply_phase(self, core_result)
 
         # --- Phase B: Security (depends on core for _llm) ---
-        security_result = await init_security(self._config, llm_backend=self._llm)  # type: ignore[has-type]
+        security_result = await init_security(self._config, llm_backend=self._llm)
         apply_phase(self, security_result)
 
         # --- Phase C: Memory (depends on security for _audit_logger) ---
-        memory_result = await init_memory(self._config, audit_logger=self._audit_logger)  # type: ignore[attr-defined]
+        memory_result = await init_memory(self._config, audit_logger=self._audit_logger)
         apply_phase(self, memory_result)
 
         # --- Phase D: Tools (depends on memory + core) ---
@@ -341,7 +509,7 @@ class Gateway:
         tools_result = await init_tools(
             self._config,
             mcp_client=mcp_client,
-            memory_manager=self._memory_manager,  # type: ignore[attr-defined]
+            memory_manager=self._memory_manager,
             interop=getattr(self, "_interop", None),
             handle_message=self.handle_message,
             gateway=self,
@@ -358,14 +526,14 @@ class Gateway:
 
                 cp_config = ContextPipelineConfig()
             if cp_config.enabled:
-                self._context_pipeline = ContextPipeline(cp_config)  # type: ignore[assignment]
-                self._context_pipeline.set_memory_manager(self._memory_manager)  # type: ignore[attr-defined]
+                self._context_pipeline = ContextPipeline(cp_config)
+                self._context_pipeline.set_memory_manager(self._memory_manager)
                 if hasattr(self, "_vault_tools") and self._vault_tools:
-                    self._context_pipeline.set_vault_tools(self._vault_tools)  # type: ignore[attr-defined]
+                    self._context_pipeline.set_vault_tools(self._vault_tools)
                 # Sprint-24: PSE Auto-Switch — wire ModelRouter so the
                 # pipeline can flip the request-scoped context profile.
                 if getattr(self, "_model_router", None) is not None:
-                    self._context_pipeline.set_model_router(self._model_router)  # type: ignore[attr-defined]
+                    self._context_pipeline.set_model_router(self._model_router)
                 log.info("context_pipeline_initialized")
         except Exception:
             log.debug("context_pipeline_init_skipped", exc_info=True)
@@ -391,19 +559,19 @@ class Gateway:
         # --- Phase E: PGE + Agents in parallel (both depend on phases A-D) ---
         pge_coro = init_pge(
             self._config,
-            llm=self._llm,  # type: ignore[has-type]
-            model_router=self._model_router,  # type: ignore[attr-defined]
-            mcp_client=self._mcp_client,  # type: ignore[attr-defined]
-            runtime_monitor=self._runtime_monitor,  # type: ignore[attr-defined]
-            audit_logger=self._audit_logger,  # type: ignore[attr-defined]
-            memory_manager=self._memory_manager,  # type: ignore[attr-defined]
-            cost_tracker=self._cost_tracker,  # type: ignore[attr-defined]
+            llm=self._llm,
+            model_router=self._model_router,
+            mcp_client=self._mcp_client,
+            runtime_monitor=self._runtime_monitor,
+            audit_logger=self._audit_logger,
+            memory_manager=self._memory_manager,
+            cost_tracker=self._cost_tracker,
         )
         agents_coro = init_agents(
             self._config,
-            memory_manager=self._memory_manager,  # type: ignore[attr-defined]
-            mcp_client=self._mcp_client,  # type: ignore[attr-defined]
-            audit_logger=self._audit_logger,  # type: ignore[attr-defined]
+            memory_manager=self._memory_manager,
+            mcp_client=self._mcp_client,
+            audit_logger=self._audit_logger,
             cognithor_home=self._config.cognithor_home,
             handle_message=self.handle_message,
             heartbeat_config=self._config.heartbeat,
@@ -418,8 +586,8 @@ class Gateway:
             log.info("skill_registry_wired_to_context_pipeline")
 
         # Wire skill registry into skill generator for hot-reload after generation
-        if self._skill_registry and hasattr(self, "_skill_generator") and self._skill_generator:  # type: ignore[attr-defined]
-            self._skill_generator.skill_registry = self._skill_registry  # type: ignore[attr-defined]
+        if self._skill_registry and hasattr(self, "_skill_generator") and self._skill_generator:
+            self._skill_generator.skill_registry = self._skill_registry
 
         # Wire Orchestrator runner (Sub-Agent execution via handle_message)
         if getattr(self, "_orchestrator", None):
@@ -463,7 +631,7 @@ class Gateway:
                             error=str(exc),
                         )
 
-                self._orchestrator.set_runner(_agent_runner)  # type: ignore[attr-defined]
+                self._orchestrator.set_runner(_agent_runner)
                 log.info("orchestrator_runner_wired")
             except Exception:
                 log.debug("orchestrator_runner_wiring_skipped", exc_info=True)
@@ -471,12 +639,12 @@ class Gateway:
         # --- Phase F: Advanced (depends on PGE + tools) ---
         advanced_result = await init_advanced(
             self._config,
-            task_telemetry=self._task_telemetry,  # type: ignore[attr-defined]
-            error_clusterer=self._error_clusterer,  # type: ignore[attr-defined]
-            task_profiler=self._task_profiler,  # type: ignore[attr-defined]
-            cost_tracker=self._cost_tracker,  # type: ignore[attr-defined]
-            run_recorder=self._run_recorder,  # type: ignore[attr-defined]
-            gatekeeper=self._gatekeeper,  # type: ignore[attr-defined]
+            task_telemetry=self._task_telemetry,
+            error_clusterer=self._error_clusterer,
+            task_profiler=self._task_profiler,
+            cost_tracker=self._cost_tracker,
+            run_recorder=self._run_recorder,
+            gatekeeper=self._gatekeeper,
         )
         apply_phase(self, advanced_result)
 
@@ -485,21 +653,21 @@ class Gateway:
         # getattr(config, "_memory_manager", None) which is always None because
         # config is CognithorConfig, not the gateway. Fix by assigning the real
         # MemoryManager now that it exists on self.
-        if getattr(self, "_exploration_executor", None) and self._memory_manager:  # type: ignore[attr-defined]
-            self._exploration_executor._memory = self._memory_manager  # type: ignore[attr-defined]
-        if getattr(self, "_knowledge_ingest", None) and self._memory_manager:  # type: ignore[attr-defined]
-            self._knowledge_ingest._memory = self._memory_manager  # type: ignore[attr-defined]
+        if getattr(self, "_exploration_executor", None) and self._memory_manager:
+            self._exploration_executor._memory = self._memory_manager
+        if getattr(self, "_knowledge_ingest", None) and self._memory_manager:
+            self._knowledge_ingest._memory = self._memory_manager
 
         # ── Lead Service (source-agnostic) ──────────────────────────────────
         # The generic LeadService is already initialized by Phase F (advanced.py).
         # Packs register their sources via PackContext.leads.register_source().
         # Register the generic social MCP tools if the service is available.
         _leads_svc_mcp = getattr(self, "_leads_service", None)
-        if _leads_svc_mcp and self._mcp_client:  # type: ignore[attr-defined]
+        if _leads_svc_mcp and self._mcp_client:
             try:
                 from cognithor.mcp.social_tools import register_social_tools
 
-                register_social_tools(self._mcp_client, _leads_svc_mcp)  # type: ignore[attr-defined]
+                register_social_tools(self._mcp_client, _leads_svc_mcp)
                 log.info("social_tools_registered")
             except Exception:
                 log.debug("social_tools_registration_failed", exc_info=True)
@@ -530,7 +698,7 @@ class Gateway:
             _pack_context = PackContext(
                 gateway=self,
                 config=self._config,
-                mcp_client=self._mcp_client,  # type: ignore[attr-defined]
+                mcp_client=self._mcp_client,
                 leads=_leads_svc,
             )
             self._pack_loader.load_all(_pack_context)
@@ -542,59 +710,59 @@ class Gateway:
             log.debug("pack_loader_init_failed", exc_info=True)
 
         # Identity Tools: register MCP tools for cognitive identity interface
-        if getattr(self, "_identity_layer", None) and self._mcp_client:  # type: ignore[attr-defined]
+        if getattr(self, "_identity_layer", None) and self._mcp_client:
             try:
                 from cognithor.mcp.identity_tools import register_identity_tools
 
-                register_identity_tools(self._mcp_client, self._identity_layer, config=self._config)  # type: ignore[attr-defined]
+                register_identity_tools(self._mcp_client, self._identity_layer, config=self._config)
                 log.info("identity_mcp_tools_registered")
             except Exception:
                 log.debug("identity_mcp_tools_registration_failed", exc_info=True)
 
-        if getattr(self, "_session_analyzer", None) and self._memory_manager:  # type: ignore[attr-defined]
-            self._session_analyzer._memory_manager = self._memory_manager  # type: ignore[attr-defined]
+        if getattr(self, "_session_analyzer", None) and self._memory_manager:
+            self._session_analyzer._memory_manager = self._memory_manager
 
         # Wire DAG WorkflowEngine with MCP client + Gatekeeper
         if getattr(self, "_dag_workflow_engine", None):
             try:
-                self._dag_workflow_engine._mcp_client = self._mcp_client  # type: ignore[attr-defined]
-                self._dag_workflow_engine._gatekeeper = self._gatekeeper  # type: ignore[attr-defined]
+                self._dag_workflow_engine._mcp_client = self._mcp_client
+                self._dag_workflow_engine._gatekeeper = self._gatekeeper
             except Exception:
                 log.debug("dag_workflow_engine_wiring_skipped", exc_info=True)
 
         # Wire prompt_evolution to planner (created in advanced, after PGE)
         if getattr(self, "_prompt_evolution", None) and getattr(self, "_planner", None):
-            self._planner._prompt_evolution = self._prompt_evolution  # type: ignore[attr-defined]
+            self._planner._prompt_evolution = self._prompt_evolution
 
         # D2: Wire confidence_manager to reflector (created in advanced, after PGE)
         if getattr(self, "_confidence_manager", None) and getattr(self, "_reflector", None):
-            self._reflector._confidence_manager = self._confidence_manager  # type: ignore[attr-defined]
+            self._reflector._confidence_manager = self._confidence_manager
 
         # Wire strategy_memory to planner (meta-reasoning hints)
         if getattr(self, "_strategy_memory", None) and getattr(self, "_planner", None):
-            self._planner._strategy_memory = self._strategy_memory  # type: ignore[attr-defined]
+            self._planner._strategy_memory = self._strategy_memory
 
         # Wire prompt_evolution LLM client (meta-prompt generation)
-        if getattr(self, "_prompt_evolution", None) and self._llm and self._model_router:  # type: ignore[attr-defined,has-type]
+        if getattr(self, "_prompt_evolution", None) and self._llm and self._model_router:
             try:
 
                 async def _pe_llm_call(prompt: str) -> str:
-                    model = self._model_router.select_model("planning", "high")  # type: ignore[attr-defined]
-                    resp = await self._llm.chat(  # type: ignore[has-type]
+                    model = self._model_router.select_model("planning", "high")
+                    resp = await self._llm.chat(
                         model=model,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.8,
                     )
                     return cast("str", resp.get("message", {}).get("content", ""))
 
-                self._prompt_evolution._llm_client = _pe_llm_call  # type: ignore[attr-defined]
+                self._prompt_evolution._llm_client = _pe_llm_call
             except Exception:
                 log.debug("prompt_evolution_llm_wiring_skipped", exc_info=True)
 
         # Wire prompt_evolution interval from config
         if getattr(self, "_prompt_evolution", None):
             try:
-                self._prompt_evolution.set_evolution_interval_hours(  # type: ignore[attr-defined]
+                self._prompt_evolution.set_evolution_interval_hours(
                     self._config.prompt_evolution.evolution_interval_hours
                 )
             except Exception:
@@ -641,20 +809,24 @@ class Gateway:
 
             _retention_cfg = getattr(self._config, "retention", None)
             _policies = build_retention_policies(_retention_cfg)
-            self._gdpr_manager = GDPRComplianceManager(retention_policies=_policies)
-            self._gdpr_compliance_manager = self._gdpr_manager  # alias for cron
+            self._gdpr_manager: GDPRComplianceManager | None = GDPRComplianceManager(
+                retention_policies=_policies
+            )
+            self._gdpr_compliance_manager: GDPRComplianceManager | None = (
+                self._gdpr_manager  # alias for cron
+            )
             log.info("gdpr_compliance_engine_initialized")
         except Exception:
             log.error("gdpr_compliance_engine_init_failed", exc_info=True)
             # Fail-closed: engine without consent store blocks all consent-based processing
-            self._consent_manager = None  # type: ignore[assignment]
+            self._consent_manager = None
             self._compliance_engine = ComplianceEngine(
                 consent_manager=None,
                 enabled=True,
                 consent_required=True,
             )
-            self._gdpr_manager = None  # type: ignore[assignment]
-            self._gdpr_compliance_manager = None  # type: ignore[assignment]
+            self._gdpr_manager = None
+            self._gdpr_compliance_manager = None
 
         # Register erasure handlers for all data tiers
         if hasattr(self, "_gdpr_manager") and self._gdpr_manager:
@@ -664,7 +836,7 @@ class Gateway:
             if hasattr(self, "_memory_manager") and self._memory_manager:
                 mm = self._memory_manager
 
-                def _erase_memory(uid):  # type: ignore[no-untyped-def]
+                def _erase_memory(uid: str) -> int:
                     count = 0
                     try:
                         if hasattr(mm, "episodic") and hasattr(mm.episodic, "prune_old"):
@@ -684,22 +856,38 @@ class Gateway:
             # User preferences
             pref = getattr(self, "_user_pref_store", None)
             if pref and hasattr(pref, "delete_user"):
-                erasure.register_handler(lambda uid, p=pref: p.delete_user(uid))  # type: ignore[misc]
+
+                def _erase_pref(uid: str, _p: Any = pref) -> int:
+                    return int(_p.delete_user(uid))
+
+                erasure.register_handler(_erase_pref)
 
             # Conversation tree
             ct = getattr(self, "_conversation_tree", None)
             if ct and hasattr(ct, "delete_user"):
-                erasure.register_handler(lambda uid, c=ct: c.delete_user(uid))  # type: ignore[misc]
+
+                def _erase_ct(uid: str, _c: Any = ct) -> int:
+                    return int(_c.delete_user(uid))
+
+                erasure.register_handler(_erase_ct)
 
             # Feedback
             fb = getattr(self, "_feedback_store", None)
             if fb and hasattr(fb, "delete_user"):
-                erasure.register_handler(lambda uid, f=fb: f.delete_user(uid))  # type: ignore[misc]
+
+                def _erase_fb(uid: str, _f: Any = fb) -> int:
+                    return int(_f.delete_user(uid))
+
+                erasure.register_handler(_erase_fb)
 
             # Corrections
             cm = getattr(self, "_correction_memory", None)
             if cm and hasattr(cm, "delete_user"):
-                erasure.register_handler(lambda uid, c=cm: c.delete_user(uid))  # type: ignore[misc]
+
+                def _erase_cm(uid: str, _c: Any = cm) -> int:
+                    return int(_c.delete_user(uid))
+
+                erasure.register_handler(_erase_cm)
 
             # Vault notes (delete all for single-user system)
             vault_tools = None
@@ -710,7 +898,7 @@ class Gateway:
                     break
             if vault_tools:
 
-                def _erase_vault(uid, vt=vault_tools):  # type: ignore[no-untyped-def]
+                def _erase_vault(uid: str, vt: Any = vault_tools) -> int:
                     try:
                         notes = vt._backend.all_notes()
                         count = 0
@@ -727,11 +915,11 @@ class Gateway:
                 erasure.register_handler(_erase_vault)
 
         # Governance-Cron-Job registrieren (taeglich um 02:00)
-        if self._cron_engine and hasattr(self, "_governance_agent") and self._governance_agent:  # type: ignore[attr-defined]
+        if self._cron_engine and hasattr(self, "_governance_agent") and self._governance_agent:
             try:
                 from cognithor.cron.jobs import governance_analysis
 
-                self._cron_engine.add_system_job(  # type: ignore[attr-defined]
+                self._cron_engine.add_system_job(
                     name="governance_analysis",
                     schedule="0 2 * * *",
                     callback=governance_analysis,
@@ -741,7 +929,7 @@ class Gateway:
                 log.debug("governance_cron_registration_skipped", exc_info=True)
 
         # Prompt-Evolution-Cron-Job registrieren
-        if self._cron_engine and getattr(self, "_prompt_evolution", None):  # type: ignore[attr-defined]
+        if self._cron_engine and getattr(self, "_prompt_evolution", None):
             try:
                 from cognithor.cron.jobs import prompt_evolution_check
 
@@ -749,7 +937,7 @@ class Gateway:
                 cron_expr = (
                     f"0 */{interval_h} * * *" if interval_h < 24 else f"0 {interval_h % 24} * * *"
                 )
-                self._cron_engine.add_system_job(  # type: ignore[attr-defined]
+                self._cron_engine.add_system_job(
                     name="prompt_evolution_check",
                     schedule=cron_expr,
                     callback=prompt_evolution_check,
@@ -759,12 +947,12 @@ class Gateway:
                 log.debug("prompt_evolution_cron_registration_skipped", exc_info=True)
 
         # GDPR retention enforcement (daily at 03:00)
-        if self._cron_engine and hasattr(self, "_compliance_engine") and self._compliance_engine:  # type: ignore[attr-defined]
+        if self._cron_engine and hasattr(self, "_compliance_engine") and self._compliance_engine:
             try:
-                self._cron_engine.add_system_job(  # type: ignore[attr-defined]
+                self._cron_engine.add_system_job(
                     name="retention_enforcer",
                     schedule="0 3 * * *",
-                    callback=self._run_retention_enforcement,  # type: ignore[attr-defined]
+                    callback=self._run_retention_enforcement,
                     args=[],
                 )
                 log.info("gdpr_retention_cron_registered")
@@ -779,9 +967,9 @@ class Gateway:
             and getattr(self, "_reddit_lead_service", None)
         ):
             try:
-                from cognithor.cron.jobs import CronJob  # type: ignore[attr-defined]
+                from cognithor.models import CronJob
 
-                self._cron_engine.add_runtime_job(  # type: ignore[attr-defined]
+                self._cron_engine.add_runtime_job(
                     CronJob(
                         name="reddit_lead_scan",
                         schedule=f"*/{_social_cfg.reddit_scan_interval_minutes} * * * *",
@@ -799,7 +987,7 @@ class Gateway:
 
             # Reddit Reply Performance Tracker (every 6h)
             try:
-                self._cron_engine.add_system_job(  # type: ignore[attr-defined]
+                self._cron_engine.add_system_job(
                     name="reddit_reply_tracker",
                     schedule="0 */6 * * *",
                     callback=self._track_reddit_replies,
@@ -810,7 +998,7 @@ class Gateway:
 
             # Reddit Style Learner (weekly, Sunday 3am)
             try:
-                self._cron_engine.add_system_job(  # type: ignore[attr-defined]
+                self._cron_engine.add_system_job(
                     name="reddit_style_learner",
                     schedule="0 3 * * 0",
                     callback=self._run_reddit_learner,
@@ -836,7 +1024,7 @@ class Gateway:
             log.info("feedback_store_initialized")
         except Exception:
             log.debug("feedback_store_init_failed", exc_info=True)
-            self._feedback_store = None  # type: ignore[assignment]
+            self._feedback_store = None
 
         # --- Correction Memory (Smart Recovery) ---
         try:
@@ -856,7 +1044,7 @@ class Gateway:
                 log.debug("correction_memory_wired_to_pipeline")
         except Exception:
             log.debug("correction_memory_init_failed", exc_info=True)
-            self._correction_memory = None  # type: ignore[assignment]
+            self._correction_memory = None
 
         # Conversation Tree (Chat Branching)
         try:
@@ -868,7 +1056,7 @@ class Gateway:
             log.info("conversation_tree_initialized")
         except Exception:
             log.debug("conversation_tree_init_failed", exc_info=True)
-            self._conversation_tree = None  # type: ignore[assignment]
+            self._conversation_tree = None
 
         # System Detector (hardware profiling)
         try:
@@ -886,7 +1074,7 @@ class Gateway:
             )
         except Exception:
             log.debug("system_detector_failed", exc_info=True)
-            self._system_profile = None  # type: ignore[assignment]
+            self._system_profile = None
 
         # ResourceMonitor (lightweight psutil-based, always available)
         self._resource_monitor = None
@@ -910,15 +1098,15 @@ class Gateway:
 
         # LLM call function for Evolution Engine + DeepLearner
         self._llm_call = None
-        if self._llm and self._model_router:  # type: ignore[attr-defined,has-type]
+        if self._llm and self._model_router:
 
             async def _evolution_llm_call(prompt: str) -> str:
                 import asyncio as _evo_aio
 
-                model = self._model_router.select_model("summarization", "low")  # type: ignore[attr-defined]
+                model = self._model_router.select_model("summarization", "low")
                 try:
                     resp = await _evo_aio.wait_for(
-                        self._llm.chat(  # type: ignore[has-type]
+                        self._llm.chat(
                             model=model,
                             messages=[{"role": "user", "content": prompt}],
                             temperature=0.7,
@@ -951,7 +1139,7 @@ class Gateway:
                     memory_manager=getattr(self, "_memory_manager", None),
                     config=self._config.evolution,
                     resource_monitor=self._resource_monitor,
-                    cost_tracker=self._cost_tracker,  # type: ignore[attr-defined]
+                    cost_tracker=self._cost_tracker,
                     checkpoint_store=self._checkpoint_store,
                     operation_mode=op_mode,
                     mcp_client=getattr(self, "_mcp_client", None),
@@ -969,31 +1157,37 @@ class Gateway:
                 try:
                     from cognithor.evolution.deep_learner import DeepLearner
 
-                    self._deep_learner = DeepLearner(
-                        llm_fn=getattr(self, "_llm_call", None),  # type: ignore[arg-type]
-                        plans_dir=self._config.cognithor_home / "evolution" / "plans",  # type: ignore[arg-type]
-                        mcp_client=getattr(self, "_mcp_client", None),
-                        memory_manager=getattr(self, "_memory_manager", None),
-                        skill_registry=getattr(self, "_skill_registry", None),
-                        skill_generator=getattr(self, "_skill_generator", None),
-                        cron_engine=getattr(self, "_cron_engine", None),
-                        cost_tracker=self._cost_tracker,  # type: ignore[attr-defined]
-                        resource_monitor=self._resource_monitor,
-                        checkpoint_store=self._checkpoint_store,
-                        config=self._config.evolution,
-                        idle_detector=self._idle_detector,
-                        operation_mode=op_mode,
-                    )
-                    self._evolution_loop._deep_learner = self._deep_learner
+                    _llm_fn = getattr(self, "_llm_call", None)
+                    if _llm_fn is None:
+                        # DeepLearner needs a callable; skip when llm-call wasn't wired.
+                        log.debug("deep_learner_skipped", reason="no_llm_call")
+                        self._deep_learner = None
+                    else:
+                        self._deep_learner = DeepLearner(
+                            llm_fn=_llm_fn,
+                            plans_dir=str(self._config.cognithor_home / "evolution" / "plans"),
+                            mcp_client=getattr(self, "_mcp_client", None),
+                            memory_manager=getattr(self, "_memory_manager", None),
+                            skill_registry=getattr(self, "_skill_registry", None),
+                            skill_generator=getattr(self, "_skill_generator", None),
+                            cron_engine=getattr(self, "_cron_engine", None),
+                            cost_tracker=self._cost_tracker,
+                            resource_monitor=self._resource_monitor,
+                            checkpoint_store=self._checkpoint_store,
+                            config=self._config.evolution,
+                            idle_detector=self._idle_detector,
+                            operation_mode=op_mode,
+                        )
+                        self._evolution_loop._deep_learner = self._deep_learner
 
                     # Wire LLM for entity extraction. Use the SAME model as the planner
                     # to avoid loading a second model in parallel (which causes VRAM
                     # thrashing / model swap and 10+ minute delays).
-                    if self._llm and self._model_router:  # type: ignore[attr-defined,has-type]
+                    if self._llm and self._model_router:
 
                         async def _entity_llm_call(prompt: str) -> str:
                             _entity_model = self._config.models.planner.name
-                            resp = await self._llm.chat(  # type: ignore[has-type]
+                            resp = await self._llm.chat(
                                 model=_entity_model,
                                 messages=[{"role": "user", "content": prompt}],
                                 temperature=0.3,
@@ -1007,7 +1201,8 @@ class Gateway:
                                 r"<think>.*?</think>", "", content, flags=re.DOTALL
                             ).strip()
 
-                        self._deep_learner._entity_llm_fn = _entity_llm_call
+                        if self._deep_learner is not None:
+                            self._deep_learner._entity_llm_fn = _entity_llm_call
 
                     log.info("deep_learner_initialized")
 
@@ -1018,7 +1213,8 @@ class Gateway:
                         _cycle_ctrl = CycleController(
                             plans_dir=self._config.cognithor_home / "evolution" / "plans"
                         )
-                        self._deep_learner._cycle_controller = _cycle_ctrl
+                        if self._deep_learner is not None:
+                            self._deep_learner._cycle_controller = _cycle_ctrl
                         log.info("cycle_controller_initialized")
                     except Exception:
                         log.debug("cycle_controller_init_failed", exc_info=True)
@@ -1074,7 +1270,7 @@ class Gateway:
                             config=atl_cfg,
                             loop=self._evolution_loop,
                         )
-                        register_atl_tools(self._mcp_client)  # type: ignore[attr-defined]
+                        register_atl_tools(self._mcp_client)
                         log.info("atl_tools_registered")
                     except Exception:
                         log.debug("atl_tools_registration_failed", exc_info=True)
@@ -1096,15 +1292,15 @@ class Gateway:
                     max_subtask_depth=self._config.kanban.max_subtask_depth,
                     cascade_cancel=self._config.kanban.cascade_cancel_subtasks,
                 )
-                register_kanban_tools(self._mcp_client, self._kanban_engine)  # type: ignore[attr-defined]
+                register_kanban_tools(self._mcp_client, self._kanban_engine)
                 log.info("kanban_engine_initialized", db=str(_kanban_db))
         except Exception:
             log.debug("kanban_init_failed", exc_info=True)
-            self._kanban_engine = None  # type: ignore[assignment]
+            self._kanban_engine = None
 
         # V6: Wire tool registry into Gatekeeper for per-tool risk annotations
-        if self._gatekeeper and hasattr(self._mcp_client, "_tool_registry"):  # type: ignore[attr-defined]
-            self._gatekeeper.set_tool_registry(self._mcp_client._tool_registry)  # type: ignore[attr-defined]
+        if self._gatekeeper and hasattr(self._mcp_client, "_tool_registry"):
+            self._gatekeeper.set_tool_registry(self._mcp_client._tool_registry)
 
         # vLLM media server + cleanup worker lifecycle
         if self._media_server is not None:
@@ -1133,18 +1329,18 @@ class Gateway:
         log.info(
             "gateway_init_complete",
             llm_available=llm_ok,
-            tools=self._mcp_client.get_tool_list(),  # type: ignore[attr-defined]
-            cron_jobs=self._cron_engine.job_count if self._cron_engine else 0,  # type: ignore[attr-defined]
+            tools=self._mcp_client.get_tool_list(),
+            cron_jobs=self._cron_engine.job_count if self._cron_engine else 0,
         )
 
         # Audit: System-Start protokollieren
-        if self._audit_logger:  # type: ignore[attr-defined]
-            self._audit_logger.log_system(  # type: ignore[attr-defined]
+        if self._audit_logger:
+            self._audit_logger.log_system(
                 "startup",
                 description=t(
                     "gateway.startup_description",
                     llm_ok=llm_ok,
-                    tool_count=len(self._mcp_client.get_tool_list()),  # type: ignore[attr-defined]
+                    tool_count=len(self._mcp_client.get_tool_list()),
                 ),
             )
 
@@ -1161,9 +1357,9 @@ class Gateway:
         rollenbasierte Tool-Abschnitte. Faellt auf die alte statische Methode
         zurueck, wenn die DB nicht verfuegbar ist.
         """
-        if not self._memory_manager or not hasattr(self._memory_manager, "_core"):  # type: ignore[attr-defined]
+        if not self._memory_manager or not hasattr(self._memory_manager, "_core"):
             return
-        core = self._memory_manager._core  # type: ignore[attr-defined]
+        core = self._memory_manager._core
         content = core.content
         if not content:
             return
@@ -1183,8 +1379,8 @@ class Gateway:
             registry_db = ToolRegistryDB(db_path)
 
             # Tools aus MCP-Client synchronisieren
-            if self._mcp_client:  # type: ignore[attr-defined]
-                registry_db.sync_from_mcp(self._mcp_client)  # type: ignore[attr-defined]
+            if self._mcp_client:
+                registry_db.sync_from_mcp(self._mcp_client)
 
             tool_count = registry_db.tool_count()
             registry_db.close()
@@ -1209,14 +1405,14 @@ class Gateway:
 
         # Procedure list with deduplication
         proc_lines: list[str] = []
-        if self._memory_manager:  # type: ignore[attr-defined]
+        if self._memory_manager:
             try:
                 from cognithor.mcp.tool_registry_db import (
                     _ProcedureEntry,
                     deduplicate_procedures,
                 )
 
-                procedural = self._memory_manager.procedural  # type: ignore[attr-defined]
+                procedural = self._memory_manager.procedural
                 raw_procs = [
                     _ProcedureEntry(
                         name=meta.name,
@@ -1233,7 +1429,7 @@ class Gateway:
                 log.debug("core_inventory_procedures_dedup_failed", exc_info=True)
                 # Fallback: simple list
                 try:
-                    procedural = self._memory_manager.procedural  # type: ignore[attr-defined]
+                    procedural = self._memory_manager.procedural
                     for meta in procedural.list_procedures():
                         uses = f"{meta.total_uses}x" if meta.total_uses else "0x"
                         kw = ", ".join(meta.trigger_keywords[:3]) if meta.trigger_keywords else ""
@@ -1311,7 +1507,7 @@ class Gateway:
         Returns:
             Formatierter Tool-Abschnitt oder None bei Fehler.
         """
-        tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}  # type: ignore[attr-defined]
+        tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
         if not tool_schemas:
             return None
 
@@ -1414,7 +1610,7 @@ class Gateway:
         """Re-init UnifiedLLMClient for a new backend type."""
         from cognithor.gateway import lifecycle
 
-        return lifecycle.rebuild_llm_client(self, new_backend_type)
+        return lifecycle.rebuild_llm_client(self, cast("Any", new_backend_type))
 
     async def execute_workflow(self, workflow_yaml: str) -> dict[str, Any]:
         """Execute a YAML-defined workflow via the DAG WorkflowEngine."""
@@ -1439,11 +1635,11 @@ class Gateway:
     ) -> dict[str, Any]:
         """Reload-Koordinator fuer Live-Updates vom UI."""
         reloaded = []
-        if prompts and self._planner:  # type: ignore[attr-defined]
-            self._planner.reload_prompts()  # type: ignore[attr-defined]
+        if prompts and self._planner:
+            self._planner.reload_prompts()
             reloaded.append("prompts")
-        if policies and self._gatekeeper:  # type: ignore[attr-defined]
-            self._gatekeeper.reload_policies()  # type: ignore[attr-defined]
+        if policies and self._gatekeeper:
+            self._gatekeeper.reload_policies()
             reloaded.append("policies")
         if core_memory:
             core_path = self._config.core_memory_path
@@ -1455,13 +1651,13 @@ class Gateway:
                     reloaded.append("core_memory")
                 except Exception:
                     log.debug("reload_core_memory_failed", exc_info=True)
-        if skills and self._skill_registry:  # type: ignore[attr-defined]
+        if skills and self._skill_registry:
             try:
                 skill_dirs = [
                     self._config.cognithor_home / "data" / "procedures",
                     self._config.cognithor_home / self._config.plugins.skills_dir,
                 ]
-                self._skill_registry.load_from_directories(skill_dirs)  # type: ignore[attr-defined]
+                self._skill_registry.load_from_directories(skill_dirs)
                 reloaded.append("skills")
             except Exception:
                 log.warning("skills_reload_failed", exc_info=True)
@@ -1486,22 +1682,22 @@ class Gateway:
                 log.debug("i18n_locale_reload_failed", exc_info=True)
 
             # Live-update Executor runtime parameters
-            if self._executor and hasattr(self._executor, "reload_config"):  # type: ignore[attr-defined]
+            if self._executor and hasattr(self._executor, "reload_config"):
                 try:
-                    self._executor.reload_config(new_config)  # type: ignore[attr-defined]
+                    self._executor.reload_config(new_config)
                 except Exception:
                     log.debug("executor_config_reload_failed", exc_info=True)
 
             # Live-update ModelRouter with new config + schedule model list refresh
-            if self._model_router and hasattr(self._model_router, "_config"):  # type: ignore[attr-defined]
+            if self._model_router and hasattr(self._model_router, "_config"):
                 try:
-                    self._model_router._config = new_config  # type: ignore[attr-defined]
+                    self._model_router._config = new_config
                     # Schedule async re-initialization to refresh _available_models
                     import asyncio
 
                     try:
                         loop = asyncio.get_running_loop()
-                        _task = loop.create_task(self._model_router.initialize())  # type: ignore[attr-defined]
+                        _task = loop.create_task(self._model_router.initialize())
                         self._background_tasks.add(_task)
                         _task.add_done_callback(self._background_tasks.discard)
                     except RuntimeError:
@@ -1511,20 +1707,20 @@ class Gateway:
                     log.debug("model_router_config_reload_failed", exc_info=True)
 
             # Recreate UnifiedLLMClient if backend type changed
-            if self._llm is not None:  # type: ignore[has-type]
-                old_backend = getattr(self._llm, "backend_type", "ollama")  # type: ignore[has-type]
+            if self._llm is not None:
+                old_backend = getattr(self._llm, "backend_type", "ollama")
                 new_backend = new_config.llm_backend_type
                 if old_backend != new_backend:
                     try:
                         from cognithor.core.unified_llm import UnifiedLLMClient
 
-                        old_llm = self._llm  # type: ignore[has-type]
+                        old_llm = self._llm
                         self._llm = UnifiedLLMClient.create(new_config)
                         # Update references in Planner/Executor
-                        if self._planner and hasattr(self._planner, "_ollama"):  # type: ignore[attr-defined]
-                            self._planner._ollama = self._llm  # type: ignore[attr-defined]
-                        if self._executor and hasattr(self._executor, "_ollama"):  # type: ignore[attr-defined]
-                            self._executor._ollama = self._llm  # type: ignore[attr-defined]
+                        if self._planner and hasattr(self._planner, "_ollama"):
+                            self._planner._ollama = self._llm
+                        if self._executor and hasattr(self._executor, "_ollama"):
+                            self._executor._ollama = self._llm
                         # Close old client
                         import asyncio
 
@@ -1544,16 +1740,16 @@ class Gateway:
                         log.warning("llm_backend_switch_failed", exc_info=True)
 
             # Live-update Planner with new config
-            if self._planner and hasattr(self._planner, "_config"):  # type: ignore[attr-defined]
+            if self._planner and hasattr(self._planner, "_config"):
                 try:
-                    self._planner._config = new_config  # type: ignore[attr-defined]
+                    self._planner._config = new_config
                 except Exception:
                     log.debug("planner_config_reload_failed", exc_info=True)
 
             # Live-update WebTools runtime parameters
             web_tools = None
-            if self._mcp_client:  # type: ignore[attr-defined]
-                handler = self._mcp_client.get_handler("web_search")  # type: ignore[attr-defined]
+            if self._mcp_client:
+                handler = self._mcp_client.get_handler("web_search")
                 if handler is not None:
                     web_tools = getattr(handler, "__self__", None)
             if web_tools and hasattr(web_tools, "reload_config"):
@@ -1563,9 +1759,9 @@ class Gateway:
                     log.debug("web_tools_config_reload_failed", exc_info=True)
 
             # Live-update Gatekeeper tool toggles (disabled_tools list)
-            if self._gatekeeper and hasattr(self._gatekeeper, "reload_disabled_tools"):  # type: ignore[attr-defined]
+            if self._gatekeeper and hasattr(self._gatekeeper, "reload_disabled_tools"):
                 try:
-                    self._gatekeeper.reload_disabled_tools()  # type: ignore[attr-defined]
+                    self._gatekeeper.reload_disabled_tools()
                     reloaded.append("tool_toggles")
                 except Exception:
                     log.debug("gatekeeper_tool_toggles_reload_failed", exc_info=True)
@@ -1797,11 +1993,11 @@ class Gateway:
         Returns:
             Ergebnis-Text der Delegation.
         """
-        if not self._agent_router:  # type: ignore[attr-defined]
+        if not self._agent_router:
             return f"Agent router unavailable. Delegation to {to_agent} failed."
 
         # Delegation erstellen und validieren
-        delegation = self._agent_router.create_delegation(from_agent, to_agent, task)  # type: ignore[attr-defined]
+        delegation = self._agent_router.create_delegation(from_agent, to_agent, task)
         if delegation is None:
             return (
                 f"Delegation from {from_agent} to {to_agent} not allowed. "
@@ -1841,9 +2037,9 @@ class Gateway:
             parent_session_id=session.session_id,
             fork_reason=f"delegated from {from_agent}: {task[:200]}",
         )
-        if self._session_store:  # type: ignore[attr-defined]
+        if self._session_store:
             try:
-                self._session_store.save_session(sub_session)  # type: ignore[attr-defined]
+                self._session_store.save_session(sub_session)
             except Exception:
                 log.debug("delegation_session_save_skipped", exc_info=True)
 
@@ -1868,18 +2064,18 @@ class Gateway:
         )
 
         # Resolve target agent's workspace
-        target_workspace = self._agent_router.resolve_agent_workspace(  # type: ignore[attr-defined]
+        target_workspace = self._agent_router.resolve_agent_workspace(
             to_agent,
             self._config.workspace_dir,
         )
 
         # Filter tool schemas for target agent
-        tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}  # type: ignore[attr-defined]
+        tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
         if target.has_tool_restrictions:
             tool_schemas = target.filter_tools(tool_schemas)
 
         # Planner mit Ziel-Agent-Kontext aufrufen
-        if self._planner is None:  # type: ignore[attr-defined]
+        if self._planner is None:
             raise RuntimeError("Planner nicht initialisiert -- Delegation nicht möglich")
 
         # Agent-specific LLM overrides for delegation target
@@ -1887,7 +2083,7 @@ class Gateway:
         _del_temp = target.temperature
         _del_top_p = getattr(target, "top_p", None)
 
-        plan = await self._planner.plan(  # type: ignore[attr-defined]
+        plan = await self._planner.plan(
             user_message=task,
             working_memory=sub_wm,
             tool_schemas=tool_schemas,
@@ -1903,26 +2099,28 @@ class Gateway:
             return cast("str", plan.direct_response)
 
         if not plan.has_actions:
-            delegation.result = "Kein Plan erstellt."
+            no_plan_msg = "Kein Plan erstellt."
+            delegation.result = no_plan_msg
             delegation.success = False
-            return delegation.result
+            return no_plan_msg
 
         # Check gatekeeper
-        if self._gatekeeper is None:  # type: ignore[attr-defined]
+        if self._gatekeeper is None:
             raise RuntimeError("Gatekeeper nicht initialisiert -- Delegation nicht möglich")
-        decisions = self._gatekeeper.evaluate_plan(plan.steps, session)  # type: ignore[attr-defined]
+        decisions = self._gatekeeper.evaluate_plan(plan.steps, session)
 
         # APPROVE/BLOCK-Entscheidungen in Delegationen blockieren (kein HITL moeglich)
         blocked = [d for d in decisions if d.status in (GateStatus.APPROVE, GateStatus.BLOCK)]
         if blocked:
             reasons = "; ".join(d.reason for d in blocked[:3])
-            delegation.result = f"Delegation blockiert: {reasons}"
+            blocked_msg = f"Delegation blockiert: {reasons}"
+            delegation.result = blocked_msg
             delegation.success = False
-            return delegation.result
+            return blocked_msg
 
         # Executor mit Ziel-Agent-Kontext
-        assert self._executor is not None  # type: ignore[attr-defined]
-        self._executor.set_agent_context(  # type: ignore[attr-defined]
+        assert self._executor is not None
+        self._executor.set_agent_context(
             workspace_dir=str(target_workspace),
             sandbox_overrides=target.get_sandbox_config(),
             agent_name=target.name,
@@ -1930,13 +2128,13 @@ class Gateway:
         )
 
         try:
-            results = await self._executor.execute(plan.steps, decisions)  # type: ignore[attr-defined]
+            results = await self._executor.execute(plan.steps, decisions)
         finally:
-            self._executor.clear_agent_context()  # type: ignore[attr-defined]
+            self._executor.clear_agent_context()
 
         # Formulate result
         if any(r.success for r in results):
-            _envelope = await self._planner.formulate_response(  # type: ignore[attr-defined]
+            _envelope = await self._planner.formulate_response(
                 user_message=task,
                 results=results,
                 working_memory=sub_wm,

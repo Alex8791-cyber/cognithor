@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from cognithor.i18n import t
 from cognithor.mcp.vault_backend import slugify as _ext_slugify
@@ -95,6 +95,7 @@ class VaultTools:
         default_folders = dict(getattr(vault_cfg, "default_folders", {})) if vault_cfg else None
 
         # Select backend
+        self._backend: Any
         if encrypt:
             from cognithor.mcp.vault_db_backend import VaultDBBackend
 
@@ -102,7 +103,7 @@ class VaultTools:
         else:
             from cognithor.mcp.vault_file_backend import VaultFileBackend
 
-            self._backend = VaultFileBackend(  # type: ignore[assignment]
+            self._backend = VaultFileBackend(
                 self._vault_root,
                 encrypt_files=False,
                 default_folders=default_folders,
@@ -121,13 +122,13 @@ class VaultTools:
                 if current_mode == "db":
                     from cognithor.mcp.vault_file_backend import VaultFileBackend as FB
 
-                    old = FB(self._vault_root, default_folders=default_folders)
-                    migrate_files_to_db(old, self._backend)
+                    old_file = FB(self._vault_root, default_folders=default_folders)
+                    migrate_files_to_db(old_file, self._backend)
                 else:
                     from cognithor.mcp.vault_db_backend import VaultDBBackend as DB
 
-                    old = DB(self._vault_root)  # type: ignore[assignment]
-                    migrate_db_to_files(old, self._backend)  # type: ignore[arg-type]
+                    old_db = DB(self._vault_root)
+                    migrate_db_to_files(old_db, self._backend)
                 log.info("vault_mode_migrated", mode=current_mode)
             except Exception:
                 log.error("vault_migration_failed", exc_info=True)
@@ -246,7 +247,7 @@ class VaultTools:
         if note is None:
             return None
         # Convert NoteData path back to absolute Path
-        return self._vault_root / note.path
+        return cast("Path", self._vault_root / note.path)
 
     # ── Frontmatter-Parsing (backward compatibility) ─────────────────────
 
@@ -379,14 +380,17 @@ class VaultTools:
             [n.strip() for n in linked_notes.split(",") if n.strip()] if linked_notes else []
         )
 
-        return self._backend.save(
-            path=f"{folder}/{_ext_slugify(title)}.md",
-            title=title,
-            content=content,
-            tags=tags,
-            folder=folder,
-            sources=sources,
-            backlinks=link_list,
+        return cast(
+            "str",
+            self._backend.save(
+                path=f"{folder}/{_ext_slugify(title)}.md",
+                title=title,
+                content=content,
+                tags=tags,
+                folder=folder,
+                sources=sources,
+                backlinks=link_list,
+            ),
         )
 
     # ── Tool: vault_search ───────────────────────────────────────────────
@@ -492,7 +496,10 @@ class VaultTools:
         if note is None:
             return t("vault.not_found", identifier=identifier)
 
-        return self._backend.update(note.path, append_content=append_content, add_tags=add_tags)
+        return cast(
+            "str",
+            self._backend.update(note.path, append_content=append_content, add_tags=add_tags),
+        )
 
     # ── Tool: vault_link ─────────────────────────────────────────────────
 
@@ -510,7 +517,7 @@ class VaultTools:
         if not tgt:
             return t("vault.error_target_not_found", identifier=target_note)
 
-        return self._backend.link(src.path, tgt.path)
+        return cast("str", self._backend.link(src.path, tgt.path))
 
     # ── Tool: vault_delete ──────────────────────────────────────────────
 
@@ -526,7 +533,7 @@ class VaultTools:
         except (ValueError, OSError):
             return t("vault.error_invalid_path", path=path)
 
-        return self._backend.delete(path)
+        return cast("str", self._backend.delete(path))
 
 
 # ── MCP client registration ─────────────────────────────────────────────

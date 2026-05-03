@@ -95,9 +95,9 @@ class ExistentialLayer:
         logger.info(reflection)
         return reflection
 
-    def existential_checkin(  # type: ignore[no-untyped-def]
+    def existential_checkin(
         self,
-        llm_client,
+        llm_client: Any,
         dream_summary: str = "",
         narrative_excerpt: str = "",
     ) -> str:

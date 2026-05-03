@@ -152,15 +152,15 @@ class PIIRedactor:
             pattern = _PATTERNS.get(cat)
             if pattern is None:
                 continue
-            for m in pattern.finditer(text):
-                if cat == "credit_card" and not _luhn_valid(m.group(0)):
+            for re_match in pattern.finditer(text):
+                if cat == "credit_card" and not _luhn_valid(re_match.group(0)):
                     continue
                 raw_matches.append(
                     RedactionMatch(
                         category=cat,
-                        start=m.start(),
-                        end=m.end(),
-                        length=m.end() - m.start(),
+                        start=re_match.start(),
+                        end=re_match.end(),
+                        length=re_match.end() - re_match.start(),
                     )
                 )
 
@@ -176,18 +176,18 @@ class PIIRedactor:
         # match, skip it.
         kept: list[RedactionMatch] = []
         last_end = -1
-        for m in raw_matches:  # type: ignore[assignment]
-            if m.start >= last_end:  # type: ignore[operator]
-                kept.append(m)  # type: ignore[arg-type]
-                last_end = m.end  # type: ignore[assignment]
+        for m in raw_matches:
+            if m.start >= last_end:
+                kept.append(m)
+                last_end = m.end
 
         # Build sanitized output by slicing around kept matches.
         out: list[str] = []
         cursor = 0
-        for m in kept:  # type: ignore[assignment]
-            out.append(text[cursor : m.start])  # type: ignore[misc]
-            out.append(self._replacement_template.format(category=m.category))  # type: ignore[attr-defined]
-            cursor = m.end  # type: ignore[assignment]
+        for m in kept:
+            out.append(text[cursor : m.start])
+            out.append(self._replacement_template.format(category=m.category))
+            cursor = m.end
         out.append(text[cursor:])
 
         return "".join(out), kept

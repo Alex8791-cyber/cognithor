@@ -111,7 +111,7 @@ class EpisodeRunner:
 
     def _connect(self) -> tuple[Any, Any, FrameDataProtocol]:
         try:
-            import arc_agi  # type: ignore[import-untyped]
+            import arc_agi
         except ImportError as exc:
             raise RuntimeError(_INSTALL_HINT) from exc
         arcade = arc_agi.Arcade()

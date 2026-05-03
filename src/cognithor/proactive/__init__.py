@@ -565,9 +565,10 @@ class HeartbeatScheduler:
 
         # 3. Process tasks
         while True:
-            task = self._queue.dequeue()  # type: ignore[assignment]
-            if task is None:
+            next_task = self._queue.dequeue()
+            if next_task is None:
                 break
+            task = next_task
 
             # Handler available?
             handler = self._handlers.get(task.event_type)

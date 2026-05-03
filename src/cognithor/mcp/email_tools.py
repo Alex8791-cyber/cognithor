@@ -106,20 +106,20 @@ def _extract_body_preview(msg: email.message.Message) -> tuple[str, bool]:
 
             if content_type == "text/plain" and not text_body:
                 payload = part.get_payload(decode=True)
-                if payload:
+                if isinstance(payload, bytes):
                     charset = part.get_content_charset() or "utf-8"
-                    text_body = payload.decode(charset, errors="replace")  # type: ignore[union-attr]
+                    text_body = payload.decode(charset, errors="replace")
             elif content_type == "text/html" and not text_body:
                 payload = part.get_payload(decode=True)
-                if payload:
+                if isinstance(payload, bytes):
                     charset = part.get_content_charset() or "utf-8"
-                    text_body = _strip_html(payload.decode(charset, errors="replace"))  # type: ignore[union-attr]
+                    text_body = _strip_html(payload.decode(charset, errors="replace"))
     else:
         content_type = msg.get_content_type()
         payload = msg.get_payload(decode=True)
-        if payload:
+        if isinstance(payload, bytes):
             charset = msg.get_content_charset() or "utf-8"
-            raw_text = payload.decode(charset, errors="replace")  # type: ignore[union-attr]
+            raw_text = payload.decode(charset, errors="replace")
             text_body = _strip_html(raw_text) if content_type == "text/html" else raw_text
 
     preview = text_body[:_MAX_PREVIEW_CHARS].strip()
@@ -494,6 +494,7 @@ class EmailTools:
                 raise EmailError(f"Ungültige E-Mail-Adresse: {addr}")
 
         # Nachricht aufbauen
+        msg: MIMEMultipart | MIMEText
         if attachments:
             msg = MIMEMultipart()
             content_type = "html" if html else "plain"
@@ -507,7 +508,7 @@ class EmailTools:
                 msg.attach(att_part)
         else:
             content_type = "html" if html else "plain"
-            msg = MIMEText(body, content_type, "utf-8")  # type: ignore[assignment]
+            msg = MIMEText(body, content_type, "utf-8")
 
         msg["From"] = self._username
         msg["To"] = ", ".join(to_list)

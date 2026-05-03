@@ -181,7 +181,7 @@ def _run_swarm(use_llm: bool, parallel: int, verbose: bool, config: Any) -> int:
         try:
             from cognithor.arc.adapter import ArcEnvironmentAdapter
 
-            game_ids = ArcEnvironmentAdapter.list_games()  # type: ignore[attr-defined]
+            game_ids = ArcEnvironmentAdapter.list_games()
         except Exception:
             game_ids = []
 
@@ -227,7 +227,7 @@ def _run_analyzer(game_id: str, reanalyze: bool, verbose: bool, config: Any) -> 
         return 1
 
     try:
-        import arc_agi  # type: ignore[import-untyped]
+        import arc_agi
 
         arcade = arc_agi.Arcade()
     except Exception as exc:
@@ -241,7 +241,7 @@ def _run_analyzer(game_id: str, reanalyze: bool, verbose: bool, config: Any) -> 
         try:
             from cognithor.arc.adapter import ArcEnvironmentAdapter
 
-            game_ids = ArcEnvironmentAdapter.list_games()  # type: ignore[attr-defined]
+            game_ids = ArcEnvironmentAdapter.list_games()
         except Exception:
             game_ids = []
 
@@ -308,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from cognithor.arc.adapter import ArcEnvironmentAdapter
 
-            games = ArcEnvironmentAdapter.list_games()  # type: ignore[attr-defined]
+            games = ArcEnvironmentAdapter.list_games()
         except ImportError as exc:
             print(f"[FAIL] ARC adapter not available: {exc}", file=sys.stderr)
             return 1

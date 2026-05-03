@@ -21,7 +21,7 @@ import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -241,11 +241,10 @@ class AuditTrail:
         record["hash"] = entry_hash
 
         # HMAC signature (cryptographically binding, not just tamper-evident)
+        record_hash_str: str = cast("str", record["hash"])
         if self._hmac_key:
             record["hmac"] = hmac_mod.new(
-                self._hmac_key,
-                record["hash"].encode(),  # type: ignore[attr-defined]
-                hashlib.sha256,
+                self._hmac_key, record_hash_str.encode(), hashlib.sha256
             ).hexdigest()
 
         # Ed25519 asymmetric signature (verify without the secret)
@@ -256,7 +255,7 @@ class AuditTrail:
                 )
 
                 private_key = Ed25519PrivateKey.from_private_bytes(self._ed25519_key[:32])
-                signature = private_key.sign(record["hash"].encode())  # type: ignore[attr-defined]
+                signature = private_key.sign(record_hash_str.encode())
                 record["ed25519_sig"] = signature.hex()
             except ImportError:
                 log.warning("ed25519_requires_cryptography_package")

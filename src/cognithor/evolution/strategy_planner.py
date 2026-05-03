@@ -213,7 +213,7 @@ class StrategyPlanner:
 
         # Re-sort sub_goals by priority desc
         plan.sub_goals.sort(key=lambda sg: sg.priority, reverse=True)
-        plan.expansions += 1
+        plan.expansions.append(f"replan@{plan.updated_at}")
         return plan
 
     def is_complex_goal(self, goal: str) -> bool:

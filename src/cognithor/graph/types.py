@@ -19,7 +19,7 @@ import itertools
 import json
 import time
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
@@ -131,7 +131,7 @@ class GraphState:
     def __setitem__(self, key: str, value: Any) -> None:
         self._data[key] = value
 
-    def __iter__(self):  # type: ignore[no-untyped-def]
+    def __iter__(self) -> Iterator[str]:
         return iter(self._data)
 
     def __contains__(self, key: str) -> bool:

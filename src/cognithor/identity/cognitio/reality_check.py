@@ -156,13 +156,13 @@ class RealityCheck:
         enabled: Is Reality Check active?
     """
 
-    def __init__(  # type: ignore[no-untyped-def]
+    def __init__(
         self,
-        llm_client=None,
+        llm_client: Any = None,
         memory_store: "MemoryStore | None" = None,
         vector_store: "VectorStore | None" = None,
         enabled: bool = True,
-        embedder=None,
+        embedder: Any = None,
     ) -> None:
         self.llm_client = llm_client
         self.memory_store = memory_store
@@ -178,7 +178,7 @@ class RealityCheck:
 
         # Embedder for semantic jailbreak detection
         self._embedder = embedder
-        self._jailbreak_embeddings: list | None = None  # type: ignore[type-arg]
+        self._jailbreak_embeddings: list[Any] | None = None
         if embedder is not None:
             self._init_jailbreak_embeddings()
 

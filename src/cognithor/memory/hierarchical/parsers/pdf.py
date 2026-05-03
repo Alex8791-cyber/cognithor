@@ -19,7 +19,7 @@ class PDFParser(DocumentParser):
 
     def parse(self, content: str | bytes, source_path: Path) -> list[RawSection]:
         try:
-            import fitz  # type: ignore[import-untyped]
+            import fitz
         except ImportError as exc:
             raise ParserError("pymupdf not installed — run: pip install pymupdf") from exc
 

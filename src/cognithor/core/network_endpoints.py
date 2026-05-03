@@ -97,6 +97,8 @@ def detect_interfaces() -> list[DetectedInterface]:
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None):
             addr = info[4][0]
+            if not isinstance(addr, str):
+                continue
             if addr in seen or addr.startswith("fe80"):
                 continue
             seen.add(addr)

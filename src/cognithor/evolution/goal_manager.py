@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003 — used at runtime in __init__
 from typing import Any
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 
 def _now_iso() -> str:

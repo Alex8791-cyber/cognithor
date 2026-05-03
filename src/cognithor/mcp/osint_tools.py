@@ -68,8 +68,15 @@ class OsintTools:
             justification=justification,
         )
 
-    async def _run(  # type: ignore[no-untyped-def]
-        self, *, target_name, target_github, claims, target_type, depth, justification
+    async def _run(
+        self,
+        *,
+        target_name: Any,
+        target_github: Any,
+        claims: Any,
+        target_type: Any,
+        depth: Any,
+        justification: Any,
     ) -> str:
         try:
             claims_list = [c.strip() for c in claims.split(",") if c.strip()] if claims else []

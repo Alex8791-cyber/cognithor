@@ -270,7 +270,7 @@ class PublisherVerifier:
                     session.get(url, timeout=aiohttp.ClientTimeout(total=_HTTP_TIMEOUT_S)) as resp,
                 ):
                     resp.raise_for_status()
-                    return await resp.text()
+                    return await resp.text()  # type: ignore[no-any-return, unused-ignore]
             except Exception as aio_exc:
                 log.debug(
                     "aiohttp_fetch_failed_falling_back_to_urllib", url=url, error=str(aio_exc)

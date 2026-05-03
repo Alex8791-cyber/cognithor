@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -123,7 +123,7 @@ class MarkdownParser(DocumentParser):
 
         return [
             RawSection(
-                level=int(s["level"]),  # type: ignore[call-overload]
+                level=int(cast("int", s["level"])),
                 title=str(s["title"]),
                 content=str(s["content"]),
                 position=idx,

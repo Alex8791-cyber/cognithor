@@ -51,6 +51,31 @@ jobs:
           print(f'Version OK: {toml_ver}')
           "
 
+  mypy:
+    name: Mypy --strict (src/cognithor/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install all runtime extras + dev
+        run: |
+          # Mypy needs every runtime import resolved (fastapi, starlette,
+          # uvicorn, transformers …), otherwise it reports a flood of
+          # import-not-found errors that dwarf real type errors. The
+          # ``[all]`` extra pulls every optional dep that ``src/cognithor/``
+          # imports unconditionally; ``[dev]`` pulls mypy + pytest.
+          python -m pip install --upgrade pip
+          pip install -e ".[all,dev]"
+          pip install transformers || echo "::warning::transformers install failed"
+
+      - name: Mypy --strict (must stay at zero)
+        run: mypy --strict src/cognithor/
+
   test:
     name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}

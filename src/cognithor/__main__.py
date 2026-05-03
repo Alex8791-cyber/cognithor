@@ -309,7 +309,7 @@ async def _run_mcp_server_mode(config: Any) -> None:
         config.tools.desktop_tools_enabled = False
 
     # Create MCP client and register tools
-    mcp_client = JarvisMCPClient()  # type: ignore[call-arg]
+    mcp_client = JarvisMCPClient(config)
 
     from cognithor.gateway.phases.tools import init_tools
 
@@ -350,7 +350,7 @@ def _expand_working_set(min_mb: int = 128, max_mb: int = 512) -> None:
         import ctypes
         from ctypes import wintypes
 
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined, unused-ignore]
 
         kernel32.GetCurrentProcess.restype = wintypes.HANDLE
         kernel32.SetProcessWorkingSetSize.argtypes = [
@@ -365,7 +365,7 @@ def _expand_working_set(min_mb: int = 128, max_mb: int = 512) -> None:
         max_bytes = ctypes.c_size_t(max_mb * 1024 * 1024)
         success = kernel32.SetProcessWorkingSetSize(handle, min_bytes, max_bytes)
         if not success:
-            err = ctypes.get_last_error()
+            err = ctypes.get_last_error()  # type: ignore[attr-defined, unused-ignore]
             print(f"  [WARN] SetProcessWorkingSetSize failed (error {err})", file=sys.stderr)
     except Exception:
         pass  # Not on Windows, or insufficient privileges
@@ -1526,6 +1526,7 @@ def main() -> None:
                 # Damit send_status() und send_pipeline_event() den
                 # Browser ueber die bestehenden _ws_connections erreichen.
                 from cognithor.channels.base import Channel, StatusType
+                from cognithor.models import PlannedAction  # noqa: TC001
 
                 _pending_approvals: dict[str, asyncio.Future[bool]] = {}
 
@@ -1579,14 +1580,11 @@ def main() -> None:
                         if ws:
                             await _ws_safe_send(ws, {"type": "stream_token", "token": token})
 
-                    async def request_approval(  # type: ignore[override]
+                    async def request_approval(
                         self,
                         session_id: str,
-                        action: Any = None,
-                        tool: str = "",
-                        params: dict[str, Any] | None = None,
-                        reason: str = "",
-                        **kwargs: Any,
+                        action: PlannedAction,
+                        reason: str,
                     ) -> bool:
                         log.info(
                             "approval_called",
@@ -1604,8 +1602,8 @@ def main() -> None:
 
                         import uuid
 
-                        _tool = tool or (getattr(action, "tool", "") if action else "")
-                        _params = params or (getattr(action, "params", {}) if action else {})
+                        _tool = getattr(action, "tool", "") if action else ""
+                        _params = getattr(action, "params", {}) if action else {}
                         request_id = uuid.uuid4().hex[:12]
                         future: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
                         _pending_approvals[request_id] = future
@@ -1996,10 +1994,10 @@ def main() -> None:
                     try:
                         form = await request.form()
                         audio_field = form.get("audio")
-                        if audio_field is None:
+                        if audio_field is None or isinstance(audio_field, str):
                             return {"error": "Feld 'audio' fehlt", "code": "MISSING_FIELD"}
 
-                        audio_bytes = await audio_field.read()  # type: ignore[union-attr]
+                        audio_bytes = await audio_field.read()
                         if not audio_bytes:
                             return {"error": "Leere Audio-Datei", "code": "EMPTY_FILE"}
 
@@ -2044,10 +2042,10 @@ def main() -> None:
                     try:
                         form = await request.form()
                         image_field = form.get("image")
-                        if image_field is None:
+                        if image_field is None or isinstance(image_field, str):
                             return {"error": "Feld 'image' fehlt", "code": "MISSING_FIELD"}
 
-                        image_bytes = await image_field.read()  # type: ignore[union-attr]
+                        image_bytes = await image_field.read()
                         if not image_bytes:
                             return {"error": "Leere Bilddatei", "code": "EMPTY_FILE"}
 
@@ -2372,7 +2370,7 @@ def main() -> None:
                 verify_token = config.channels.whatsapp_verify_token or os.environ.get(
                     "COGNITHOR_WHATSAPP_VERIFY_TOKEN", ""
                 )
-                allowed = config.channels.whatsapp_allowed_numbers  # type: ignore[assignment]
+                wa_allowed_numbers = config.channels.whatsapp_allowed_numbers
                 if phone_number_id:
                     gateway.register_channel(
                         WhatsAppChannel(
@@ -2380,7 +2378,7 @@ def main() -> None:
                             phone_number_id=phone_number_id,
                             verify_token=verify_token,
                             webhook_port=config.channels.whatsapp_webhook_port,
-                            allowed_numbers=allowed,  # type: ignore[arg-type]
+                            allowed_numbers=wa_allowed_numbers,
                             ssl_certfile=_ssl_cert,
                             ssl_keyfile=_ssl_key,
                             session_store=_session_store,
@@ -2390,9 +2388,11 @@ def main() -> None:
                 else:
                     log.warning("whatsapp_token_found_but_no_phone_number_id")
 
-            # Signal channel (auto-detect: token + default_user -> start)
-            signal_token = os.environ.get("COGNITHOR_SIGNAL_TOKEN")
-            if signal_token:
+            # Signal channel (auto-detect: signal-cli-rest-api URL + phone -> start)
+            signal_api_url = os.environ.get("COGNITHOR_SIGNAL_API_URL") or os.environ.get(
+                "COGNITHOR_SIGNAL_TOKEN"
+            )
+            if signal_api_url:
                 from cognithor.channels.signal import SignalChannel
 
                 default_user = config.channels.signal_default_user or os.environ.get(
@@ -2400,10 +2400,10 @@ def main() -> None:
                 )
                 if default_user:
                     gateway.register_channel(
-                        SignalChannel(token=signal_token, default_user=default_user)  # type: ignore[call-arg]
+                        SignalChannel(api_url=signal_api_url, phone_number=default_user)
                     )
                 else:
-                    log.warning("signal_token_found_but_no_default_user")
+                    log.warning("signal_api_url_found_but_no_default_user")
 
             # Matrix channel (auto-detect: token + homeserver + user_id -> start)
             matrix_token = os.environ.get("COGNITHOR_MATRIX_TOKEN")
@@ -2428,8 +2428,10 @@ def main() -> None:
 
             # Teams channel (auto-detect: app_id + app_password -> start)
             teams_app_id = os.environ.get("COGNITHOR_TEAMS_APP_ID", "")
-            teams_app_pw = os.environ.get("COGNITHOR_TEAMS_TOKEN") or os.environ.get(
-                "COGNITHOR_TEAMS_APP_PASSWORD", ""
+            teams_app_pw = (
+                os.environ.get("COGNITHOR_TEAMS_TOKEN")
+                or os.environ.get("COGNITHOR_TEAMS_APP_PASSWORD")
+                or ""
             )
             if teams_app_id or teams_app_pw:
                 from cognithor.channels.teams import TeamsChannel
@@ -2439,7 +2441,7 @@ def main() -> None:
                 gateway.register_channel(
                     TeamsChannel(
                         app_id=teams_app_id,
-                        app_password=teams_app_pw,  # type: ignore[arg-type]
+                        app_password=teams_app_pw,
                         webhook_host=teams_host,
                         webhook_port=teams_port,
                         ssl_certfile=_ssl_cert,
@@ -2452,11 +2454,11 @@ def main() -> None:
             if getattr(config.channels, "imessage_enabled", False):
                 from cognithor.channels.imessage import IMessageChannel
 
-                device_id = config.channels.imessage_device_id or os.environ.get(
-                    "COGNITHOR_IMESSAGE_DEVICE_ID"
-                )
-                # iMessage hat keine Token; device_id ist optional
-                gateway.register_channel(IMessageChannel(device_id=device_id))  # type: ignore[call-arg]
+                # iMessage hat keine Token; weitere Parameter (BlueBubbles-URL,
+                # Passwort, allowed_handles) werden via Config/Env abgegriffen
+                # sobald wir sie wieder benötigen — die Defaults reichen für die
+                # native macOS-Anbindung (mode="auto").
+                gateway.register_channel(IMessageChannel())
 
             # IRC channel (config-flag based, server is the gating field)
             if getattr(config.channels, "irc_enabled", False):
@@ -2569,8 +2571,24 @@ def main() -> None:
             # Voice channel (config-flag based; uses VoiceConfig sub-section)
             if getattr(config.channels, "voice_enabled", False):
                 from cognithor.channels.voice import VoiceChannel
+                from cognithor.channels.voice import VoiceConfig as ChannelVoiceConfig
 
-                gateway.register_channel(VoiceChannel(config=config.channels.voice_config))  # type: ignore[arg-type]
+                pyd_voice = getattr(config.channels, "voice_config", None)
+                channel_voice_cfg: ChannelVoiceConfig | None = None
+                if pyd_voice is not None:
+                    channel_voice_cfg = ChannelVoiceConfig()
+                    for shared_field in (
+                        "elevenlabs_api_key",
+                        "elevenlabs_voice_id",
+                        "elevenlabs_model",
+                    ):
+                        if hasattr(pyd_voice, shared_field):
+                            setattr(
+                                channel_voice_cfg,
+                                shared_field,
+                                getattr(pyd_voice, shared_field),
+                            )
+                gateway.register_channel(VoiceChannel(config=channel_voice_cfg))
                 log.info("voice_channel_registered")
 
             # Start dashboard if enabled
@@ -2586,7 +2604,7 @@ def main() -> None:
 
                         api_base = f"http://127.0.0.1:{args.api_port}"
 
-                        async def _dash_redirect(request):  # type: ignore[no-untyped-def]
+                        async def _dash_redirect(request: Any) -> RedirectResponse:
                             return RedirectResponse(url=f"{api_base}/dashboard")
 
                         dash_app = Starlette(

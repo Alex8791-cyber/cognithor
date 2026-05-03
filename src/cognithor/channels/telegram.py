@@ -106,7 +106,7 @@ class TelegramChannel(Channel):
         self._max_reconnect = max_reconnect_attempts
         self._session_store = session_store
         self._handler: MessageHandler | None = None
-        self._app: Any | None = None  # telegram.ext.Application
+        self._app: Any = None  # telegram.ext.Application
         self._approval_events: dict[str, asyncio.Event] = {}
         self._approval_results: dict[str, bool] = {}
         self._approval_lock = asyncio.Lock()
@@ -239,7 +239,9 @@ class TelegramChannel(Channel):
         self._running = True
 
         # Periodic TTLDict cleanup (#47 optimization)
-        self._cleanup_task = asyncio.create_task(self._periodic_ttl_cleanup())
+        self._cleanup_task: asyncio.Task[None] | None = asyncio.create_task(
+            self._periodic_ttl_cleanup()
+        )
 
     async def _periodic_ttl_cleanup(self) -> None:
         """Periodischer Sweep abgelaufener TTLDict-Eintraege (alle 5 Minuten)."""
@@ -267,7 +269,7 @@ class TelegramChannel(Channel):
             self._cleanup_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._cleanup_task
-            self._cleanup_task = None  # type: ignore[assignment]
+            self._cleanup_task = None
 
         try:
             if self._use_webhook:
@@ -318,7 +320,7 @@ class TelegramChannel(Channel):
         await site.start()
 
         # Register webhook at Telegram
-        await self._app.bot.set_webhook(  # type: ignore[union-attr]
+        await self._app.bot.set_webhook(
             url=self._webhook_url,
             drop_pending_updates=True,
             allowed_updates=["message", "callback_query"],
@@ -349,8 +351,8 @@ class TelegramChannel(Channel):
 
         try:
             data = await request.json()
-            update = Update.de_json(data, self._app.bot)  # type: ignore[union-attr]
-            await self._app.process_update(update)  # type: ignore[union-attr]
+            update = Update.de_json(data, self._app.bot)
+            await self._app.process_update(update)
             return web.Response(status=200)
         except Exception as exc:
             logger.error("Telegram-Webhook-Fehler: %s", exc)
@@ -580,8 +582,8 @@ class TelegramChannel(Channel):
         # GDPR consent check for voice messages
         consent_mgr = None
         try:
-            if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
-                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)  # type: ignore[union-attr]
+            if self._handler is not None and hasattr(self._handler, "__self__"):
+                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
         except Exception:
             logger.debug("telegram_voice_consent_check_failed", exc_info=True)
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -645,8 +647,8 @@ class TelegramChannel(Channel):
         # GDPR consent check for photo messages
         consent_mgr = None
         try:
-            if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
-                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)  # type: ignore[union-attr]
+            if self._handler is not None and hasattr(self._handler, "__self__"):
+                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
         except Exception:
             logger.debug("telegram_photo_consent_check_failed", exc_info=True)
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -748,8 +750,8 @@ class TelegramChannel(Channel):
         # GDPR consent check for document messages
         consent_mgr = None
         try:
-            if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
-                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)  # type: ignore[union-attr]
+            if self._handler is not None and hasattr(self._handler, "__self__"):
+                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
         except Exception:
             logger.debug("telegram_document_consent_check_failed", exc_info=True)
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -867,7 +869,7 @@ class TelegramChannel(Channel):
 
         # GDPR consent check
         consent_mgr = None
-        if hasattr(self, "_handler") and self._handler and hasattr(self._handler, "__self__"):  # type: ignore[truthy-function]
+        if self._handler is not None and hasattr(self._handler, "__self__"):
             consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
 
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -946,7 +948,7 @@ class TelegramChannel(Channel):
             # Disable CUDA if cuDNN is unavailable (prevents DLL crash)
             if not os.environ.get("CUDA_VISIBLE_DEVICES"):
                 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+            from faster_whisper import WhisperModel
 
             if self._whisper_model is None:
                 self._whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
@@ -975,7 +977,7 @@ class TelegramChannel(Channel):
         async def _typing_loop() -> None:
             while True:
                 try:
-                    await self._app.bot.send_chat_action(  # type: ignore[union-attr]
+                    await self._app.bot.send_chat_action(
                         chat_id=chat_id,
                         action="typing",
                     )
@@ -993,7 +995,7 @@ class TelegramChannel(Channel):
         """Stoppt den Typing-Indicator."""
         if task:
             task.cancel()
-        existing = self._typing_tasks.pop(chat_id, None)  # type: ignore[arg-type]
+        existing = self._typing_tasks.pop(chat_id, None)
         if existing and existing is not task:
             existing.cancel()
 

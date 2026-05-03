@@ -101,7 +101,7 @@ class KanbanStore:
         # the matching Row class or fall back to a dict factory.
         if _is_sqlcipher:
             try:
-                import sqlcipher3  # type: ignore[import-untyped]
+                import sqlcipher3
 
                 self._conn.row_factory = sqlcipher3.Row
             except (ImportError, AttributeError):

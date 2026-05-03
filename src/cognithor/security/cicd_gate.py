@@ -368,7 +368,7 @@ class ContinuousRedTeam:
             results[cat] = {
                 "total": total,
                 "blocked": blocked,
-                "pass_rate": (blocked / total * 100) if total else 100,  # type: ignore[dict-item]
+                "pass_rate": int(blocked / total * 100) if total else 100,
             }
 
         overall_total = sum(r["total"] for r in results.values())

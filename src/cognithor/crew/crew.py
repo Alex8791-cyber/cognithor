@@ -9,6 +9,9 @@ import warnings
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from cognithor.crew.agent import CrewAgent, LLMConfig
@@ -113,7 +116,7 @@ class Crew(BaseModel):
         super().__init__(**kwargs)
         object.__setattr__(self, "_planner", planner)
 
-    def model_copy(self, *, update: dict[str, Any] | None = None, deep: bool = False) -> Crew:  # type: ignore[override]
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Crew:
         """Preserve the injected ``_planner`` across ``model_copy()``.
 
         Pydantic v2's default ``model_copy`` walks only declared fields, so

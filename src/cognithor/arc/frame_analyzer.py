@@ -39,10 +39,10 @@ class FrameAnalyzer:
     """Tracks objects and learns action effects from game frames."""
 
     def __init__(self) -> None:
-        self._prev_grid: np.ndarray | None = None  # type: ignore[type-arg]
+        self._prev_grid: np.ndarray[Any, Any] | None = None
         self._prev_movement: MovementInfo | None = None
         self._action_effects: dict[str, list[MovementInfo]] = {}
-        self._static_mask: np.ndarray | None = None  # type: ignore[type-arg]
+        self._static_mask: np.ndarray[Any, Any] | None = None
         self._visited_positions: set[tuple[int, int]] = set()
         self._frame_count: int = 0
 
@@ -144,10 +144,10 @@ class FrameAnalyzer:
                 return a  # Untested = highest priority
 
             recent = effects[-10:]
-            avg_dir = abs(sum(m.direction_row for m in recent)) + abs(
+            avg_dir: float = abs(sum(m.direction_row for m in recent)) + abs(
                 sum(m.direction_col for m in recent)
             )
-            avg_dir /= len(recent)  # type: ignore[assignment]
+            avg_dir /= len(recent)
             directional.append((a, avg_dir, len(effects)))
 
         # Sort by least-used first (balanced exploration), then by direction

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from cognithor.core.observer import ResponseEnvelope
 
@@ -97,24 +97,27 @@ async def run_pge_with_observer_directive(
     envelope: ResponseEnvelope | None = None
 
     for _ in range(config.security.max_iterations):
-        envelope = await planner.formulate_response(
-            user_message=current_user_msg,
-            results=results,
-            working_memory=working_memory,
+        envelope = cast(
+            "ResponseEnvelope",
+            await planner.formulate_response(
+                user_message=current_user_msg,
+                results=results,
+                working_memory=working_memory,
+            ),
         )
         session_state["pge_iteration_count"] = session_state.get("pge_iteration_count", 0) + 1
 
-        if envelope.directive is None:  # type: ignore[union-attr]
-            return envelope  # type: ignore[return-value]
+        if envelope.directive is None:
+            return envelope
 
         decision = handle_observer_directive(
-            directive=envelope.directive,  # type: ignore[union-attr]
+            directive=envelope.directive,
             session_state=session_state,
             config=config,
         )
         if decision.action == "downgrade_to_regen":
             # Strip the directive and deliver the envelope content as-is.
-            return ResponseEnvelope(content=envelope.content, directive=None)  # type: ignore[union-attr]
+            return ResponseEnvelope(content=envelope.content, directive=None)
 
         # reenter_pge: prepend the directive feedback into the next user message.
         current_user_msg = f"{user_message}\n\n[Observer feedback]\n{decision.planner_feedback}"

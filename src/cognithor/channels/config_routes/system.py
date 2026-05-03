@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any, cast
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 try:
     from starlette.requests import Request

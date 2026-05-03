@@ -34,7 +34,7 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -108,7 +108,7 @@ class HermesCompatLayer:
     @staticmethod
     def to_skill_md(skill: HermesSkill) -> str:
         """Export a HermesSkill to SKILL.md format."""
-        frontmatter = {
+        frontmatter: dict[str, Any] = {
             "name": skill.name,
             "description": skill.description,
             "author": skill.author,
@@ -116,9 +116,9 @@ class HermesCompatLayer:
             "tags": skill.tags,
         }
         if skill.inputs:
-            frontmatter["inputs"] = skill.inputs  # type: ignore[assignment]
+            frontmatter["inputs"] = skill.inputs
         if skill.outputs:
-            frontmatter["outputs"] = skill.outputs  # type: ignore[assignment]
+            frontmatter["outputs"] = skill.outputs
 
         md = f"---\n{yaml.dump(frontmatter, default_flow_style=False)}---\n\n"
         md += f"# {skill.name}\n\n"

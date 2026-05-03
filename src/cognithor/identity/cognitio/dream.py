@@ -208,7 +208,7 @@ class DreamCycle:
         """Are there insight candidates awaiting validation?"""
         return bool(self._insight_candidates)
 
-    def validate_and_commit(self, llm_client, engine) -> int:  # type: ignore[no-untyped-def]
+    def validate_and_commit(self, llm_client: Any, engine: Any) -> int:
         """
         Called on the first user message. Validates candidates with the LLM and
         writes meaningful ones to memory.
@@ -275,7 +275,7 @@ class DreamCycle:
         nums = re.findall(r"\d+", response)
         return {int(n) for n in nums if 0 <= int(n) < total}
 
-    def _commit_candidate(self, candidate: dict[str, Any], engine) -> None:  # type: ignore[no-untyped-def]
+    def _commit_candidate(self, candidate: dict[str, Any], engine: Any) -> None:
         from cognithor.identity.cognitio.memory import MemoryRecord, MemoryType, MemoryValence
 
         insight_content = (

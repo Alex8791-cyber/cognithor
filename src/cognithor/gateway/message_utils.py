@@ -96,7 +96,7 @@ async def classify_coding_task(gw: Gateway, user_message: str) -> tuple[bool, st
     Returns:
         (is_coding, complexity) -- complexity ist "simple" oder "complex"
     """
-    if not gw._model_router or not gw._llm:  # type: ignore[attr-defined,has-type]
+    if not gw._model_router or not gw._llm:
         return False, "simple"
 
     # Fast-path: skip LLM call if message has no code signals at all.
@@ -166,10 +166,10 @@ async def classify_coding_task(gw: Gateway, user_message: str) -> tuple[bool, st
         'Antworte NUR mit einem JSON: {"coding": true/false, "complexity": "simple"/"complex"}'
     )
 
-    model = gw._model_router.select_model("simple_tool_call", "low")  # type: ignore[attr-defined]
+    model = gw._model_router.select_model("simple_tool_call", "low")
 
     try:
-        response = await gw._llm.chat(  # type: ignore[has-type]
+        response = await gw._llm.chat(
             model=model,
             messages=[
                 {"role": "system", "content": classify_prompt},
@@ -323,11 +323,11 @@ async def maybe_presearch(gw: Gateway, msg: IncomingMessage, wm: WorkingMemory) 
 
     # WebTools-Instanz finden
     web_tools = None
-    if gw._mcp_client:  # type: ignore[attr-defined]
-        web_tools = getattr(gw._mcp_client, "_web_tools", None)  # type: ignore[attr-defined]
+    if gw._mcp_client:
+        web_tools = getattr(gw._mcp_client, "_web_tools", None)
         if web_tools is None:
             # Fallback: WebTools aus registrierten Handlern extrahieren
-            handler = gw._mcp_client.get_handler("web_search")  # type: ignore[attr-defined]
+            handler = gw._mcp_client.get_handler("web_search")
             if handler is not None:
                 # Handler ist eine gebundene Methode von WebTools
                 web_tools = getattr(handler, "__self__", None)
@@ -414,7 +414,7 @@ async def answer_from_presearch(gw: Gateway, user_message: str, search_results: 
 
     Nutzt den unified LLM-Client (funktioniert mit jedem Backend).
     """
-    if not gw._llm:  # type: ignore[has-type]
+    if not gw._llm:
         return ""
     system = (
         "You are a fact assistant. You answer questions EXCLUSIVELY "
@@ -440,13 +440,13 @@ async def answer_from_presearch(gw: Gateway, user_message: str, search_results: 
     )
 
     # Select model via ModelRouter (backend-agnostic)
-    if gw._model_router:  # type: ignore[attr-defined]
-        model = gw._model_router.select_model("planning", "high")  # type: ignore[attr-defined]
+    if gw._model_router:
+        model = gw._model_router.select_model("planning", "high")
     else:
         model = gw._config.models.planner.name
 
     try:
-        response = await gw._llm.chat(  # type: ignore[has-type]
+        response = await gw._llm.chat(
             model=model,
             messages=[
                 {"role": "system", "content": system},
@@ -461,7 +461,7 @@ async def answer_from_presearch(gw: Gateway, user_message: str, search_results: 
         answer = re.sub(r"<think>.*?</think>\s*", "", answer, flags=re.DOTALL)
         if answer.strip():
             log.info("presearch_answer_generated", chars=len(answer))
-            return cast("str", answer.strip())
+            return answer.strip()
 
     except Exception as exc:
         log.error("presearch_answer_failed", error=str(exc)[:200])

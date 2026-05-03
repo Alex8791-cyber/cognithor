@@ -108,7 +108,7 @@ _TYPE_MAP: dict[str, CaptchaType] = {
 }
 
 
-async def detect_captcha(page) -> list[CaptchaChallenge]:  # type: ignore[no-untyped-def]
+async def detect_captcha(page: Any) -> list[CaptchaChallenge]:
     """Scan *page* for CAPTCHA widgets and return a list of CaptchaChallenge objects.
 
     Parameters

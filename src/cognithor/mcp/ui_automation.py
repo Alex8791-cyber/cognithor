@@ -20,7 +20,7 @@ log = get_logger(__name__)
 _pywinauto_available = False
 if sys.platform == "win32":
     try:
-        from pywinauto import Desktop  # type: ignore[import-untyped]  # noqa: F401
+        from pywinauto import Desktop  # noqa: F401
 
         _pywinauto_available = True
     except ImportError:
@@ -119,7 +119,7 @@ class UIAutomationProvider:
         try:
             import ctypes
 
-            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            hwnd = ctypes.windll.user32.GetForegroundWindow()  # type: ignore[attr-defined, unused-ignore]
             for w in windows:
                 try:
                     if w.handle == hwnd:

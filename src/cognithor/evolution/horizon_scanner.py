@@ -7,14 +7,15 @@ Part of Phase 5C: autonomous plan expansion.
 from __future__ import annotations
 
 import json
-import logging
 from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any
+
+from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from cognithor.evolution.models import LearningPlan
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 LLMFunction = Callable[[str], Coroutine[Any, Any, str]]
 
@@ -44,7 +45,7 @@ class HorizonScanner:
         """
         if gap_topic not in self._targeted_gaps:
             self._targeted_gaps.append(gap_topic)
-            logger.info("horizon_targeted_gap_added", topic=gap_topic)  # type: ignore[call-arg]
+            logger.info("horizon_targeted_gap_added", topic=gap_topic)
 
     async def scan(self, plan: LearningPlan) -> list[dict[str, Any]]:
         """Run both discovery mechanisms and return deduplicated results."""

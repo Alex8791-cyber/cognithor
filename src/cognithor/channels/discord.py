@@ -87,7 +87,7 @@ class DiscordChannel(Channel):
         self._token_store.store("discord_bot_token", token)
         self.channel_id = channel_id
         self._session_store = session_store
-        self._client: Any | None = None
+        self._client: Any = None
         self._handler: MessageHandler | None = None
         self._running = False
         self._bidirectional = False
@@ -126,7 +126,7 @@ class DiscordChannel(Channel):
                 self._session_users[key] = int(val)
 
         try:
-            import discord  # type: ignore[import-not-found]
+            import discord
         except ImportError:
             logger.error("discord.py nicht installiert. pip install discord.py")
             return
@@ -138,7 +138,7 @@ class DiscordChannel(Channel):
         client = discord.Client(intents=intents)
         self._client = client
 
-        @client.event  # type: ignore[misc]
+        @client.event  # type: ignore[untyped-decorator]
         async def on_ready() -> None:
             self._running = True
             self._bidirectional = True
@@ -147,11 +147,11 @@ class DiscordChannel(Channel):
                 client.user,
             )
 
-        @client.event  # type: ignore[misc]
+        @client.event  # type: ignore[untyped-decorator]
         async def on_message(message: Any) -> None:
             await self._on_message(message)
 
-        @client.event  # type: ignore[misc]
+        @client.event  # type: ignore[untyped-decorator]
         async def on_reaction_add(reaction: Any, user: Any) -> None:
             await self._on_reaction(reaction, user)
 
@@ -161,7 +161,7 @@ class DiscordChannel(Channel):
     async def _on_message(self, message: Any) -> None:
         """Verarbeitet eingehende Discord-Nachrichten."""
         # Eigene Nachrichten ignorieren
-        if message.author == self._client.user:  # type: ignore[union-attr]
+        if message.author == self._client.user:
             return
         # Bot-Nachrichten ignorieren
         if message.author.bot:
@@ -172,15 +172,15 @@ class DiscordChannel(Channel):
             return
 
         # Bot-Mention entfernen
-        if self._client.user:  # type: ignore[union-attr]
-            mention = f"<@{self._client.user.id}>"  # type: ignore[union-attr]
-            mention_nick = f"<@!{self._client.user.id}>"  # type: ignore[union-attr]
+        if self._client.user:
+            mention = f"<@{self._client.user.id}>"
+            mention_nick = f"<@!{self._client.user.id}>"
             text = text.replace(mention, "").replace(mention_nick, "").strip()
 
         # Nur reagieren wenn: DM, im konfigurierten Channel, oder Mention
         is_dm = message.guild is None
         is_target_channel = message.channel.id == self.channel_id
-        was_mentioned = self._client.user in message.mentions if self._client.user else False  # type: ignore[union-attr]
+        was_mentioned = self._client.user in message.mentions if self._client.user else False
 
         if not (is_dm or is_target_channel or was_mentioned):
             return
@@ -229,7 +229,7 @@ class DiscordChannel(Channel):
 
     async def _on_reaction(self, reaction: Any, user: Any) -> None:
         """Verarbeitet Reaction-basierte Approvals."""
-        if user == self._client.user:  # type: ignore[union-attr]
+        if user == self._client.user:
             return  # Eigene Reactions ignorieren
 
         msg_id = reaction.message.id
@@ -413,7 +413,7 @@ class DiscordChannel(Channel):
             future: asyncio.Future[bool] = loop.create_future()
             requester_id = self._session_users.get(session_id, 0)
             async with self._approval_lock:
-                self._approval_messages[msg.id] = (future, requester_id)  # type: ignore[assignment]
+                self._approval_messages[msg.id] = (future, requester_id)
 
             try:
                 return await asyncio.wait_for(future, timeout=300.0)
@@ -432,8 +432,8 @@ class DiscordChannel(Channel):
         """Buffert Streaming-Tokens und sendet gebuendelt."""
         async with self._stream_lock:
             buf = self._stream_buffers.setdefault(session_id, [])
-            buf.append(token)  # type: ignore[union-attr]
-            is_first = len(buf) == 1  # type: ignore[arg-type]
+            buf.append(token)
+            is_first = len(buf) == 1
         if is_first:
             await asyncio.sleep(0.5)
             async with self._stream_lock:

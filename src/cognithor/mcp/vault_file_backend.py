@@ -102,7 +102,7 @@ class VaultFileBackend(VaultBackend):
         yaml_text = content[4:close]
         body = content[close + 4 :].lstrip("\n")
         try:
-            import yaml  # type: ignore[import-untyped]
+            import yaml
 
             data = yaml.safe_load(yaml_text)
             if not isinstance(data, dict):

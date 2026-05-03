@@ -48,12 +48,12 @@ class GarbageCollector:
         "min_reinforcements_to_protect": 3,
     }
 
-    def __init__(  # type: ignore[no-untyped-def]
+    def __init__(
         self,
         memory_store: "MemoryStore",
         vector_store: "VectorStore",
         config: dict[str, Any] | None = None,
-        bias_engine=None,
+        bias_engine: Any = None,
     ) -> None:
         self.memory_store = memory_store
         self.vector_store = vector_store

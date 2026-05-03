@@ -45,7 +45,7 @@ class ArcObservation:
     step_number: int
     level: int
     levels_completed: int
-    grid_diff: np.ndarray | None = None  # type: ignore[type-arg]
+    grid_diff: np.ndarray[Any, Any] | None = None
     changed_pixels: int = 0
     action_history: list[Any] = field(default_factory=list)
     available_actions: list[Any] = field(default_factory=list)
@@ -72,7 +72,7 @@ class ArcEnvironmentAdapter:
         self.arcade: Any = None
         self.env: Any = None
         self.current_obs: ArcObservation | None = None
-        self.previous_grid: np.ndarray | None = None  # type: ignore[type-arg]
+        self.previous_grid: np.ndarray[Any, Any] | None = None
         self.step_count: int = 0
         self.level_step_count: int = 0
         self.total_resets: int = 0
@@ -80,6 +80,26 @@ class ArcEnvironmentAdapter:
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def list_games() -> list[str]:
+        """Return the IDs of all environments the SDK currently exposes.
+
+        The SDK is imported lazily so the call surfaces a clear error when
+        ``arc_agi`` is not installed instead of failing at import time.
+        """
+        try:
+            import arc_agi
+        except ImportError as exc:
+            raise EnvironmentConnectionError(
+                "arc_agi SDK is not installed. Install it to enumerate games."
+            ) from exc
+
+        arcade = arc_agi.Arcade()
+        envs = getattr(arcade, "available_environments", None)
+        if envs is None:
+            envs = arcade.get_environments()
+        return [str(e) for e in envs]
 
     def initialize(self) -> ArcObservation:
         """Create the arcade, make the environment, and return the first frame.
@@ -92,7 +112,7 @@ class ArcEnvironmentAdapter:
                 ``arcade.make()`` returns ``None``.
         """
         try:
-            import arc_agi  # type: ignore[import-untyped]
+            import arc_agi
         except ImportError as exc:
             raise EnvironmentConnectionError(
                 "arc_agi SDK is not installed. Install it to use ArcEnvironmentAdapter."
@@ -179,11 +199,12 @@ class ArcEnvironmentAdapter:
         grid = self._extract_grid(raw)
 
         # Pixel diff against the previous frame
-        grid_diff: np.ndarray | None = None  # type: ignore[type-arg]
+        grid_diff: np.ndarray[Any, Any] | None = None
         changed_pixels: int = 0
         if self.previous_grid is not None:
-            grid_diff = grid != self.previous_grid
-            changed_pixels = int(np.sum(grid_diff))  # type: ignore[arg-type]
+            diff = grid != self.previous_grid
+            grid_diff = diff
+            changed_pixels = int(np.sum(diff))
 
         # Extract SDK metadata with safe fallbacks
         game_state = getattr(raw, "state", None)
@@ -198,7 +219,16 @@ class ArcEnvironmentAdapter:
                     try:
                         from arcengine.enums import GameAction
 
-                        available_actions.append(GameAction(a))  # type: ignore[call-arg]
+                        resolved: Any = None
+                        for member in GameAction:
+                            value = getattr(member, "value", None)
+                            if isinstance(value, tuple) and value and value[0] == a:
+                                resolved = member
+                                break
+                            if value == a:
+                                resolved = member
+                                break
+                        available_actions.append(resolved if resolved is not None else a)
                     except (ValueError, KeyError, ImportError):
                         available_actions.append(a)
                 else:

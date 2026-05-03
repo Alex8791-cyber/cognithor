@@ -18,7 +18,7 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from cognithor.i18n import t
 from cognithor.utils.logging import get_logger
@@ -359,7 +359,7 @@ class VerifiedWebLookup:
 
         # ── Smart Routing: URL-Klassifizierung → beste Methode ──────────
         # Trafilatura fuer alle URLs (schnell), Browser fuer JS-heavy URLs
-        tasks: list[asyncio.Task] = []  # type: ignore[type-arg]
+        tasks: list[asyncio.Task[Any]] = []
         browser_urls: list[str] = []
         for url in urls:
             tasks.append(asyncio.ensure_future(_extract_trafilatura(url)))
@@ -630,7 +630,7 @@ class VerifiedWebLookup:
         try:
             raw = await self._llm_fn(prompt, self._llm_model)
             raw = re.sub(r"<think>.*?</think>\s*", "", raw, flags=re.DOTALL)
-            return cast("str", raw.strip().strip('"').strip("'")[:200])
+            return raw.strip().strip('"').strip("'")[:200]
 
         except Exception:
             return ""
@@ -665,7 +665,7 @@ class VerifiedWebLookup:
         try:
             report = await self._llm_fn(prompt, self._llm_model)
             report = re.sub(r"<think>.*?</think>\s*", "", report, flags=re.DOTALL)
-            return cast("str", report.strip())
+            return report.strip()
 
         except Exception:
             return initial

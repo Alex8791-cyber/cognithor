@@ -165,7 +165,7 @@ class STTEngine:
     async def _load_whisper(self) -> None:
         """Laedt faster-whisper Modell."""
         try:
-            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+            from faster_whisper import WhisperModel
 
             device = self._config.stt_device
             if device == "auto":

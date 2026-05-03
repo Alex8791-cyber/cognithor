@@ -107,11 +107,11 @@ class BruteForceIndex:
             return []
 
         if self._use_np:
-            query = _l2_normalize_np(np.array(query_vector, dtype=np.float32))
-            scores = [(key, float(np.dot(query, vec))) for key, vec in self._vectors.items()]
+            query_np = _l2_normalize_np(np.array(query_vector, dtype=np.float32))
+            scores = [(key, float(np.dot(query_np, vec))) for key, vec in self._vectors.items()]
         else:
-            query = _l2_normalize_py(query_vector)  # type: ignore[assignment]
-            scores = [(key, _dot_py(query, vec)) for key, vec in self._vectors.items()]  # type: ignore[arg-type]
+            query_py = _l2_normalize_py(query_vector)
+            scores = [(key, _dot_py(query_py, vec)) for key, vec in self._vectors.items()]
 
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
@@ -145,7 +145,7 @@ class FAISSIndex:
         ef_construction: int = 200,
         ef_search: int = 64,
     ) -> None:
-        import faiss  # type: ignore
+        import faiss
 
         self._dimension = dimension
         self._m = m

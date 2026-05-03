@@ -30,20 +30,20 @@ class DeepLearner:
     operations on persisted LearningPlan instances.
     """
 
-    def __init__(  # type: ignore[no-untyped-def]
+    def __init__(
         self,
         llm_fn: Callable[..., Any],
         plans_dir: str | None = None,
-        mcp_client=None,
-        memory_manager=None,
-        skill_registry=None,
-        skill_generator=None,
-        cron_engine=None,
-        cost_tracker=None,
-        resource_monitor=None,
-        checkpoint_store=None,
-        config=None,
-        idle_detector=None,
+        mcp_client: Any = None,
+        memory_manager: Any = None,
+        skill_registry: Any = None,
+        skill_generator: Any = None,
+        cron_engine: Any = None,
+        cost_tracker: Any = None,
+        resource_monitor: Any = None,
+        checkpoint_store: Any = None,
+        config: Any = None,
+        idle_detector: Any = None,
         operation_mode: str = "offline",
     ) -> None:
         if plans_dir is None:
@@ -95,8 +95,7 @@ class DeepLearner:
             log.debug("knowledge_validator_init_failed", exc_info=True)
 
         self._llm_fn = llm_fn
-        self._entity_llm_fn: Callable | None = None  # type: ignore[type-arg]  # Set by gateway (qwen3:8b)
-
+        self._entity_llm_fn: Callable[..., Any] | None = None  # Set by gateway (qwen3:8b)
         self._mcp_client = mcp_client
         self._memory_manager = memory_manager
         self._skill_registry = skill_registry
@@ -294,7 +293,7 @@ class DeepLearner:
             # Dynamic search queries — LLM-generated if possible, fallback to templates
             _base = subgoal.title
             _plan_ctx = plan.goal[:60]
-            if research_round == 0 and self._llm_fn:  # type: ignore[truthy-function]
+            if research_round == 0 and self._llm_fn is not None:
                 # First round: ask LLM for targeted search queries
                 try:
                     _qgen_resp = await self._llm_fn(
@@ -564,7 +563,7 @@ class DeepLearner:
                             f"- {e['title']}: {e.get('reason', '')}" for e in expansions
                         )
                         plan = await self._strategy_planner.replan(plan, new_context)
-                        plan.expansions.extend(e["title"] for e in expansions)  # type: ignore[attr-defined]
+                        plan.expansions.extend(e["title"] for e in expansions)
                         log.info("deep_learner_horizon_expanded", count=len(expansions))
                     # CycleController: track expansions, trigger exam every 10
                     if self._cycle_controller and expansions:
@@ -620,10 +619,12 @@ class DeepLearner:
                 log.info("deep_learner_plan_completed", goal=plan.goal[:40])
 
         # Update plan-level scores
-        scored = [sg for sg in plan.sub_goals if sg.coverage_score > 0]  # type: ignore[operator]
+        scored = [
+            sg for sg in plan.sub_goals if sg.coverage_score is not None and sg.coverage_score > 0
+        ]
         if scored:
-            plan.coverage_score = sum(sg.coverage_score for sg in scored) / len(scored)  # type: ignore[misc]
-            plan.quality_score = sum(sg.quality_score for sg in scored) / len(scored)  # type: ignore[misc]
+            plan.coverage_score = sum((sg.coverage_score or 0.0) for sg in scored) / len(scored)
+            plan.quality_score = sum((sg.quality_score or 0.0) for sg in scored) / len(scored)
 
         plan.save(str(self._plans_dir))
         return True
@@ -646,10 +647,12 @@ class DeepLearner:
         else:
             subgoal.status = "researching"
         # Update plan-level scores
-        done = [sg for sg in plan.sub_goals if sg.coverage_score > 0]  # type: ignore[operator]
+        done = [
+            sg for sg in plan.sub_goals if sg.coverage_score is not None and sg.coverage_score > 0
+        ]
         if done:
-            plan.coverage_score = sum(sg.coverage_score for sg in done) / len(done)  # type: ignore[misc]
-            plan.quality_score = sum(sg.quality_score for sg in done) / len(done)  # type: ignore[misc]
+            plan.coverage_score = sum((sg.coverage_score or 0.0) for sg in done) / len(done)
+            plan.quality_score = sum((sg.quality_score or 0.0) for sg in done) / len(done)
         plan.save(str(self._plans_dir))
         return result
 
@@ -663,7 +666,7 @@ class DeepLearner:
             new_context = "HorizonScanner hat folgende Luecken gefunden:\n"
             new_context += "\n".join(f"- {e['title']}: {e.get('reason', '')}" for e in expansions)
             plan = await self._strategy_planner.replan(plan, new_context)
-            plan.expansions.extend(e["title"] for e in expansions)  # type: ignore[attr-defined]
+            plan.expansions.extend(e["title"] for e in expansions)
             plan.save(str(self._plans_dir))
             log.info("deep_learner_horizon_expanded", new_subgoals=len(expansions))
         return expansions

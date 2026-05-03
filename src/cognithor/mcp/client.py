@@ -16,7 +16,7 @@ import contextlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from cognithor.i18n import t
 from cognithor.models import MCPServerConfig, MCPToolInfo

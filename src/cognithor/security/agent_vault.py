@@ -322,12 +322,13 @@ class VaultRotator:
             # Check age
             last_change = secret.last_rotated or secret.created_at
             if last_change:
+                change_ts: float
                 try:
                     import calendar
 
                     change_ts = calendar.timegm(time.strptime(last_change, "%Y-%m-%dT%H:%M:%SZ"))
                 except (ValueError, OverflowError):
-                    change_ts = now_ts  # type: ignore[assignment]
+                    change_ts = now_ts
                 age_hours = (now_ts - change_ts) / 3600
                 if age_hours > policy.rotation_interval_hours:
                     needs_rotation.append(secret)

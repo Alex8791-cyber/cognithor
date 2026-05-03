@@ -248,7 +248,7 @@ class LearningPlan:
     total_chunks_indexed: int = 0
     total_entities_created: int = 0
     total_vault_entries: int = 0
-    expansions: int = 0
+    expansions: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.goal_slug:
@@ -292,7 +292,7 @@ class LearningPlan:
             total_chunks_indexed=d.get("total_chunks_indexed", 0),
             total_entities_created=d.get("total_entities_created", 0),
             total_vault_entries=d.get("total_vault_entries", 0),
-            expansions=d.get("expansions", 0),
+            expansions=list(d.get("expansions", []) or []),
         )
 
     def to_summary_dict(self) -> dict[str, Any]:

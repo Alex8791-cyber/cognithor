@@ -12,6 +12,7 @@ Bibel-Referenz: §9.3 (CLI Channel)
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
@@ -45,7 +46,7 @@ BANNER = r"""
 class CliChannel(Channel):
     """Terminal-REPL-Channel. [B§9.3]"""
 
-    def __init__(self, version: str = "0.1.0", config=None, api_port: int = 8741) -> None:  # type: ignore[no-untyped-def]
+    def __init__(self, version: str = "0.1.0", config: Any = None, api_port: int = 8741) -> None:
         """Initialisiert den CLI-Channel mit Prompt-Toolkit."""
         self._handler: MessageHandler | None = None
         self._console = Console()

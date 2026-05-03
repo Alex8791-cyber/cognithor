@@ -15,7 +15,7 @@ import contextlib
 import socket
 import threading
 import uuid as _uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -54,8 +54,8 @@ class MediaUploadServer:
         self._max_per_file_bytes = config.vllm.video_max_upload_mb * 1024 * 1024
         self._quota_bytes = config.vllm.video_quota_gb * 1024 * 1024 * 1024
         self._port: int | None = None
-        self._server = None  # filled by start() in Task 7
-        self._serve_task: asyncio.Task | None = None  # type: ignore[type-arg]
+        self._server: Any = None  # filled by start() in Task 7
+        self._serve_task: asyncio.Task[Any] | None = None
         # Guards the evict+write critical section in save_upload. save_upload
         # is called from async FastAPI handlers via asyncio.to_thread, so
         # threading.Lock (not asyncio.Lock) is the right primitive here.
@@ -178,6 +178,8 @@ class MediaUploadServer:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
             probe.bind(("127.0.0.1", 0))
             self._port = probe.getsockname()[1]
+        assert self._port is not None  # bound above
+        port = self._port
 
         app = FastAPI(title="Cognithor MediaUploadServer", openapi_url=None, docs_url=None)
 
@@ -202,19 +204,19 @@ class MediaUploadServer:
         config = uvicorn.Config(
             app,
             host="127.0.0.1",
-            port=self._port,  # type: ignore[arg-type]
+            port=port,
             log_level="warning",
             access_log=False,
         )
-        self._server = uvicorn.Server(config)  # type: ignore[assignment]
-        self._serve_task = asyncio.create_task(self._server.serve())  # type: ignore[attr-defined]
+        self._server = uvicorn.Server(config)
+        self._serve_task = asyncio.create_task(self._server.serve())
         # Wait for startup (server.started flips true when uvicorn is ready)
         for _ in range(50):
-            if self._server.started:  # type: ignore[attr-defined]
+            if self._server.started:
                 break
             await asyncio.sleep(0.05)
-        log.info("media_server_started", port=self._port)
-        return self._port  # type: ignore[return-value]
+        log.info("media_server_started", port=port)
+        return port
 
     async def stop(self) -> None:
         """Shut down the uvicorn serving loop. Idempotent."""
@@ -222,7 +224,8 @@ class MediaUploadServer:
             return
         self._server.should_exit = True
         try:
-            await self._serve_task
+            if self._serve_task is not None:
+                await self._serve_task
         except Exception as exc:
             log.warning("media_server_stop_error", error=str(exc))
         self._server = None

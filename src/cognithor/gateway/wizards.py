@@ -40,7 +40,7 @@ def _get_backend_info() -> tuple[str, dict[str, dict[str, Any]]]:
         config = CognithorConfig()
         backend = config.llm_backend_type
         defaults = _PROVIDER_MODEL_DEFAULTS.get(backend, {})
-        return backend, defaults
+        return backend, defaults  # type: ignore[return-value]
     except Exception:
         return "ollama", {}
 

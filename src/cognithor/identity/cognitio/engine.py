@@ -232,9 +232,9 @@ class CognitioEngine:
         data_dir: Data directory
     """
 
-    def __init__(  # type: ignore[no-untyped-def]
+    def __init__(
         self,
-        llm_client=None,
+        llm_client: Any = None,
         config: dict[str, Any] | None = None,
         data_dir: str = "data",
     ) -> None:
@@ -295,7 +295,7 @@ class CognitioEngine:
         self.predictive = PredictiveEngine()
 
         # Async consolidation pipeline
-        self._consolidation_queue: queue.Queue = queue.Queue()  # type: ignore[type-arg]
+        self._consolidation_queue: queue.Queue[Any] = queue.Queue()
         self._pending_notes: list[str] = []
         self._consolidation_lock = threading.Lock()
         self._consolidation_thread: threading.Thread | None = None

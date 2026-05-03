@@ -136,7 +136,7 @@ class MemoryWatcher:
 
         watcher = self
 
-        class Handler(FileSystemEventHandler):
+        class Handler(FileSystemEventHandler):  # type: ignore[misc, unused-ignore]
             """Watchdog-Event-Handler fuer Dateiaenderungen."""
 
             def on_modified(self, event: Any) -> None:

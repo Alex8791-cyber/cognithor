@@ -65,9 +65,9 @@ class NarrativeSelf:
             return False
         return total_interactions % self.reflect_every_n == 0
 
-    def generate(  # type: ignore[no-untyped-def]
+    def generate(
         self,
-        llm_client,
+        llm_client: Any,
         memories: list[MemoryRecord],
         state: CognitiveState,
         epistemic: EpistemicMap,
@@ -155,9 +155,9 @@ class NarrativeSelf:
         self._epistemic_snapshot = dict(epistemic_confidences)
         self._snapshot_interaction = interaction_count
 
-    def generate_differential(  # type: ignore[no-untyped-def]
+    def generate_differential(
         self,
-        llm_client,
+        llm_client: Any,
         personality_dict: dict[str, Any],
         epistemic_confidences: dict[str, Any],
         interaction_count: int,

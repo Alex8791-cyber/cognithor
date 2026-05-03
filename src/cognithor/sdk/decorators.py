@@ -84,7 +84,6 @@ def tool(
         )
         _registry.register_tool(defn)
         func._sdk_tool = defn  # type: ignore[attr-defined]  # Attach metadata
-
         return func
 
     # Handle @tool without parentheses
@@ -139,7 +138,6 @@ def agent(
         )
         _registry.register_agent(defn)
         cls._sdk_agent = defn  # type: ignore[attr-defined]  # Attach metadata
-
         return cls
 
     return decorator

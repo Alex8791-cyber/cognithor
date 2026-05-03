@@ -33,7 +33,7 @@ class DocumentTreeBuilder:
 
     def __init__(
         self,
-        llm_fn: Callable[..., Any],
+        llm_fn: Callable[..., Any] | None,
         max_parallel_summaries: int = 10,
         node_split_threshold: int = 4000,
         max_branching_factor: int = 50,
@@ -392,7 +392,7 @@ class DocumentTreeBuilder:
             if text.strip():
                 prompt = f"Summarize in 1-2 sentences:\n\n{text[:2000]}"
                 async with sem:
-                    nd["summary"] = await self._llm_fn(prompt)
+                    nd["summary"] = await self._llm_fn(prompt)  # type: ignore[misc]
             else:
                 nd["summary"] = ""
 
