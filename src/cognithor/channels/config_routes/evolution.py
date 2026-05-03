@@ -16,7 +16,7 @@ Inkl. `_proposal_to_dict` und `_trace_to_dict` Modul-Level-Helfer
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 try:
     from starlette.requests import Request
@@ -31,6 +31,10 @@ except ImportError:
     except ImportError:
         HTTPException = Exception  # type: ignore[assignment,misc]
 
+
+if TYPE_CHECKING:
+    from cognithor.channels.config_routes._protocols import RoutableApp
+
 from cognithor.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -42,7 +46,7 @@ log = get_logger(__name__)
 
 
 def _register_prompt_evolution_routes(
-    app: Any,
+    app: RoutableApp,
     deps: list[Any],
     gateway: Any,
 ) -> None:
@@ -125,7 +129,7 @@ def _register_prompt_evolution_routes(
 
 
 def _register_self_improvement_routes(
-    app: Any,
+    app: RoutableApp,
     deps: list[Any],
     gateway: Any,
 ) -> None:
@@ -189,7 +193,7 @@ def _register_self_improvement_routes(
 
 
 def _register_gepa_evolution_routes(
-    app: Any,
+    app: RoutableApp,
     deps: list[Any],
     gateway: Any,
 ) -> None:

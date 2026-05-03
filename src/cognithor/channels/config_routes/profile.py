@@ -31,6 +31,7 @@ except ImportError:
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    from cognithor.channels.config_routes._protocols import RoutableApp
     from cognithor.config_manager import ConfigManager  # noqa: F401
 
 log = get_logger(__name__)
@@ -53,7 +54,7 @@ def _profile_payload() -> dict[str, Any]:
 
 
 def _register_context_profile_routes(
-    app: Any,
+    app: RoutableApp,
     deps: list[Any],
     gateway: Any,
 ) -> None:
