@@ -218,15 +218,15 @@ class Sprint10DSLAgent(CognithorPSEAgent):
             # → no-op via getattr default.
             store = getattr(self, "_win_demo_store", None)
             if store is not None:
-                try:
+                import contextlib
+
+                with contextlib.suppress(Exception):
                     store.record_level_up(
                         game_id=getattr(latest_frame, "game_id", "") or "unknown",
                         from_level=self._last_levels_seen,
                         to_level=latest_frame.levels_completed,
                         memory=self._memory,
                     )
-                except Exception:
-                    pass
             self._memory.clear()
             self._state_counter.clear()
             self._state_graph = type(self._state_graph)()  # fresh graph
