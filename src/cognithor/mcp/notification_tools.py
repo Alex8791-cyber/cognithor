@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS reminders (
 def _try_plyer_notification(title: str, message: str, sound: bool) -> bool:
     """Attempt to send notification via plyer (cross-platform)."""
     try:
-        from plyer import notification as plyer_notif  # type: ignore[import-untyped]
+        from plyer import notification as plyer_notif
 
         plyer_notif.notify(
             title=title,
@@ -101,7 +101,7 @@ def _try_powershell_notification(title: str, message: str) -> bool:
 def _try_winsound_fallback() -> bool:
     """Attempt to play a system beep via winsound."""
     try:
-        import winsound  # type: ignore[import-untyped]
+        import winsound
 
         winsound.MessageBeep(winsound.MB_ICONASTERISK)
         return True

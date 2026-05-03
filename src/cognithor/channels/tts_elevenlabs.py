@@ -16,7 +16,7 @@ Bibel-Referenz: §9.3 (Voice Channel), §12.2 (Optionale Dependencies)
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cognithor.utils.logging import get_logger
 
@@ -109,7 +109,7 @@ class ElevenLabsTTS:
             "Accept": "audio/mpeg",
         }
 
-    def _build_payload(self, text: str) -> dict:
+    def _build_payload(self, text: str) -> dict[str, Any]:
         """Builds the JSON payload for the TTS request.
 
         Args:

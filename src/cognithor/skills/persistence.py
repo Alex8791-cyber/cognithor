@@ -32,7 +32,7 @@ except ImportError:
     def compatible_row_factory() -> type:  # type: ignore[misc]
         return sqlite3.Row
 
-    _DbIntegrityError = sqlite3.IntegrityError  # type: ignore[assignment,misc]
+    _DbIntegrityError = sqlite3.IntegrityError
 from cognithor.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -214,7 +214,7 @@ class MarketplaceStore:
     # Listings
     # ------------------------------------------------------------------
 
-    def save_listing(self, listing: dict) -> str:
+    def save_listing(self, listing: dict[str, Any]) -> str:
         """Save or update a listing.
 
         Args:
@@ -274,7 +274,7 @@ class MarketplaceStore:
         self.conn.commit()
         return package_id
 
-    def get_listing(self, package_id: str) -> dict | None:
+    def get_listing(self, package_id: str) -> dict[str, Any] | None:
         """Load a single listing."""
         row = self.conn.execute(
             "SELECT * FROM listings WHERE package_id = ? AND recalled = 0",
@@ -291,7 +291,7 @@ class MarketplaceStore:
         min_rating: float = 0.0,
         sort: str = "relevance",
         limit: int = 20,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Search listings with optional filters.
 
         Args:
@@ -345,7 +345,7 @@ class MarketplaceStore:
         rows = self.conn.execute(sql, params).fetchall()
         return [self._row_to_listing(r) for r in rows]
 
-    def get_featured(self, limit: int = 10) -> list[dict]:
+    def get_featured(self, limit: int = 10) -> list[dict[str, Any]]:
         """Return featured listings."""
         rows = self.conn.execute(
             """
@@ -358,7 +358,7 @@ class MarketplaceStore:
         ).fetchall()
         return [self._row_to_listing(r) for r in rows]
 
-    def get_trending(self, days: int = 7, limit: int = 10) -> list[dict]:
+    def get_trending(self, days: int = 7, limit: int = 10) -> list[dict[str, Any]]:
         """Trending-Listings basierend auf kuerzlichen Installationen.
 
         Sortiert nach install_count absteigend, gefiltert nach
@@ -443,7 +443,7 @@ class MarketplaceStore:
         self.conn.commit()
         return review_id
 
-    def get_reviews(self, package_id: str, limit: int = 20) -> list[dict]:
+    def get_reviews(self, package_id: str, limit: int = 20) -> list[dict[str, Any]]:
         """Load reviews for a package."""
         rows = self.conn.execute(
             """
@@ -554,7 +554,7 @@ class MarketplaceStore:
         self,
         user_id: str,
         limit: int = 50,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Return the installation history of a user."""
         rows = self.conn.execute(
             """
@@ -595,7 +595,7 @@ class MarketplaceStore:
         self.conn.commit()
         log.warning("listing_recalled", package_id=package_id, reason=reason)
 
-    def get_recalled(self) -> list[dict]:
+    def get_recalled(self) -> list[dict[str, Any]]:
         """Return all recalled listings."""
         rows = self.conn.execute(
             "SELECT * FROM listings WHERE recalled = 1 ORDER BY updated_at DESC",
@@ -606,7 +606,7 @@ class MarketplaceStore:
     # Stats
     # ------------------------------------------------------------------
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """Return aggregated marketplace statistics."""
         c = self.conn
 
@@ -706,7 +706,7 @@ class MarketplaceStore:
     # Publishers
     # ------------------------------------------------------------------
 
-    def save_publisher(self, publisher: dict) -> str:
+    def save_publisher(self, publisher: dict[str, Any]) -> str:
         """Save or update a publisher.
 
         Returns:
@@ -749,7 +749,7 @@ class MarketplaceStore:
         self.conn.commit()
         return username
 
-    def get_publisher(self, github_username: str) -> dict | None:
+    def get_publisher(self, github_username: str) -> dict[str, Any] | None:
         """Load a publisher."""
         row = self.conn.execute(
             "SELECT * FROM publishers WHERE github_username = ?",
@@ -775,7 +775,7 @@ class MarketplaceStore:
     # Remote Recalls
     # ------------------------------------------------------------------
 
-    def save_remote_recall(self, recall: dict) -> None:
+    def save_remote_recall(self, recall: dict[str, Any]) -> None:
         """Save a remote recall."""
         self.conn.execute(
             """
@@ -794,7 +794,7 @@ class MarketplaceStore:
         )
         self.conn.commit()
 
-    def get_remote_recalls(self) -> list[dict]:
+    def get_remote_recalls(self) -> list[dict[str, Any]]:
         """Return all remote recalls."""
         rows = self.conn.execute(
             "SELECT * FROM recalls_remote ORDER BY issued_at DESC",
@@ -820,7 +820,7 @@ class MarketplaceStore:
         return row is not None
 
     @staticmethod
-    def _row_to_listing(row: sqlite3.Row) -> dict:
+    def _row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         """Convert a DB row to a listing dict."""
         tags_raw = row["tags"]
         try:

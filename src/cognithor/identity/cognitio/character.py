@@ -18,7 +18,7 @@ Belief Crisis:
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.memory import MemoryRecord
@@ -109,7 +109,7 @@ class RelationalProfile:
         if self.interaction_count % 10 == 0:
             self.trust_level = min(1.0, self.trust_level + 0.02)
 
-    def get_style_hints(self) -> dict:
+    def get_style_hints(self) -> dict[str, Any]:
         """
         Style hints for ModelAdapter.
 
@@ -123,7 +123,7 @@ class RelationalProfile:
             "trust_level": self.trust_level,
         }
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict."""
         return {
             "formality": self.formality,
@@ -134,7 +134,7 @@ class RelationalProfile:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "RelationalProfile":
+    def from_dict(cls, data: dict[str, Any]) -> "RelationalProfile":
         """Construct a RelationalProfile from a dict."""
         rp = cls()
         rp.formality = data.get("formality", 0.5)
@@ -162,7 +162,7 @@ class PersonalityVector:
     formality: float = 0.5  # Formality level
     openness_to_change: float = 0.5  # Openness to change
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert personality vector to dict."""
         return {
             "curiosity": self.curiosity,
@@ -174,7 +174,7 @@ class PersonalityVector:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "PersonalityVector":
+    def from_dict(cls, data: dict[str, Any]) -> "PersonalityVector":
         """Construct a PersonalityVector from a dict."""
         pv = cls()
         pv.curiosity = data.get("curiosity", 0.5)
@@ -256,7 +256,7 @@ class BeliefCrisis:
             f"outcome={outcome}, new_entrenchment={new_entrenchment:.2f}"
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert crisis to dict (for blockchain log)."""
         return {
             "memory_id": self.memory_id,
@@ -288,7 +288,7 @@ class CognitiveState:
     is_frozen: bool = False  # True if Kill Switch was triggered — system frozen
 
     # Bias parameters (defaults)
-    bias_parameters: dict = field(
+    bias_parameters: dict[str, Any] = field(
         default_factory=lambda: {
             "availability_lambda_multiplier": 1.0,
             "confirmation_resistance_factor": 2.5,
@@ -297,7 +297,7 @@ class CognitiveState:
         }
     )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert cognitive state to dict."""
         return {
             "character_strength": self.character_strength,

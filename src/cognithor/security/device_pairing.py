@@ -17,6 +17,7 @@ import secrets
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 from cognithor.utils.logging import get_logger
 
@@ -127,7 +128,7 @@ class DevicePairingManager:
         log.info("device_revoked", device_id=device_id, name=device.name)
         return True
 
-    def list_devices(self) -> list[dict]:
+    def list_devices(self) -> list[dict[str, Any]]:
         """Listet alle gepaarten Geraete."""
         now = time.time()
         result = []

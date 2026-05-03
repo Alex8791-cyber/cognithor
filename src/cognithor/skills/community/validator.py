@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from cognithor.security.sanitizer import InjectionPattern, InputSanitizer
 from cognithor.utils.logging import get_logger

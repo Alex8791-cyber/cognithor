@@ -285,8 +285,8 @@ class PackLoader:
             if spec is None or spec.loader is None:
                 raise PackLoadError(f"Could not create module spec for {entrypoint}")
             module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)  # type: ignore[union-attr]
-            pack_cls = module.Pack  # type: ignore[attr-defined]
+            spec.loader.exec_module(module)
+            pack_cls = module.Pack
             instance: AgentPack = pack_cls(manifest)
             instance.register(context)
             self._register_tool_risks(manifest, context)

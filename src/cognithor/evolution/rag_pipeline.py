@@ -15,7 +15,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cognithor.utils.logging import get_logger
 
@@ -46,11 +46,11 @@ class RAGDocument:
     title: str
     source: str
     content: str
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     id: str = field(default_factory=_new_id)
     ingested_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "title": self.title,
@@ -61,7 +61,7 @@ class RAGDocument:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> RAGDocument:
+    def from_dict(cls, d: dict[str, Any]) -> RAGDocument:
         return cls(
             id=d.get("id", _new_id()),
             title=d["title"],
@@ -79,7 +79,7 @@ class RAGChunk:
     chunk_index: int = 0
     id: str = field(default_factory=_new_id)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "document_id": self.document_id,
@@ -88,7 +88,7 @@ class RAGChunk:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> RAGChunk:
+    def from_dict(cls, d: dict[str, Any]) -> RAGChunk:
         return cls(
             id=d.get("id", _new_id()),
             document_id=d["document_id"],
@@ -106,7 +106,7 @@ class RAGResult:
     title: str = ""
     source: str = ""
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "chunk_id": self.chunk_id,
             "document_id": self.document_id,
@@ -117,7 +117,7 @@ class RAGResult:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> RAGResult:
+    def from_dict(cls, d: dict[str, Any]) -> RAGResult:
         return cls(
             chunk_id=d["chunk_id"],
             document_id=d["document_id"],
@@ -288,7 +288,7 @@ class EvolutionRAG:
     async def ingest_document(
         self,
         path: str,
-        metadata: dict | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RAGDocument:
         """Read a file, chunk it, and store in the RAG database.
 

@@ -103,7 +103,7 @@ class UIAutomationProvider:
         except Exception:
             return None
 
-    def _cap_and_sort(self, elements: list[dict]) -> list[dict]:
+    def _cap_and_sort(self, elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Sort by screen position (top-to-bottom, left-to-right) and cap."""
         elements.sort(key=lambda e: (e.get("y", 0) // 50, e.get("x", 0)))
         return elements[:_MAX_ELEMENTS]
@@ -130,7 +130,7 @@ class UIAutomationProvider:
             log.debug("ui_automation_foreground_window_detect_failed", exc_info=True)
         return windows[0] if windows else None
 
-    def _walk_children(self, element: Any, depth: int, results: list[dict]) -> None:
+    def _walk_children(self, element: Any, depth: int, results: list[dict[str, Any]]) -> None:
         """Recursively walk child elements up to max depth."""
         if depth > _MAX_DEPTH or len(results) >= _MAX_ELEMENTS * 2:
             return
@@ -146,7 +146,7 @@ class UIAutomationProvider:
                 results.append(elem_dict)
             self._walk_children(child, depth + 1, results)
 
-    def get_focused_window_elements(self) -> list[dict]:
+    def get_focused_window_elements(self) -> list[dict[str, Any]]:
         """Return interactive elements of the foreground window.
 
         Returns list of dicts with: name, type, x, y, w, h, clickable, text, source.
@@ -160,7 +160,7 @@ class UIAutomationProvider:
             if window is None:
                 return []
 
-            results: list[dict] = []
+            results: list[dict[str, Any]] = []
             self._walk_children(window, depth=0, results=results)
             return self._cap_and_sort(results)
 

@@ -93,7 +93,7 @@ def _build_router() -> Any:
         sort: str = "relevance",
         min_rating: float = 0.0,
         limit: int = Query(default=20, ge=1, le=100),
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Search the skill marketplace.
 
         Query parameters:
@@ -116,7 +116,7 @@ def _build_router() -> Any:
     @router.get("/featured")
     async def get_featured(
         limit: int = Query(default=10, ge=1, le=50),
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Curated featured skills."""
         store = _get_store()
         return {"featured": store.get_featured(limit=limit)}
@@ -125,13 +125,13 @@ def _build_router() -> Any:
     async def get_trending(
         days: int = Query(default=7, ge=1, le=90),
         limit: int = Query(default=10, ge=1, le=50),
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Trending skills of the last N days."""
         store = _get_store()
         return {"trending": store.get_trending(days=days, limit=limit)}
 
     @router.get("/categories")
-    async def get_categories() -> dict:
+    async def get_categories() -> dict[str, Any]:
         """All available categories with metadata."""
         from cognithor.skills.marketplace import CATEGORY_INFOS
 
@@ -151,14 +151,14 @@ def _build_router() -> Any:
     async def list_installed(
         user_id: str = "default",
         limit: int = Query(default=50, ge=1, le=200),
-    ) -> dict:
+    ) -> dict[str, Any]:
         """List of installed skills for a user."""
         store = _get_store()
         history = store.get_install_history(user_id=user_id, limit=limit)
         return {"installed": history, "count": len(history)}
 
     @router.get("/stats")
-    async def get_marketplace_stats() -> dict:
+    async def get_marketplace_stats() -> dict[str, Any]:
         """Aggregated marketplace statistics."""
         store = _get_store()
         return store.get_stats()
@@ -168,7 +168,7 @@ def _build_router() -> Any:
     # ------------------------------------------------------------------
 
     @router.get("/{package_id}")
-    async def get_skill_detail(package_id: str) -> dict:
+    async def get_skill_detail(package_id: str) -> dict[str, Any]:
         """Detail view of a single skill."""
         store = _get_store()
         listing = store.get_listing(package_id)
@@ -184,7 +184,7 @@ def _build_router() -> Any:
     async def install_skill(
         package_id: str,
         body: InstallRequest | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Install a skill (records installation)."""
         store = _get_store()
         listing = store.get_listing(package_id)
@@ -209,7 +209,7 @@ def _build_router() -> Any:
         return {"status": "installed", "package_id": package_id}
 
     @router.delete("/{package_id}")
-    async def uninstall_skill(package_id: str) -> dict:
+    async def uninstall_skill(package_id: str) -> dict[str, Any]:
         """Uninstall a skill (marks as recalled)."""
         store = _get_store()
         listing = store.get_listing(package_id)
@@ -227,7 +227,7 @@ def _build_router() -> Any:
     async def get_reviews(
         package_id: str,
         limit: int = Query(default=20, ge=1, le=100),
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Reviews for a skill."""
         store = _get_store()
         reviews = store.get_reviews(package_id, limit=limit)
@@ -238,7 +238,7 @@ def _build_router() -> Any:
     async def submit_review(
         package_id: str,
         body: ReviewRequest,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Submit a review for a skill."""
         store = _get_store()
         listing = store.get_listing(package_id)
@@ -334,7 +334,7 @@ def _build_community_router() -> Any:
         query: str = "",
         category: str = "",
         limit: int = Query(default=20, ge=1, le=100),
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Search the community skill registry."""
         try:
             client = _get_client()
@@ -362,7 +362,7 @@ def _build_community_router() -> Any:
     # ------------------------------------------------------------------
 
     @cr.get("/recalls")
-    async def get_community_recalls() -> dict:
+    async def get_community_recalls() -> dict[str, Any]:
         """Active remote recalls."""
         try:
             store = _get_store()
@@ -377,7 +377,7 @@ def _build_community_router() -> Any:
     # ------------------------------------------------------------------
 
     @cr.get("/publishers/{github}")
-    async def get_publisher_profile(github: str) -> dict:
+    async def get_publisher_profile(github: str) -> dict[str, Any]:
         """Publisher profile by GitHub username."""
         store = _get_store()
         publisher = store.get_publisher(github)
@@ -390,7 +390,7 @@ def _build_community_router() -> Any:
     # ------------------------------------------------------------------
 
     @cr.post("/sync")
-    async def sync_registry() -> dict:
+    async def sync_registry() -> dict[str, Any]:
         """Manually synchronize registry."""
         try:
             from cognithor.skills.community.sync import RegistrySync
@@ -414,7 +414,7 @@ def _build_community_router() -> Any:
     # ------------------------------------------------------------------
 
     @cr.get("/{name}")
-    async def get_community_skill(name: str) -> dict:
+    async def get_community_skill(name: str) -> dict[str, Any]:
         """Detail view of a community skill."""
         try:
             client = _get_client()
@@ -443,7 +443,7 @@ def _build_community_router() -> Any:
     async def install_community_skill(
         name: str,
         body: CommunityInstallRequest | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Install a community skill."""
         try:
             client = _get_client()
@@ -484,7 +484,7 @@ def _build_community_router() -> Any:
         }
 
     @cr.delete("/{name}")
-    async def uninstall_community_skill(name: str) -> dict:
+    async def uninstall_community_skill(name: str) -> dict[str, Any]:
         """Uninstall a community skill."""
         client = _get_client()
         removed = await client.uninstall(name)
@@ -497,7 +497,7 @@ def _build_community_router() -> Any:
     # ------------------------------------------------------------------
 
     @cr.post("/{name}/report")
-    async def report_community_skill(name: str, body: ReportRequest) -> dict:
+    async def report_community_skill(name: str, body: ReportRequest) -> dict[str, Any]:
         """Report a community skill as abusive."""
         store = _get_store()
         # Track abuse in local store
@@ -527,7 +527,7 @@ def _build_community_router() -> Any:
     async def review_community_skill(
         name: str,
         body: CommunityReviewRequest,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Submit a review for a community skill."""
         store = _get_store()
         try:

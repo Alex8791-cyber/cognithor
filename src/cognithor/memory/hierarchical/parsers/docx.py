@@ -19,7 +19,7 @@ class DocxParser(DocumentParser):
 
     def parse(self, content: str | bytes, source_path: Path) -> list[RawSection]:
         try:
-            import docx  # type: ignore[import-untyped]
+            import docx
         except ImportError as exc:
             raise ParserError("python-docx not installed — run: pip install python-docx") from exc
 

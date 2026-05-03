@@ -53,7 +53,7 @@ class SolveResult:
     game_id: str
     levels_completed: int
     total_steps: int
-    strategy_log: list[dict]
+    strategy_log: list[dict[str, Any]]
     score: float
 
 
@@ -362,7 +362,7 @@ class PerGameSolver:
 
     def _pick_action(
         self, strategy: str, frame_history: list[np.ndarray]
-    ) -> tuple[int, dict | None]:
+    ) -> tuple[int, dict[str, Any] | None]:
         """Pick next action based on strategy."""
         profile = self._profile
 
@@ -472,7 +472,7 @@ class PerGameSolver:
         max_resets: int,
         start_time: float,
         timeout_s: float,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Try all budget slots on one level."""
         import time
 

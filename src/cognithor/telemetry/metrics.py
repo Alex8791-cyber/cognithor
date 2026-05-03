@@ -159,7 +159,7 @@ class MetricsProvider:
 
     def to_otlp(self) -> dict[str, Any]:
         """Exports metrics in OTLP format."""
-        scope_metrics: list[dict] = []
+        scope_metrics: list[dict[str, Any]] = []
 
         for metric in self.get_all_metrics():
             m: dict[str, Any] = {

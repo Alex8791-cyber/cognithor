@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -51,7 +52,7 @@ class StateEdge:
     """A directed edge in the state graph representing an observed transition."""
 
     action: str
-    action_data: dict | None = None
+    action_data: dict[str, Any] | None = None
     pixels_changed: int = 0
     traversal_count: int = 0
 
@@ -81,7 +82,7 @@ class StateGraphNavigator:
         self.edges: dict[str, dict[str, tuple[str, StateEdge]]] = defaultdict(dict)
         self.win_states: set[str] = set()
         self.game_over_states: set[str] = set()
-        self._cached_win_path: list[tuple[str, dict | None, str]] | None = None
+        self._cached_win_path: list[tuple[str, dict[str, Any] | None, str]] | None = None
         self._cache_valid_from: str | None = None
         self.max_states = max_states
         self._hash_cache: dict[tuple, str] = {}  # shape-aware like episode_memory
@@ -131,7 +132,7 @@ class StateGraphNavigator:
         self,
         from_grid: np.ndarray,
         action_str: str,
-        action_data: dict | None,
+        action_data: dict[str, Any] | None,
         to_grid: np.ndarray,
         pixels_changed: int,
         game_state: str,
@@ -220,7 +221,7 @@ class StateGraphNavigator:
     def find_win_path(
         self,
         from_hash: str,
-    ) -> list[tuple[str, dict | None, str]] | None:
+    ) -> list[tuple[str, dict[str, Any] | None, str]] | None:
         """BFS from *from_hash* to the nearest known WIN state.
 
         Skips GAME_OVER states during traversal.  Returns a cached result
@@ -247,7 +248,7 @@ class StateGraphNavigator:
             return self._cached_win_path
 
         # BFS
-        queue: deque[tuple[str, list[tuple[str, dict | None, str]]]] = deque()
+        queue: deque[tuple[str, list[tuple[str, dict[str, Any] | None, str]]]] = deque()
         queue.append((from_hash, []))
         visited: set[str] = {from_hash}
 
@@ -281,7 +282,7 @@ class StateGraphNavigator:
         self,
         current_hash: str,
         available_actions: list[str],
-    ) -> tuple[str, dict | None] | None:
+    ) -> tuple[str, dict[str, Any] | None] | None:
         """Suggest the best action to take for exploration from *current_hash*.
 
         Priority 1 — Untested actions: actions in *available_actions* that
@@ -323,7 +324,7 @@ class StateGraphNavigator:
 
         # Priority 2: already-tested action leading to least-visited neighbor
         best_action: str | None = None
-        best_ad: dict | None = None
+        best_ad: dict[str, Any] | None = None
         best_value: float = -1.0
 
         for _edge_key, (next_hash, edge) in self.edges.get(current_hash, {}).items():
@@ -394,7 +395,7 @@ class StateGraphNavigator:
     # Statistics / summaries
     # ------------------------------------------------------------------
 
-    def get_exploration_coverage(self) -> dict:
+    def get_exploration_coverage(self) -> dict[str, Any]:
         """Return a dictionary of graph statistics for monitoring.
 
         Keys:
@@ -439,7 +440,7 @@ class StateGraphNavigator:
     # Utility
     # ------------------------------------------------------------------
 
-    def _compute_histogram(self, grid: np.ndarray) -> tuple:
+    def _compute_histogram(self, grid: np.ndarray) -> tuple[Any, ...]:
         """Return a histogram tuple of pixel value counts for *grid*.
 
         Produces a 13-bin histogram covering values 0-12 (inclusive),

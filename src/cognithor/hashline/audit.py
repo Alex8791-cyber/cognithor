@@ -9,7 +9,7 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cognithor.utils.logging import get_logger
 
@@ -112,7 +112,7 @@ class HashlineAuditor:
         self,
         path: Path,
         limit: int = 50,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Retrieve audit history for a specific file.
 
         Args:
@@ -123,7 +123,7 @@ class HashlineAuditor:
             List of audit entry dicts, newest first.
         """
         path_str = str(path)
-        entries: list[dict] = []
+        entries: list[dict[str, Any]] = []
 
         with self._lock:
             if not self._audit_file.exists():
@@ -188,7 +188,7 @@ class HashlineAuditor:
             self._last_hash = _GENESIS_PREV_HASH
             return self._last_hash
 
-    def _append(self, entry: dict) -> str:
+    def _append(self, entry: dict[str, Any]) -> str:
         """Append a chained entry to the audit file and return its SHA-256.
 
         Each entry carries a ``prev_hash`` that links back to the prior
@@ -219,7 +219,7 @@ class HashlineAuditor:
         log.debug("audit_logged", type=entry.get("type"), file=entry.get("file"))
         return entry_hash
 
-    def verify_chain(self) -> dict:
+    def verify_chain(self) -> dict[str, Any]:
         """Walk the on-disk audit log and confirm the prev_hash chain.
 
         Returns a dict ``{"status", "total_entries", "valid_entries",

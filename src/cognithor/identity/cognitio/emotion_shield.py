@@ -19,6 +19,7 @@ Defense Mechanisms:
 import collections
 import logging
 import math
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class EmotionShield:
         "gaslighting_threshold": 0.60,  # Cosine similarity threshold
     }
 
-    def __init__(self, config: dict | None = None, embedder=None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None, embedder=None) -> None:
         self.config = {**self.DEFAULT_CONFIG, **(config or {})}
 
         # Session emotional history
@@ -116,9 +117,9 @@ class EmotionShield:
     def evaluate(
         self,
         raw_emotional_intensity: float,
-        conversation_context: list[dict],
+        conversation_context: list[dict[str, Any]],
         user_message: str = "",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Evaluate and correct an emotional intensity claim.
 
@@ -249,7 +250,7 @@ class EmotionShield:
             msg_emb = self._embedder.encode(user_message)
             threshold = self.config["gaslighting_threshold"]
 
-            def cosine(a: list, b: list) -> float:
+            def cosine(a: list[Any], b: list[Any]) -> float:
                 dot = sum(x * y for x, y in zip(a, b, strict=False))
                 norm_a = math.sqrt(sum(x * x for x in a))
                 norm_b = math.sqrt(sum(x * x for x in b))
@@ -272,7 +273,7 @@ class EmotionShield:
     def _contextual_validation(
         self,
         raw: float,
-        conversation: list[dict],
+        conversation: list[dict[str, Any]],
     ) -> float:
         """
         Is the emotional intensity reasonable given the natural conversation flow?

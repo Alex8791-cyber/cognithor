@@ -131,7 +131,7 @@ class ComputerUseTools:
             self._last_scale_factor = scale_factor
 
             # Try UIA first for exact element coordinates
-            uia_elements: list[dict] = []
+            uia_elements: list[dict[str, Any]] = []
             if self._uia_provider:
                 with contextlib.suppress(Exception):
                     uia_elements = await loop.run_in_executor(

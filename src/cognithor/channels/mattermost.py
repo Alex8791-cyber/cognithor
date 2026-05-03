@@ -122,7 +122,7 @@ class MattermostChannel(Channel):
         ws_url = f"{ws_url}/api/v4/websocket"
 
         try:
-            import websockets  # type: ignore[import-untyped]
+            import websockets
         except ImportError:
             logger.error("websockets nicht installiert. pip install websockets")
             return

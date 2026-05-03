@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 
-def _match_goal_for_action(action: Any, goals: list) -> Any | None:
+def _match_goal_for_action(action: Any, goals: list[Any]) -> Any | None:
     """Find the goal most relevant to an ATL action.
 
     Uses explicit goal_id from params if available, otherwise
@@ -310,7 +310,7 @@ class EvolutionLoop:
         self,
         tool_result: Any,
         action: Any,
-        goals: list,
+        goals: list[Any],
     ) -> None:
         """Persist a search_and_read result: match goal, dedup, synthesize, build.
 
@@ -916,7 +916,7 @@ class EvolutionLoop:
         # Wrap around midnight (e.g., 23:00 to 07:00)
         return now >= start or now <= end
 
-    def _update_goal_progress_from_metrics(self, goals: list) -> None:
+    def _update_goal_progress_from_metrics(self, goals: list[Any]) -> None:
         """Compute goal progress from real data instead of LLM guesses.
 
         Reads directly from GoalScopedIndex DBs (chunks, entities) and

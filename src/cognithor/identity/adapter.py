@@ -125,8 +125,8 @@ class IdentityLayer:
     def enrich_context(
         self,
         user_message: str,
-        session_history: list[dict] | None = None,
-    ) -> dict:
+        session_history: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """Called BEFORE the Planner. Returns cognitive context for the system prompt.
 
         Returns:
@@ -179,7 +179,7 @@ class IdentityLayer:
             return self._empty_enrichment()
 
     @staticmethod
-    def _empty_enrichment() -> dict:
+    def _empty_enrichment() -> dict[str, Any]:
         return {
             "cognitive_context": "",
             "trust_boundary": "",
@@ -195,7 +195,7 @@ class IdentityLayer:
         role: str,
         content: str,
         emotional_tone: float = 0.0,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Called AFTER each interaction. Feeds CognitioEngine.
 
         Updates: WorkingMemory, Consolidation Queue, Temporal Density,
@@ -253,7 +253,7 @@ class IdentityLayer:
         """Returns the 7 Genesis Anchor texts for Gatekeeper policy."""
         return _get_genesis_anchors()
 
-    def check_ethical_violation(self, action_plan: dict) -> tuple[bool, str]:
+    def check_ethical_violation(self, action_plan: dict[str, Any]) -> tuple[bool, str]:
         """Check if an ActionPlan violates Genesis Anchors.
 
         Uses semantic similarity between plan goal/steps and anchor texts.
@@ -349,7 +349,7 @@ class IdentityLayer:
         except Exception as exc:
             logger.debug("store_from_cognithor_failed error=%s", str(exc)[:200])
 
-    def recall_for_cognithor(self, query: str, top_k: int = 10) -> list[dict]:
+    def recall_for_cognithor(self, query: str, top_k: int = 10) -> list[dict[str, Any]]:
         """Recall memories filtered through BiasEngine + RealityCheck."""
         if not self.available:
             return []
@@ -391,7 +391,7 @@ class IdentityLayer:
             except Exception as exc:
                 logger.debug("identity_load_failed error=%s", str(exc)[:200])
 
-    def get_state_summary(self) -> dict:
+    def get_state_summary(self) -> dict[str, Any]:
         """Returns a summary of the cognitive state."""
         if self._engine is None:
             return {"available": False}
@@ -418,19 +418,19 @@ class IdentityLayer:
         if self._engine:
             self._engine.user_unfreeze()
 
-    def soft_reset(self) -> dict:
+    def soft_reset(self) -> dict[str, Any]:
         """Soft reset — clears memories but keeps Genesis Anchors."""
         if self._engine:
             return self._engine.soft_reset()
         return {}
 
-    def full_delete(self) -> dict:
+    def full_delete(self) -> dict[str, Any]:
         """GDPR full delete — removes all data."""
         if self._engine:
             return self._engine.full_delete()
         return {}
 
-    def cognitive_shutdown(self, passphrase: str) -> dict:
+    def cognitive_shutdown(self, passphrase: str) -> dict[str, Any]:
         """Emergency cognitive shutdown (requires passphrase)."""
         if self._engine and self._engine.check_kill_switch(passphrase):
             return self._engine.cognitive_shutdown()

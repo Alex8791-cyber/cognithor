@@ -63,7 +63,7 @@ class VectorIndex(Protocol):
 
 def _l2_normalize_np(vec: np.ndarray) -> np.ndarray:
     """L2-Normalisierung eines Vektors (numpy)."""
-    norm = np.linalg.norm(vec)  # type: ignore[union-attr]
+    norm = np.linalg.norm(vec)
     if norm > 0:
         return vec / norm
     return vec
@@ -97,7 +97,7 @@ class BruteForceIndex:
 
     def add(self, key: str, vector: list[float]) -> None:
         if self._use_np:
-            self._vectors[key] = _l2_normalize_np(np.array(vector, dtype=np.float32))  # type: ignore[union-attr]
+            self._vectors[key] = _l2_normalize_np(np.array(vector, dtype=np.float32))
         else:
             self._vectors[key] = _l2_normalize_py(vector)
 
@@ -106,11 +106,8 @@ class BruteForceIndex:
             return []
 
         if self._use_np:
-            query = _l2_normalize_np(np.array(query_vector, dtype=np.float32))  # type: ignore[union-attr]
-            scores = [
-                (key, float(np.dot(query, vec)))  # type: ignore[union-attr]
-                for key, vec in self._vectors.items()
-            ]
+            query = _l2_normalize_np(np.array(query_vector, dtype=np.float32))
+            scores = [(key, float(np.dot(query, vec))) for key, vec in self._vectors.items()]
         else:
             query = _l2_normalize_py(query_vector)
             scores = [(key, _dot_py(query, vec)) for key, vec in self._vectors.items()]

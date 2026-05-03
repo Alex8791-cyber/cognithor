@@ -13,6 +13,7 @@ import logging
 import os
 import re as _re
 from datetime import UTC, datetime
+from typing import Any
 
 _SAFE_ID_RE = _re.compile(r"[^a-zA-Z0-9_\-]")
 
@@ -35,7 +36,7 @@ class LocalStore:
         os.makedirs(base_dir, exist_ok=True)
         logger.info(f"LocalStore initialized: {base_dir}")
 
-    def save_snapshot(self, snapshot: dict, identity_id: str) -> dict:
+    def save_snapshot(self, snapshot: dict[str, Any], identity_id: str) -> dict[str, Any]:
         """
         Save a snapshot to a local file.
 
@@ -76,7 +77,7 @@ class LocalStore:
             "timestamp": timestamp,
         }
 
-    def load_snapshot(self, uri: str) -> dict | None:
+    def load_snapshot(self, uri: str) -> dict[str, Any] | None:
         """
         Load a local snapshot.
 
@@ -106,7 +107,7 @@ class LocalStore:
             logger.error(f"Snapshot could not be loaded: {e}")
             return None
 
-    def list_snapshots(self, identity_id: str | None = None) -> list[dict]:
+    def list_snapshots(self, identity_id: str | None = None) -> list[dict[str, Any]]:
         """
         List available snapshots.
 
@@ -114,7 +115,7 @@ class LocalStore:
             identity_id: Identity ID to filter by (None = all)
 
         Returns:
-            list[dict]: List of snapshot metadata
+            list[dict[str, Any]]: List of snapshot metadata
         """
         snapshots = []
         for filename in os.listdir(self.base_dir):
@@ -137,7 +138,7 @@ class LocalStore:
 
         return sorted(snapshots, key=lambda x: x["modified_at"], reverse=True)
 
-    def get_latest_snapshot(self, identity_id: str) -> dict | None:
+    def get_latest_snapshot(self, identity_id: str) -> dict[str, Any] | None:
         """Get the most recent snapshot."""
         snapshots = self.list_snapshots(identity_id)
         if not snapshots:

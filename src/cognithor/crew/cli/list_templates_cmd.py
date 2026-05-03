@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, ConfigDict, Field
 
 TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates"

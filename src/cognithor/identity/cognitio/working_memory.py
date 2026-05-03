@@ -21,6 +21,7 @@ import os
 import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from cognithor.security.encrypted_db import encrypted_connect
 
@@ -143,12 +144,12 @@ class WorkingMemory:
 
         return interaction_id
 
-    def get_current_session(self) -> list[dict]:
+    def get_current_session(self) -> list[dict[str, Any]]:
         """
         Retrieve all messages of the current session.
 
         Returns:
-            list[dict]: Message list in chronological order
+            list[dict[str, Any]]: Message list in chronological order
         """
         with self._get_connection() as conn:
             rows = conn.execute(
@@ -160,7 +161,7 @@ class WorkingMemory:
 
         return [dict(row) for row in rows]
 
-    def get_recent(self, minutes: int = 30) -> list[dict]:
+    def get_recent(self, minutes: int = 30) -> list[dict[str, Any]]:
         """
         Retrieve messages from the last N minutes.
 
@@ -168,7 +169,7 @@ class WorkingMemory:
             minutes: How many minutes to look back
 
         Returns:
-            list[dict]: Message list in chronological order
+            list[dict[str, Any]]: Message list in chronological order
         """
         since = (datetime.now(UTC) - timedelta(minutes=minutes)).isoformat()
 
@@ -204,7 +205,7 @@ class WorkingMemory:
         elapsed = datetime.now(UTC) - self._last_checkpoint
         return elapsed >= self.checkpoint_interval and self._message_count > 0
 
-    def checkpoint(self, llm_summarizer=None) -> list[dict]:
+    def checkpoint(self, llm_summarizer=None) -> list[dict[str, Any]]:
         """
         Consolidation: summarize pending interactions and write to
         pending_memories for transfer to long-term memory.
@@ -214,7 +215,7 @@ class WorkingMemory:
                            (falls back to simple rule-based summarization if None)
 
         Returns:
-            list[dict]: Generated pending memories
+            list[dict[str, Any]]: Generated pending memories
         """
         # Get un-checkpointed interactions
         with self._get_connection() as conn:
@@ -275,9 +276,9 @@ class WorkingMemory:
 
     def _create_pending_memories(
         self,
-        interactions: list[dict],
+        interactions: list[dict[str, Any]],
         llm_summarizer=None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Create pending memories from interactions.
 
@@ -288,7 +289,7 @@ class WorkingMemory:
             llm_summarizer: LLM summarization function (optional)
 
         Returns:
-            list[dict]: List of pending memories
+            list[dict[str, Any]]: List of pending memories
         """
         if not interactions:
             return []
@@ -335,13 +336,13 @@ class WorkingMemory:
             }
         ]
 
-    def flush_to_long_term(self) -> list[dict]:
+    def flush_to_long_term(self) -> list[dict[str, Any]]:
         """
         Return records from pending_memories for transfer to CognitioEngine.
         Mark transferred records as 'flushed'.
 
         Returns:
-            list[dict]: List of pending memories to transfer
+            list[dict[str, Any]]: List of pending memories to transfer
         """
         with self._get_connection() as conn:
             rows = conn.execute(
@@ -448,7 +449,7 @@ class WorkingMemory:
         self._message_count = 0
         logger.info("WorkingMemory cleared, new session_id=%s", self._session_id[:8])
 
-    def force_checkpoint_save(self, llm_summarizer=None) -> list[dict]:
+    def force_checkpoint_save(self, llm_summarizer=None) -> list[dict[str, Any]]:
         """Called when the user issues /save or on session shutdown."""
         self._message_count = self.checkpoint_every_n  # Exceed the threshold
         return self.checkpoint(llm_summarizer)

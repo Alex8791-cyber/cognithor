@@ -1432,7 +1432,7 @@ class Gateway:
         config: bool = False,
         core_memory: bool = False,
         skills: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Reload-Koordinator fuer Live-Updates vom UI."""
         reloaded = []
         if prompts and self._planner:

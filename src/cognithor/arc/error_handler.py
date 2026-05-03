@@ -52,7 +52,7 @@ def retry_on_error(
     delay_seconds: float = 1.0,
     backoff_factor: float = 2.0,
     exceptions: tuple[type[BaseException], ...] = (Exception,),
-) -> Callable:
+) -> Callable[..., Any]:
     """Decorator that retries a function with exponential backoff on specified exceptions.
 
     Args:
@@ -62,7 +62,7 @@ def retry_on_error(
         exceptions: Tuple of exception types to catch and retry on.
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             current_delay = delay_seconds

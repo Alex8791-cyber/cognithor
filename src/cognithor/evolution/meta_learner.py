@@ -11,6 +11,7 @@ import statistics
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
 from cognithor.utils.logging import get_logger
 
@@ -42,7 +43,7 @@ class StrategyAdjustment:
     reason: str
     id: str = field(default_factory=_new_id)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "parameter": self.parameter,
@@ -52,7 +53,7 @@ class StrategyAdjustment:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> StrategyAdjustment:
+    def from_dict(cls, d: dict[str, Any]) -> StrategyAdjustment:
         return cls(
             id=d.get("id", _new_id()),
             parameter=d["parameter"],
@@ -77,7 +78,7 @@ class MetaAnalysis:
     id: str = field(default_factory=_new_id)
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "total_cycles": self.total_cycles,
@@ -92,7 +93,7 @@ class MetaAnalysis:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> MetaAnalysis:
+    def from_dict(cls, d: dict[str, Any]) -> MetaAnalysis:
         return cls(
             id=d.get("id", _new_id()),
             total_cycles=d["total_cycles"],
@@ -120,7 +121,7 @@ _STRATEGY_LABELS = {
 }
 
 
-def _classify_strategy(cycle: dict) -> str:
+def _classify_strategy(cycle: dict[str, Any]) -> str:
     """Heuristic classification of the strategy used in a cycle."""
     sources = cycle.get("sources_fetched", 0)
     chunks = cycle.get("chunks_created", 0)
@@ -152,7 +153,7 @@ class MetaLearner:
 
     async def analyze_cycle_history(
         self,
-        cycles: list[dict],
+        cycles: list[dict[str, Any]],
     ) -> MetaAnalysis:
         """Analyse a list of cycle result dicts and produce a MetaAnalysis.
 
@@ -283,7 +284,7 @@ class MetaLearner:
         efficiency: float,
         best_strategy: str,
         worst_strategy: str,
-        cycles: list[dict],
+        cycles: list[dict[str, Any]],
     ) -> list[StrategyAdjustment]:
         adjustments: list[StrategyAdjustment] = []
 

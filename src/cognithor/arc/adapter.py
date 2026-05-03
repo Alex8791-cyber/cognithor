@@ -92,7 +92,7 @@ class ArcEnvironmentAdapter:
                 ``arcade.make()`` returns ``None``.
         """
         try:
-            import arc_agi  # type: ignore[import]
+            import arc_agi
         except ImportError as exc:
             raise EnvironmentConnectionError(
                 "arc_agi SDK is not installed. Install it to use ArcEnvironmentAdapter."
@@ -139,7 +139,7 @@ class ArcEnvironmentAdapter:
             The :class:`ArcObservation` from the post-reset frame.
         """
         try:
-            from arcengine import GameAction  # type: ignore[import-untyped]
+            from arcengine import GameAction
         except ImportError as exc:
             raise EnvironmentConnectionError(
                 "arcengine SDK is not installed — cannot import GameAction for RESET."

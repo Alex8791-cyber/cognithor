@@ -345,7 +345,7 @@ class DocumentTreeBuilder:
             d = depth_map[nd["node_id"]]
             if d > self._max_depth:
                 # Flatten: reparent to grandparent
-                parent = node_map.get(nd["parent_id"])  # type: ignore[arg-type]
+                parent = node_map.get(nd["parent_id"])
                 if parent and parent["parent_id"] is not None:
                     nd["parent_id"] = parent["parent_id"]
                     nd["level"] = node_map[parent["parent_id"]]["level"] + 1

@@ -488,7 +488,7 @@ class ProcessMonitor:
                 )
         return changes
 
-    def _check_resources(self, job: dict) -> None:
+    def _check_resources(self, job: dict[str, Any]) -> None:
         """Optional resource check via psutil."""
         try:
             import psutil

@@ -113,7 +113,7 @@ class DataProcessingRecord:
     third_party: str = ""
     country: str = "DE"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "record_id": self.record_id,
             "user_id": self.user_id,
@@ -130,7 +130,7 @@ class DataProcessingRecord:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> DataProcessingRecord:
+    def from_dict(cls, d: dict[str, Any]) -> DataProcessingRecord:
         return cls(
             record_id=d.get("record_id", ""),
             user_id=d.get("user_id", ""),
@@ -223,7 +223,7 @@ class DataProcessingLog:
             results = [r for r in results if r.tool_name == tool_name]
         return results
 
-    def user_report(self, user_id: str) -> dict:
+    def user_report(self, user_id: str) -> dict[str, Any]:
         """Generate a DSGVO data subject access report (Art. 15)."""
         user_records = self.query(user_id=user_id)
         categories = sorted({r.category.value for r in user_records})
@@ -272,7 +272,7 @@ class ModelUsageRecord:
     input_hash: str = ""
     success: bool = True
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "record_id": self.record_id,
             "timestamp": self.timestamp,
@@ -290,7 +290,7 @@ class ModelUsageRecord:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> ModelUsageRecord:
+    def from_dict(cls, d: dict[str, Any]) -> ModelUsageRecord:
         return cls(
             record_id=d.get("record_id", ""),
             timestamp=d.get("timestamp", ""),
@@ -374,7 +374,7 @@ class ModelUsageLog:
             results = [r for r in results if r.contains_pii == contains_pii]
         return results
 
-    def usage_summary(self) -> dict:
+    def usage_summary(self) -> dict[str, Any]:
         """Aggregate usage statistics per model."""
         by_model: dict[str, dict[str, Any]] = {}
         for r in self._records:
@@ -417,7 +417,7 @@ class RetentionPolicy:
     action: RetentionAction = RetentionAction.DELETE
     description: str = ""
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "category": self.category.value,
@@ -427,7 +427,7 @@ class RetentionPolicy:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> RetentionPolicy:
+    def from_dict(cls, d: dict[str, Any]) -> RetentionPolicy:
         return cls(
             name=d.get("name", ""),
             category=DataCategory(d["category"]) if "category" in d else DataCategory.QUERY,
@@ -637,7 +637,7 @@ class ErasureRequest:
     model_records_deleted: int = 0
     erasure_log: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "request_id": self.request_id,
             "user_id": self.user_id,
@@ -902,7 +902,7 @@ class AuditExporter:
 
         return "\n".join(lines)
 
-    def _build_report(self, *, user_id: str = "") -> dict:
+    def _build_report(self, *, user_id: str = "") -> dict[str, Any]:
         """Build the complete audit report data structure."""
         if user_id:
             proc_records = self._processing_log.query(user_id=user_id)
@@ -1007,11 +1007,11 @@ class GDPRComplianceManager:
             self.usage_log,
         )
 
-    def user_report(self, user_id: str) -> dict:
+    def user_report(self, user_id: str) -> dict[str, Any]:
         """Generate a data subject access report (Art. 15)."""
         return self.processing_log.user_report(user_id)
 
-    def compliance_summary(self) -> dict:
+    def compliance_summary(self) -> dict[str, Any]:
         """Overall GDPR compliance status."""
         proc_count = len(self.processing_log.records)
         usage_count = len(self.usage_log.records)

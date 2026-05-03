@@ -14,6 +14,7 @@ even across millions of records.
 
 import logging
 import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class VectorStore:
         self,
         memory_id: str,
         embedding: list[float],
-        metadata: dict,
+        metadata: dict[str, Any],
     ) -> None:
         """
         Add a memory record to ChromaDB.
@@ -115,7 +116,7 @@ class VectorStore:
         self,
         query_embedding: list[float],
         n_results: int = 50,
-        where: dict | None = None,
+        where: dict[str, Any] | None = None,
     ) -> list[str]:
         """
         Return the nearest n_results memory_ids via ANN search.
@@ -138,7 +139,7 @@ class VectorStore:
                 return []
 
             actual_n = min(n_results, total)
-            query_kwargs: dict = {
+            query_kwargs: dict[str, Any] = {
                 "query_embeddings": [query_embedding],
                 "n_results": actual_n,
                 "include": ["metadatas"],
@@ -153,7 +154,7 @@ class VectorStore:
             logger.error(f"VectorStore.query error: {e}")
             return []
 
-    def update_metadata(self, memory_id: str, metadata: dict) -> None:
+    def update_metadata(self, memory_id: str, metadata: dict[str, Any]) -> None:
         """
         Update metadata for an existing record.
 
@@ -243,7 +244,7 @@ class VectorStore:
     _META_MAX_LIST = 100  # max items in a list before truncation
 
     @staticmethod
-    def _clean_metadata(metadata: dict) -> dict:
+    def _clean_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
         """
         Clean metadata for ChromaDB.
         Only string, int, float, and bool values are allowed.

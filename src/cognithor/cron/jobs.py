@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from cognithor.models import CronJob
 

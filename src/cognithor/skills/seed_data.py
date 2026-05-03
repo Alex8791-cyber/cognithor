@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from cognithor.utils.logging import get_logger
 
@@ -91,7 +91,7 @@ def _parse_procedure_to_listing(
     *,
     publisher_id: str = "jarvis-builtin",
     publisher_name: str = "Jarvis Built-in",
-) -> dict | None:
+) -> dict[str, Any] | None:
     """Parst eine Prozedur-Markdown-Datei und erstellt ein Listing-Dict."""
     content = path.read_text(encoding="utf-8")
 

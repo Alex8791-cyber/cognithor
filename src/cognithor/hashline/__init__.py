@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cognithor.hashline.exceptions import (
     BinaryFileError,
@@ -182,7 +182,7 @@ class HashlineGuard:
         """
         self._cache.invalidate(path)
 
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, Any]:
         """Return cache statistics.
 
         Returns:

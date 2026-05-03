@@ -13,6 +13,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
 
 class MemoryType(str, Enum):
@@ -141,7 +142,7 @@ class MemoryRecord:
         delta = datetime.now(UTC) - self.last_accessed
         return delta.total_seconds() / 86400
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert record to a JSON-serializable dict."""
         return {
             "id": self.id,
@@ -169,7 +170,7 @@ class MemoryRecord:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> MemoryRecord:
+    def from_dict(cls, data: dict[str, Any]) -> MemoryRecord:
         """Construct a MemoryRecord from a dict."""
         record = cls(
             content=data["content"],
@@ -257,11 +258,11 @@ class MemoryStore:
         """Active record count."""
         return sum(1 for r in self._store.values() if r.status == MemoryStatus.ACTIVE)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert entire store to a dict (for serialization)."""
         return {memory_id: record.to_dict() for memory_id, record in self._store.items()}
 
-    def load_from_dict(self, data: dict) -> None:
+    def load_from_dict(self, data: dict[str, Any]) -> None:
         """Load store from a dict."""
         for memory_id, record_data in data.items():
             self._store[memory_id] = MemoryRecord.from_dict(record_data)

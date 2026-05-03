@@ -468,10 +468,10 @@ class DatabaseTools:
     async def _pg_schema(self, connstr: str, table: str | None) -> str:
         """Return schema info for a PostgreSQL database."""
         try:
-            import asyncpg  # type: ignore[import-untyped]
+            import asyncpg
         except ImportError:
             try:
-                import psycopg2  # type: ignore[import-untyped]  # noqa: F401
+                import psycopg2  # noqa: F401
 
                 return self._pg_psycopg2_schema(connstr, table)
             except ImportError as exc:
@@ -535,7 +535,7 @@ class DatabaseTools:
 
     def _pg_psycopg2_schema(self, connstr: str, table: str | None) -> str:
         """Fallback schema info via psycopg2."""
-        import psycopg2  # type: ignore[import-untyped]
+        import psycopg2
 
         conn = psycopg2.connect(connstr, connect_timeout=_CONN_TIMEOUT)
         try:
@@ -587,7 +587,7 @@ class DatabaseTools:
             raise DatabaseError(t("tools.db_drop_blocked"))
 
         try:
-            import asyncpg  # type: ignore[import-untyped]
+            import asyncpg
         except ImportError:
             return self._pg_psycopg2_execute(connstr, sql, params)
 
@@ -621,7 +621,7 @@ class DatabaseTools:
     ) -> str:
         """Fallback write via psycopg2."""
         try:
-            import psycopg2  # type: ignore[import-untyped]
+            import psycopg2
         except ImportError as exc:
             raise DatabaseError(t("tools.db_pg_unavailable")) from exc
 
@@ -641,7 +641,7 @@ class DatabaseTools:
     async def _pg_connect_info(self, connstr: str) -> str:
         """Return connection info for PostgreSQL."""
         try:
-            import asyncpg  # type: ignore[import-untyped]
+            import asyncpg
         except ImportError:
             return self._pg_psycopg2_connect_info(connstr)
 
@@ -677,7 +677,7 @@ class DatabaseTools:
     def _pg_psycopg2_connect_info(self, connstr: str) -> str:
         """Fallback connection info via psycopg2."""
         try:
-            import psycopg2  # type: ignore[import-untyped]
+            import psycopg2
         except ImportError as exc:
             raise DatabaseError(t("tools.db_pg_unavailable")) from exc
 

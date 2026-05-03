@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cognithor.i18n import t
 from cognithor.mcp.vault_backend import NoteData, VaultBackend, new_id, now_iso, parse_tags
@@ -76,11 +76,11 @@ class VaultDBBackend(VaultBackend):
             log.debug("fts5_setup_partial", exc_info=True)  # catches both sqlite3 and sqlcipher3
         self._conn.commit()
 
-    def _row_to_note(self, row: tuple, columns: list[str]) -> NoteData:
+    def _row_to_note(self, row: tuple[Any, ...], columns: list[str]) -> NoteData:
         d = dict(zip(columns, row, strict=False))
         return NoteData(**{k: v for k, v in d.items() if k in NoteData.__slots__})
 
-    def _query_notes(self, sql: str, params: tuple = ()) -> list[NoteData]:
+    def _query_notes(self, sql: str, params: tuple[Any, ...] = ()) -> list[NoteData]:
         cursor = self._conn.execute(sql, params)
         cols = [d[0] for d in cursor.description]
         return [self._row_to_note(row, cols) for row in cursor.fetchall()]
@@ -133,7 +133,7 @@ class VaultDBBackend(VaultBackend):
                 "JOIN notes_fts f ON n.rowid = f.rowid "
                 "WHERE notes_fts MATCH ?"
             )
-            params: list = [f'"{fts_query}"']
+            params: list[Any] = [f'"{fts_query}"']
             if folder:
                 sql += " AND n.folder = ?"
                 params.append(folder)
@@ -166,7 +166,7 @@ class VaultDBBackend(VaultBackend):
         self, folder: str = "", tags: str = "", sort_by: str = "updated", limit: int = 50
     ) -> list[NoteData]:
         sql = "SELECT * FROM notes WHERE 1=1"
-        params: list = []
+        params: list[Any] = []
         if folder:
             sql += " AND folder = ?"
             params.append(folder)

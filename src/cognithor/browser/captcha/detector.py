@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from cognithor.browser.captcha.models import CaptchaChallenge, CaptchaType
 from cognithor.utils.logging import get_logger
 
@@ -122,7 +124,7 @@ async def detect_captcha(page) -> list[CaptchaChallenge]:
         JavaScript evaluation are logged and an empty list is returned.
     """
     try:
-        raw: list[dict] = await page.evaluate(DETECT_JS)
+        raw: list[dict[str, Any]] = await page.evaluate(DETECT_JS)
     except Exception as exc:
         logger.debug("CAPTCHA detection failed on %s: %s", getattr(page, "url", "?"), exc)
         return []

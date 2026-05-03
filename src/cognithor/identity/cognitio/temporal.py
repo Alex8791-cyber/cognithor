@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 # ─────────────────────────────────────────────
 # DATE / DURATION HELPERS
@@ -135,7 +136,7 @@ class SessionRecord:
             return None
         return max(0.0, (self.ended_at - self.started_at).total_seconds())
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "started_at": self.started_at.isoformat(),
             "ended_at": self.ended_at.isoformat() if self.ended_at else None,
@@ -143,7 +144,7 @@ class SessionRecord:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> SessionRecord:
+    def from_dict(cls, d: dict[str, Any]) -> SessionRecord:
         return cls(
             started_at=datetime.fromisoformat(d["started_at"]),
             ended_at=(datetime.fromisoformat(d["ended_at"]) if d.get("ended_at") else None),
@@ -407,7 +408,7 @@ class TemporalDensityTracker:
     # SERIALIZATION
     # ─────────────────────────────────────────────
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize state to a dict."""
         return {
             "last_active": self.last_active.isoformat() if self.last_active else None,
@@ -420,7 +421,7 @@ class TemporalDensityTracker:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> TemporalDensityTracker:
+    def from_dict(cls, data: dict[str, Any]) -> TemporalDensityTracker:
         """Construct a TemporalDensityTracker from a dict."""
         tracker = cls(sleep_threshold_minutes=data.get("sleep_threshold_minutes", 60))
 

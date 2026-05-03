@@ -15,7 +15,7 @@ Pruning Criteria:
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.memory import MemoryRecord, MemoryStore
@@ -52,7 +52,7 @@ class GarbageCollector:
         self,
         memory_store: "MemoryStore",
         vector_store: "VectorStore",
-        config: dict | None = None,
+        config: dict[str, Any] | None = None,
         bias_engine=None,
     ) -> None:
         self.memory_store = memory_store
@@ -63,10 +63,10 @@ class GarbageCollector:
         self.config = {**self.DEFAULT_CONFIG, **(config or {})}
 
         self._last_run: datetime | None = None
-        self._pruned_log: list[dict] = []  # Pruning history
+        self._pruned_log: list[dict[str, Any]] = []  # Pruning history
 
         # Tombstone log: controls restoration of pruned memories
-        self._tombstone_log: dict[str, dict] = {}  # memory_id → tombstone info
+        self._tombstone_log: dict[str, dict[str, Any]] = {}  # memory_id → tombstone info
 
         # Active crisis references (protect from pruning)
         self._crisis_memory_ids: set[str] = set()
@@ -77,7 +77,7 @@ class GarbageCollector:
             f"interval={self.config['prune_interval_hours']}h"
         )
 
-    def collect(self) -> dict:
+    def collect(self) -> dict[str, Any]:
         """
         Main pruning loop.
 
@@ -302,7 +302,7 @@ class GarbageCollector:
         logger.info(f"restore: record restored: {memory_id[:8]}")
         return True
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """
         Memory statistics.
 
@@ -378,6 +378,6 @@ class GarbageCollector:
         """Remove protection after the crisis is resolved."""
         self._crisis_memory_ids.discard(memory_id)
 
-    def get_pruned_log(self) -> list[dict]:
+    def get_pruned_log(self) -> list[dict[str, Any]]:
         """Retrieve pruning history."""
         return list(self._pruned_log)

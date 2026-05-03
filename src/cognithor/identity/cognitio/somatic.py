@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 
 @dataclass
@@ -73,7 +74,7 @@ class SomaticState:
         else:
             return "tired"
 
-    def get_modifiers(self) -> dict:
+    def get_modifiers(self) -> dict[str, Any]:
         """
         Somatic modifiers to apply to LLM parameters.
 
@@ -116,7 +117,7 @@ class SomaticState:
         }
         return hints[state]
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict."""
         return {
             "energy_level": self.energy_level,
@@ -126,7 +127,7 @@ class SomaticState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> SomaticState:
+    def from_dict(cls, data: dict[str, Any]) -> SomaticState:
         """Construct a SomaticState from a dict."""
         state = cls()
         state.energy_level = data.get("energy_level", 1.0)

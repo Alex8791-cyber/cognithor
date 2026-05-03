@@ -18,7 +18,7 @@ Goal: Break the hallucination feedback loop.
 import logging
 import math
 import unicodedata
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.memory import MemoryStore
@@ -205,7 +205,7 @@ class RealityCheck:
         try:
             content_emb = self._embedder.encode(content)
 
-            def cosine(a: list, b: list) -> float:
+            def cosine(a: list[Any], b: list[Any]) -> float:
                 dot = sum(x * y for x, y in zip(a, b, strict=False))
                 norm_a = math.sqrt(sum(x * x for x in a))
                 norm_b = math.sqrt(sum(x * x for x in b))
@@ -360,7 +360,7 @@ class RealityCheck:
 
         return False
 
-    def validate(self, new_memory: dict) -> dict:
+    def validate(self, new_memory: dict[str, Any]) -> dict[str, Any]:
         """
         Validate a new memory record.
 
@@ -461,7 +461,7 @@ class RealityCheck:
     def consistency_check(
         self,
         new_content: str,
-        related_memories: list[dict],
+        related_memories: list[dict[str, Any]],
     ) -> float:
         """
         Check consistency between new content and existing memory.
@@ -560,7 +560,7 @@ class RealityCheck:
         """Reset session statistics (at the start of a new session)."""
         self._session_high_emotional_count = 0
 
-    def _get_related_memories(self, new_memory: dict) -> list[dict]:
+    def _get_related_memories(self, new_memory: dict[str, Any]) -> list[dict[str, Any]]:
         """Retrieve related memory records (for consistency check)."""
         if self.memory_store is None:
             return []

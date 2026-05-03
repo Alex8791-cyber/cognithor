@@ -48,7 +48,7 @@ _GRID_W: int = 64
 
 if _TORCH_AVAILABLE:
 
-    class ActionPredictor(nn.Module):  # type: ignore[misc]
+    class ActionPredictor(nn.Module):
         """CNN that predicts action probabilities and coordinate heat-maps.
 
         Input shape:  ``(batch, n_colors, 64, 64)`` — one-hot encoded grid.

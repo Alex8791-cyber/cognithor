@@ -65,7 +65,7 @@ class KnowledgeGap:
     id: str = field(default_factory=_new_id)
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "topic": self.topic,
@@ -76,7 +76,7 @@ class KnowledgeGap:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> KnowledgeGap:
+    def from_dict(cls, d: dict[str, Any]) -> KnowledgeGap:
         return cls(
             id=d.get("id", _new_id()),
             topic=d["topic"],
@@ -96,7 +96,7 @@ class LearningTask:
     id: str = field(default_factory=_new_id)
     status: str = "pending"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "gap_id": self.gap_id,
@@ -107,7 +107,7 @@ class LearningTask:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> LearningTask:
+    def from_dict(cls, d: dict[str, Any]) -> LearningTask:
         return cls(
             id=d.get("id", _new_id()),
             gap_id=d["gap_id"],
@@ -128,7 +128,7 @@ class LearningOutcome:
     id: str = field(default_factory=_new_id)
     completed_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "task_id": self.task_id,
@@ -140,7 +140,7 @@ class LearningOutcome:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> LearningOutcome:
+    def from_dict(cls, d: dict[str, Any]) -> LearningOutcome:
         return cls(
             id=d.get("id", _new_id()),
             task_id=d["task_id"],
@@ -160,7 +160,7 @@ class Insight:
     actionable: bool = False
     id: str = field(default_factory=_new_id)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "title": self.title,
@@ -170,7 +170,7 @@ class Insight:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> Insight:
+    def from_dict(cls, d: dict[str, Any]) -> Insight:
         return cls(
             id=d.get("id", _new_id()),
             title=d["title"],
@@ -197,7 +197,7 @@ class ImprovementProposal:
     id: str = field(default_factory=_new_id)
     status: str = "proposed"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "title": self.title,
@@ -209,7 +209,7 @@ class ImprovementProposal:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> ImprovementProposal:
+    def from_dict(cls, d: dict[str, Any]) -> ImprovementProposal:
         return cls(
             id=d.get("id", _new_id()),
             title=d["title"],
@@ -274,7 +274,7 @@ class AutonomousLearner:
 
     async def identify_knowledge_gaps(
         self,
-        recent_interactions: list[dict],
+        recent_interactions: list[dict[str, Any]],
     ) -> list[KnowledgeGap]:
         """Analyse recent user interactions and find knowledge gaps.
 

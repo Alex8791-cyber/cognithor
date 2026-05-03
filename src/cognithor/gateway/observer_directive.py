@@ -36,7 +36,7 @@ class ObserverDirectiveDecision:
 def handle_observer_directive(
     *,
     directive: PGEReloopDirective,
-    session_state: dict,
+    session_state: dict[str, Any],
     config: CognithorConfig,
 ) -> ObserverDirectiveDecision:
     """Decide how to act on an Observer-issued PGE directive.
@@ -75,9 +75,9 @@ async def run_pge_with_observer_directive(
     *,
     planner: Any,
     user_message: str,
-    results: list,
+    results: list[Any],
     working_memory: Any,
-    session_state: dict,
+    session_state: dict[str, Any],
     config: CognithorConfig,
 ) -> ResponseEnvelope:
     """Drive the PGE loop with Observer-directive handling.

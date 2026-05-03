@@ -68,7 +68,7 @@ class GoogleChatChannel(Channel):
             return
 
         try:
-            from google.oauth2 import service_account  # type: ignore[import-untyped]
+            from google.oauth2 import service_account
         except ImportError:
             logger.error("google-auth nicht installiert. pip install google-auth google-api-core")
             return
@@ -118,7 +118,7 @@ class GoogleChatChannel(Channel):
         if not self._credentials:
             return {}
         try:
-            from google.auth.transport.requests import Request  # type: ignore[import-untyped]
+            from google.auth.transport.requests import Request
 
             self._credentials.refresh(Request())
             return {"Authorization": f"Bearer {self._credentials.token}"}

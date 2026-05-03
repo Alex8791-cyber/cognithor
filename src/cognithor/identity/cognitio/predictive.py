@@ -22,6 +22,7 @@ Note: No LLM calls — only cosine distance in embedding space.
 import collections
 import logging
 import math
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +185,7 @@ class PredictiveEngine:
         """Last computed prediction error."""
         return self._last_error
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict."""
         return {
             "last_error": self._last_error,
@@ -193,7 +194,7 @@ class PredictiveEngine:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "PredictiveEngine":
+    def from_dict(cls, data: dict[str, Any]) -> "PredictiveEngine":
         """Construct a PredictiveEngine from a dict."""
         pe = cls()
         pe._last_error = data.get("last_error", 0.0)

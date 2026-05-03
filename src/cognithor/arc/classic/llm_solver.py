@@ -246,7 +246,7 @@ class LLMSolver:
             return None
         if not all(isinstance(row, list) for row in result):
             return None
-        return result  # type: ignore[return-value]
+        return result
 
     # ------------------------------------------------------------------
     # Validation

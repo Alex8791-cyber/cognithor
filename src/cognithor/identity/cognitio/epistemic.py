@@ -12,7 +12,7 @@ EpistemicMap:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.memory import MemoryRecord
@@ -149,7 +149,7 @@ class EpistemicMap:
         """Total number of topics."""
         return len(self._confidence)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict."""
         return {
             "confidence": dict(self._confidence),
@@ -158,7 +158,7 @@ class EpistemicMap:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> EpistemicMap:
+    def from_dict(cls, data: dict[str, Any]) -> EpistemicMap:
         """Construct an EpistemicMap from a dict."""
         em = cls(default_confidence=data.get("default_confidence", 0.5))
         em._confidence = dict(data.get("confidence", {}))

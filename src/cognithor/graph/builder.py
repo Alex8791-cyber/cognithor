@@ -86,7 +86,7 @@ class GraphBuilder:
     def add_router(
         self,
         name: str,
-        handler: Callable,
+        handler: Callable[..., Any],
         *,
         description: str = "",
         timeout: float = 60.0,
@@ -235,7 +235,7 @@ class GraphBuilder:
 # ── Prebuilt graph templates ────────────────────────────────────
 
 
-def linear_graph(name: str, steps: list[tuple[str, Callable]]) -> GraphDefinition:
+def linear_graph(name: str, steps: list[tuple[str, Callable[..., Any]]]) -> GraphDefinition:
     """Creates a linear graph (A -> B -> C -> END).
 
     Args:
@@ -254,8 +254,8 @@ def linear_graph(name: str, steps: list[tuple[str, Callable]]) -> GraphDefinitio
 def branch_graph(
     name: str,
     router_name: str,
-    router_handler: Callable,
-    branches: dict[str, Callable],
+    router_handler: Callable[..., Any],
+    branches: dict[str, Callable[..., Any]],
     *,
     merge_node: str = "",
     merge_handler: Callable | None = None,
@@ -293,9 +293,9 @@ def branch_graph(
 def loop_graph(
     name: str,
     body_name: str,
-    body_handler: Callable,
+    body_handler: Callable[..., Any],
     condition_name: str,
-    condition_handler: Callable,
+    condition_handler: Callable[..., Any],
     *,
     continue_condition: str = "continue",
     exit_condition: str = "exit",

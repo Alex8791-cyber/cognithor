@@ -44,7 +44,7 @@ def open_sqlite(
 
     if encryption_key:
         try:
-            from pysqlcipher3 import dbapi2 as sqlcipher  # type: ignore[import-untyped]
+            from pysqlcipher3 import dbapi2 as sqlcipher
 
             conn = sqlcipher.connect(db_path, check_same_thread=False)
             # PRAGMA key cannot use parameterized queries; escape single quotes
@@ -83,7 +83,7 @@ def get_encryption_key(config: Any = None) -> str | None:
             return None
 
     try:
-        import keyring  # type: ignore[import-untyped]
+        import keyring
     except ImportError:
         log.warning(
             "keyring-Bibliothek nicht installiert. SQLite-Verschluesselung nicht verfuegbar."
@@ -115,7 +115,7 @@ def init_encryption(passphrase: str | None = None) -> str:
         RuntimeError: If storing the key fails.
     """
     try:
-        import keyring  # type: ignore[import-untyped]
+        import keyring
     except ImportError as exc:
         raise ImportError(
             "keyring-Bibliothek wird fuer Verschluesselung benoetigt: pip install keyring"
@@ -140,7 +140,7 @@ def remove_encryption_key() -> bool:
         or the key did not exist.
     """
     try:
-        import keyring  # type: ignore[import-untyped]
+        import keyring
     except ImportError:
         log.warning("keyring nicht installiert — nichts zu entfernen.")
         return False

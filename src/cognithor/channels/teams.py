@@ -124,12 +124,12 @@ class TeamsChannel(Channel):
                 self._sessions[key] = val
 
         try:
-            from botbuilder.core import (  # type: ignore[import-untyped]
+            from botbuilder.core import (
                 BotFrameworkAdapter,
                 BotFrameworkAdapterSettings,
                 TurnContext,  # noqa: F401
             )
-            from botbuilder.schema import (  # type: ignore[import-untyped]
+            from botbuilder.schema import (
                 Activity,  # noqa: F401
                 ActivityTypes,  # noqa: F401
             )
@@ -207,7 +207,7 @@ class TeamsChannel(Channel):
     async def _handle_messages(self, request: Any) -> Any:
         """POST /api/messages -- Eingehende Bot Framework Activities."""
         from aiohttp import web
-        from botbuilder.schema import Activity  # type: ignore[import-untyped]
+        from botbuilder.schema import Activity
 
         if not self._adapter:
             return web.Response(status=503, text="Bot not ready")
@@ -255,7 +255,7 @@ class TeamsChannel(Channel):
 
     async def _on_turn(self, turn_context: Any) -> None:
         """Verarbeitet eingehende Bot Framework Activities."""
-        from botbuilder.schema import ActivityTypes  # type: ignore[import-untyped]
+        from botbuilder.schema import ActivityTypes
 
         activity = turn_context.activity
         activity_type = activity.type
@@ -269,7 +269,7 @@ class TeamsChannel(Channel):
 
     async def _on_message(self, turn_context: Any) -> None:
         """Verarbeitet eingehende Textnachrichten."""
-        from botbuilder.core import TurnContext  # type: ignore[import-untyped]
+        from botbuilder.core import TurnContext
 
         activity = turn_context.activity
         text = (activity.text or "").strip()
@@ -369,7 +369,7 @@ class TeamsChannel(Channel):
         Nur der User, der die Aktion urspruenglich ausgeloest hat,
         darf genehmigen oder ablehnen.
         """
-        from botbuilder.schema import Activity  # type: ignore[import-untyped]
+        from botbuilder.schema import Activity
 
         activity = turn_context.activity
         value = activity.value or {}
@@ -481,7 +481,7 @@ class TeamsChannel(Channel):
         try:
 
             async def _send_card(turn_context: Any) -> None:
-                from botbuilder.schema import (  # type: ignore[import-untyped]
+                from botbuilder.schema import (
                     Activity,
                     Attachment,
                 )

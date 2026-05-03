@@ -42,7 +42,7 @@ def trace(
     *,
     kind: SpanKind = SpanKind.INTERNAL,
     attributes: dict[str, Any] | None = None,
-) -> Callable:
+) -> Callable[..., Any]:
     """Decorator that wraps a function with a span.
 
     Usage:
@@ -51,7 +51,7 @@ def trace(
             ...
     """
 
-    def decorator(fn: Callable) -> Callable:
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         span_name = name or fn.__qualname__
 
         @functools.wraps(fn)
@@ -91,7 +91,7 @@ def measure(
     histogram_name: str,
     counter_name: str = "",
     **labels: str,
-) -> Callable:
+) -> Callable[..., Any]:
     """Decorator that writes latency to a histogram.
 
     Usage:
@@ -100,7 +100,7 @@ def measure(
             ...
     """
 
-    def decorator(fn: Callable) -> Callable:
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             start = time.monotonic()

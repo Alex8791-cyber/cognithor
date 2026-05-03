@@ -15,9 +15,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from cognithor.utils.logging import get_logger
 
@@ -328,7 +328,7 @@ class SkillLifecycleManager:
     # Vorschlaege
     # ========================================================================
 
-    def suggest_skills(self, recent_queries: list[str] | None = None) -> list[dict]:
+    def suggest_skills(self, recent_queries: list[str] | None = None) -> list[dict[str, Any]]:
         """Analysiert Luecken im Skill-Inventar und macht Vorschlaege.
 
         Logik:
@@ -340,7 +340,7 @@ class SkillLifecycleManager:
             Liste von Vorschlaegen: [{"name": ..., "description": ..., "reason": ...}]
             Maximal 3 Eintraege.
         """
-        suggestions: list[dict] = []
+        suggestions: list[dict[str, Any]] = []
         existing_categories = set(self._registry._categories.keys())
         existing_names_lower = {s.name.lower() for s in self._registry._skills.values()}
 
