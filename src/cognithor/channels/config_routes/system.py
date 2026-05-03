@@ -30,6 +30,7 @@ except ImportError:
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    from cognithor.channels.config_routes._protocols import RoutableApp
     from cognithor.config_manager import ConfigManager
 
 log = get_logger(__name__)
@@ -41,7 +42,7 @@ log = get_logger(__name__)
 
 
 def _register_system_routes(
-    app: Any,
+    app: RoutableApp,
     deps: list[Any],
     config_manager: ConfigManager,
     gateway: Any,

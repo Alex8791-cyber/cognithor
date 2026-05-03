@@ -9,7 +9,7 @@ Visualisierung der DAG-Workflow-Ausfuehrung.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 try:
     from starlette.requests import Request
@@ -24,6 +24,10 @@ except ImportError:
     except ImportError:
         HTTPException = Exception  # type: ignore[assignment,misc]
 
+
+if TYPE_CHECKING:
+    from cognithor.channels.config_routes._protocols import RoutableApp
+
 from cognithor.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -35,7 +39,7 @@ log = get_logger(__name__)
 
 
 def _register_workflow_graph_routes(
-    app: Any,
+    app: RoutableApp,
     deps: list[Any],
     gateway: Any,
 ) -> None:
