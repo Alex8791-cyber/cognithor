@@ -111,12 +111,36 @@ def score_plan(
     with_reasoning = sum(1 for s in plan if s.reasoning.strip())
     reasoning = with_reasoning / n
 
-    # Validity + anti_repetition are multiplicative gates (plan with
-    # invalid actions or stuck-action repetition is fundamentally
-    # broken). Diversity, targetedness, reasoning are additive
-    # quality components averaged.
+    # 6. Sprint-19 Hebel N — pixΔ-safety gate. Run #26c on bp35
+    # showed the LLM still queued plans whose first action had just
+    # produced pixΔ>500 (steps 37/40/41 each flipped 525-639 cells,
+    # then GAME_OVER at step 44). Hebel M makes the trajectory
+    # visible to the LLM in the prompt; Hebel N is the deterministic
+    # safety net for when the LLM ignores the warning. Multiplicative
+    # half-penalty (0.5) — strong enough to lose to any sane
+    # alternative candidate, but not a full zero so the gate degrades
+    # gracefully if ALL candidates inherit the same first-action.
+    pix_delta_safety = 1.0
+    if memory is not None and len(memory) >= 2:
+        try:
+            import numpy as _np
+
+            recent = memory.window(2)
+            after, before = recent[0], recent[1]
+            if before.grid.shape == after.grid.shape:
+                last_pix_delta = int(_np.sum(before.grid != after.grid))
+                if last_pix_delta > 500 and plan[0].action_name == after.action_name:
+                    pix_delta_safety = 0.5
+        except Exception:
+            pass
+
+    # Validity + anti_repetition + pix_delta_safety are multiplicative
+    # gates (plan with invalid actions, stuck-action repetition, or
+    # destructive-action escalation is fundamentally broken).
+    # Diversity, targetedness, reasoning are additive quality
+    # components averaged.
     additive_avg = (diversity + targetedness + reasoning) / 3.0
-    return additive_avg * validity * anti_repetition
+    return additive_avg * validity * anti_repetition * pix_delta_safety
 
 
 def pick_best_plan(
