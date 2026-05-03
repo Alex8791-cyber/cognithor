@@ -163,6 +163,100 @@ class TestScorePlanComponents:
         assert s_other == pytest.approx(s_baseline * 0.5, rel=1e-6)
 
 
+class TestResetBonus:
+    """Sprint-19 Hebel R — additive +0.30 RESET-bonus when the agent is
+    both stalled (≥15 steps at current level) and the last action was
+    destructive (pixΔ>500). Score clamped to [0, 1].
+    """
+
+    def test_reset_plan_gets_bonus_when_stalled_and_destructive(self) -> None:
+        m = EpisodeMemory()
+        # 16 prior frames at level 0 → "stalled" (≥15)
+        for _ in range(15):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        # The 16th frame is the destructive one — pixΔ=600 from
+        # this transition (10 rows × 60 cols = 600 cells flipped).
+        destructive = np.zeros((64, 64), dtype=np.int8)
+        destructive[:10, :60] = 4
+        m.append(grid=destructive, action_name="ACTION6", levels_completed=0)
+
+        actions = ("RESET", "ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="restart")]
+        plan_other = [PlanStep("ACTION3", reasoning="explore")]
+        s_reset = score_plan(plan_reset, memory=m, available_action_names=actions)
+        s_other = score_plan(plan_other, memory=m, available_action_names=actions)
+        # The two plans have similar quality components, so the +0.30
+        # RESET-bonus must put plan_reset clearly ahead.
+        assert s_reset > s_other
+        assert s_reset - s_other >= 0.20
+
+    def test_no_bonus_when_reset_not_in_available(self) -> None:
+        m = EpisodeMemory()
+        for _ in range(15):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        destructive = np.zeros((64, 64), dtype=np.int8)
+        destructive[:10, :60] = 4
+        m.append(grid=destructive, action_name="ACTION6", levels_completed=0)
+
+        # RESET NOT in available_action_names → bonus never fires
+        # even if the plan claims to start with RESET.
+        actions = ("ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="r")]
+        s_reset = score_plan(plan_reset, memory=m, available_action_names=actions)
+        # validity=0 (RESET not in actions) → score=0 regardless of bonus.
+        assert s_reset == 0.0
+
+    def test_no_bonus_when_not_stalled(self) -> None:
+        m = EpisodeMemory()
+        # Only 5 prior frames at level 0 → below the 15-step threshold.
+        for _ in range(5):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        destructive = np.zeros((64, 64), dtype=np.int8)
+        destructive[:10, :60] = 4
+        m.append(grid=destructive, action_name="ACTION6", levels_completed=0)
+
+        actions = ("RESET", "ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="r")]
+        s_reset_with_memory = score_plan(plan_reset, memory=m, available_action_names=actions)
+        # Same plan but no memory at all (so the bonus path can't fire).
+        s_reset_no_memory = score_plan(plan_reset, available_action_names=actions)
+        # Bonus should NOT fire; the two scores match.
+        assert s_reset_with_memory == pytest.approx(s_reset_no_memory, rel=1e-6)
+
+    def test_no_bonus_when_last_pix_delta_low(self) -> None:
+        m = EpisodeMemory()
+        for _ in range(20):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        # Same grid → pixΔ=0 (below the 500 threshold).
+        m.append(
+            grid=np.zeros((64, 64), dtype=np.int8),
+            action_name="ACTION6",
+            levels_completed=0,
+        )
+
+        actions = ("RESET", "ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="r")]
+        s_with_memory = score_plan(plan_reset, memory=m, available_action_names=actions)
+        s_no_memory = score_plan(plan_reset, available_action_names=actions)
+        assert s_with_memory == pytest.approx(s_no_memory, rel=1e-6)
+
+
 class TestPickBestPlan:
     def test_empty_list_returns_empty(self) -> None:
         assert pick_best_plan([]) == ([], "")
