@@ -24,6 +24,60 @@ __all__ = [
 _active_sessions: dict[str, dict[str, Any]] = {}
 
 
+def _resolve_arc_choice_fn(
+    *,
+    build_vllm_choice_fn: Any,
+    build_inprocess_vllm_choice_fn: Any,
+) -> Any:
+    """Sprint-21: pick the LLM choice-fn for the ARC agent.
+
+    The PSE channel historically called the in-process vLLM factory
+    directly, which only works on Linux + WSL2 with vLLM installed
+    locally. Cognithor itself ships the central :class:`VLLMBackend`
+    that talks to a vLLM HTTP endpoint over OpenAI-compatible REST —
+    works cross-platform (Windows host can hit a WSL-running vLLM,
+    or any remote vLLM the user configured).
+
+    Resolution order:
+
+    1. Central HTTP backend at the configured ``vllm_base_url`` if
+       reachable. Wraps a fresh :class:`VLLMBackend` via
+       ``build_vllm_choice_fn`` — keeps existing prompt/parsing
+       logic, only swaps the transport.
+    2. Linux-only in-process factory as fallback. Same call shape as
+       before so an existing Linux/WSL setup keeps working.
+    3. ``None`` → caller falls back to the heuristic DSL agent.
+    """
+    base_url: str | None = None
+    try:
+        from cognithor.config import load_config
+
+        cfg = load_config()
+        base_url = getattr(cfg, "vllm_base_url", None)
+    except Exception as exc:  # pragma: no cover — defensive
+        log.debug("arc_play.config_unavailable", error=str(exc))
+
+    if base_url:
+        try:
+            from cognithor.core.vllm_backend import VLLMBackend
+
+            backend = VLLMBackend(base_url=base_url)
+            log.info("arc_play.using_central_vllm_http", base_url=base_url)
+            return build_vllm_choice_fn(backend=backend)
+        except Exception as exc:  # pragma: no cover — defensive
+            log.warning(
+                "arc_play.central_vllm_unavailable",
+                base_url=base_url,
+                error=str(exc),
+            )
+
+    try:
+        return build_inprocess_vllm_choice_fn()
+    except RuntimeError as exc:
+        log.warning("arc_play.inprocess_vllm_unavailable", error=str(exc))
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Handler functions
 # ---------------------------------------------------------------------------
@@ -55,6 +109,7 @@ async def handle_arc_play(**kwargs: Any) -> str:
             LLMReasoningAgent,
             Sprint10DSLAgent,
             build_inprocess_vllm_choice_fn,
+            build_vllm_choice_fn,
         )
     except ImportError as exc:
         return f"Error: PSE arc_agi3 module not available ({exc})."
@@ -82,14 +137,11 @@ async def handle_arc_play(**kwargs: Any) -> str:
         trail = ArcAuditTrail(game_id=game_id)
 
         if use_llm:
-            try:
-                choice_fn = build_inprocess_vllm_choice_fn()
-            except RuntimeError as exc:
-                log.warning("arc_play.vllm_unavailable", error=str(exc))
-                # vLLM not available → fall through to DSL agent.
-                use_llm_local = False
-            else:
-                use_llm_local = True
+            choice_fn = _resolve_arc_choice_fn(
+                build_vllm_choice_fn=build_vllm_choice_fn,
+                build_inprocess_vllm_choice_fn=build_inprocess_vllm_choice_fn,
+            )
+            use_llm_local = choice_fn is not None
         else:
             use_llm_local = False
 
