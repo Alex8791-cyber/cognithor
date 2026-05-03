@@ -138,9 +138,7 @@ class TestResolveArcChoiceFn:
             return "http_choice_fn"
 
         def inprocess_factory_should_not_run() -> Any:
-            raise AssertionError(
-                "in-process factory must NOT be called when HTTP path resolves"
-            )
+            raise AssertionError("in-process factory must NOT be called when HTTP path resolves")
 
         with patch("cognithor.config.load_config") as mock_cfg:
             mock_cfg.return_value.vllm_base_url = "http://localhost:8000/v1"
