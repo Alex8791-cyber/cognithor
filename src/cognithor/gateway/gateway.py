@@ -245,6 +245,170 @@ class Gateway:
     # Minimum interval between stale-session cleanup sweeps
     _CLEANUP_INTERVAL_SECONDS: float = 60 * 60  # 1h
 
+    # ------------------------------------------------------------------
+    # Subsystem attribute declarations
+    # ------------------------------------------------------------------
+    # The Gateway uses a dynamic-composition pattern: the eight
+    # ``declare_*_attrs`` / ``init_*`` helpers in :mod:`cognithor.gateway.phases`
+    # produce ``PhaseResult`` dicts that ``apply_phase()`` flushes onto
+    # ``self`` via ``setattr``. mypy cannot trace ``setattr``, so each
+    # attribute that ever lands on a Gateway instance is enumerated here
+    # at class level. The type is ``Any`` because the value comes from
+    # heterogeneous subsystem factories and the interface surface is
+    # documented per-attribute in the phase module that creates it. This
+    # is *not* type-erasure — it's the truthful type of a dynamic
+    # composition root.
+
+    # Phase A — core (declare_core_attrs / init_core)
+    _ollama: Any = None
+    _llm: Any = None
+    _model_router: Any = None
+    _session_store: Any = None
+    _vllm_orchestrator: Any = None
+
+    # Phase B — security (declare_security_attrs / init_security)
+    _audit_logger: Any = None
+    _runtime_monitor: Any = None
+    _hashline: Any = None
+    _kill_switch: Any = None
+    _security_scanner: Any = None
+    _decision_log: Any = None
+    _policy_store: Any = None
+    _pii_redactor: Any = None
+    _redteam_loop: Any = None
+    _ecosystem_policy: Any = None
+    _ecosystem_handler: Any = None
+    _security_pipeline: Any = None
+    _security_metrics: Any = None
+    _security_team: Any = None
+    _posture_scorer: Any = None
+    _security_gate: Any = None
+    _continuous_redteam: Any = None
+    _code_auditor: Any = None
+    _consent_manager: Any = None
+    _compliance_framework: Any = None
+    _compliance_exporter: Any = None
+    _remediation_tracker: Any = None
+    _system_profile: Any = None
+    _resource_monitor: Any = None
+
+    # Phase C — memory (declare_memory_attrs / init_memory)
+    _memory_manager: Any = None
+    _strategy_memory: Any = None
+    _knowledge_ingest: Any = None
+    _vault_manager: Any = None
+    _isolated_sessions: Any = None
+    _session_guard: Any = None
+    _isolation_enforcer: Any = None
+    _semantic_memory: Any = None
+    _memory_hygiene: Any = None
+    _integrity_checker: Any = None
+    _decision_explainer: Any = None
+    _episodic_store: Any = None
+
+    # Phase D — tools (declare_tools_attrs / init_tools)
+    _mcp_client: Any = None
+    _mcp_bridge: Any = None
+    _interop: Any = None
+    _vault_tools: Any = None
+    _exploration_executor: Any = None
+
+    # Phase E — pge (declare_pge_attrs / init_pge)
+    _planner: Any = None
+    _gatekeeper: Any = None
+    _executor: Any = None
+    _reflector: Any = None
+    _orchestrator: Any = None
+    _personality_engine: Any = None
+    _llm_call: Any = None
+
+    # Phase F — agents (declare_agents_attrs / init_agents)
+    _agent_router: Any = None
+    _identity_layer: Any = None
+    _governance_agent: Any = None
+    _kanban_engine: Any = None
+    _browser_agent: Any = None
+    _hitl_manager: Any = None
+    _telemetry_hub: Any = None
+    _task_profiler: Any = None
+    _task_telemetry: Any = None
+    _user_pref_store: Any = None
+    _causal_analyzer: Any = None
+    _error_clusterer: Any = None
+    _cost_tracker: Any = None
+    _skill_generator: Any = None
+    _skill_registry: Any = None
+    _a2a_adapter: Any = None
+    _graph_engine: Any = None
+    _pack_loader: Any = None
+
+    # Phase G — compliance (declare_compliance_attrs / init_compliance)
+    _gdpr: Any = None
+    _retention: Any = None
+    _audit_chain: Any = None
+    _privacy_dashboard: Any = None
+    _data_governance: Any = None
+    _ml_governance: Any = None
+    _explainability: Any = None
+    _hyperparameter_log: Any = None
+    _evolution_engine: Any = None
+    _confidence_manager: Any = None
+    _curiosity_engine: Any = None
+    _active_learner: Any = None
+    _self_improvement: Any = None
+    _gepa_evolution: Any = None
+    _prompt_evolution: Any = None
+    _correction_memory: Any = None
+    _feedback_store: Any = None
+    _conversation_tree: Any = None
+
+    # Phase H — advanced (declare_advanced_attrs / init_advanced)
+    _idle_detector: Any = None
+    _trace_bus: Any = None
+    _heartbeat_scheduler: Any = None
+    _idle_loop: Any = None
+    _flow_engine: Any = None
+    _workflow_engine: Any = None
+    _backup_scheduler: Any = None
+    _retention_scheduler: Any = None
+    _conversation_topic_classifier: Any = None
+    _topic_classifier: Any = None
+    _context_pipeline: Any = None
+    _ml_classifier: Any = None
+    _knowledge_qa: Any = None
+    _hierarchical_memory: Any = None
+    _community_validator: Any = None
+    _registry_sync: Any = None
+    _community_registry: Any = None
+    _publisher_verifier: Any = None
+    _tool_enforcer: Any = None
+    _skill_validator: Any = None
+    _media_server: Any = None
+    _video_cleanup: Any = None
+    _kanban_review: Any = None
+    _session_analyzer: Any = None
+    _run_recorder: Any = None
+    _run_retention_enforcement: Any = None
+    # ``_run_reddit_learner`` / ``_track_reddit_replies`` /
+    # ``_make_status_callback`` / ``_publish_app_state`` /
+    # ``_sync_core_inventory`` / ``_sync_core_inventory_legacy`` are
+    # bound as nested-function attributes in initialisation paths;
+    # don't redeclare here or mypy reports ``[no-redef]``.
+
+    # Phase I — runtime extras populated outside the phase pipeline
+    _dag_workflow_engine: Any = None
+    _cron_engine: Any = None
+    _process_monitor: Any = None
+    _breach_detector: Any = None
+    _skill_lifecycle: Any = None
+    _deep_learner: Any = None
+    _evolution_loop: Any = None
+    _checkpoint_store: Any = None
+    _gdpr_manager: Any = None
+    _gdpr_compliance_manager: Any = None
+    _compliance_engine: Any = None
+    _reddit_lead_service: Any = None
+
     def __init__(self, config: CognithorConfig | None = None) -> None:
         """Initialisiert das Gateway mit PGE-Trinitaet, MCP-Client und Memory."""
         self._config = config or load_config()
@@ -637,8 +801,12 @@ class Gateway:
 
             _retention_cfg = getattr(self._config, "retention", None)
             _policies = build_retention_policies(_retention_cfg)
-            self._gdpr_manager = GDPRComplianceManager(retention_policies=_policies)
-            self._gdpr_compliance_manager = self._gdpr_manager  # alias for cron
+            self._gdpr_manager: GDPRComplianceManager | None = GDPRComplianceManager(
+                retention_policies=_policies
+            )
+            self._gdpr_compliance_manager: GDPRComplianceManager | None = (
+                self._gdpr_manager  # alias for cron
+            )
             log.info("gdpr_compliance_engine_initialized")
         except Exception:
             log.error("gdpr_compliance_engine_init_failed", exc_info=True)
@@ -660,7 +828,7 @@ class Gateway:
             if hasattr(self, "_memory_manager") and self._memory_manager:
                 mm = self._memory_manager
 
-                def _erase_memory(uid):
+                def _erase_memory(uid: str) -> int:
                     count = 0
                     try:
                         if hasattr(mm, "episodic") and hasattr(mm.episodic, "prune_old"):
@@ -680,22 +848,38 @@ class Gateway:
             # User preferences
             pref = getattr(self, "_user_pref_store", None)
             if pref and hasattr(pref, "delete_user"):
-                erasure.register_handler(lambda uid, p=pref: p.delete_user(uid))
+
+                def _erase_pref(uid: str, _p: Any = pref) -> int:
+                    return int(_p.delete_user(uid))
+
+                erasure.register_handler(_erase_pref)
 
             # Conversation tree
             ct = getattr(self, "_conversation_tree", None)
             if ct and hasattr(ct, "delete_user"):
-                erasure.register_handler(lambda uid, c=ct: c.delete_user(uid))
+
+                def _erase_ct(uid: str, _c: Any = ct) -> int:
+                    return int(_c.delete_user(uid))
+
+                erasure.register_handler(_erase_ct)
 
             # Feedback
             fb = getattr(self, "_feedback_store", None)
             if fb and hasattr(fb, "delete_user"):
-                erasure.register_handler(lambda uid, f=fb: f.delete_user(uid))
+
+                def _erase_fb(uid: str, _f: Any = fb) -> int:
+                    return int(_f.delete_user(uid))
+
+                erasure.register_handler(_erase_fb)
 
             # Corrections
             cm = getattr(self, "_correction_memory", None)
             if cm and hasattr(cm, "delete_user"):
-                erasure.register_handler(lambda uid, c=cm: c.delete_user(uid))
+
+                def _erase_cm(uid: str, _c: Any = cm) -> int:
+                    return int(_c.delete_user(uid))
+
+                erasure.register_handler(_erase_cm)
 
             # Vault notes (delete all for single-user system)
             vault_tools = None
@@ -706,7 +890,7 @@ class Gateway:
                     break
             if vault_tools:
 
-                def _erase_vault(uid, vt=vault_tools):
+                def _erase_vault(uid: str, vt: Any = vault_tools) -> int:
                     try:
                         notes = vt._backend.all_notes()
                         count = 0
@@ -775,7 +959,7 @@ class Gateway:
             and getattr(self, "_reddit_lead_service", None)
         ):
             try:
-                from cognithor.cron.jobs import CronJob
+                from cognithor.models import CronJob
 
                 self._cron_engine.add_runtime_job(
                     CronJob(
@@ -965,22 +1149,28 @@ class Gateway:
                 try:
                     from cognithor.evolution.deep_learner import DeepLearner
 
-                    self._deep_learner = DeepLearner(
-                        llm_fn=getattr(self, "_llm_call", None),
-                        plans_dir=self._config.cognithor_home / "evolution" / "plans",
-                        mcp_client=getattr(self, "_mcp_client", None),
-                        memory_manager=getattr(self, "_memory_manager", None),
-                        skill_registry=getattr(self, "_skill_registry", None),
-                        skill_generator=getattr(self, "_skill_generator", None),
-                        cron_engine=getattr(self, "_cron_engine", None),
-                        cost_tracker=self._cost_tracker,
-                        resource_monitor=self._resource_monitor,
-                        checkpoint_store=self._checkpoint_store,
-                        config=self._config.evolution,
-                        idle_detector=self._idle_detector,
-                        operation_mode=op_mode,
-                    )
-                    self._evolution_loop._deep_learner = self._deep_learner
+                    _llm_fn = getattr(self, "_llm_call", None)
+                    if _llm_fn is None:
+                        # DeepLearner needs a callable; skip when llm-call wasn't wired.
+                        log.debug("deep_learner_skipped", reason="no_llm_call")
+                        self._deep_learner = None
+                    else:
+                        self._deep_learner = DeepLearner(
+                            llm_fn=_llm_fn,
+                            plans_dir=str(self._config.cognithor_home / "evolution" / "plans"),
+                            mcp_client=getattr(self, "_mcp_client", None),
+                            memory_manager=getattr(self, "_memory_manager", None),
+                            skill_registry=getattr(self, "_skill_registry", None),
+                            skill_generator=getattr(self, "_skill_generator", None),
+                            cron_engine=getattr(self, "_cron_engine", None),
+                            cost_tracker=self._cost_tracker,
+                            resource_monitor=self._resource_monitor,
+                            checkpoint_store=self._checkpoint_store,
+                            config=self._config.evolution,
+                            idle_detector=self._idle_detector,
+                            operation_mode=op_mode,
+                        )
+                        self._evolution_loop._deep_learner = self._deep_learner
 
                     # Wire LLM for entity extraction. Use the SAME model as the planner
                     # to avoid loading a second model in parallel (which causes VRAM
@@ -1003,7 +1193,8 @@ class Gateway:
                                 r"<think>.*?</think>", "", content, flags=re.DOTALL
                             ).strip()
 
-                        self._deep_learner._entity_llm_fn = _entity_llm_call
+                        if self._deep_learner is not None:
+                            self._deep_learner._entity_llm_fn = _entity_llm_call
 
                     log.info("deep_learner_initialized")
 
@@ -1014,7 +1205,8 @@ class Gateway:
                         _cycle_ctrl = CycleController(
                             plans_dir=self._config.cognithor_home / "evolution" / "plans"
                         )
-                        self._deep_learner._cycle_controller = _cycle_ctrl
+                        if self._deep_learner is not None:
+                            self._deep_learner._cycle_controller = _cycle_ctrl
                         log.info("cycle_controller_initialized")
                     except Exception:
                         log.debug("cycle_controller_init_failed", exc_info=True)

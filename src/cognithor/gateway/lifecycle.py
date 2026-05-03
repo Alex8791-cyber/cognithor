@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import signal
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from cognithor.i18n import t
 from cognithor.utils.logging import get_logger
@@ -125,7 +125,9 @@ async def start(gw: Gateway) -> None:
         try:
             from cognithor.mcp.background_tasks import ProcessMonitor
 
-            async def _notify_status_change(job_id, old, new, job):
+            async def _notify_status_change(
+                job_id: str, old: str, new: str, job: dict[str, Any]
+            ) -> None:
                 channel_name = job.get("channel", "")
                 session_id = job.get("session_id", "")
                 cmd_short = job.get("command", "")[:60]
@@ -652,7 +654,30 @@ async def shutdown(gw: Gateway) -> None:
     log.info("gateway_shutdown_complete")
 
 
-def rebuild_llm_client(gw: Gateway, new_backend_type: str) -> None:
+def rebuild_llm_client(
+    gw: Gateway,
+    new_backend_type: Literal[
+        "ollama",
+        "openai",
+        "anthropic",
+        "gemini",
+        "groq",
+        "deepseek",
+        "mistral",
+        "together",
+        "openrouter",
+        "xai",
+        "cerebras",
+        "github",
+        "bedrock",
+        "huggingface",
+        "moonshot",
+        "lmstudio",
+        "vllm",
+        "llama_cpp",
+        "claude-code",
+    ],
+) -> None:
     """Re-init UnifiedLLMClient for a new backend type.
 
     Called from the FastAPI /api/backends/active endpoint when the user
