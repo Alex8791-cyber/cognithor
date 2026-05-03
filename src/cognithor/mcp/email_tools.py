@@ -108,18 +108,18 @@ def _extract_body_preview(msg: email.message.Message) -> tuple[str, bool]:
                 payload = part.get_payload(decode=True)
                 if payload:
                     charset = part.get_content_charset() or "utf-8"
-                    text_body = payload.decode(charset, errors="replace")
+                    text_body = payload.decode(charset, errors="replace")  # type: ignore[union-attr]
             elif content_type == "text/html" and not text_body:
                 payload = part.get_payload(decode=True)
                 if payload:
                     charset = part.get_content_charset() or "utf-8"
-                    text_body = _strip_html(payload.decode(charset, errors="replace"))
+                    text_body = _strip_html(payload.decode(charset, errors="replace"))  # type: ignore[union-attr]
     else:
         content_type = msg.get_content_type()
         payload = msg.get_payload(decode=True)
         if payload:
             charset = msg.get_content_charset() or "utf-8"
-            raw_text = payload.decode(charset, errors="replace")
+            raw_text = payload.decode(charset, errors="replace")  # type: ignore[union-attr]
             text_body = _strip_html(raw_text) if content_type == "text/html" else raw_text
 
     preview = text_body[:_MAX_PREVIEW_CHARS].strip()
@@ -507,7 +507,7 @@ class EmailTools:
                 msg.attach(att_part)
         else:
             content_type = "html" if html else "plain"
-            msg = MIMEText(body, content_type, "utf-8")
+            msg = MIMEText(body, content_type, "utf-8")  # type: ignore[assignment]
 
         msg["From"] = self._username
         msg["To"] = ", ".join(to_list)

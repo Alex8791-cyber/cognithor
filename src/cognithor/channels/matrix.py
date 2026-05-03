@@ -127,7 +127,13 @@ class MatrixChannel(Channel):
         self._workspace_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            from nio import AsyncClient, LoginResponse, MatrixRoom, RoomMessageText  # noqa: F401
+            from nio import (  # type: ignore[import-not-found]  # noqa: F401
+                AsyncClient,
+                LoginResponse,
+                MatrixRoom,
+                RoomMessageText,
+            )
+
         except ImportError:
             logger.error(
                 "matrix-nio nicht installiert. Installiere mit: pip install 'matrix-nio[e2e]'"
@@ -140,7 +146,7 @@ class MatrixChannel(Channel):
         # E2EE-Verfuegbarkeit pruefen
         _olm_available = False
         try:
-            import olm  # noqa: F401
+            import olm  # type: ignore[import-not-found]  # noqa: F401
 
             _olm_available = True
         except ImportError:
@@ -186,7 +192,7 @@ class MatrixChannel(Channel):
 
         # Whisper laden
         try:
-            from faster_whisper import WhisperModel
+            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
             self._whisper = WhisperModel("base", device="auto", compute_type="int8")
             logger.info("Matrix: faster-whisper geladen")

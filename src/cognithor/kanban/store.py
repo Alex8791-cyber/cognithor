@@ -64,7 +64,7 @@ def _dict_row_factory(cursor: sqlite3.Cursor, row: tuple[Any, ...]) -> sqlite3.R
     # Build a lightweight object that supports both index and key access
     desc = cursor.description
     fields = {col[0]: row[idx] for idx, col in enumerate(desc)}
-    return type(
+    return type(  # type: ignore[no-any-return]
         "Row",
         (),
         {
@@ -101,7 +101,7 @@ class KanbanStore:
         # the matching Row class or fall back to a dict factory.
         if _is_sqlcipher:
             try:
-                import sqlcipher3
+                import sqlcipher3  # type: ignore[import-untyped]
 
                 self._conn.row_factory = sqlcipher3.Row
             except (ImportError, AttributeError):

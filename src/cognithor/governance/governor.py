@@ -114,7 +114,7 @@ class GovernanceAgent:
         self._conn.commit()
         proposal_id = cursor.lastrowid
         logger.info("Created proposal #%d: %s", proposal_id, title)
-        return proposal_id
+        return proposal_id  # type: ignore[return-value]
 
     def _row_to_proposal(self, row: sqlite3.Row) -> PolicyProposal:
         """Convert a database row to a PolicyProposal model."""
@@ -157,7 +157,7 @@ class GovernanceAgent:
             return proposals
 
         try:
-            tool_stats = getattr(self.task_telemetry, "get_tool_stats", lambda: {})()
+            tool_stats = getattr(self.task_telemetry, "get_tool_stats", lambda: {})()  # type: ignore[var-annotated]
             for tool_name, stats in tool_stats.items():
                 total = stats.get("total", 0)
                 errors = stats.get("errors", 0)
@@ -248,7 +248,7 @@ class GovernanceAgent:
             return proposals
 
         try:
-            clusters = getattr(self.error_clusterer, "get_clusters", lambda: [])()
+            clusters = getattr(self.error_clusterer, "get_clusters", lambda: [])()  # type: ignore[var-annotated]
             for cluster in clusters:
                 count = cluster.get("count", 0)
                 if count > 5:
@@ -292,7 +292,7 @@ class GovernanceAgent:
             return proposals
 
         try:
-            latency_stats = getattr(self.task_profiler, "get_latency_stats", lambda: {})()
+            latency_stats = getattr(self.task_profiler, "get_latency_stats", lambda: {})()  # type: ignore[var-annotated]
             for tool_name, stats in latency_stats.items():
                 p95 = stats.get("p95", 0)
                 if p95 > 10.0:
@@ -335,7 +335,7 @@ class GovernanceAgent:
 
         try:
             cutoff = datetime.now(UTC) - timedelta(days=7)
-            unused_tools = getattr(
+            unused_tools = getattr(  # type: ignore[var-annotated]
                 self.task_telemetry,
                 "get_unused_tools",
                 lambda since: [],

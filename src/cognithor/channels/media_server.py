@@ -55,7 +55,7 @@ class MediaUploadServer:
         self._quota_bytes = config.vllm.video_quota_gb * 1024 * 1024 * 1024
         self._port: int | None = None
         self._server = None  # filled by start() in Task 7
-        self._serve_task: asyncio.Task | None = None
+        self._serve_task: asyncio.Task | None = None  # type: ignore[type-arg]
         # Guards the evict+write critical section in save_upload. save_upload
         # is called from async FastAPI handlers via asyncio.to_thread, so
         # threading.Lock (not asyncio.Lock) is the right primitive here.
@@ -202,19 +202,19 @@ class MediaUploadServer:
         config = uvicorn.Config(
             app,
             host="127.0.0.1",
-            port=self._port,
+            port=self._port,  # type: ignore[arg-type]
             log_level="warning",
             access_log=False,
         )
-        self._server = uvicorn.Server(config)
-        self._serve_task = asyncio.create_task(self._server.serve())
+        self._server = uvicorn.Server(config)  # type: ignore[assignment]
+        self._serve_task = asyncio.create_task(self._server.serve())  # type: ignore[attr-defined]
         # Wait for startup (server.started flips true when uvicorn is ready)
         for _ in range(50):
-            if self._server.started:
+            if self._server.started:  # type: ignore[attr-defined]
                 break
             await asyncio.sleep(0.05)
         log.info("media_server_started", port=self._port)
-        return self._port
+        return self._port  # type: ignore[return-value]
 
     async def stop(self) -> None:
         """Shut down the uvicorn serving loop. Idempotent."""

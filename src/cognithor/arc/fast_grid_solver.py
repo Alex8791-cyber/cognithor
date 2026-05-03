@@ -213,7 +213,7 @@ class FastGridSolver:
 
     def solve_all_levels(self) -> list[LevelResult]:
         """Solve all levels sequentially."""
-        import arc_agi
+        import arc_agi  # type: ignore[import-untyped]
 
         self._arcade = arc_agi.Arcade()
         self._env = self._arcade.make(self.game_id)

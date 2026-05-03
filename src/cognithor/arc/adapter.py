@@ -45,7 +45,7 @@ class ArcObservation:
     step_number: int
     level: int
     levels_completed: int
-    grid_diff: np.ndarray | None = None
+    grid_diff: np.ndarray | None = None  # type: ignore[type-arg]
     changed_pixels: int = 0
     action_history: list[Any] = field(default_factory=list)
     available_actions: list[Any] = field(default_factory=list)
@@ -72,7 +72,7 @@ class ArcEnvironmentAdapter:
         self.arcade: Any = None
         self.env: Any = None
         self.current_obs: ArcObservation | None = None
-        self.previous_grid: np.ndarray | None = None
+        self.previous_grid: np.ndarray | None = None  # type: ignore[type-arg]
         self.step_count: int = 0
         self.level_step_count: int = 0
         self.total_resets: int = 0
@@ -92,7 +92,7 @@ class ArcEnvironmentAdapter:
                 ``arcade.make()`` returns ``None``.
         """
         try:
-            import arc_agi
+            import arc_agi  # type: ignore[import-untyped]
         except ImportError as exc:
             raise EnvironmentConnectionError(
                 "arc_agi SDK is not installed. Install it to use ArcEnvironmentAdapter."
@@ -179,11 +179,11 @@ class ArcEnvironmentAdapter:
         grid = self._extract_grid(raw)
 
         # Pixel diff against the previous frame
-        grid_diff: np.ndarray | None = None
+        grid_diff: np.ndarray | None = None  # type: ignore[type-arg]
         changed_pixels: int = 0
         if self.previous_grid is not None:
             grid_diff = grid != self.previous_grid
-            changed_pixels = int(np.sum(grid_diff))
+            changed_pixels = int(np.sum(grid_diff))  # type: ignore[arg-type]
 
         # Extract SDK metadata with safe fallbacks
         game_state = getattr(raw, "state", None)
@@ -198,7 +198,7 @@ class ArcEnvironmentAdapter:
                     try:
                         from arcengine.enums import GameAction
 
-                        available_actions.append(GameAction(a))
+                        available_actions.append(GameAction(a))  # type: ignore[call-arg]
                     except (ValueError, KeyError, ImportError):
                         available_actions.append(a)
                 else:

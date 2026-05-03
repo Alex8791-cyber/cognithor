@@ -53,7 +53,7 @@ class EncryptedFileIO:
     """
 
     def __init__(self) -> None:
-        self._fernet: Fernet | None = None  # type: ignore
+        self._fernet: Fernet | None = None
         self._initialized = False
 
     def _ensure_init(self) -> None:

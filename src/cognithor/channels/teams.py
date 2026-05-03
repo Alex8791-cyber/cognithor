@@ -38,7 +38,7 @@ from cognithor.models import IncomingMessage, OutgoingMessage, PlannedAction
 from cognithor.security.token_store import get_token_store
 
 if TYPE_CHECKING:
-    from botbuilder.core import TurnContext
+    from botbuilder.core import TurnContext  # type: ignore[import-not-found]
 
     from cognithor.gateway.session_store import SessionStore
 
@@ -129,7 +129,7 @@ class TeamsChannel(Channel):
                 BotFrameworkAdapterSettings,
                 TurnContext,  # noqa: F401
             )
-            from botbuilder.schema import (
+            from botbuilder.schema import (  # type: ignore[import-not-found]
                 Activity,  # noqa: F401
                 ActivityTypes,  # noqa: F401
             )

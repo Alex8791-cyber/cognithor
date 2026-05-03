@@ -33,7 +33,7 @@ class VisualStateEncoder:
     # Public API
     # ------------------------------------------------------------------
 
-    def encode_for_llm(self, grid: np.ndarray[Any, Any], diff: np.ndarray | None = None) -> str:
+    def encode_for_llm(self, grid: np.ndarray[Any, Any], diff: np.ndarray | None = None) -> str:  # type: ignore[type-arg]
         """Return a human-readable German description of *grid* for LLM context.
 
         Parameters

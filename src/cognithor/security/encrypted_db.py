@@ -34,7 +34,7 @@ __all__ = [
 ]
 
 
-class _DictRow(dict):
+class _DictRow(dict):  # type: ignore[type-arg]
     """Dict that also supports integer index access like sqlite3.Row."""
 
     __slots__ = ("_values",)
@@ -72,12 +72,12 @@ def compatible_row_factory() -> Any:
 
 _sqlcipher_available = False
 try:
-    import sqlcipher3 as sqlcipher
+    import sqlcipher3 as sqlcipher  # type: ignore[import-untyped]
 
     _sqlcipher_available = True
 except ImportError:
     try:
-        from pysqlcipher3 import dbapi2 as sqlcipher
+        from pysqlcipher3 import dbapi2 as sqlcipher  # type: ignore[import-not-found]
 
         _sqlcipher_available = True
     except ImportError:
@@ -358,7 +358,7 @@ def encrypted_connect(
             # DB exists but is unencrypted — migrate it to encrypted
             if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
                 try:
-                    conn = _migrate_to_encrypted(db_path, hex_key, check_same_thread)
+                    conn = _migrate_to_encrypted(db_path, hex_key, check_same_thread)  # type: ignore[assignment]
                     if conn:
                         log.info("encrypted_db_migrated", path=db_path[-30:])
                         return conn

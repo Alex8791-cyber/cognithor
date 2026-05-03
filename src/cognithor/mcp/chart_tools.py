@@ -326,7 +326,7 @@ class ChartTools:
         elif chart_type == "pie":
             # For pie, use a separate axis without background grid
             ax.grid(False)
-            wedges, texts, autotexts = ax.pie(
+            wedges, texts, autotexts = ax.pie(  # type: ignore[misc]
                 y_values,
                 labels=[str(v) for v in x_values],
                 colors=chart_colors[: len(x_values)],

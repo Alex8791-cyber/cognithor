@@ -76,8 +76,8 @@ def _register_system_routes(
 
         # RuntimeMonitor
         try:
-            from cognithor.openclaw.runtime_monitor import (
-                RuntimeMonitor,  # type: ignore[import-untyped]
+            from cognithor.openclaw.runtime_monitor import (  # type: ignore[import-untyped]
+                RuntimeMonitor,
             )
 
             monitor = RuntimeMonitor()

@@ -63,7 +63,7 @@ class A2AHTTPHandler:
         client_version: str = "",
     ) -> dict[str, Any]:
         """POST /a2a -- JSON-RPC 2.0 Dispatch."""
-        return await self.adapter.handle_a2a_request(
+        return await self.adapter.handle_a2a_request(  # type: ignore[no-any-return]
             body,
             auth_header=auth_header,
             client_version=client_version,
@@ -95,7 +95,7 @@ class A2AHTTPHandler:
 
         handler = self  # Closure reference
 
-        @app.get("/.well-known/agent.json")
+        @app.get("/.well-known/agent.json")  # type: ignore[misc]
         async def well_known_agent_card() -> JSONResponse:
             """Agent Card Discovery (A2A RC v1.0)."""
             card = await handler.handle_agent_card()
@@ -104,7 +104,7 @@ class A2AHTTPHandler:
                 headers=handler._response_headers(),
             )
 
-        @app.post("/a2a")
+        @app.post("/a2a")  # type: ignore[misc]
         async def a2a_jsonrpc(request: Request) -> JSONResponse:
             """JSON-RPC 2.0 Endpoint (A2A RC v1.0)."""
             client_ip = request.client.host if request.client else "unknown"
@@ -153,7 +153,7 @@ class A2AHTTPHandler:
                 headers=handler._response_headers(),
             )
 
-        @app.post("/a2a/stream")
+        @app.post("/a2a/stream")  # type: ignore[misc]
         async def a2a_stream(request: Request) -> StreamingResponse:
             """SSE Streaming Endpoint (message/stream)."""
             try:
@@ -181,7 +181,7 @@ class A2AHTTPHandler:
                 headers={A2A_VERSION_HEADER: A2A_PROTOCOL_VERSION},
             )
 
-        @app.get("/a2a/health")
+        @app.get("/a2a/health")  # type: ignore[misc]
         async def a2a_health() -> JSONResponse:
             """Health Check."""
             result = await handler.handle_health()

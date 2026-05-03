@@ -44,7 +44,7 @@ def open_sqlite(
 
     if encryption_key:
         try:
-            from pysqlcipher3 import dbapi2 as sqlcipher
+            from pysqlcipher3 import dbapi2 as sqlcipher  # type: ignore[import-not-found]
 
             conn = sqlcipher.connect(db_path, check_same_thread=False)
             # PRAGMA key cannot use parameterized queries; escape single quotes

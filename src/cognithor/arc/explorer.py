@@ -162,7 +162,7 @@ class HypothesisDrivenExplorer:
         try:
             from arcengine import GameAction
 
-            return [GameAction(v) for v in action_space]
+            return [GameAction(v) for v in action_space]  # type: ignore[call-arg]
         except (ImportError, ValueError):
             # Can't convert — return as-is
             return list(action_space)
@@ -362,7 +362,7 @@ class HypothesisDrivenExplorer:
             action_counts[action] = effects.get("total", 0) if isinstance(effects, dict) else 0
 
         if action_counts:
-            least_used = min(action_counts, key=action_counts.get)
+            least_used = min(action_counts, key=action_counts.get)  # type: ignore[arg-type]
             return least_used, {}
         return self._random_action()
 

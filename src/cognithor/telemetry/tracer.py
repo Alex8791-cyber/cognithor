@@ -428,7 +428,7 @@ class SpanContextManager:
     def __init__(self, span: Span | None, provider: TracerProvider) -> None:
         self._span = span
         self._provider = provider
-        self._token: contextvars.Token | None = None
+        self._token: contextvars.Token | None = None  # type: ignore[type-arg]
 
     @property
     def span(self) -> Span | None:

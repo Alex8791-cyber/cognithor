@@ -91,10 +91,10 @@ def maybe_cleanup_sessions(gw: Gateway) -> None:
     if (now - gw._last_session_cleanup) >= gw._CLEANUP_INTERVAL_SECONDS:
         cleanup_stale_sessions(gw)
         # GDPR retention: also clean up persisted sessions & channel mappings
-        if gw._session_store:
+        if gw._session_store:  # type: ignore[attr-defined]
             try:
-                gw._session_store.cleanup_old_sessions(max_age_days=30)
-                gw._session_store.cleanup_channel_mappings(max_age_days=30)
+                gw._session_store.cleanup_old_sessions(max_age_days=30)  # type: ignore[attr-defined]
+                gw._session_store.cleanup_channel_mappings(max_age_days=30)  # type: ignore[attr-defined]
             except Exception as exc:
                 log.warning("gdpr_retention_cleanup_failed", error=str(exc))
 
@@ -144,8 +144,8 @@ def get_or_create_session(
             return gw._sessions[key]
 
         # 2. SQLite-Persistenz
-        if gw._session_store:
-            stored = gw._session_store.load_session(channel, user_id, agent_name)
+        if gw._session_store:  # type: ignore[attr-defined]
+            stored = gw._session_store.load_session(channel, user_id, agent_name)  # type: ignore[attr-defined]
             if stored and stored.agent_name == agent_name:
                 gw._sessions[key] = stored
                 gw._session_last_accessed[key] = time.monotonic()
@@ -169,8 +169,8 @@ def get_or_create_session(
         gw._session_last_accessed[key] = time.monotonic()
 
     # Persist (outside lock, does not block other sessions)
-    if gw._session_store:
-        gw._session_store.save_session(session)
+    if gw._session_store:  # type: ignore[attr-defined]
+        gw._session_store.save_session(session)  # type: ignore[attr-defined]
 
     log.info(
         "session_created",
@@ -208,14 +208,14 @@ def get_or_create_working_memory(gw: Gateway, session: SessionContext) -> Workin
     # CAG prefix is prepared in handle_message() (async context), not here
 
     # Chat-History aus SessionStore wiederherstellen
-    if gw._session_store:
+    if gw._session_store:  # type: ignore[attr-defined]
         try:
             history_limit = getattr(
                 getattr(gw._config, "session", None),
                 "chat_history_limit",
                 100,
             )
-            history = gw._session_store.load_chat_history(
+            history = gw._session_store.load_chat_history(  # type: ignore[attr-defined]
                 session.session_id,
                 limit=history_limit,
             )

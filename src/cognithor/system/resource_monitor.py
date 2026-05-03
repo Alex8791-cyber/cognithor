@@ -79,7 +79,7 @@ class ResourceMonitor:
 
         # CPU + RAM via psutil
         try:
-            import psutil
+            import psutil  # type: ignore[import-untyped]
 
             snap.cpu_percent = psutil.cpu_percent(interval=0.1)
             mem = psutil.virtual_memory()

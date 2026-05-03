@@ -53,7 +53,7 @@ class WakeWordDetector:
         try:
             import json as _json  # noqa: F401
 
-            from vosk import KaldiRecognizer, Model
+            from vosk import KaldiRecognizer, Model  # type: ignore[import-untyped]
 
             model = Model(lang="de")
             self._model = KaldiRecognizer(model, self._sample_rate)
@@ -69,7 +69,7 @@ class WakeWordDetector:
     async def _load_porcupine(self) -> None:
         """Laedt Porcupine fuer Wake-Word-Detection."""
         try:
-            import pvporcupine
+            import pvporcupine  # type: ignore[import-not-found]
 
             self._model = pvporcupine.create(
                 keywords=self._keywords,

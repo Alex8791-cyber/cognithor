@@ -250,7 +250,7 @@ class HashlineAuditor:
                     raw = raw.strip()
                     if not raw:
                         continue
-                    result["total_entries"] += 1
+                    result["total_entries"] += 1  # type: ignore[operator]
                     try:
                         entry = json.loads(raw)
                     except json.JSONDecodeError:
@@ -275,7 +275,7 @@ class HashlineAuditor:
                         result["broken_at_line"] = line_no
                         result["status"] = "broken"
                     if result["broken_at_line"] is None:
-                        result["valid_entries"] += 1
+                        result["valid_entries"] += 1  # type: ignore[operator]
                     prev_hash = stored_hash or recomputed
         except OSError as exc:
             log.debug("audit_verify_io_error", error=str(exc))

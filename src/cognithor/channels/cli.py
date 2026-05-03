@@ -45,7 +45,7 @@ BANNER = r"""
 class CliChannel(Channel):
     """Terminal-REPL-Channel. [B§9.3]"""
 
-    def __init__(self, version: str = "0.1.0", config=None, api_port: int = 8741) -> None:
+    def __init__(self, version: str = "0.1.0", config=None, api_port: int = 8741) -> None:  # type: ignore[no-untyped-def]
         """Initialisiert den CLI-Channel mit Prompt-Toolkit."""
         self._handler: MessageHandler | None = None
         self._console = Console()

@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS reminders (
 def _try_plyer_notification(title: str, message: str, sound: bool) -> bool:
     """Attempt to send notification via plyer (cross-platform)."""
     try:
-        from plyer import notification as plyer_notif
+        from plyer import notification as plyer_notif  # type: ignore[import-not-found]
 
         plyer_notif.notify(
             title=title,

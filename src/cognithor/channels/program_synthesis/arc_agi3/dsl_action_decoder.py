@@ -112,7 +112,7 @@ class DSLActionDecoder(ActionDecoder):
             if live:
                 best = min(
                     live,
-                    key=lambda a: self._state_counter.count(current_hash, a.name),
+                    key=lambda a: self._state_counter.count(current_hash, a.name),  # type: ignore[union-attr]
                 )
                 best_count = self._state_counter.count(current_hash, best.name)
                 return best, (

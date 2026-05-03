@@ -48,7 +48,7 @@ class GarbageCollector:
         "min_reinforcements_to_protect": 3,
     }
 
-    def __init__(
+    def __init__(  # type: ignore[no-untyped-def]
         self,
         memory_store: "MemoryStore",
         vector_store: "VectorStore",
@@ -220,7 +220,7 @@ class GarbageCollector:
         """
         recency = self._get_recency(memory)
 
-        return (
+        return (  # type: ignore[no-any-return]
             recency < self.config["prune_threshold_recency"]
             and memory.entrenchment < self.config["min_entrenchment_to_protect"]
             and memory.reinforcement_count < self.config["min_reinforcements_to_protect"]

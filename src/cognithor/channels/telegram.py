@@ -267,7 +267,7 @@ class TelegramChannel(Channel):
             self._cleanup_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._cleanup_task
-            self._cleanup_task = None
+            self._cleanup_task = None  # type: ignore[assignment]
 
         try:
             if self._use_webhook:
@@ -318,7 +318,7 @@ class TelegramChannel(Channel):
         await site.start()
 
         # Register webhook at Telegram
-        await self._app.bot.set_webhook(
+        await self._app.bot.set_webhook(  # type: ignore[union-attr]
             url=self._webhook_url,
             drop_pending_updates=True,
             allowed_updates=["message", "callback_query"],
@@ -349,8 +349,8 @@ class TelegramChannel(Channel):
 
         try:
             data = await request.json()
-            update = Update.de_json(data, self._app.bot)
-            await self._app.process_update(update)
+            update = Update.de_json(data, self._app.bot)  # type: ignore[union-attr]
+            await self._app.process_update(update)  # type: ignore[union-attr]
             return web.Response(status=200)
         except Exception as exc:
             logger.error("Telegram-Webhook-Fehler: %s", exc)
@@ -581,7 +581,7 @@ class TelegramChannel(Channel):
         consent_mgr = None
         try:
             if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
-                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
+                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)  # type: ignore[union-attr]
         except Exception:
             logger.debug("telegram_voice_consent_check_failed", exc_info=True)
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -646,7 +646,7 @@ class TelegramChannel(Channel):
         consent_mgr = None
         try:
             if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
-                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
+                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)  # type: ignore[union-attr]
         except Exception:
             logger.debug("telegram_photo_consent_check_failed", exc_info=True)
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -749,7 +749,7 @@ class TelegramChannel(Channel):
         consent_mgr = None
         try:
             if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
-                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
+                consent_mgr = getattr(self._handler.__self__, "consent_manager", None)  # type: ignore[union-attr]
         except Exception:
             logger.debug("telegram_document_consent_check_failed", exc_info=True)
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -867,7 +867,7 @@ class TelegramChannel(Channel):
 
         # GDPR consent check
         consent_mgr = None
-        if hasattr(self, "_handler") and self._handler and hasattr(self._handler, "__self__"):
+        if hasattr(self, "_handler") and self._handler and hasattr(self._handler, "__self__"):  # type: ignore[truthy-function]
             consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
 
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):
@@ -946,7 +946,7 @@ class TelegramChannel(Channel):
             # Disable CUDA if cuDNN is unavailable (prevents DLL crash)
             if not os.environ.get("CUDA_VISIBLE_DEVICES"):
                 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-            from faster_whisper import WhisperModel
+            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
             if self._whisper_model is None:
                 self._whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
@@ -975,7 +975,7 @@ class TelegramChannel(Channel):
         async def _typing_loop() -> None:
             while True:
                 try:
-                    await self._app.bot.send_chat_action(
+                    await self._app.bot.send_chat_action(  # type: ignore[union-attr]
                         chat_id=chat_id,
                         action="typing",
                     )
@@ -993,7 +993,7 @@ class TelegramChannel(Channel):
         """Stoppt den Typing-Indicator."""
         if task:
             task.cancel()
-        existing = self._typing_tasks.pop(chat_id, None)
+        existing = self._typing_tasks.pop(chat_id, None)  # type: ignore[arg-type]
         if existing and existing is not task:
             existing.cancel()
 

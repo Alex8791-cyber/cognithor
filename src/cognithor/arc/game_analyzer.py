@@ -322,7 +322,7 @@ class GameAnalyzer:
                 return cached
 
         # Create environment
-        env = self._arcade.make(game_id)
+        env = self._arcade.make(game_id)  # type: ignore[union-attr]
         obs = env.reset()
         initial_grid = safe_frame_extract(obs)
 
@@ -391,7 +391,7 @@ class GameAnalyzer:
 
         profile = GameProfile(
             game_id=game_id,
-            game_type=game_type,
+            game_type=game_type,  # type: ignore[arg-type]
             available_actions=action_ids,
             click_zones=click_zones,
             target_colors=target_colors,

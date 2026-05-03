@@ -123,7 +123,7 @@ class SignalChannel(Channel):
 
         # Whisper fuer Voice-Transkription laden
         try:
-            from faster_whisper import WhisperModel
+            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
             self._whisper = WhisperModel("base", device="auto", compute_type="int8")
             logger.info("Signal: faster-whisper geladen fuer Voice-Transkription")

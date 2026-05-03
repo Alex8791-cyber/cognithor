@@ -42,7 +42,7 @@ class SecureTokenStore:
         if _HAS_CRYPTO:
             self._fernet = Fernet(Fernet.generate_key())
         else:
-            self._fernet = None
+            self._fernet = None  # type: ignore[assignment]
             logger.error(
                 "SECURITY DEGRADATION: cryptography not installed -- "
                 "Token store uses Base64 fallback (NOT encrypted!). "

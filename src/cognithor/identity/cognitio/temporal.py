@@ -373,9 +373,9 @@ class TemporalDensityTracker:
 
             # Idle time: from end of last session to start of current session
             if self._current_session is not None:
-                sleep_td = self._current_session.started_at - last.ended_at
+                sleep_td = self._current_session.started_at - last.ended_at  # type: ignore[operator]
             else:
-                sleep_td = now - last.ended_at
+                sleep_td = now - last.ended_at  # type: ignore[operator]
 
             if sleep_td.total_seconds() > 60:
                 parts.append(
