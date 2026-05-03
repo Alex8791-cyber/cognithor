@@ -26,6 +26,8 @@ from typing import TYPE_CHECKING, Any
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from cognithor.channels.program_synthesis.integration.pge_adapter import (
         ProgramSynthesisChannel,
     )
@@ -36,8 +38,23 @@ __all__ = [
     "handle_pse_is_synthesizable",
     "handle_pse_status",
     "handle_pse_synthesize",
+    "handle_pse_synthesize_refined",
     "register_pse_tools",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Sprint-25 — Planner-Refinement-Loop
+#
+# The new ``pse_synthesize_refined`` tool wraps :func:`handle_pse_synthesize`
+# with a single LLM-refinement pass. It needs an ``llm_fn`` that the gateway
+# passes in at registration time. We store it in a module-level holder so
+# ``handle_pse_synthesize_refined`` (which the MCP client calls without
+# context) can pick it up. ``None`` means the gateway didn't have an LLM
+# wired yet — refinement degrades to a neutral-verdict no-op.
+# ---------------------------------------------------------------------------
+
+_refinement_llm_fn: Callable[[str], Awaitable[str]] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -440,16 +457,113 @@ async def handle_pse_synthesize(**kwargs: Any) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Sprint-25 — pse_synthesize_refined
+# ---------------------------------------------------------------------------
+
+
+async def handle_pse_synthesize_refined(**kwargs: Any) -> dict[str, Any]:
+    """Synthesise a program AND run a single LLM-refinement pass over it.
+
+    Same input shape as :func:`handle_pse_synthesize` plus:
+
+      * ``task_description`` (str): natural-language description the LLM
+        uses to critique the synthesised program. When empty, the
+        refinement still runs but the prompt explicitly notes the
+        absence — the LLM's verdict is naturally less confident.
+
+    Returns the same structured shape as ``pse_synthesize`` plus a
+    ``refinement`` field carrying the LLM verdict::
+
+        {
+            ...same as pse_synthesize...,
+            "refinement": {
+                "verdict": "accept" | "caution" | "reject" | "neutral",
+                "explanation": str,
+                "confidence": "high" | "medium" | "low",
+            } | None,
+        }
+
+    ``refinement`` is ``None`` when synthesis itself didn't return a
+    program (no successful program → nothing to refine). Otherwise the
+    refinement always runs; if no ``llm_fn`` is wired in, it returns a
+    neutral verdict with reason ``"no llm_fn wired (refinement
+    disabled)"``.
+
+    Failure-tolerant: a refinement parse error or an exception inside
+    ``llm_fn`` collapses to a neutral verdict — the synthesis result
+    itself is **never** discarded by a refinement failure.
+    """
+    task_description = str(kwargs.pop("task_description", "") or "")
+
+    synthesis = await handle_pse_synthesize(**kwargs)
+
+    # Bail early if synthesis itself errored or returned nothing to refine.
+    program = synthesis.get("program")
+    if not isinstance(program, str) or not program.strip():
+        synthesis["refinement"] = None
+        return synthesis
+
+    try:
+        from cognithor.core.pse_refinement import refine_pse_program
+    except ImportError as exc:
+        log.warning("pse_refinement_unavailable", error=str(exc))
+        synthesis["refinement"] = None
+        return synthesis
+
+    n_examples = (
+        len(kwargs.get("examples") or [])  # post-pop: examples is still in kwargs
+    )
+    # ``handle_pse_synthesize`` may auto-promote one of the examples into
+    # held_out. Use the canonical counts from the synthesis result so the
+    # refinement prompt reflects what the engine actually saw.
+    n_held_out = int(synthesis.get("held_out_examples", 0) or 0)
+    n_examples = max(0, n_examples - n_held_out) if n_held_out else n_examples
+
+    score = float(synthesis.get("score", 0.0) or 0.0)
+
+    verdict = await refine_pse_program(
+        program=program,
+        task_description=task_description,
+        n_examples=n_examples,
+        n_held_out=n_held_out,
+        score=score,
+        llm_fn=_refinement_llm_fn,
+    )
+    log.info(
+        "pse_synthesize_refined.done",
+        synthesis_status=synthesis.get("status"),
+        verdict=verdict.verdict,
+        confidence=verdict.confidence,
+    )
+    synthesis["refinement"] = verdict.to_dict()
+    return synthesis
+
+
+# ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
 
 
-def register_pse_tools(mcp_client: Any) -> None:
-    """Register all three PSE tools with the MCP client.
+def register_pse_tools(
+    mcp_client: Any,
+    *,
+    llm_fn: Callable[[str], Awaitable[str]] | None = None,
+) -> None:
+    """Register all PSE tools with the MCP client.
 
     Mirrors :func:`cognithor.mcp.arc_tools.register_arc_tools` shape so the
     gateway tool-phase wiring is uniform.
+
+    Args:
+        mcp_client: The MCP client whose ``register_tool`` method takes
+            ``(name, description, handler, schema)``.
+        llm_fn: Optional async callable ``str -> str`` used by the
+            Sprint-25 refinement tool. When None, ``pse_synthesize_refined``
+            still registers but the refinement step degrades to a neutral
+            verdict (synthesis result stays intact).
     """
+    global _refinement_llm_fn
+    _refinement_llm_fn = llm_fn
     register = getattr(mcp_client, "register_tool", None)
     if not callable(register):
         log.warning("pse_tools.mcp_client_missing_register_tool")
@@ -524,7 +638,57 @@ def register_pse_tools(mcp_client: Any) -> None:
             "required": ["examples"],
         },
     )
+    register(
+        name="pse_synthesize_refined",
+        description=(
+            "Sprint-25: Hybrid-Pipeline (LLM → Synthese → LLM-Refinement). "
+            "Synthesises a program from input/output examples (same engine "
+            "as pse_synthesize), then runs ONE LLM-refinement pass over the "
+            "result and returns a structured verdict (accept | caution | "
+            "reject) with explanation + confidence. Useful when a downstream "
+            "consumer wants a sanity-check that the synthesised program "
+            "matches the natural-language task — not just the demos."
+        ),
+        handler=handle_pse_synthesize_refined,
+        schema={
+            "type": "object",
+            "properties": {
+                "examples": {
+                    "type": "array",
+                    "description": "Same shape as pse_synthesize.examples.",
+                },
+                "held_out": {
+                    "type": "array",
+                    "description": "Same as pse_synthesize.held_out.",
+                },
+                "auto_held_out": {
+                    "type": "boolean",
+                    "description": "Same as pse_synthesize.auto_held_out.",
+                },
+                "budget": {
+                    "type": "object",
+                    "description": "Same as pse_synthesize.budget.",
+                },
+                "task_description": {
+                    "type": "string",
+                    "description": (
+                        "Natural-language description of what the program "
+                        "should do. Used by the LLM-refinement pass to "
+                        "judge whether the synthesised program is "
+                        "semantically right (not just demo-matching)."
+                    ),
+                },
+            },
+            "required": ["examples"],
+        },
+    )
     log.info(
         "pse_tools_registered",
-        tools=["pse_is_synthesizable", "pse_status", "pse_synthesize"],
+        tools=[
+            "pse_is_synthesizable",
+            "pse_status",
+            "pse_synthesize",
+            "pse_synthesize_refined",
+        ],
+        refinement_llm_wired=llm_fn is not None,
     )

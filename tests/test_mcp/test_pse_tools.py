@@ -342,7 +342,9 @@ class TestHandleSynthesize:
 
 
 class TestRegisterPseTools:
-    def test_registers_three_tools(self) -> None:
+    def test_registers_all_four_tools(self) -> None:
+        # Sprint-25 added ``pse_synthesize_refined``. The set is the
+        # contract the gateway relies on.
         registered: list[dict[str, Any]] = []
 
         class _StubMCP:
@@ -351,7 +353,12 @@ class TestRegisterPseTools:
 
         register_pse_tools(_StubMCP())
         names = {r["name"] for r in registered}
-        assert names == {"pse_is_synthesizable", "pse_status", "pse_synthesize"}
+        assert names == {
+            "pse_is_synthesizable",
+            "pse_status",
+            "pse_synthesize",
+            "pse_synthesize_refined",
+        }
 
     def test_missing_register_tool_no_crash(self) -> None:
         # MCP clients without a register_tool callable must NOT crash the
@@ -360,3 +367,23 @@ class TestRegisterPseTools:
             pass
 
         register_pse_tools(_BareClient())  # would raise AttributeError if buggy
+
+    def test_llm_fn_is_stored_for_refinement(self) -> None:
+        # Sprint-25: when the gateway passes an llm_fn, the module-level
+        # holder picks it up so the tool handler can use it without
+        # threading the callable through every MCP register call.
+        from cognithor.mcp import pse_tools
+
+        async def _fake_llm(_p: str) -> str:
+            return ""
+
+        class _StubMCP:
+            def register_tool(self, **kwargs: Any) -> None:
+                pass
+
+        register_pse_tools(_StubMCP(), llm_fn=_fake_llm)
+        assert pse_tools._refinement_llm_fn is _fake_llm
+
+        # And clears back to None on subsequent registration without one.
+        register_pse_tools(_StubMCP())
+        assert pse_tools._refinement_llm_fn is None
