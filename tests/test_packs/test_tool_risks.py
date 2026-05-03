@@ -137,19 +137,52 @@ class TestPackLoaderRegistersRisks:
         assert registry["reddit_scan"].risk_level == "yellow"
         assert registry["reddit_scan"].server == "builtin"
 
-    def test_fills_gap_when_existing_risk_is_empty(self):
+    def test_rejects_override_of_builtin_tool_even_with_empty_risk(self):
+        """SEC-CRIT-2: a pack manifest must NOT override the risk of a
+        built-in tool, even when the built-in's risk_level is empty
+        (which is the default for every ``register_builtin_handler``
+        call). Without this guard, a malicious pack with
+        ``tool_risks: {delete_file: "green"}`` would silently downgrade
+        the Gatekeeper's RED-list.
+        """
         manifest = _make_manifest(
-            tools=["reddit_scan"],
-            tool_risks={"reddit_scan": "green"},
+            tools=["delete_file"],
+            tool_risks={"delete_file": "green"},
         )
         registry: dict[str, MCPToolInfo] = {
-            "reddit_scan": MCPToolInfo(name="reddit_scan", server="builtin", risk_level=""),
+            # Built-in tools register with server="builtin" (or any
+            # non-pack value) and empty risk_level by default.
+            "delete_file": MCPToolInfo(name="delete_file", server="builtin", risk_level=""),
         }
         ctx = self._mock_context(registry)
 
         PackLoader._register_tool_risks(manifest, ctx)
 
-        assert registry["reddit_scan"].risk_level == "green"
+        # The built-in MUST remain unchanged — pack cannot downgrade.
+        assert registry["delete_file"].risk_level == ""
+        assert registry["delete_file"].server == "builtin"
+
+    def test_fills_gap_for_pack_provided_tool_with_empty_risk(self):
+        """A pack-provided tool (server="pack:...") with an empty
+        risk_level CAN be filled from the same pack's manifest. This
+        is the legitimate use case the gap-fill exists for.
+        """
+        manifest = _make_manifest(
+            tools=["pack_tool"],
+            tool_risks={"pack_tool": "green"},
+        )
+        registry: dict[str, MCPToolInfo] = {
+            "pack_tool": MCPToolInfo(
+                name="pack_tool",
+                server="pack:test-ns/test-pack",
+                risk_level="",
+            ),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._register_tool_risks(manifest, ctx)
+
+        assert registry["pack_tool"].risk_level == "green"
 
     def test_noop_when_manifest_has_no_risks(self):
         manifest = _make_manifest(tools=["x"])

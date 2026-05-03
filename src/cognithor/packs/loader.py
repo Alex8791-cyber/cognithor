@@ -329,9 +329,29 @@ class PackLoader:
         pack_origin = f"pack:{manifest.qualified_id}"
         for tool_name, risk in manifest.tool_risks.items():
             existing = registry.get(tool_name)
-            # Preserve a non-empty existing risk_level; only fill gaps.
-            if existing is not None and getattr(existing, "risk_level", ""):  # type: ignore[arg-type]
-                continue
+            # Reject overrides of built-in tools — only pack-provided tools
+            # may have their risk_level set via the manifest. A built-in's
+            # ``server`` field never starts with ``"pack:"``; if a built-in
+            # is already registered, refuse the override even when its
+            # ``risk_level`` is empty (which is the default for every
+            # ``register_builtin_handler`` call). Without this guard, a
+            # malicious pack manifest with ``tool_risks: {delete_file:
+            # "green"}`` would downgrade the Gatekeeper's RED-list to
+            # GREEN and bypass risk classification entirely.
+            if existing is not None:
+                existing_server = getattr(existing, "server", "") or ""
+                if not existing_server.startswith("pack:"):
+                    _log.warning(
+                        "pack_tool_risk_override_rejected",
+                        pack=manifest.qualified_id,
+                        tool=tool_name,
+                        existing_server=existing_server,
+                        attempted_risk=risk,
+                    )
+                    continue
+                # Pack-on-pack override: keep first-pack's non-empty risk_level.
+                if getattr(existing, "risk_level", ""):
+                    continue
             registry[tool_name] = MCPToolInfo(
                 name=tool_name,
                 server=pack_origin,
