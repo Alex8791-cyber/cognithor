@@ -60,6 +60,13 @@ class ArcAuditEvent:
     mtp_drafts_proposed: int | None = None
     mtp_drafts_accepted: int | None = None
     mtp_acceptance_rate: float | None = None
+    # Sprint-19 Hebel P — raw LLM reasoning persisted with the step.
+    # Lets post-mortem analysis read what the model was thinking when
+    # it picked a destructive plan-step. Truncated to 4000 chars by
+    # the producer to keep audit JSONL parse-friendly. ``None`` means
+    # "no LLM call drove this step" (DSL fallback) or "the choice-fn
+    # didn't surface a reasoning string".
+    llm_reasoning: str | None = None
 
 
 def _event_to_json(event: ArcAuditEvent) -> str:
@@ -142,6 +149,7 @@ class ArcAuditTrail:
         mtp_drafts_proposed: int | None = None,
         mtp_drafts_accepted: int | None = None,
         mtp_acceptance_rate: float | None = None,
+        llm_reasoning: str | None = None,
     ) -> str:
         """Log a single agent step and return its chain hash.
 
@@ -149,7 +157,19 @@ class ArcAuditTrail:
         same hash-chained event so per-step token counts + speculative-
         decoding stats are tamper-evident alongside the action history.
         All defaults ``None`` preserve backwards compatibility.
+
+        Sprint-19 Hebel P: ``llm_reasoning`` carries the model's
+        top-level reasoning string (truncated to 4000 chars by the
+        producer) so post-mortem analysis can read what the LLM was
+        thinking when it picked the action — without re-running the
+        episode.
         """
+        # Hebel P safety: if the producer forgot to truncate, do it
+        # here. Audit JSONL parsers choke on arbitrarily-long fields,
+        # and 4000 chars is plenty for one reasoning sentence + plan
+        # step rationales.
+        if llm_reasoning is not None and len(llm_reasoning) > 4000:
+            llm_reasoning = llm_reasoning[:4000]
         event = ArcAuditEvent(
             timestamp=time.time(),
             event_type="step",
@@ -168,6 +188,7 @@ class ArcAuditTrail:
             mtp_drafts_proposed=mtp_drafts_proposed,
             mtp_drafts_accepted=mtp_drafts_accepted,
             mtp_acceptance_rate=mtp_acceptance_rate,
+            llm_reasoning=llm_reasoning,
         )
         return self.log_event(event)
 

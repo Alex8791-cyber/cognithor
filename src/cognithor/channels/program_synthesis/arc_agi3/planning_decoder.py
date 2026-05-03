@@ -307,6 +307,27 @@ class PlanningLLMActionDecoder(ActionDecoder):
                 )
             except Exception:
                 pass
+        if "steps_at_current_level" in existing:
+            # Sprint-19 Hebel O: count how many consecutive recent memory
+            # entries share the current ``levels_completed``. The vision
+            # prompt template reads this to decide whether to inject a
+            # stalled-progress warning. Walk memory.window() from most
+            # recent backwards while the level matches.
+            try:
+                current_level = latest_frame.levels_completed
+                steps_at = 0
+                # Use a generous window — bp35 has 9 levels with episodes
+                # capped at 80 steps, so a stall of >50 steps is the
+                # whole episode. Walking 80 entries is microsecond-cheap
+                # so we don't bother capping.
+                for step_entry in self._memory.window(80):
+                    if step_entry.levels_completed == current_level:
+                        steps_at += 1
+                    else:
+                        break
+                ctx_kwargs["steps_at_current_level"] = steps_at
+            except Exception:
+                pass
         ctx = FrameContext(**ctx_kwargs)
 
         try:

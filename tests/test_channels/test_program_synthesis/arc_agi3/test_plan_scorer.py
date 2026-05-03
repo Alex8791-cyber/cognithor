@@ -85,13 +85,20 @@ class TestScorePlanComponents:
         """Hebel N: if the LAST action produced pixΔ>500 AND the plan's
         first action repeats it, the plan is multiplicatively penalised
         (0.5×). A plan that picks a different first-action wins.
+
+        pixΔ tuned to (500, 1000] so this test exercises the
+        single-action-repeat trigger ONLY, not Hebel Q's
+        single-spike-above-1000 trigger.
         """
-        # Build memory: one tame ACTION3 step, then one ACTION7 that
-        # flipped the entire 64×64 grid (pixΔ ~= 4096).
+        # Build memory with a mid-magnitude change: 600 cells flip
+        # (above the 500 single-action threshold, below the 1000
+        # single-spike threshold).
         m = EpisodeMemory()
         before = np.zeros((64, 64), dtype=np.int8)
         m.append(grid=before, action_name="ACTION3", levels_completed=0)
-        after = np.full((64, 64), 4, dtype=np.int8)
+        after = np.zeros((64, 64), dtype=np.int8)
+        # Flip 600 cells (10 rows × 60 columns).
+        after[:10, :60] = 4
         m.append(grid=after, action_name="ACTION7", levels_completed=0)
 
         # Plan A repeats the destructive action; Plan B picks something else.
@@ -130,6 +137,39 @@ class TestScorePlanComponents:
         # Both should be in the same ballpark; the repeat is targeted +
         # different colour so it can even win on pure quality.
         assert s_repeat >= s_pivot * 0.95
+
+    def test_pix_delta_safety_single_spike_above_1000_triggers_gate(self) -> None:
+        """Sprint-19 Hebel Q: a SINGLE step with pixΔ>1000 (massive
+        single-spike) is enough to trigger the gate even when the
+        other prior step was tame and the plan's first action does
+        NOT match the spike's action. Catches Run #28's GAME_OVER
+        pattern (isolated 1220-spike with rotating actions).
+        """
+        m = EpisodeMemory()
+        # 64×64 zero grid → 64×64 mid-grid (small change ~ 16 cells)
+        small_after = np.zeros((64, 64), dtype=np.int8)
+        small_after[0, 0:16] = 4
+        # Then full-grid replacement (~4096 cells changed > 1000).
+        big_after = np.full((64, 64), 7, dtype=np.int8)
+        m.append(grid=np.zeros((64, 64), dtype=np.int8), action_name="ACTION1", levels_completed=0)
+        m.append(grid=small_after, action_name="ACTION3", levels_completed=0)  # pixΔ=16
+        m.append(grid=big_after, action_name="ACTION6", levels_completed=0)  # pixΔ=~4096
+
+        # Plan first action is ACTION3 (different from ACTION6 → no
+        # single-action-repeat trigger; already in memory → no Hebel T
+        # exploration bonus interfering). Prior step pair is
+        # (16, 4096) → second_pix_delta=16, last_pix_delta=4096,
+        # so two-consecutive-high (both >500) is also False (16<500).
+        # Only the new single-spike-trigger should fire.
+        plan_other = [
+            PlanStep("ACTION3", reasoning="r"),
+            PlanStep("ACTION6", data={"x": 5, "y": 5}, reasoning="r"),
+        ]
+        actions = ("ACTION3", "ACTION6", "ACTION7")
+        s_gated = score_plan(plan_other, memory=m, available_action_names=actions)
+        s_baseline = score_plan(plan_other, available_action_names=actions)
+        # The new single-spike trigger fires; gate halves the score.
+        assert s_gated == pytest.approx(s_baseline * 0.5, rel=1e-6)
 
     def test_pix_delta_safety_two_consecutive_high_penalises_any_first_action(self) -> None:
         """Hebel N broadened (Run #27 finding): when the LAST TWO
@@ -217,6 +257,100 @@ class TestExplorationBonus:
         plan = [PlanStep("ACTION99", reasoning="r")]
         s = score_plan(plan, memory=m, available_action_names=("ACTION3", "ACTION6"))
         assert s == 0.0
+
+
+class TestResetBonus:
+    """Sprint-19 Hebel R — additive +0.30 RESET-bonus when the agent is
+    both stalled (≥15 steps at current level) and the last action was
+    destructive (pixΔ>500). Score clamped to [0, 1].
+    """
+
+    def test_reset_plan_gets_bonus_when_stalled_and_destructive(self) -> None:
+        m = EpisodeMemory()
+        # 16 prior frames at level 0 → "stalled" (≥15)
+        for _ in range(15):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        # The 16th frame is the destructive one — pixΔ=600 from
+        # this transition (10 rows × 60 cols = 600 cells flipped).
+        destructive = np.zeros((64, 64), dtype=np.int8)
+        destructive[:10, :60] = 4
+        m.append(grid=destructive, action_name="ACTION6", levels_completed=0)
+
+        actions = ("RESET", "ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="restart")]
+        plan_other = [PlanStep("ACTION3", reasoning="explore")]
+        s_reset = score_plan(plan_reset, memory=m, available_action_names=actions)
+        s_other = score_plan(plan_other, memory=m, available_action_names=actions)
+        # The two plans have similar quality components, so the +0.30
+        # RESET-bonus must put plan_reset clearly ahead.
+        assert s_reset > s_other
+        assert s_reset - s_other >= 0.20
+
+    def test_no_bonus_when_reset_not_in_available(self) -> None:
+        m = EpisodeMemory()
+        for _ in range(15):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        destructive = np.zeros((64, 64), dtype=np.int8)
+        destructive[:10, :60] = 4
+        m.append(grid=destructive, action_name="ACTION6", levels_completed=0)
+
+        # RESET NOT in available_action_names → bonus never fires
+        # even if the plan claims to start with RESET.
+        actions = ("ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="r")]
+        s_reset = score_plan(plan_reset, memory=m, available_action_names=actions)
+        # validity=0 (RESET not in actions) → score=0 regardless of bonus.
+        assert s_reset == 0.0
+
+    def test_no_bonus_when_not_stalled(self) -> None:
+        m = EpisodeMemory()
+        # Only 5 prior frames at level 0 → below the 15-step threshold.
+        for _ in range(5):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        destructive = np.zeros((64, 64), dtype=np.int8)
+        destructive[:10, :60] = 4
+        m.append(grid=destructive, action_name="ACTION6", levels_completed=0)
+
+        actions = ("RESET", "ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="r")]
+        s_reset_with_memory = score_plan(plan_reset, memory=m, available_action_names=actions)
+        # Same plan but no memory at all (so the bonus path can't fire).
+        s_reset_no_memory = score_plan(plan_reset, available_action_names=actions)
+        # Bonus should NOT fire; the two scores match.
+        assert s_reset_with_memory == pytest.approx(s_reset_no_memory, rel=1e-6)
+
+    def test_no_bonus_when_last_pix_delta_low(self) -> None:
+        m = EpisodeMemory()
+        for _ in range(20):
+            m.append(
+                grid=np.zeros((64, 64), dtype=np.int8),
+                action_name="ACTION3",
+                levels_completed=0,
+            )
+        # Same grid → pixΔ=0 (below the 500 threshold).
+        m.append(
+            grid=np.zeros((64, 64), dtype=np.int8),
+            action_name="ACTION6",
+            levels_completed=0,
+        )
+
+        actions = ("RESET", "ACTION3", "ACTION6")
+        plan_reset = [PlanStep("RESET", reasoning="r")]
+        s_with_memory = score_plan(plan_reset, memory=m, available_action_names=actions)
+        s_no_memory = score_plan(plan_reset, available_action_names=actions)
+        assert s_with_memory == pytest.approx(s_no_memory, rel=1e-6)
 
 
 class TestPickBestPlan:
