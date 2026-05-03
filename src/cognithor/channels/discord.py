@@ -87,7 +87,7 @@ class DiscordChannel(Channel):
         self._token_store.store("discord_bot_token", token)
         self.channel_id = channel_id
         self._session_store = session_store
-        self._client: Any | None = None
+        self._client: Any = None
         self._handler: MessageHandler | None = None
         self._running = False
         self._bidirectional = False
@@ -126,7 +126,7 @@ class DiscordChannel(Channel):
                 self._session_users[key] = int(val)
 
         try:
-            import discord
+            import discord  # type: ignore[import-not-found]
         except ImportError:
             logger.error("discord.py nicht installiert. pip install discord.py")
             return
@@ -138,7 +138,7 @@ class DiscordChannel(Channel):
         client = discord.Client(intents=intents)
         self._client = client
 
-        @client.event
+        @client.event  # type: ignore[misc]
         async def on_ready() -> None:
             self._running = True
             self._bidirectional = True
@@ -147,11 +147,11 @@ class DiscordChannel(Channel):
                 client.user,
             )
 
-        @client.event
+        @client.event  # type: ignore[misc]
         async def on_message(message: Any) -> None:
             await self._on_message(message)
 
-        @client.event
+        @client.event  # type: ignore[misc]
         async def on_reaction_add(reaction: Any, user: Any) -> None:
             await self._on_reaction(reaction, user)
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, TypeVar, overload
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -77,6 +77,12 @@ class TTLDict[KT, VT]:
 
         self._maybe_cleanup(now)
 
+    @overload
+    def get(self, key: KT) -> VT | None: ...
+    @overload
+    def get(self, key: KT, default: VT) -> VT: ...
+    @overload
+    def get(self, key: KT, default: None) -> VT | None: ...
     def get(self, key: KT, default: VT | None = None) -> VT | None:
         """Gibt den Wert zurueck oder default wenn abgelaufen/nicht vorhanden."""
         now = time.monotonic()
@@ -104,6 +110,12 @@ class TTLDict[KT, VT]:
             raise KeyError(key)
         return entry.value
 
+    @overload
+    def setdefault(self, key: KT) -> VT | None: ...
+    @overload
+    def setdefault(self, key: KT, default: VT) -> VT: ...
+    @overload
+    def setdefault(self, key: KT, default: None) -> VT | None: ...
     def setdefault(self, key: KT, default: VT | None = None) -> VT | None:
         """Gibt den Wert zurueck wenn vorhanden, sonst setzt default und gibt ihn zurueck.
 

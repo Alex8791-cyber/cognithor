@@ -113,7 +113,7 @@ class TestLearningPlan:
         assert lp.status == "planning"
         assert lp.sub_goals == []
         assert lp.sources == []
-        assert lp.expansions == 0
+        assert lp.expansions == []
         assert len(lp.id) == 32  # full uuid hex
 
     def test_goal_slug_generation(self):

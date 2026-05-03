@@ -279,6 +279,10 @@ class CognithorArcAgent:
         if self.adapter.level_step_count >= self.max_steps_per_level:
             return "DONE"
 
+        assert self.current_obs is not None, "_step requires an initialised observation"
+        action_str: str | None = None
+        action: Any = None
+        data: dict[str, Any] = {}
         current_hash = self.state_graph.hash_grid(self.current_obs.raw_grid)
 
         # === VISION GUIDE: consult LLM when due (before any action selection) ===
@@ -290,7 +294,7 @@ class CognithorArcAgent:
             if guidance and guidance.get("next_action"):
                 action = self._resolve_action(guidance["next_action"])
                 if action is not None:
-                    data: dict[str, Any] = {}
+                    data = {}
                     action_str = self._action_to_str(action, data)
                     self.vision_guide.actions_followed += 1
 
@@ -314,6 +318,7 @@ class CognithorArcAgent:
             and self._path_index < len(self._current_path)
         ):
             action_str, action_data, expected_next = self._current_path[self._path_index]
+            assert action_str is not None, "navigation path entries always carry an action_str"
             action = self._resolve_action(action_str)
             data = action_data or {}
 
@@ -353,9 +358,6 @@ class CognithorArcAgent:
         available_names = [getattr(a, "name", str(a)) for a in available_actions]
 
         # Decision priority: CNN prediction → Graph exploration → Explorer fallback
-        action_str: str | None = None
-        action: Any = None
-        data: dict[str, Any] = {}
 
         # 1. CNN-guided action selection (after enough training data)
         if self._cnn_trainer is not None and self.adapter.level_step_count > 20:
@@ -465,6 +467,7 @@ class CognithorArcAgent:
 
     def _record_step(self, previous_obs: Any, action_str: str, data: dict[str, Any]) -> None:
         """Record transition in memory, audit trail, AND state graph."""
+        assert self.current_obs is not None, "_record_step requires an initialised observation"
         full_action = (
             self._action_to_str(self._resolve_action(action_str), data) if data else action_str
         )
@@ -489,6 +492,7 @@ class CognithorArcAgent:
 
     def _check_game_state(self) -> str:
         """Evaluate terminal game state from current observation."""
+        assert self.current_obs is not None, "_check_game_state requires an initialised observation"
         state_str = str(self.current_obs.game_state)
         if "WIN" in state_str:
             return "WIN"
@@ -521,8 +525,14 @@ class CognithorArcAgent:
         try:
             from arcengine import GameAction
 
-            return GameAction(value)
-        except (ImportError, ValueError):
+            for member in GameAction:
+                member_value = getattr(member, "value", None)
+                if isinstance(member_value, tuple) and member_value and member_value[0] == value:
+                    return member
+                if member_value == value:
+                    return member
+            return None
+        except ImportError:
             return None
 
     # ------------------------------------------------------------------
@@ -598,6 +608,7 @@ class CognithorArcAgent:
         Returns:
             ``(action, data)`` — either the LLM's recommendation or the default.
         """
+        assert self.current_obs is not None, "LLM planner requires an initialised observation"
         try:
             state_desc = self.encoder.encode_for_llm(
                 self.current_obs.raw_grid,

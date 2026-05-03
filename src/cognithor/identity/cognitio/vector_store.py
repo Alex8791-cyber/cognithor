@@ -30,6 +30,9 @@ class VectorStore:
         collection_name: ChromaDB collection name
     """
 
+    _client: Any
+    _collection: Any
+
     def __init__(
         self,
         persist_dir: str = "data/chroma_db",
@@ -37,8 +40,6 @@ class VectorStore:
     ) -> None:
         self.persist_dir = persist_dir
         self.collection_name = collection_name
-        self._client = None
-        self._collection = None
         self._initialize()
 
     def _initialize(self) -> None:
@@ -254,7 +255,7 @@ class VectorStore:
         """
         max_str = VectorStore._META_MAX_STR
         max_list = VectorStore._META_MAX_LIST
-        clean = {}
+        clean: dict[str, Any] = {}
         for key, value in metadata.items():
             if isinstance(value, int | float | bool):
                 clean[key] = value
