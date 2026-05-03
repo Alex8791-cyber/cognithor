@@ -355,16 +355,18 @@ def _make_llm_vision(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
         choice_fn = build_inprocess_vllm_vision_planning_choice_fn(
             kv_cache_dtype="fp8",
             temperature=0.0,
-            # Sprint-19 Run #25 finding: max_tokens=2048 caused 76/80
-            # LLM calls to hit ``finish_reason="length"`` — the model
-            # was truncated mid-output before the closing JSON ``}``,
-            # so EVERY plan was unparseable and the upstream decoder
-            # silently fell back to its DSL policy. Bumped to 4096 so
-            # Qwen3.6 has room to finish its plan-JSON. Cost increase
-            # is modest because vLLM batches ``n=plan_candidates`` in
-            # parallel (shared prefill, parallel decode) — empirically
-            # ~1.3x wall-clock for n=3 at 4096 tokens.
-            max_tokens=4096,
+            # Sprint-19 Run #27 finding: 5/48 LLM calls again hit
+            # ``finish_reason="length"`` at the new 4096 budget — the
+            # Hebel M prompt additions (cluster summary + delta-window
+            # with explicit pixΔ trajectory + the longer numeric
+            # PLAN-PRINCIPLE rule) push input + reasoning past 4096.
+            # Bumped to 6144 to restore the slack lost to richer prompt
+            # content. vLLM batches ``n=plan_candidates`` in parallel,
+            # so the wall-clock cost grows roughly linearly with the
+            # *generated* part of the budget, not the cap itself —
+            # most plans still finish well under 4096 (Run #27: 1081–
+            # 4096, median ~2200).
+            max_tokens=6144,
             grid_scale=8,
             telemetry=telemetry,
             # Sprint-19 Hebel L: ask vLLM for 3 plan candidates per
