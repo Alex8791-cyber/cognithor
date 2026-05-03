@@ -323,7 +323,9 @@ class A2AAdapter:
             body, auth_token=token, client_version=client_version
         )
 
-    async def handle_stream_request(self, body: dict[str, Any], auth_token: str | None = None):
+    async def handle_stream_request(
+        self, body: dict[str, Any], auth_token: str | None = None
+    ) -> Any:
         """Streaming endpoint: forwards to server."""
         if self._server is None:
             yield 'event: error\ndata: {"code": -32000, "message": "A2A Server not running"}\n\n'

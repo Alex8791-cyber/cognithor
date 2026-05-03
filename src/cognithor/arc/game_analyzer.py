@@ -50,7 +50,7 @@ PALETTE = [
 _ACTION_NAMES = {1: "UP", 2: "DOWN", 3: "LEFT", 4: "RIGHT", 5: "Interact", 6: "Click(x,y)"}
 
 
-def _grid_to_png_b64(grid: np.ndarray, scale: int = 4) -> str:
+def _grid_to_png_b64(grid: np.ndarray[Any, Any], scale: int = 4) -> str:
     """Convert 64x64 colour-index grid to upscaled PNG as base64."""
     from PIL import Image
 
@@ -118,7 +118,7 @@ class SacrificeReport:
     toggle_pairs: list[tuple[int, int]] = field(
         default_factory=list
     )  # (source, target) color pairs
-    frames: list[np.ndarray] = field(default_factory=list)
+    frames: list[np.ndarray[Any, Any]] = field(default_factory=list)
 
 
 class GameAnalyzer:
@@ -130,7 +130,7 @@ class GameAnalyzer:
     def _run_sacrifice_level(
         self,
         env: Any,
-        initial_grid: np.ndarray,
+        initial_grid: np.ndarray[Any, Any],
         available_action_ids: list[int],
     ) -> SacrificeReport:
         """Execute the sacrifice level: test actions systematically."""
@@ -226,7 +226,7 @@ class GameAnalyzer:
         return report
 
     def _vision_call_initial(
-        self, grid: np.ndarray, action_ids: list[int]
+        self, grid: np.ndarray[Any, Any], action_ids: list[int]
     ) -> dict[str, Any] | None:
         """Vision call 1: ask what the game is from initial frame."""
         try:
@@ -263,7 +263,7 @@ class GameAnalyzer:
             return None
 
     def _vision_call_final(
-        self, grid_before: np.ndarray, grid_after: np.ndarray
+        self, grid_before: np.ndarray[Any, Any], grid_after: np.ndarray[Any, Any]
     ) -> dict[str, Any] | None:
         """Vision call 2: compare before/after sacrifice level."""
         try:

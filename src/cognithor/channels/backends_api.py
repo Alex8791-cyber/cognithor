@@ -294,7 +294,7 @@ async def vllm_pull_image(request: Request) -> StreamingResponse:
         finally:
             queue.put_nowait(None)
 
-    async def event_stream():
+    async def event_stream() -> Any:
         task = asyncio.create_task(worker())
         try:
             while True:

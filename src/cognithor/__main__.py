@@ -2126,7 +2126,7 @@ def main() -> None:
 
                 # ── Identity Control API ────────────────────────────────
                 @api_app.get("/api/v1/identity/state", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_state():
+                async def _identity_state() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"available": False}
                     try:
@@ -2137,7 +2137,7 @@ def main() -> None:
                         return {"error": "Internal identity error", "code": "INTERNAL_ERROR"}
 
                 @api_app.post("/api/v1/identity/freeze", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_freeze():
+                async def _identity_freeze() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     gateway._identity_layer.freeze()
@@ -2146,21 +2146,21 @@ def main() -> None:
                 @api_app.post(
                     "/api/v1/identity/unfreeze", dependencies=[_Depends(_verify_cc_token)]
                 )
-                async def _identity_unfreeze():
+                async def _identity_unfreeze() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     gateway._identity_layer.unfreeze()
                     return {"status": "unfrozen"}
 
                 @api_app.post("/api/v1/identity/reset", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_reset():
+                async def _identity_reset() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     result = gateway._identity_layer.soft_reset()
                     return {"status": "reset", "details": result}
 
                 @api_app.post("/api/v1/identity/dream", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_dream():
+                async def _identity_dream() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     try:

@@ -48,7 +48,7 @@ _VISION_PROMPT = (
 )
 
 
-def grid_to_png_b64(grid: np.ndarray, scale: int = 8) -> str:
+def grid_to_png_b64(grid: np.ndarray[Any, Any], scale: int = 8) -> str:
     """Convert 64x64 color-index grid to upscaled PNG base64.
 
     Args:
@@ -156,7 +156,9 @@ class ArcVisionGuide:
         """Force the next should_call to return True (after GAME_OVER etc.)."""
         self._force_next = True
 
-    def analyze_sync(self, grid: np.ndarray, action_names: list[str]) -> dict[str, Any] | None:
+    def analyze_sync(
+        self, grid: np.ndarray[Any, Any], action_names: list[str]
+    ) -> dict[str, Any] | None:
         """Synchronous wrapper for analyze. Returns {goal, strategy, next_action}."""
         try:
             import ollama

@@ -110,7 +110,7 @@ _FRAME_ATTRS = ("frame", "frame_data", "grid", "pixels", "data", "image")
 def safe_frame_extract(
     obs: Any,
     fallback_shape: tuple[int, int] = (64, 64),
-) -> np.ndarray:
+) -> np.ndarray[Any, Any]:
     """Safely extract a 2-D colour-index grid from an ARC observation.
 
     The real SDK delivers ``obs.frame`` with shape ``(1, 64, 64)`` and dtype

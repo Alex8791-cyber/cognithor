@@ -40,7 +40,7 @@ class ArcObservation:
         win_levels: Number of win-counted levels per the SDK scorecard field.
     """
 
-    raw_grid: np.ndarray
+    raw_grid: np.ndarray[Any, Any]
     game_state: Any
     step_number: int
     level: int
@@ -237,7 +237,7 @@ class ArcEnvironmentAdapter:
         )
         return obs
 
-    def _extract_grid(self, raw: Any) -> np.ndarray:
+    def _extract_grid(self, raw: Any) -> np.ndarray[Any, Any]:
         """Delegate frame extraction to :func:`safe_frame_extract`.
 
         Args:

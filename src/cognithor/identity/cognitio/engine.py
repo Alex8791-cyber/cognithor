@@ -1218,7 +1218,7 @@ class CognitioEngine:
                     },
                 )
 
-    def _create_llm_summarizer(self):
+    def _create_llm_summarizer(self) -> Any:
         """Create LLM summarizer function."""
 
         def summarize(conversation_text: str) -> dict[str, Any]:

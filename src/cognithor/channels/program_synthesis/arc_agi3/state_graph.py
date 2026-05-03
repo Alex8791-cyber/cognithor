@@ -93,7 +93,7 @@ class StateGraphNavigator:
     # Hashing
     # ------------------------------------------------------------------
 
-    def hash_grid(self, grid: np.ndarray) -> str:
+    def hash_grid(self, grid: np.ndarray[Any, Any]) -> str:
         """Return a 16-character hex MD5 hash of *grid*, cached by content.
 
         The cache key includes shape and dtype so that arrays with identical
@@ -130,10 +130,10 @@ class StateGraphNavigator:
 
     def add_transition(
         self,
-        from_grid: np.ndarray,
+        from_grid: np.ndarray[Any, Any],
         action_str: str,
         action_data: dict[str, Any] | None,
-        to_grid: np.ndarray,
+        to_grid: np.ndarray[Any, Any],
         pixels_changed: int,
         game_state: str,
         level: int = 0,
@@ -440,7 +440,7 @@ class StateGraphNavigator:
     # Utility
     # ------------------------------------------------------------------
 
-    def _compute_histogram(self, grid: np.ndarray) -> tuple[Any, ...]:
+    def _compute_histogram(self, grid: np.ndarray[Any, Any]) -> tuple[Any, ...]:
         """Return a histogram tuple of pixel value counts for *grid*.
 
         Produces a 13-bin histogram covering values 0-12 (inclusive),

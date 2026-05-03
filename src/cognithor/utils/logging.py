@@ -111,7 +111,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def get_logger(name: str | None = None):
+def get_logger(name: str | None = None) -> Any:
     """
     Return a configured logger.
 

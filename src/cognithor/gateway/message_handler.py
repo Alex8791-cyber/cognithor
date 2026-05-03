@@ -223,7 +223,7 @@ async def handle_message(
     if gw._planner is None or gw._gatekeeper is None or gw._executor is None:
         raise RuntimeError("Gateway.initialize() must be called before handle_message()")
 
-    async def _run_context_pipeline():
+    async def _run_context_pipeline() -> None:
         if session.incognito:
             log.info("incognito_skip_context", session=session.session_id[:8])
             return
@@ -241,7 +241,7 @@ async def handle_message(
             except Exception:
                 log.warning("context_pipeline_failed", exc_info=True)
 
-    async def _run_coding_classification():
+    async def _run_coding_classification() -> Any:
         _is_coding = False
         _coding_model = ""
         _coding_complexity = "simple"
@@ -260,7 +260,7 @@ async def handle_message(
             log.debug("coding_classification_skipped", exc_info=True)
         return _is_coding, _coding_model, _coding_complexity
 
-    async def _run_presearch():
+    async def _run_presearch() -> Any:
         return await gw._maybe_presearch(msg, wm)
 
     import asyncio as _aio

@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 import json as _json
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ValidationError
 
@@ -24,7 +24,7 @@ _PATTERNS: dict[str, re.Pattern[str]] = {
 }
 
 
-def word_count(min_words: int | None = None, max_words: int | None = None):
+def word_count(min_words: int | None = None, max_words: int | None = None) -> Any:
     """Guardrail that checks output word count."""
     if min_words is None and max_words is None:
         raise ValueError("word_count requires at least min_words or max_words")
@@ -46,7 +46,7 @@ def word_count(min_words: int | None = None, max_words: int | None = None):
     return _guard
 
 
-def no_pii():
+def no_pii() -> Any:
     """Guardrail that blocks outputs containing German PII.
 
     Detects email addresses, German IBANs, German phone numbers, and 11-digit
@@ -70,7 +70,7 @@ def no_pii():
     return _guard
 
 
-def schema(model_cls: type[BaseModel]):
+def schema(model_cls: type[BaseModel]) -> Any:
     """Guardrail that enforces a Pydantic schema on the output JSON."""
 
     def _guard(output: TaskOutput) -> GuardrailResult:
@@ -92,7 +92,7 @@ def schema(model_cls: type[BaseModel]):
     return _guard
 
 
-def hallucination_check(*, reference: str, min_overlap: float = 0.5):
+def hallucination_check(*, reference: str, min_overlap: float = 0.5) -> Any:
     """Compare output tokens against a reference corpus. Fails when too few
     of the output's informative tokens appear in the reference (simple
     heuristic — not a substitute for retrieval grounding).

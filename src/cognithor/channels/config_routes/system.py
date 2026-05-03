@@ -52,7 +52,7 @@ def _register_system_routes(
     # -- Admin Dashboard --------------------------------------------------
 
     @app.get("/dashboard")
-    async def serve_dashboard():
+    async def serve_dashboard() -> Any:
         """Liefert das Admin-Dashboard als HTML."""
         from pathlib import Path
 

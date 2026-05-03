@@ -153,7 +153,7 @@ async def start(gw: Gateway) -> None:
             log.debug("process_monitor_start_failed", exc_info=True)
 
     # Daily audit log retention cleanup
-    async def _daily_retention_cleanup():
+    async def _daily_retention_cleanup() -> None:
         while True:
             await asyncio.sleep(86400)  # 24 hours
             try:
@@ -229,7 +229,7 @@ async def start(gw: Gateway) -> None:
     _retention_task.add_done_callback(gw._background_tasks.discard)
 
     # Skill lifecycle: daily audit
-    async def _daily_skill_lifecycle():
+    async def _daily_skill_lifecycle() -> None:
         while True:
             await asyncio.sleep(86400)  # 24 hours
             try:
@@ -301,7 +301,7 @@ async def start(gw: Gateway) -> None:
                 cooldown_hours=_cooldown,
             )
 
-            async def _breach_scan_loop():
+            async def _breach_scan_loop() -> None:
                 while True:
                     await asyncio.sleep(300)  # Every 5 minutes
                     try:
@@ -478,7 +478,7 @@ async def auto_update_skills(gw: Gateway) -> None:
         await asyncio.sleep(86400)  # Daily
 
 
-def on_startup_vllm(gw: Gateway):
+def on_startup_vllm(gw: Gateway) -> Any:
     """Called during init. If a cognithor-managed vLLM container is
     already running (from a previous session with auto_stop_on_close=False,
     or because the user ran the container manually), adopt it — no restart."""

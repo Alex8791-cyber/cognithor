@@ -94,7 +94,7 @@ class PerGameSolver:
 
     def _execute_cluster_click(
         self,
-        initial_grid: np.ndarray,
+        initial_grid: np.ndarray[Any, Any],
         target_color: int | None,
         max_actions: int,
     ) -> StrategyOutcome:
@@ -324,7 +324,7 @@ class PerGameSolver:
             return self._execute_keyboard(max_actions)
 
         outcome = StrategyOutcome()
-        frame_history: list[np.ndarray] = []
+        frame_history: list[np.ndarray[Any, Any]] = []
         initial_levels = None
 
         for _step in range(max_actions):
@@ -361,7 +361,7 @@ class PerGameSolver:
         return outcome
 
     def _pick_action(
-        self, strategy: str, frame_history: list[np.ndarray]
+        self, strategy: str, frame_history: list[np.ndarray[Any, Any]]
     ) -> tuple[int, dict[str, Any] | None]:
         """Pick next action based on strategy."""
         profile = self._profile
@@ -517,7 +517,7 @@ class PerGameSolver:
             "tried": tried,
         }
 
-    def _detect_stagnation(self, frame_history: list[np.ndarray]) -> bool:
+    def _detect_stagnation(self, frame_history: list[np.ndarray[Any, Any]]) -> bool:
         """Check if recent frames show no meaningful change."""
         if len(frame_history) < _STAGNATION_WINDOW:
             return False
@@ -542,7 +542,7 @@ class PerGameSolver:
         """
         from arcengine.enums import GameState
 
-        def replay_and_get_grid() -> np.ndarray:
+        def replay_and_get_grid() -> np.ndarray[Any, Any]:
             obs = env.reset()
             for x, y in replay_sequence:
                 obs = env.step(6, data={"x": x, "y": y})
@@ -942,7 +942,7 @@ class PerGameSolver:
         env: Any,
         replay_prefix: list[tuple[int, int]],
         valves: list[tuple[int, int]],
-        initial_grid: np.ndarray,
+        initial_grid: np.ndarray[Any, Any],
         current_levels: int,
         t0: float,
         timeout: float,
@@ -1005,7 +1005,7 @@ class PerGameSolver:
         replay_prefix: list[tuple[int, int]],
         valves: list[tuple[int, int]],
         triggers: list[tuple[int, int]],
-        initial_grid: np.ndarray,
+        initial_grid: np.ndarray[Any, Any],
         current_levels: int,
         t0: float,
         timeout: float,
@@ -1332,7 +1332,7 @@ class PerGameSolver:
         if not containers:
             return None
 
-        def measure_heights(g: np.ndarray) -> tuple[int, ...]:
+        def measure_heights(g: np.ndarray[Any, Any]) -> tuple[int, ...]:
             return tuple(int(np.sum(g[1:57, cs : ce + 1] == 0)) for cs, ce in containers)
 
         current_heights = measure_heights(grid)

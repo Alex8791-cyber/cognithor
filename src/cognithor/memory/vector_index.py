@@ -61,7 +61,7 @@ class VectorIndex(Protocol):
         ...
 
 
-def _l2_normalize_np(vec: np.ndarray) -> np.ndarray:
+def _l2_normalize_np(vec: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """L2-Normalisierung eines Vektors (numpy)."""
     norm = np.linalg.norm(vec)
     if norm > 0:
@@ -165,7 +165,7 @@ class FAISSIndex:
         self._deleted: set[int] = set()
 
         # Backup fuer Rebuild
-        self._vectors: dict[str, np.ndarray] = {}
+        self._vectors: dict[str, np.ndarray[Any, Any]] = {}
 
     def add(self, key: str, vector: list[float]) -> None:
         if len(vector) != self._dimension:
@@ -213,7 +213,7 @@ class FAISSIndex:
 
     def _search_inner(
         self,
-        query: np.ndarray,
+        query: np.ndarray[Any, Any],
         fetch_k: int,
         top_k: int,
     ) -> list[tuple[str, float]]:

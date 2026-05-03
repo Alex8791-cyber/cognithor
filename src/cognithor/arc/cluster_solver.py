@@ -29,7 +29,7 @@ class ClusterSolver:
         self.target_color = target_color
         self.max_skip = max_skip
 
-    def find_clusters(self, grid: np.ndarray) -> list[tuple[int, int]]:
+    def find_clusters(self, grid: np.ndarray[Any, Any]) -> list[tuple[int, int]]:
         """Find centers of connected components of target_color."""
         if grid.ndim == 3:
             grid = grid[0]
