@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**90 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**104 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -124,13 +124,27 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | Name | Signature | Cost | Description |
 |---|---|---|---|
 | `string_capitalize` | `(String) → String` | 1.00 | Return the string with the first char uppercased and rest lowercased. |
+| `string_collapse_spaces` | `(String) → String` | 1.00 | Replace any run of whitespace with a single space (no leading/trailing strip). |
+| `string_extract_email` | `(String) → String` | 1.00 | Return the first email-like token (\S+@\S+\.\S+) or '' if none. |
+| `string_extract_url` | `(String) → String` | 1.00 | Return the first http(s):// URL-like token, or '' if none. |
+| `string_first_digit_run` | `(String) → String` | 1.00 | Return the first contiguous run of digit characters, or '' if none. |
 | `string_first_word` | `(String) → String` | 1.00 | Return the first whitespace-delimited word, or '' for an empty input. |
 | `string_identity` | `(String) → String` | 0.00 | Return the string unchanged. Useful as a no-op leaf. |
 | `string_join_comma` | `(StringList) → String` | 1.00 | Join a list of strings with comma+space. |
 | `string_join_space` | `(StringList) → String` | 1.00 | Join a list of strings with single spaces. |
+| `string_keep_alphanumeric` | `(String) → String` | 1.00 | Return only the letters and digits of the string, in original order. |
+| `string_keep_digits` | `(String) → String` | 1.00 | Return only the digit characters of the string, in original order. |
+| `string_keep_letters` | `(String) → String` | 1.00 | Return only the alphabetic characters of the string, in original order. |
+| `string_last_digit_run` | `(String) → String` | 1.00 | Return the last contiguous run of digit characters, or '' if none. |
 | `string_last_word` | `(String) → String` | 1.00 | Return the last whitespace-delimited word, or '' for an empty input. |
 | `string_lower` | `(String) → String` | 1.00 | Return the string in all-lowercase. |
+| `string_remove_digits` | `(String) → String` | 1.00 | Return the string with every digit character removed. |
+| `string_remove_letters` | `(String) → String` | 1.00 | Return the string with every alphabetic character removed. |
+| `string_remove_punctuation` | `(String) → String` | 1.00 | Return the string with every non-alphanumeric, non-whitespace character removed. |
+| `string_remove_spaces` | `(String) → String` | 1.00 | Return the string with every whitespace character removed. |
 | `string_replace_dash_with_space` | `(String) → String` | 1.00 | Replace every '-' with a space. Common in slug → title transforms. |
+| `string_replace_space_with_dash` | `(String) → String` | 1.00 | Replace every space with a '-'. Title → slug. |
+| `string_replace_space_with_underscore` | `(String) → String` | 1.00 | Replace every space with a '_'. Title → snake_case. |
 | `string_replace_underscore_with_space` | `(String) → String` | 1.00 | Replace every '_' with a space. snake_case → words. |
 | `string_reverse` | `(String) → String` | 1.00 | Return the string with characters in reverse order. |
 | `string_strip` | `(String) → String` | 1.00 | Return the string with leading/trailing whitespace removed. |
