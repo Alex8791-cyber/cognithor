@@ -110,6 +110,56 @@ class TestPlannerCapabilityProfile:
         assert "Selbsteinschaetzung" not in prompt
 
 
+class TestPlannerPseRoutingNudge:
+    """Sprint-22 A.3: when ``pse_synthesize`` is registered, the system
+    prompt should append a routing nudge that steers demo-based tasks
+    at the engine instead of free-form LLM answers. When the tool is
+    NOT registered, the nudge must be absent (no phantom guidance).
+    """
+
+    def _make_planner(self, task_profiler=None) -> Planner:
+        config = MagicMock()
+        config.owner_name = "Test"
+        ollama = MagicMock()
+        model_router = MagicMock()
+        model_router.select_model.return_value = "test-model"
+        model_router.get_model_config.return_value = {"temperature": 0.7, "top_p": 0.9}
+        return Planner(
+            config,
+            ollama,
+            model_router,
+            task_profiler=task_profiler,
+        )
+
+    def test_pse_routing_nudge_present_when_tool_registered(self):
+        planner = self._make_planner()
+        wm = WorkingMemory(session_id="test")
+        prompt = planner._build_system_prompt(
+            working_memory=wm,
+            tool_schemas={
+                "pse_synthesize": {"description": "synthesize a program"},
+                "read_file": {"description": "read a file"},
+            },
+        )
+        assert "PSE-Routing" in prompt
+        assert "pse_synthesize" in prompt
+        assert "pse_is_synthesizable" in prompt
+
+    def test_pse_routing_nudge_absent_when_tool_not_registered(self):
+        planner = self._make_planner()
+        wm = WorkingMemory(session_id="test")
+        prompt = planner._build_system_prompt(
+            working_memory=wm,
+            tool_schemas={
+                "read_file": {"description": "read a file"},
+                "write_file": {"description": "write a file"},
+            },
+        )
+        assert "PSE-Routing" not in prompt
+        # And the rest of the prompt is intact (sanity check).
+        assert "read_file" in prompt
+
+
 # ── Reflector Tests ──────────────────────────────────────────
 
 
