@@ -65,8 +65,8 @@ class HIMAgent:
             gh = self._collectors["github"]
             if gh.is_available() and request.target_github:
                 profile = await gh._fetch_with_retry(
-                    f"{gh.BASE_URL}/users/{request.target_github}",
-                    headers=gh._headers(),
+                    f"{gh.BASE_URL}/users/{request.target_github}",  # type: ignore[attr-defined]
+                    headers=gh._headers(),  # type: ignore[attr-defined]
                 )
                 github_followers = profile.get("followers", 0)
         except Exception:

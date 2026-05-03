@@ -37,6 +37,7 @@ class Lead:
     created_utc: float = 0.0
     score_reason: str = ""
     reply_draft: str = ""
+    reply_final: str = ""
     status: LeadStatus = LeadStatus.NEW
     scan_id: str = ""
     received_at: float = field(default_factory=time.time)

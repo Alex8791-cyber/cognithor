@@ -99,9 +99,9 @@ async def run_pge_loop(
 
     # Status callback for progress feedback
     # Nutze msg.session_id (Client/WS-ID), nicht session.session_id (intern)
-    _status_cb = gw._make_status_callback(msg.channel, msg.session_id)
+    _status_cb = gw._make_status_callback(msg.channel, msg.session_id or "")
     # Pipeline callback for live PGE visualization (WebUI only)
-    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id)
+    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id or "")
 
     # Identity Layer reference (set during Phase init)
     _identity = getattr(gw, "_identity_layer", None)
@@ -368,7 +368,7 @@ async def run_pge_loop(
             if channel and hasattr(channel, "send_plan_detail"):
                 try:
                     await channel.send_plan_detail(
-                        msg.session_id,
+                        msg.session_id or "",
                         {
                             "iteration": session.iteration_count,
                             "goal": plan.goal,

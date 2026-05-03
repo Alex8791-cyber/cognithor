@@ -168,7 +168,7 @@ class JarvisResourceProvider:
             return "# Core Memory\n\n(Memory-Manager nicht initialisiert)"
 
         try:
-            core = self._memory.get_core_memory()
+            core = self._memory.get_core_memory()  # type: ignore[attr-defined]
             if hasattr(core, "content"):
                 return cast("str", core.content)
 
@@ -182,7 +182,7 @@ class JarvisResourceProvider:
             return json.dumps({"episodes": [], "error": "Memory nicht initialisiert"})
 
         try:
-            episodes = self._memory.get_recent_episodes(days=7)
+            episodes = self._memory.get_recent_episodes(days=7)  # type: ignore[attr-defined]
             if isinstance(episodes, list):
                 items = []
                 for ep in episodes[:20]:
@@ -219,7 +219,7 @@ class JarvisResourceProvider:
             return json.dumps({"error": t("memory.entity_not_found_generic")})
 
         try:
-            entity = self._memory.get_entity(entity_id)
+            entity = self._memory.get_entity(entity_id)  # type: ignore[attr-defined]
             if entity and hasattr(entity, "to_dict"):
                 return json.dumps(entity.to_dict(), ensure_ascii=False, default=str)
             elif entity:

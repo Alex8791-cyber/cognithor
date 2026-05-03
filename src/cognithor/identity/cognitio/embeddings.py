@@ -10,7 +10,7 @@ Model: all-MiniLM-L6-v2 (lightweight, fast, 384-dimensional)
 """
 
 import logging
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 
@@ -28,6 +28,8 @@ class EmbeddingEngine:
 
     DEFAULT_MODEL = "all-MiniLM-L6-v2"
     EMBEDDING_DIM = 384
+
+    _model: Any
 
     def __init__(
         self,

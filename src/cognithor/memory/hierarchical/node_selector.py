@@ -53,12 +53,12 @@ class LLMNodeSelector:
 
             if not children_ids:
                 # Leaf node — add to results
+                from dataclasses import replace as _dc_replace
+
                 content = self._trim_content(node.content, max_tokens_per_node)
                 results.append(
                     SelectedNode(
-                        node=tree.nodes[node_id]._replace(content=content)
-                        if hasattr(tree.nodes[node_id], "_replace")
-                        else tree.nodes[node_id],
+                        node=_dc_replace(tree.nodes[node_id], content=content),
                         depth=depth,
                         reasoning="leaf node",
                         score=0.0,
@@ -77,6 +77,8 @@ class LLMNodeSelector:
                 return
 
             prompt = format_selection_prompt(query, children_info, self._language)
+            if self._llm_fn is None:
+                return
             response = await self._llm_fn(prompt)
 
             parsed = self._parse_response(response)

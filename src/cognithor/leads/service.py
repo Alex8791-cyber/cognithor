@@ -136,8 +136,16 @@ class LeadService:
         offset: int = 0,
         source_id: str | None = None,
     ) -> list[Lead]:
+        store_status: LeadStatus | None
+        if isinstance(status, str):
+            try:
+                store_status = LeadStatus(status)
+            except ValueError:
+                store_status = None
+        else:
+            store_status = status
         return self._store.get_leads(
-            status=status,
+            status=store_status,
             min_score=min_score,
             limit=limit,
             offset=offset,

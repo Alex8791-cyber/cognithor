@@ -16,7 +16,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -1015,7 +1015,7 @@ _DEFAULT_MODEL_NAME_VALUES: frozenset[str] = frozenset(
     }
 )
 
-_PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
+_PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any] | None]] = {
     "openai": {
         "planner": {
             "name": "gpt-5.2",
@@ -1962,6 +1962,9 @@ class MtlsConfig(BaseModel):
     auto_generate: bool = Field(default=True, description="Zertifikate automatisch generieren")
 
 
+_PIIKind = Literal["email", "phone", "api_key", "credit_card", "ssn", "iban", "private_key"]
+
+
 class PIIRedactorConfig(BaseModel):
     """Local PII redactor applied to outbound LLM messages.
 
@@ -1979,18 +1982,12 @@ class PIIRedactorConfig(BaseModel):
             "being sent. Uses regex patterns by default."
         ),
     )
-    categories: list[
-        Literal["email", "phone", "api_key", "credit_card", "ssn", "iban", "private_key"]
-    ] = Field(
-        default_factory=lambda: [
-            "email",
-            "phone",
-            "api_key",
-            "credit_card",
-            "ssn",
-            "iban",
-            "private_key",
-        ],
+    categories: list[_PIIKind] = Field(
+        # Flattened Literal alias keeps the cast-target line short enough for ruff.
+        default_factory=lambda: cast(
+            "list[_PIIKind]",
+            ["email", "phone", "api_key", "credit_card", "ssn", "iban", "private_key"],
+        ),
         description="Which PII categories to redact. Empty list = all disabled.",
     )
     replacement_template: str = Field(
@@ -2944,7 +2941,7 @@ class CognithorConfig(BaseModel):
             current_model: ModelConfig = getattr(self.models, role)
             if current_model.name not in _DEFAULT_MODEL_NAME_VALUES:
                 # User has a custom model set — keep it, but log for clarity
-                expected = provider_defaults.get(role, {}).get("name", "")
+                expected = (provider_defaults.get(role) or {}).get("name", "")
                 if expected and current_model.name != expected:
                     log.info(
                         "config_model_kept_custom role=%s model=%s expected_default=%s backend=%s",
@@ -3292,7 +3289,7 @@ def load_config(config_path: Path | None = None) -> CognithorConfig:
         extra_errors = [e for e in exc.errors() if e.get("type") == "extra_forbidden"]
         if not extra_errors:
             raise
-        stripped = _strip_extra_forbidden_keys(data, extra_errors)
+        stripped = _strip_extra_forbidden_keys(data, cast("list[dict[str, Any]]", extra_errors))
         if stripped:
             import logging
 

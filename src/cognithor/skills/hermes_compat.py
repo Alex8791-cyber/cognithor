@@ -108,7 +108,7 @@ class HermesCompatLayer:
     @staticmethod
     def to_skill_md(skill: HermesSkill) -> str:
         """Export a HermesSkill to SKILL.md format."""
-        frontmatter = {
+        frontmatter: dict[str, Any] = {
             "name": skill.name,
             "description": skill.description,
             "author": skill.author,

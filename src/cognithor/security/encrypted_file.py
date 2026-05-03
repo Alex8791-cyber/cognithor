@@ -41,7 +41,7 @@ try:
 
     _FERNET_AVAILABLE = True
 except ImportError:
-    Fernet = None
+    Fernet = None  # type: ignore[assignment,misc]
 
 
 class EncryptedFileIO:
