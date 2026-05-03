@@ -360,6 +360,8 @@ class TemporalDensityTracker:
 
         if closed:
             last = closed[-1]
+            assert last.ended_at is not None  # guaranteed by the comprehension above
+            last_ended_at = last.ended_at
             ago = _fmt_relative(now - last.started_at)
             start_str = _fmt_dt(last.started_at)
             dur_secs = last.duration_seconds() or 0
@@ -373,9 +375,9 @@ class TemporalDensityTracker:
 
             # Idle time: from end of last session to start of current session
             if self._current_session is not None:
-                sleep_td = self._current_session.started_at - last.ended_at
+                sleep_td = self._current_session.started_at - last_ended_at
             else:
-                sleep_td = now - last.ended_at
+                sleep_td = now - last_ended_at
 
             if sleep_td.total_seconds() > 60:
                 parts.append(

@@ -152,15 +152,15 @@ class PIIRedactor:
             pattern = _PATTERNS.get(cat)
             if pattern is None:
                 continue
-            for m in pattern.finditer(text):
-                if cat == "credit_card" and not _luhn_valid(m.group(0)):
+            for re_match in pattern.finditer(text):
+                if cat == "credit_card" and not _luhn_valid(re_match.group(0)):
                     continue
                 raw_matches.append(
                     RedactionMatch(
                         category=cat,
-                        start=m.start(),
-                        end=m.end(),
-                        length=m.end() - m.start(),
+                        start=re_match.start(),
+                        end=re_match.end(),
+                        length=re_match.end() - re_match.start(),
                     )
                 )
 

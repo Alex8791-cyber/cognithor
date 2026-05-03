@@ -334,6 +334,10 @@ module = [
     "pysqlcipher3.*",
     "scipy",
     "scipy.*",
+    "slack_bolt",
+    "slack_bolt.*",
+    "slack_sdk",
+    "slack_sdk.*",
     "yaml",
 ]
 ignore_missing_imports = true

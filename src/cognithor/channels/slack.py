@@ -60,7 +60,7 @@ class SlackChannel(Channel):
             self._token_store.store("slack_app_token", app_token)
         self._has_app_token = bool(app_token)
         self.default_channel = default_channel
-        self._client: Any | None = None
+        self._client: Any = None
         self._socket_handler: Any | None = None
         self._handler: MessageHandler | None = None
         self._running = False
@@ -141,20 +141,20 @@ class SlackChannel(Channel):
 
         app = AsyncApp(token=self.token)
 
-        @app.event("message")
+        @app.event("message")  # type: ignore[misc]
         async def _on_msg(event: dict[str, Any], say: Any) -> None:
             await self._on_message(event)
 
-        @app.event("app_mention")
+        @app.event("app_mention")  # type: ignore[misc]
         async def _on_mention(event: dict[str, Any], say: Any) -> None:
             await self._on_message(event)
 
-        @app.action("jarvis_approve")
+        @app.action("jarvis_approve")  # type: ignore[misc]
         async def _approve(ack: Any, body: dict[str, Any]) -> None:
             await ack()
             await self._on_approval(body, approved=True)
 
-        @app.action("jarvis_reject")
+        @app.action("jarvis_reject")  # type: ignore[misc]
         async def _reject(ack: Any, body: dict[str, Any]) -> None:
             await ack()
             await self._on_approval(body, approved=False)

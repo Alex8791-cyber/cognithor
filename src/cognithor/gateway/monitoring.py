@@ -158,14 +158,20 @@ class EventBus:
         # Async-Handler
         for handler in self._async_handlers.get(event.event_type, []):
             try:
-                task = asyncio.ensure_future(handler(event))
+                coro = handler(event)
+                if coro is None:
+                    continue
+                task = asyncio.ensure_future(coro)
                 self._pending_tasks.add(task)
                 task.add_done_callback(self._pending_tasks.discard)
             except Exception as exc:
                 log.warning("async_event_handler_error", error=str(exc))
         for handler in self._async_handlers.get(None, []):
             try:
-                task = asyncio.ensure_future(handler(event))
+                coro = handler(event)
+                if coro is None:
+                    continue
+                task = asyncio.ensure_future(coro)
                 self._pending_tasks.add(task)
                 task.add_done_callback(self._pending_tasks.discard)
             except Exception as exc:

@@ -408,6 +408,10 @@ class Gateway:
     _gdpr_compliance_manager: Any = None
     _compliance_engine: Any = None
     _reddit_lead_service: Any = None
+    _trace_store: Any = None
+    _reflexion_memory: Any = None
+    _evolution_orchestrator: Any = None
+    _autonomous_orchestrator: Any = None
 
     def __init__(self, config: CognithorConfig | None = None) -> None:
         """Initialisiert das Gateway mit PGE-Trinitaet, MCP-Client und Memory."""

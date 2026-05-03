@@ -18,7 +18,10 @@ from __future__ import annotations
 import contextlib
 import os
 import sqlite3
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from cognithor.utils.logging import get_logger
 
@@ -272,7 +275,7 @@ def _migrate_to_encrypted(
 
 
 def encrypted_connect(
-    db_path: str,
+    db_path: str | Path,
     key: str | None = None,
     check_same_thread: bool = False,
     timeout: float = 5.0,

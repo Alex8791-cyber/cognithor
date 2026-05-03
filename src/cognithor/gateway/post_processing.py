@@ -83,9 +83,7 @@ async def run_post_processing(
                 and gw._evolution_loop
             ):
                 try:
-                    user_msg = (session.messages[-1].content[:200] if session.messages else "")[
-                        :200
-                    ]
+                    user_msg = (wm.chat_history[-1].content[:200] if wm.chat_history else "")[:200]
                     gap_description = (
                         f"Schwache Antwort (Score {reflection.success_score:.1f}) auf: {user_msg}"
                     )
@@ -253,7 +251,7 @@ async def run_post_processing(
 
             # Extract user goal from working memory
             _goal = ""
-            for _m in wm.messages:
+            for _m in wm.chat_history:
                 if getattr(_m, "role", None) and _m.role.value == "user":
                     _goal = getattr(_m, "content", "")[:1000]
                     break
@@ -309,7 +307,7 @@ async def run_post_processing(
                         )
                     else:
                         _msg_text = ""
-                        for _m in wm.messages:
+                        for _m in wm.chat_history:
                             if getattr(_m, "role", None) and _m.role.value == "user":
                                 _msg_text = getattr(_m, "content", "")
                                 break
