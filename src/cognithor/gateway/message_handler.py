@@ -229,7 +229,11 @@ async def handle_message(
             return
         if gw._context_pipeline is not None:
             try:
-                ctx_result = await gw._context_pipeline.enrich(msg.text, wm)
+                ctx_result = await gw._context_pipeline.enrich(
+                    msg.text,
+                    wm,
+                    channel_kind=msg.channel,
+                )
                 if not ctx_result.skipped:
                     log.info(
                         "context_enriched",
@@ -237,6 +241,7 @@ async def handle_message(
                         vault=len(ctx_result.vault_snippets),
                         episodes=len(ctx_result.episode_snippets),
                         ms=f"{ctx_result.duration_ms:.1f}",
+                        profile=ctx_result.selected_profile or "(none)",
                     )
             except Exception:
                 log.warning("context_pipeline_failed", exc_info=True)

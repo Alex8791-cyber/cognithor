@@ -40,6 +40,13 @@ class ContextResult:
     wave2_ms: float = 0.0
     skipped: bool = False
     skip_reason: str = ""
+    # Sprint-24: PSE Auto-Switch — which profile the heuristic picked
+    # for this request and why. Populated only when
+    # ``ContextPipelineConfig.auto_switch_context_profile`` is True and
+    # a ModelRouter is wired in. Empty string means the auto-switch did
+    # not run for this request.
+    selected_profile: str = ""
+    profile_reason: str = ""
 
 
 class ContextPipeline:
@@ -61,6 +68,11 @@ class ContextPipeline:
         self._vault_tools: Any | None = None  # VaultTools (async search)
         self._skill_registry: Any | None = None  # SkillRegistry
         self._user_pref_store: Any | None = None  # UserPreferenceStore
+        # Sprint-24: PSE Auto-Switch — wired by the gateway after
+        # ``ModelRouter`` is initialised. Set via ``set_model_router``.
+        # When None, the pipeline still runs but the auto-switch step
+        # is a no-op.
+        self._model_router: Any | None = None
 
     # ── Dependency Injection ──────────────────────────────────────
 
@@ -75,6 +87,17 @@ class ContextPipeline:
     def set_skill_registry(self, sr: Any) -> None:
         """Set the SkillRegistry for skill context injection."""
         self._skill_registry = sr
+
+    def set_model_router(self, mr: Any) -> None:
+        """Sprint-24: wire the ModelRouter for auto-switch profile activation.
+
+        When set and ``config.auto_switch_context_profile`` is True,
+        :meth:`enrich` calls ``recommend_context_profile(...)`` and
+        applies the result via ``ModelRouter.set_context_profile(...)``.
+        ContextVar isolation makes the change request-scoped — concurrent
+        requests do not interfere.
+        """
+        self._model_router = mr
 
     def set_correction_memory(self, cm: Any) -> None:
         """Set the CorrectionMemory for correction reminders."""
@@ -92,6 +115,7 @@ class ContextPipeline:
         wm: WorkingMemory,
         *,
         user_id: str = "",
+        channel_kind: str | None = None,
     ) -> ContextResult:
         """Collect relevant context and inject it into WorkingMemory.
 
@@ -104,14 +128,29 @@ class ContextPipeline:
             user_message: The current user message.
             wm: The active WorkingMemory instance.
             user_id: Optional user ID for preference lookup.
+            channel_kind: Optional channel identifier (``"cli"``,
+                ``"telegram"``, ``"arc_agi3"``, ...). Sprint-24 uses
+                this to bias the auto-switch heuristic toward heavy
+                channels (game-loop wants the 128 k window).
 
         Returns:
-            ContextResult with collected data and metrics.
+            ContextResult with collected data, metrics, and the
+            selected context profile (Sprint-24 auto-switch).
         """
         if not self._config.enabled:
             return ContextResult(skipped=True, skip_reason="disabled")
 
         t0 = time.perf_counter()
+
+        # Sprint-24: PSE Auto-Switch — runs *before* the smalltalk
+        # short-circuit so latency-tight smalltalk responses still get
+        # the right (small) window. Returns the selected profile + reason
+        # so callers / tests can verify.
+        selected_profile, profile_reason = self._maybe_apply_context_profile(
+            user_message=user_message,
+            wm=wm,
+            channel_kind=channel_kind,
+        )
 
         # Smalltalk/Short-Message Check
         if self._is_smalltalk(user_message):
@@ -119,6 +158,8 @@ class ContextPipeline:
                 skipped=True,
                 skip_reason="smalltalk",
                 duration_ms=(time.perf_counter() - t0) * 1000,
+                selected_profile=selected_profile,
+                profile_reason=profile_reason,
             )
 
         # ── Wave 1+2: All enrichment in parallel ──────────────────
@@ -230,9 +271,84 @@ class ContextPipeline:
             duration_ms=duration_ms,
             wave1_ms=wave1_ms,
             wave2_ms=wave2_ms,
+            selected_profile=selected_profile,
+            profile_reason=profile_reason,
         )
 
     # ── Helper methods ─────────────────────────────────────────────
+
+    def _maybe_apply_context_profile(
+        self,
+        *,
+        user_message: str,
+        wm: WorkingMemory,
+        channel_kind: str | None,
+    ) -> tuple[str, str]:
+        """Sprint-24: pick + activate the recommended context profile.
+
+        Reads the auto-switch flag, runs ``recommend_context_profile``,
+        and applies the result to the wired ``ModelRouter``. Returns
+        ``(profile_name, reason)`` so callers can log / assert.
+
+        No-op when the flag is False, the router isn't wired, or the
+        active model_router rejects the recommendation (we never let
+        a profile mismatch break enrichment).
+        """
+        if not getattr(self._config, "auto_switch_context_profile", False):
+            return "", ""
+        if self._model_router is None:
+            return "", "no model_router wired"
+
+        # Lazy import to avoid the circular reference flagged in
+        # ``context_profile_selector``'s docstring (model_router →
+        # config → core → ... ).
+        try:
+            from cognithor.core.context_profile_selector import (
+                recommend_context_profile,
+            )
+        except Exception:
+            log.debug("context_profile_selector_import_failed", exc_info=True)
+            return "", "selector import failed"
+
+        # Detect attachments straight off the WorkingMemory — Sprint-23's
+        # heuristic uses this to nudge medium prompts up one notch.
+        has_attachments = bool(
+            getattr(wm, "image_attachments", None) or getattr(wm, "video_attachment", None)
+        )
+
+        try:
+            recommendation = recommend_context_profile(
+                prompt_chars=len(user_message or ""),
+                channel_kind=channel_kind,
+                has_attachments=has_attachments,
+            )
+        except Exception:
+            log.debug("context_profile_recommend_failed", exc_info=True)
+            return "", "recommend failed"
+
+        # Apply via the request-scoped ContextVar so concurrent requests
+        # do not bleed into each other. ``set_context_profile`` raises
+        # ValueError on unknown names — we swallow + log to avoid
+        # breaking enrichment for an unrelated reason.
+        try:
+            self._model_router.set_context_profile(recommendation.profile)
+        except Exception:
+            log.warning(
+                "context_profile_set_failed",
+                profile=recommendation.profile,
+                reason=recommendation.reason,
+                exc_info=True,
+            )
+            return "", "set failed"
+
+        log.info(
+            "context_profile_auto_switch",
+            profile=recommendation.profile,
+            reason=recommendation.reason,
+            channel=channel_kind or "",
+            attachments=has_attachments,
+        )
+        return recommendation.profile, recommendation.reason
 
     def _is_smalltalk(self, text: str) -> bool:
         """Check whether message is smalltalk (no search needed)."""

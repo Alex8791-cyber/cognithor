@@ -530,6 +530,10 @@ class Gateway:
                 self._context_pipeline.set_memory_manager(self._memory_manager)
                 if hasattr(self, "_vault_tools") and self._vault_tools:
                     self._context_pipeline.set_vault_tools(self._vault_tools)
+                # Sprint-24: PSE Auto-Switch — wire ModelRouter so the
+                # pipeline can flip the request-scoped context profile.
+                if getattr(self, "_model_router", None) is not None:
+                    self._context_pipeline.set_model_router(self._model_router)
                 log.info("context_pipeline_initialized")
         except Exception:
             log.debug("context_pipeline_init_skipped", exc_info=True)

@@ -644,6 +644,17 @@ class ContextPipelineConfig(BaseModel):
     ]
     """Patterns die als Smalltalk erkannt werden (keine Kontext-Suche)."""
 
+    auto_switch_context_profile: bool = Field(
+        default=True,
+        description=(
+            "Sprint-24: Wenn True, ruft die Pipeline vor dem Planner-Call "
+            "``recommend_context_profile(...)`` auf und aktiviert das "
+            "empfohlene Profil per ContextVar (request-scoped, asyncio-"
+            "isoliert) auf dem injizierten ModelRouter. False = kein "
+            "Auto-Switch (Profil wird nicht angefasst)."
+        ),
+    )
+
 
 class SkillLifecycleConfig(BaseModel):
     """Skill Lifecycle Manager -- periodic audit, repair, and suggestion of skills."""
