@@ -85,13 +85,20 @@ class TestScorePlanComponents:
         """Hebel N: if the LAST action produced pixΔ>500 AND the plan's
         first action repeats it, the plan is multiplicatively penalised
         (0.5×). A plan that picks a different first-action wins.
+
+        pixΔ tuned to (500, 1000] so this test exercises the
+        single-action-repeat trigger ONLY, not Hebel Q's
+        single-spike-above-1000 trigger.
         """
-        # Build memory: one tame ACTION3 step, then one ACTION7 that
-        # flipped the entire 64×64 grid (pixΔ ~= 4096).
+        # Build memory with a mid-magnitude change: 600 cells flip
+        # (above the 500 single-action threshold, below the 1000
+        # single-spike threshold).
         m = EpisodeMemory()
         before = np.zeros((64, 64), dtype=np.int8)
         m.append(grid=before, action_name="ACTION3", levels_completed=0)
-        after = np.full((64, 64), 4, dtype=np.int8)
+        after = np.zeros((64, 64), dtype=np.int8)
+        # Flip 600 cells (10 rows × 60 columns).
+        after[:10, :60] = 4
         m.append(grid=after, action_name="ACTION7", levels_completed=0)
 
         # Plan A repeats the destructive action; Plan B picks something else.
@@ -130,6 +137,38 @@ class TestScorePlanComponents:
         # Both should be in the same ballpark; the repeat is targeted +
         # different colour so it can even win on pure quality.
         assert s_repeat >= s_pivot * 0.95
+
+    def test_pix_delta_safety_single_spike_above_1000_triggers_gate(self) -> None:
+        """Sprint-19 Hebel Q: a SINGLE step with pixΔ>1000 (massive
+        single-spike) is enough to trigger the gate even when the
+        other prior step was tame and the plan's first action does
+        NOT match the spike's action. Catches Run #28's GAME_OVER
+        pattern (isolated 1220-spike with rotating actions).
+        """
+        m = EpisodeMemory()
+        # 64×64 zero grid → 64×64 mid-grid (small change ~ 16 cells)
+        small_after = np.zeros((64, 64), dtype=np.int8)
+        small_after[0, 0:16] = 4
+        # Then full-grid replacement (~4096 cells changed > 1000).
+        big_after = np.full((64, 64), 7, dtype=np.int8)
+        m.append(grid=np.zeros((64, 64), dtype=np.int8), action_name="ACTION1", levels_completed=0)
+        m.append(grid=small_after, action_name="ACTION3", levels_completed=0)  # pixΔ=16
+        m.append(grid=big_after, action_name="ACTION6", levels_completed=0)  # pixΔ=~4096
+
+        # Plan first action is ACTION7 (different from ACTION6 → no
+        # single-action-repeat trigger). Prior step pair is
+        # (16, 4096) → second_pix_delta=16, last_pix_delta=4096,
+        # so two-consecutive-high (both >500) is also False (16<500).
+        # Only the new single-spike-trigger should fire.
+        plan_other = [
+            PlanStep("ACTION7", data={"x": 5, "y": 5}, reasoning="r"),
+            PlanStep("ACTION3", reasoning="r"),
+        ]
+        actions = ("ACTION3", "ACTION6", "ACTION7")
+        s_gated = score_plan(plan_other, memory=m, available_action_names=actions)
+        s_baseline = score_plan(plan_other, available_action_names=actions)
+        # The new single-spike trigger fires; gate halves the score.
+        assert s_gated == pytest.approx(s_baseline * 0.5, rel=1e-6)
 
     def test_pix_delta_safety_two_consecutive_high_penalises_any_first_action(self) -> None:
         """Hebel N broadened (Run #27 finding): when the LAST TWO

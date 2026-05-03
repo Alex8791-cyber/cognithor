@@ -152,7 +152,17 @@ def score_plan(
             single_action_repeat = (
                 last_pix_delta > 500 and plan[0].action_name == last_after.action_name
             )
-            if two_consecutive_high or single_action_repeat:
+            # Sprint-19 Hebel Q (single-spike trigger): Run #28 ended
+            # with a SINGLE pixΔ=1220 spike at step 63 — broadened
+            # Hebel N didn't fire because the prior step was tame
+            # (so two-consecutive was False) AND the plan's first
+            # action wasn't the same as the spike's action (so
+            # single-action-repeat was False). Yet the agent had
+            # JUST flipped 30 % of the grid, so any high-impact next
+            # move is reckless. Trigger the same 0.5× gate when ONE
+            # of the last two pixΔ values exceeds 1000.
+            single_spike_high = last_pix_delta > 1000 or second_pix_delta > 1000
+            if two_consecutive_high or single_action_repeat or single_spike_high:
                 pix_delta_safety = 0.5
         except Exception:
             pass
