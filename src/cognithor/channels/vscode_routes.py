@@ -6,16 +6,17 @@ for the Cognithor VS Code Extension.
 
 from __future__ import annotations
 
-import logging
 import time
 from typing import TYPE_CHECKING, Any
 
 from fastapi.responses import JSONResponse
 
+from cognithor.utils.logging import get_logger
+
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 def register_vscode_routes(

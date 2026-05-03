@@ -394,10 +394,9 @@ async def handle_message(
 
     # ── Autonomous Orchestration (complex/recurring tasks) ──
     auto_task = None
-    if (
-        getattr(gw, "_autonomous_orchestrator", None) is not None
-        and gw._autonomous_orchestrator.should_orchestrate(msg.text)
-    ):
+    if getattr(
+        gw, "_autonomous_orchestrator", None
+    ) is not None and gw._autonomous_orchestrator.should_orchestrate(msg.text):
         auto_task = gw._autonomous_orchestrator.create_task(msg.text, session.session_id)
         orchestration_context = gw._autonomous_orchestrator.get_orchestration_prompt(auto_task)
         wm.add_message(
