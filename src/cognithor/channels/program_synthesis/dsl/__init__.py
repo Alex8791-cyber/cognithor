@@ -7,6 +7,12 @@ predicate constructors. See spec §7 for the full catalog.
 
 from __future__ import annotations
 
+# Sprint-22 — Number/Int-DSL family. Brings ``Int`` to first-class
+# status with arithmetic primitives plus the two bridge conversions
+# (``int_to_string`` / ``string_to_int``) that connect the int-shaped
+# and str-shaped families.
+from cognithor.channels.program_synthesis.dsl import number_primitives as number_primitives
+
 # Importing the primitives module has the side effect of registering all
 # primitives into the module-level REGISTRY. The re-export keeps the import
 # from being flagged as unused.
@@ -33,6 +39,7 @@ __all__ = [
     "Object",
     "ObjectSet",
     "Signature",
+    "number_primitives",
     "primitives",
     "regex_primitives",
     "string_primitives",

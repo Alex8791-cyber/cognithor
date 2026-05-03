@@ -74,7 +74,9 @@ class TestExamplesFromJson:
         # Sprint-22: ``"not a grid"`` is now a *valid* string input, so
         # the coercion no longer rejects it per-example. Instead the
         # mixed grid+string payload triggers the homogeneity check.
-        with pytest.raises(ValueError, match="homogeneous"):
+        # PR#3: error message switched from "homogeneous" to the more
+        # precise "must not mix grids with text-shaped values".
+        with pytest.raises(ValueError, match="must not mix grids"):
             _examples_from_json(
                 [
                     {"input": [[0]], "output": [[1]]},
@@ -84,14 +86,17 @@ class TestExamplesFromJson:
 
     def test_truly_invalid_value_still_propagates_per_example_with_index(self) -> None:
         """A payload that is neither a grid (2-D int list) nor a string
-        is rejected by ``_coerce_value`` per-example, with the index in
-        the error so the caller can locate the bad row.
+        nor an int is rejected by ``_coerce_value`` per-example, with
+        the index in the error so the caller can locate the bad row.
         """
+        # PR#3: ``int`` is now a valid input type via the Number-DSL
+        # family, so the previous "42" test value is no longer rejected.
+        # ``None`` and ``float`` are still genuinely unsupported.
         with pytest.raises(ValueError, match="example 1"):
             _examples_from_json(
                 [
                     {"input": "abc", "output": "abc"},
-                    {"input": 42, "output": "x"},  # int is not a grid or str
+                    {"input": None, "output": "x"},  # None is not a grid/str/int
                 ]
             )
 
