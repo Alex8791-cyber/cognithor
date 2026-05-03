@@ -218,7 +218,7 @@ class SkillRegistry:
         content = path.read_text(encoding="utf-8")
 
         # Extract frontmatter
-        frontmatter = {}
+        frontmatter: dict[str, Any] = {}
         body = content
 
         if content.startswith("---"):

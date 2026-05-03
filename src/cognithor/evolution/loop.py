@@ -1127,7 +1127,7 @@ class EvolutionLoop:
                         log.debug("evolution_retest_failed", exc_info=True)
 
         # --- Tier 2: User learning goals ---
-        raw_goals = []
+        raw_goals: list[Any] = []
         if self._config and hasattr(self._config, "learning_goals"):
             raw_goals = self._config.learning_goals or []
 

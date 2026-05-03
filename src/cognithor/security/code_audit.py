@@ -269,7 +269,7 @@ class PatternScanner:
         return findings
 
     def _scan_ast(self, code: str, pattern: CodePattern, file_path: str) -> list[CodeFinding]:
-        findings = []
+        findings: list[Any] = []
         try:
             tree = ast.parse(code)
         except SyntaxError:
