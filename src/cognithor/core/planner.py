@@ -1424,6 +1424,26 @@ class Planner:
         else:
             tools_section = "No tools available."
 
+        # Sprint-22 A.3: PSE routing nudge. When the central Program
+        # Synthesis Engine MCP tool is registered, append a short hint
+        # telling the model to prefer ``pse_synthesize`` for tasks that
+        # come with structured (input → output) example pairs. The
+        # block is appended inside the dynamic tools_section so it
+        # adopts the same caching + only appears when the engine is
+        # actually wired (no phantom guidance otherwise).
+        if "pse_synthesize" in tool_schemas:
+            tools_section = (
+                tools_section + "\n\n" + "**PSE-Routing (Demo-basiert):** Wenn der Nutzer dir "
+                "explizite (Input → Output)-Beispiele gibt — also "
+                "≥2 Paare ausreichend strukturierter Daten und keine "
+                "Freitext-Erklaerung verlangt — bevorzuge "
+                "**pse_synthesize** ueber freie LLM-Antwort. Die Engine "
+                "synthetisiert ein deterministisches Programm aus den "
+                "Beispielen, ist replayable und halluziniert nicht. "
+                "Schneller Pre-Check via **pse_is_synthesizable** "
+                "(boolean, kein Engine-Boot)."
+            )
+
         # Context-Section (Memory) — Relevanz-Ranking nach Score (#41 Optimierung)
         # Budget scales with context window (compact mode for small models)
         context_parts: list[str] = []
