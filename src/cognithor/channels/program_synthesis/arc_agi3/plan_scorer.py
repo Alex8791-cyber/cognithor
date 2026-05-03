@@ -111,6 +111,28 @@ def score_plan(
     with_reasoning = sum(1 for s in plan if s.reasoning.strip())
     reasoning = with_reasoning / n
 
+    # Sprint-19 Hebel T — exploration bonus for first-time-action.
+    # Run #28's 64-step bp35 episode used ACTION3/4/6/7 ~equally but
+    # never RESET. Plans whose first action has NEVER been recorded in
+    # this episode's memory get a +0.20 post-hoc additive bonus, so
+    # candidate plans that explore an unused action class can beat
+    # equally-quality plans that re-use already-tried actions on a
+    # thin diversity margin. ``available_action_names`` validates that
+    # the action is actually offered (don't reward made-up actions).
+    exploration_bonus = 0.0
+    first_action = plan[0].action_name
+    if (
+        memory is not None
+        and len(memory) > 0
+        and (not available_action_names or first_action in available_action_names)
+    ):
+        try:
+            seen_actions = {s.action_name for s in memory.window(80)}
+            if first_action not in seen_actions:
+                exploration_bonus = 0.20
+        except Exception:
+            pass
+
     # 6. Sprint-19 Hebel N — pixΔ-safety gate.
     #
     # Run #26c finding (motivation): the LLM queued plans whose first
@@ -163,7 +185,10 @@ def score_plan(
     # Diversity, targetedness, reasoning are additive quality
     # components averaged.
     additive_avg = (diversity + targetedness + reasoning) / 3.0
-    return additive_avg * validity * anti_repetition * pix_delta_safety
+    base = additive_avg * validity * anti_repetition * pix_delta_safety
+    # Sprint-19 Hebel T: post-hoc additive exploration boost; clamp
+    # to [0, 1] so the bonus never inflates beyond a legal score.
+    return min(1.0, base + exploration_bonus)
 
 
 def pick_best_plan(
