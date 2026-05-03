@@ -296,3 +296,13 @@ python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+# Cookiecutter-style template trees contain literal ``{{ project_name }}``
+# placeholder directories that mypy refuses to ingest as Python packages.
+# They are not on the runtime path; skip the lot.
+exclude = [
+    "src/cognithor/crew/templates/.*",
+    # Bundled plugin packs are loaded dynamically by PackLoader at runtime.
+    # They contain duplicate ``src/__init__.py`` entries that confuse mypy's
+    # module resolver; the packs ship their own typing discipline.
+    "src/cognithor/_bundled_packs/.*",
+]
