@@ -125,13 +125,19 @@ def _coerce_value(raw: Any) -> Any:
     * ``list[list[int]]`` → ``np.ndarray`` (grid family — ARC-DSL)
     * ``str`` → ``str`` (string family — FlashFill-style)
     * ``int`` → ``int`` (number family — arithmetic + bridge ops)
+    * ``list[str]`` → ``list[str]`` (string-list family — split / join)
+    * ``list[int]`` → ``list[int]`` (int-list family — sum / max / sort)
 
     Booleans are explicitly rejected: Python's ``bool`` is a subclass
     of ``int`` so an unguarded ``isinstance(raw, int)`` check would
     accept ``True`` / ``False`` and the search engine would happily
     type-check them as ``Int``, which is never what the caller meant.
 
-    More families register here as they ship (sql / ast).
+    Empty lists are rejected per-example because the type tag (str-
+    list vs int-list) cannot be inferred — the homogeneity check
+    would then have to guess. Callers should send at least one
+    populated demo so the type is unambiguous.
+
     Non-fitting payloads raise :class:`ValueError` so the MCP layer
     returns a structured error rather than crashing the engine.
     """
@@ -140,14 +146,30 @@ def _coerce_value(raw: Any) -> Any:
     if isinstance(raw, bool):
         raise ValueError(
             f"unsupported input type {type(raw).__name__} — "
-            "expected 2-D int list (grid), str, or int"
+            "expected 2-D int list (grid), str, int, list[str], or list[int]"
         )
     if isinstance(raw, int):
         return raw
-    if isinstance(raw, list) and raw and isinstance(raw[0], list):
-        return _coerce_grid(raw)
+    if isinstance(raw, list):
+        if not raw:
+            raise ValueError(
+                "empty list rejected — type (StringList vs IntList) "
+                "cannot be inferred from an empty payload"
+            )
+        head = raw[0]
+        if isinstance(head, list):
+            return _coerce_grid(raw)
+        if isinstance(head, str):
+            if not all(isinstance(v, str) for v in raw):
+                raise ValueError("string list must contain only str elements")
+            return raw
+        if isinstance(head, int) and not isinstance(head, bool):
+            if not all(isinstance(v, int) and not isinstance(v, bool) for v in raw):
+                raise ValueError("int list must contain only non-bool int elements")
+            return raw
     raise ValueError(
-        f"unsupported input type {type(raw).__name__} — expected 2-D int list (grid), str, or int"
+        f"unsupported input type {type(raw).__name__} — "
+        "expected 2-D int list (grid), str, int, list[str], or list[int]"
     )
 
 
@@ -188,13 +210,15 @@ def _examples_from_json(payload: Any) -> tuple[tuple[Any, Any], ...]:
         parsed.append((inp, out))
     # Heterogeneous families would always lose at the type-filter; the
     # explicit error makes the diagnostic obvious instead of silently
-    # returning ``no_solution``. Sprint-22: ``str`` ↔ ``int`` is
-    # *allowed* because the Number-DSL family ships explicit bridge
-    # primitives (``int_to_string`` / ``string_to_int`` /
-    # ``string_length``); only the Grid family is structurally
-    # disjoint from the text-shaped families.
-    if "ndarray" in families and ("str" in families or "int" in families):
-        raise ValueError("'examples' must not mix grids with text-shaped values (strings or ints)")
+    # returning ``no_solution``. Sprint-22: ``str`` / ``int`` / ``list``
+    # mix freely because the families ship explicit bridge primitives
+    # (``int_to_string`` / ``string_to_int`` / ``string_length`` /
+    # ``string_list_length`` / ``int_list_sum``); only the Grid
+    # family is structurally disjoint from the text-shaped families.
+    if "ndarray" in families and len(families - {"ndarray"}) > 0:
+        raise ValueError(
+            "'examples' must not mix grids with text-shaped values (strings, ints, or lists)"
+        )
     return tuple(parsed)
 
 

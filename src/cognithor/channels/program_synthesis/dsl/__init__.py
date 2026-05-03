@@ -7,6 +7,10 @@ predicate constructors. See spec §7 for the full catalog.
 
 from __future__ import annotations
 
+# Sprint-22 — List/Sequence-DSL family. Reductions, reorderings, and
+# bridges over both ``StringList`` (PR#1) and the new ``IntList`` type.
+from cognithor.channels.program_synthesis.dsl import list_primitives as list_primitives
+
 # Sprint-22 — Number/Int-DSL family. Brings ``Int`` to first-class
 # status with arithmetic primitives plus the two bridge conversions
 # (``int_to_string`` / ``string_to_int``) that connect the int-shaped
@@ -39,6 +43,7 @@ __all__ = [
     "Object",
     "ObjectSet",
     "Signature",
+    "list_primitives",
     "number_primitives",
     "primitives",
     "regex_primitives",

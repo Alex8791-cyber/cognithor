@@ -325,6 +325,17 @@ class EnumerativeSearch:
                 input_type_tag = "Grid"  # never reached as demo input
             elif isinstance(first_input, int):
                 input_type_tag = "Int"
+            elif isinstance(first_input, list) and first_input:
+                # Sprint-22 PR#4: list inputs are StringList or IntList
+                # depending on element type. Empty lists are ambiguous
+                # and stay tagged Grid (the default), which means no
+                # primitive will match — caller should send at least
+                # one populated example.
+                head = first_input[0]
+                if isinstance(head, str):
+                    input_type_tag = "StringList"
+                elif isinstance(head, int) and not isinstance(head, bool):
+                    input_type_tag = "IntList"
 
         bank: dict[str, list[ProgramNode]] = _zero_arity_leaves(self._registry)
         bank.setdefault(input_type_tag, []).append(InputRef(output_type=input_type_tag))
@@ -385,11 +396,19 @@ class EnumerativeSearch:
                     # FlashFill-style family. ``Int`` is added by the
                     # Number-DSL family — synthesis tasks like int → int
                     # arithmetic and string → int parsing emit ints as
-                    # the expected output. Other intermediate types
+                    # the expected output. ``IntList`` is added by the
+                    # List-DSL family for tasks that produce a sorted /
+                    # reversed list of ints. Other intermediate types
                     # (Mask, Object, Color, Predicate, Lambda, ...) only
                     # exist as composition glue and never appear as a
                     # demo's expected output.
-                    is_demo_output_type = type_tag in ("Grid", "String", "StringList", "Int")
+                    is_demo_output_type = type_tag in (
+                        "Grid",
+                        "String",
+                        "StringList",
+                        "Int",
+                        "IntList",
+                    )
                     if is_demo_output_type and _all_demos_correct(candidate, spec, self._executor):
                         return _success(program=candidate, stats=stats, cache_hit=False)
 
