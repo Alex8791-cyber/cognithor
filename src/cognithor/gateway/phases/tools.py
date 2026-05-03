@@ -169,6 +169,23 @@ async def init_tools(
     else:
         log.debug("arc_tools_disabled_by_config")
 
+    # Sprint-22 Track A: Program Synthesis Engine (PSE) MCP tools.
+    # Always-on — no Linux/CUDA dependencies, the engine is pure Python +
+    # NumPy. Lets the LLM (or any other tool) route demo-based program
+    # synthesis requests through the PSE channel instead of free-form
+    # guessing. Failure-tolerant: any registration error is logged and
+    # the gateway boots without the tools.
+    try:
+        from cognithor.mcp.pse_tools import register_pse_tools
+
+        register_pse_tools(mcp_client)
+        log.info(
+            "pse_tools_registered",
+            tools=["pse_is_synthesizable", "pse_status", "pse_synthesize"],
+        )
+    except Exception:
+        log.debug("pse_tools_not_available", exc_info=True)
+
     # Browser-Use v17: Autonomous browser automation (optional)
     browser_agent = None
     try:
