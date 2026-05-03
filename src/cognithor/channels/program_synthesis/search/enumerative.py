@@ -92,6 +92,13 @@ def _outputs_match(actual: Any, expected: Any) -> bool:
     """Tolerant equality used by the demo verifier."""
     if isinstance(actual, np.ndarray) and isinstance(expected, np.ndarray):
         return bool(actual.shape == expected.shape and np.array_equal(actual, expected))
+    # Sprint-22 PR#3: with ``Int`` now in the demo-output-type set the
+    # early-exit path can compare an ``np.ndarray`` candidate output
+    # against a scalar expected (or vice-versa). ``arr == scalar`` is
+    # element-wise, so ``bool(...)`` raises "truth value is ambiguous".
+    # Mixed shapes can never satisfy a demo, so short-circuit to False.
+    if isinstance(actual, np.ndarray) or isinstance(expected, np.ndarray):
+        return False
     return bool(actual == expected)
 
 
@@ -308,10 +315,16 @@ class EnumerativeSearch:
         input_type_tag = "Grid"
         if spec.examples:
             first_input = spec.examples[0][0]
+            # ``bool`` is a subclass of ``int`` so we explicitly exclude
+            # it — there is no ``Bool`` input in any demo task.
             if isinstance(first_input, str):
                 input_type_tag = "String"
             elif isinstance(first_input, np.ndarray):
                 input_type_tag = "Grid"
+            elif isinstance(first_input, bool):
+                input_type_tag = "Grid"  # never reached as demo input
+            elif isinstance(first_input, int):
+                input_type_tag = "Int"
 
         bank: dict[str, list[ProgramNode]] = _zero_arity_leaves(self._registry)
         bank.setdefault(input_type_tag, []).append(InputRef(output_type=input_type_tag))
@@ -369,11 +382,14 @@ class EnumerativeSearch:
                     # Sprint-22: any "demo-output type" is a candidate
                     # for early exit. Grid is the legacy Phase-1 type;
                     # String + StringList are added by the Sprint-22
-                    # FlashFill-style family. Other intermediate types
+                    # FlashFill-style family. ``Int`` is added by the
+                    # Number-DSL family — synthesis tasks like int → int
+                    # arithmetic and string → int parsing emit ints as
+                    # the expected output. Other intermediate types
                     # (Mask, Object, Color, Predicate, Lambda, ...) only
                     # exist as composition glue and never appear as a
                     # demo's expected output.
-                    is_demo_output_type = type_tag in ("Grid", "String", "StringList")
+                    is_demo_output_type = type_tag in ("Grid", "String", "StringList", "Int")
                     if is_demo_output_type and _all_demos_correct(candidate, spec, self._executor):
                         return _success(program=candidate, stats=stats, cache_hit=False)
 

@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**104 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**116 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -117,12 +117,24 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | Name | Signature | Cost | Description |
 |---|---|---|---|
 | `color_count` | `(Grid) → Int` | 1.00 | Number of distinct colors present in the grid (0..10). |
+| `int_abs` | `(Int) → Int` | 1.00 | Return \|n\|. |
+| `int_decrement` | `(Int) → Int` | 1.00 | Return n - 1. |
+| `int_double` | `(Int) → Int` | 1.00 | Return 2 * n. |
+| `int_half` | `(Int) → Int` | 1.00 | Return n // 2 (integer division, rounds toward negative infinity). |
+| `int_identity` | `(Int) → Int` | 0.00 | Return the integer unchanged. Useful as a no-op leaf. |
+| `int_increment` | `(Int) → Int` | 1.00 | Return n + 1. |
+| `int_negate` | `(Int) → Int` | 1.00 | Return -n. |
+| `int_square` | `(Int) → Int` | 1.00 | Return n * n. |
+| `int_triple` | `(Int) → Int` | 1.00 | Return 3 * n. |
 | `object_count` | `(ObjectSet) → Int` | 1.00 | Number of objects in the set (≥ 0). |
+| `string_length` | `(String) → Int` | 1.00 | Return the number of characters in the string. |
+| `string_to_int` | `(String) → Int` | 1.00 | Parse the string as a base-10 integer. Raises ``ValueError`` on non-numeric input so the executor sandbox prunes the candidate. |
 
 ### Output type: other
 
 | Name | Signature | Cost | Description |
 |---|---|---|---|
+| `int_to_string` | `(Int) → String` | 1.00 | Return the base-10 decimal string representation of the integer. |
 | `string_capitalize` | `(String) → String` | 1.00 | Return the string with the first char uppercased and rest lowercased. |
 | `string_collapse_spaces` | `(String) → String` | 1.00 | Replace any run of whitespace with a single space (no leading/trailing strip). |
 | `string_extract_email` | `(String) → String` | 1.00 | Return the first email-like token (\S+@\S+\.\S+) or '' if none. |
