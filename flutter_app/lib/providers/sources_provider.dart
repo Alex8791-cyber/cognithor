@@ -52,7 +52,7 @@ class SourcesProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final resp = await _api!.get('/api/v1/leads/sources');
+      final resp = await _api!.get('leads/sources');
       final raw = resp['sources'] as List? ?? [];
       _sources = raw
           .map((e) => LeadSourceInfo.fromJson(e as Map<String, dynamic>))

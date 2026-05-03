@@ -90,7 +90,7 @@ class ResearchProvider extends ChangeNotifier {
     _activeResult = null;
     notifyListeners();
     try {
-      final resp = await _api!.post('/api/v1/research/query', {'query': query});
+      final resp = await _api!.post('research/query', {'query': query});
       _activeResearchId = resp['id'] as String?;
       if (_activeResearchId != null) {
         await _pollResult(_activeResearchId!);
@@ -108,7 +108,7 @@ class ResearchProvider extends ChangeNotifier {
     for (int i = 0; i < 60; i++) {
       await Future<void>.delayed(const Duration(seconds: 2));
       try {
-        final resp = await _api!.get('/api/v1/research/$id');
+        final resp = await _api!.get('research/$id');
         if (resp['status'] == 'complete' || resp['report_md'] != null) {
           _activeResult = ResearchResult.fromJson(resp);
           notifyListeners();
@@ -122,7 +122,7 @@ class ResearchProvider extends ChangeNotifier {
   Future<void> loadHistory() async {
     if (_api == null) return;
     try {
-      final resp = await _api!.get('/api/v1/research/history');
+      final resp = await _api!.get('research/history');
       final raw = resp['results'] as List? ?? [];
       _history = raw
           .map((e) => ResearchSummary.fromJson(e as Map<String, dynamic>))
@@ -136,7 +136,7 @@ class ResearchProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      final resp = await _api!.get('/api/v1/research/$id');
+      final resp = await _api!.get('research/$id');
       _activeResult = ResearchResult.fromJson(resp);
     } catch (e) {
       _error = e.toString();
@@ -149,7 +149,7 @@ class ResearchProvider extends ChangeNotifier {
   Future<void> deleteResearch(String id) async {
     if (_api == null) return;
     try {
-      await _api!.delete('/api/v1/research/$id');
+      await _api!.delete('research/$id');
       _history.removeWhere((r) => r.id == id);
       if (_activeResult?.id == id) _activeResult = null;
       notifyListeners();
@@ -159,9 +159,7 @@ class ResearchProvider extends ChangeNotifier {
   Future<String?> exportResearch(String id, String format) async {
     if (_api == null) return null;
     try {
-      final resp = await _api!.post('/api/v1/research/$id/export', {
-        'format': format,
-      });
+      final resp = await _api!.post('research/$id/export', {'format': format});
       return resp['path'] as String?;
     } catch (_) {
       return null;
