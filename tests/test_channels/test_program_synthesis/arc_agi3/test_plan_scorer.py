@@ -131,6 +131,37 @@ class TestScorePlanComponents:
         # different colour so it can even win on pure quality.
         assert s_repeat >= s_pivot * 0.95
 
+    def test_pix_delta_safety_two_consecutive_high_penalises_any_first_action(self) -> None:
+        """Hebel N broadened (Run #27 finding): when the LAST TWO
+        recorded actions BOTH produced pixΔ>500 (destructive-escalation
+        regime), ANY plan-first-action gets the 0.5× penalty —
+        regardless of whether it matches the last action. This catches
+        the case the LLM K=3 candidates rotate ACTION3/4/6/7 to dodge
+        the single-action gate while still escalating.
+        """
+        m = EpisodeMemory()
+        zero = np.zeros((64, 64), dtype=np.int8)
+        big_a = np.full((64, 64), 4, dtype=np.int8)
+        big_b = np.full((64, 64), 7, dtype=np.int8)
+        # Two consecutive high-pixΔ transitions (~4096 cells each).
+        m.append(grid=zero, action_name="ACTION1", levels_completed=0)
+        m.append(grid=big_a, action_name="ACTION3", levels_completed=0)
+        m.append(grid=big_b, action_name="ACTION6", levels_completed=0)
+
+        # Plan first action is COMPLETELY DIFFERENT from the last
+        # action (ACTION6) — so the single-action repeat trigger does
+        # NOT fire. The two-consecutive trigger MUST still apply.
+        plan_other = [
+            PlanStep("ACTION7", data={"x": 5, "y": 5}, reasoning="r"),
+            PlanStep("ACTION3", reasoning="r"),
+        ]
+        actions = ("ACTION3", "ACTION6", "ACTION7")
+        s_other = score_plan(plan_other, memory=m, available_action_names=actions)
+        # Compare against the same plan scored without memory (gate
+        # inactive). The gate is the only multiplicative delta.
+        s_baseline = score_plan(plan_other, available_action_names=actions)
+        assert s_other == pytest.approx(s_baseline * 0.5, rel=1e-6)
+
 
 class TestPickBestPlan:
     def test_empty_list_returns_empty(self) -> None:

@@ -111,26 +111,49 @@ def score_plan(
     with_reasoning = sum(1 for s in plan if s.reasoning.strip())
     reasoning = with_reasoning / n
 
-    # 6. Sprint-19 Hebel N — pixΔ-safety gate. Run #26c on bp35
-    # showed the LLM still queued plans whose first action had just
-    # produced pixΔ>500 (steps 37/40/41 each flipped 525-639 cells,
-    # then GAME_OVER at step 44). Hebel M makes the trajectory
-    # visible to the LLM in the prompt; Hebel N is the deterministic
-    # safety net for when the LLM ignores the warning. Multiplicative
-    # half-penalty (0.5) — strong enough to lose to any sane
-    # alternative candidate, but not a full zero so the gate degrades
-    # gracefully if ALL candidates inherit the same first-action.
+    # 6. Sprint-19 Hebel N — pixΔ-safety gate.
+    #
+    # Run #26c finding (motivation): the LLM queued plans whose first
+    # action repeated the destructive last action (pixΔ>500), then
+    # GAME_OVER. Initial Hebel N caught that single-action repeat case.
+    #
+    # Run #27 finding (broadening): with K=3 sampling + Hebel L active
+    # the LLM stopped repeating the *same* action — but it now rotates
+    # between ACTION3/4/6/7 each producing pixΔ ~525-636, ending in
+    # the same destructive cascade (528 → 525 → 525 → 525 → 636 →
+    # GAME_OVER at step 48). The single-action gate didn't fire
+    # because the action keeps changing.
+    #
+    # Broadened gate: TWO consecutive prior steps with pixΔ>500 means
+    # the agent is in the destructive-escalation regime regardless of
+    # action class — ANY plan-first-action gets the multiplicative
+    # 0.5× penalty. The prior single-action repeat case still applies
+    # as a separate trigger (relevant when only the last single step
+    # had pixΔ>500).
     pix_delta_safety = 1.0
     if memory is not None and len(memory) >= 2:
         try:
             import numpy as _np
 
-            recent = memory.window(2)
-            after, before = recent[0], recent[1]
-            if before.grid.shape == after.grid.shape:
-                last_pix_delta = int(_np.sum(before.grid != after.grid))
-                if last_pix_delta > 500 and plan[0].action_name == after.action_name:
-                    pix_delta_safety = 0.5
+            recent = memory.window(3)
+            last_after, last_before = recent[0], recent[1]
+            last_pix_delta = (
+                int(_np.sum(last_before.grid != last_after.grid))
+                if last_before.grid.shape == last_after.grid.shape
+                else 0
+            )
+            second_pix_delta = 0
+            if len(recent) >= 3:
+                second_after, second_before = recent[1], recent[2]
+                if second_before.grid.shape == second_after.grid.shape:
+                    second_pix_delta = int(_np.sum(second_before.grid != second_after.grid))
+
+            two_consecutive_high = last_pix_delta > 500 and second_pix_delta > 500
+            single_action_repeat = (
+                last_pix_delta > 500 and plan[0].action_name == last_after.action_name
+            )
+            if two_consecutive_high or single_action_repeat:
+                pix_delta_safety = 0.5
         except Exception:
             pass
 
