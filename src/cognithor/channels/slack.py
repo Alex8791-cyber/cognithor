@@ -141,20 +141,20 @@ class SlackChannel(Channel):
 
         app = AsyncApp(token=self.token)
 
-        @app.event("message")  # type: ignore[misc]
+        @app.event("message")  # type: ignore[untyped-decorator]
         async def _on_msg(event: dict[str, Any], say: Any) -> None:
             await self._on_message(event)
 
-        @app.event("app_mention")  # type: ignore[misc]
+        @app.event("app_mention")  # type: ignore[untyped-decorator]
         async def _on_mention(event: dict[str, Any], say: Any) -> None:
             await self._on_message(event)
 
-        @app.action("jarvis_approve")  # type: ignore[misc]
+        @app.action("jarvis_approve")  # type: ignore[untyped-decorator]
         async def _approve(ack: Any, body: dict[str, Any]) -> None:
             await ack()
             await self._on_approval(body, approved=True)
 
-        @app.action("jarvis_reject")  # type: ignore[misc]
+        @app.action("jarvis_reject")  # type: ignore[untyped-decorator]
         async def _reject(ack: Any, body: dict[str, Any]) -> None:
             await ack()
             await self._on_approval(body, approved=False)

@@ -62,7 +62,7 @@ def cognithor_agent_factory(
     Raises :class:`ImportError` if the harness isn't installed.
     """
     try:
-        from agents.agent import Agent as _HarnessAgent  # type: ignore[import-not-found]
+        from agents.agent import Agent as _HarnessAgent
     except ImportError as exc:
         raise ImportError(_HARNESS_INSTALL_HINT) from exc
 

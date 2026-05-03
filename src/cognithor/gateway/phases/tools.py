@@ -294,8 +294,8 @@ async def init_tools(
             from cognithor.core.unified_llm import UnifiedLLMClient
 
             llm_client = UnifiedLLMClient.create(config)
-            model_name = getattr(getattr(config, "models", None), "planner", None)
-            model_name = getattr(model_name, "name", "") if model_name else ""
+            _planner_cfg = getattr(getattr(config, "models", None), "planner", None)
+            model_name: str = str(getattr(_planner_cfg, "name", "") or "")
 
             async def _llm_for_analysis(prompt: str, model: str = "") -> str:
                 resp = await llm_client.chat(
@@ -347,10 +347,8 @@ async def init_tools(
                     from cognithor.core.unified_llm import UnifiedLLMClient
 
                     llm_client_synth = UnifiedLLMClient.create(config)
-                    model_name_synth = getattr(getattr(config, "models", None), "planner", None)
-                    model_name_synth = (
-                        getattr(model_name_synth, "name", "") if model_name_synth else ""
-                    )
+                    _planner_cfg_synth = getattr(getattr(config, "models", None), "planner", None)
+                    model_name_synth: str = str(getattr(_planner_cfg_synth, "name", "") or "")
 
                     async def _llm_for_synthesis(prompt: str, model: str = "") -> str:
                         resp = await llm_client_synth.chat(
@@ -602,8 +600,8 @@ async def init_tools(
                 from cognithor.core.unified_llm import UnifiedLLMClient
 
                 _llm_vl = UnifiedLLMClient.create(config)
-                _model_vl = getattr(getattr(config, "models", None), "planner", None)
-                _model_vl = getattr(_model_vl, "name", "") if _model_vl else ""
+                _planner_cfg_vl = getattr(getattr(config, "models", None), "planner", None)
+                _model_vl: str = str(getattr(_planner_cfg_vl, "name", "") or "")
 
                 async def _llm_for_verified(prompt: str, model: str = "") -> str:
                     resp = await _llm_vl.chat(

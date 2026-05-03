@@ -62,8 +62,7 @@ def open_sqlite(
                 db_path,
             )
 
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    return cast("sqlite3.Connection", conn)
+    return sqlite3.connect(db_path, check_same_thread=False)
 
 
 def get_encryption_key(config: Any = None) -> str | None:

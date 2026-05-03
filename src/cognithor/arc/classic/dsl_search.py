@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from typing import Literal, cast
+from typing import Literal
 
 from cognithor.arc.classic import dsl
 from cognithor.arc.classic.task_parser import ArcTask, Grid, Solution
@@ -126,8 +126,7 @@ def build_candidates(
     for n in (1, 2):
         candidates.append((f"pad({n})", _pad(n)))
     for direction in ("down", "up", "left", "right"):
-        d_lit = cast("Literal['down', 'up', 'left', 'right']", direction)
-        candidates.append((f"gravity({direction})", _gravity(d_lit)))
+        candidates.append((f"gravity({direction})", _gravity(direction)))
 
     return candidates
 

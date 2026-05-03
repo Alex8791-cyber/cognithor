@@ -23,6 +23,8 @@ def get_local_ips() -> list[str]:
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None):
             addr = info[4][0]
+            if not isinstance(addr, str):
+                continue
             if addr not in ips and not addr.startswith("fe80"):
                 ips.append(addr)
     except (OSError, socket.gaierror):

@@ -2095,9 +2095,10 @@ class Gateway:
             return cast("str", plan.direct_response)
 
         if not plan.has_actions:
-            delegation.result = "Kein Plan erstellt."
+            no_plan_msg = "Kein Plan erstellt."
+            delegation.result = no_plan_msg
             delegation.success = False
-            return delegation.result
+            return no_plan_msg
 
         # Check gatekeeper
         if self._gatekeeper is None:
@@ -2108,9 +2109,10 @@ class Gateway:
         blocked = [d for d in decisions if d.status in (GateStatus.APPROVE, GateStatus.BLOCK)]
         if blocked:
             reasons = "; ".join(d.reason for d in blocked[:3])
-            delegation.result = f"Delegation blockiert: {reasons}"
+            blocked_msg = f"Delegation blockiert: {reasons}"
+            delegation.result = blocked_msg
             delegation.success = False
-            return delegation.result
+            return blocked_msg
 
         # Executor mit Ziel-Agent-Kontext
         assert self._executor is not None

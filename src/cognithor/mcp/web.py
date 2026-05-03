@@ -321,10 +321,12 @@ class WebTools:
                 )
                 ips: list[str] = []
                 for _family, _type, _proto, _canonname, sockaddr in resolved:
-                    ip = sockaddr[0]
-                    if ip in BLOCKED_DOMAINS or _is_private_host(ip):
-                        raise WebError(f"DNS für {hostname} zeigt auf blockierte Adresse: {ip}")
-                    ips.append(ip)
+                    addr = sockaddr[0]
+                    if not isinstance(addr, str):
+                        continue
+                    if addr in BLOCKED_DOMAINS or _is_private_host(addr):
+                        raise WebError(f"DNS für {hostname} zeigt auf blockierte Adresse: {addr}")
+                    ips.append(addr)
                 self._dns_cache.set(hostname, ips)
             except socket.gaierror:
                 raise WebError(f"DNS-Aufloesung fehlgeschlagen fuer {hostname}") from None

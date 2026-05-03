@@ -386,7 +386,7 @@ class DatabaseTools:
         """Execute a read-only query on PostgreSQL via asyncpg."""
         _check_injection(sql, params)
         try:
-            import asyncpg  # type: ignore[import-untyped]
+            import asyncpg
         except ImportError:
             return self._pg_psycopg2_query(connstr, sql, params, limit)
 

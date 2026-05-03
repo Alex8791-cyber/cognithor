@@ -216,7 +216,7 @@ class CronEngine:
 
                 def add_job(
                     self,
-                    func: Callable[[CronJob], Coroutine[Any, Any, Any]],
+                    func: Callable[..., Coroutine[Any, Any, Any]],
                     trigger: Any | None = None,
                     args: list[Any] | None = None,
                     id: str | None = None,

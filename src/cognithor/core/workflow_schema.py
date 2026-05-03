@@ -151,7 +151,7 @@ class WorkflowDefinition(BaseModel, frozen=True):
     @classmethod
     def from_yaml(cls, yaml_str: str) -> WorkflowDefinition:
         """Parse a workflow from a YAML string."""
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         data = yaml.safe_load(yaml_str)
         return cls.model_validate(data)

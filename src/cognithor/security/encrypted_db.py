@@ -335,7 +335,7 @@ def encrypted_connect(
                                 path=db_path[-40:],
                                 hint="DB still encrypted despite encryption_enabled=false",
                             )
-                            return conn
+                            return cast("sqlite3.Connection", conn)
                         except Exception:
                             log.debug("encrypted_db_legacy_open_failed", exc_info=True)
                 # Re-raise if nothing worked
@@ -356,7 +356,7 @@ def encrypted_connect(
             # Test that the key works
             conn.execute("SELECT count(*) FROM sqlite_master")
             log.debug("encrypted_db_opened", path=db_path[-30:])
-            return conn
+            return cast("sqlite3.Connection", conn)
         except Exception:
             # DB exists but is unencrypted — migrate it to encrypted
             if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
@@ -379,7 +379,7 @@ def encrypted_connect(
                     conn.execute("PRAGMA cipher_memory_security = OFF")
                     conn.execute("PRAGMA journal_mode=WAL")
                     log.debug("encrypted_db_created", path=db_path[-30:])
-                    return conn
+                    return cast("sqlite3.Connection", conn)
                 except Exception:
                     log.debug("encrypted_db_new_file_create_failed", exc_info=True)
 

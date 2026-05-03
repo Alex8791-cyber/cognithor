@@ -423,7 +423,11 @@ def _register_security_routes(
 
         # Relations
         try:
-            if hasattr(memory_mgr, "semantic") and hasattr(memory_mgr.semantic, "_indexer"):
+            if (
+                memory_mgr is not None
+                and hasattr(memory_mgr, "semantic")
+                and hasattr(memory_mgr.semantic, "_indexer")
+            ):
                 indexer = memory_mgr.semantic._indexer
                 if hasattr(indexer, "_conn"):
                     rows = indexer._conn.execute(

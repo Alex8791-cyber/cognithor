@@ -461,7 +461,7 @@ async def answer_from_presearch(gw: Gateway, user_message: str, search_results: 
         answer = re.sub(r"<think>.*?</think>\s*", "", answer, flags=re.DOTALL)
         if answer.strip():
             log.info("presearch_answer_generated", chars=len(answer))
-            return cast("str", answer.strip())
+            return answer.strip()
 
     except Exception as exc:
         log.error("presearch_answer_failed", error=str(exc)[:200])

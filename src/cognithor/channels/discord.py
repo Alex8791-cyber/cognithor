@@ -138,7 +138,7 @@ class DiscordChannel(Channel):
         client = discord.Client(intents=intents)
         self._client = client
 
-        @client.event  # type: ignore[misc]
+        @client.event  # type: ignore[untyped-decorator]
         async def on_ready() -> None:
             self._running = True
             self._bidirectional = True
@@ -147,11 +147,11 @@ class DiscordChannel(Channel):
                 client.user,
             )
 
-        @client.event  # type: ignore[misc]
+        @client.event  # type: ignore[untyped-decorator]
         async def on_message(message: Any) -> None:
             await self._on_message(message)
 
-        @client.event  # type: ignore[misc]
+        @client.event  # type: ignore[untyped-decorator]
         async def on_reaction_add(reaction: Any, user: Any) -> None:
             await self._on_reaction(reaction, user)
 
