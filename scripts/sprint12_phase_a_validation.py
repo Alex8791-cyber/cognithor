@@ -60,6 +60,7 @@ try:
         Sprint10DSLAgent,
         build_inprocess_vllm_choice_fn,
         build_inprocess_vllm_planning_choice_fn,
+        build_inprocess_vllm_vision_planning_choice_fn,
     )
 except ImportError as exc:
     print(f"FATAL: cognithor.channels.program_synthesis.arc_agi3 not importable: {exc}")
@@ -268,9 +269,12 @@ def _make_llm_planning(game_id: str, results_dir: Path) -> tuple[Any, str | None
     telemetry = LLMTelemetry()
     try:
         # Same Sprint-15/16/17 vLLM config as llm_full — only the
-        # decoder differs. Note ``max_tokens=2048`` here (planning
-        # response is multi-step JSON, needs more room than the
-        # single-action JSON of llm_full).
+        # decoder differs. Sprint-19 Run #25 audit on the *vision*
+        # variant exposed that ``max_tokens=2048`` length-caps 76/80
+        # plan responses (Qwen3.6 truncates mid-output before the
+        # closing JSON ``}`` so the upstream decoder silently falls
+        # back to DSL). Same fix applies here — multi-step plan-JSON
+        # needs the full 4096 budget.
         choice_fn = build_inprocess_vllm_planning_choice_fn(
             speculative_config={
                 "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
@@ -278,7 +282,7 @@ def _make_llm_planning(game_id: str, results_dir: Path) -> tuple[Any, str | None
             },
             kv_cache_dtype="fp8",
             temperature=0.0,
-            max_tokens=2048,
+            max_tokens=4096,
             mtp_stats=mtp_stats,
             telemetry=telemetry,
         )
@@ -323,12 +327,81 @@ def _empty_profile(game_id: str) -> GameProfile:
     )
 
 
+def _make_llm_vision(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
+    """Sprint-19: vision-mode planning agent.
+
+    THE root-cause fix the user identified: prior llm_full / llm_planning
+    agents fed the LLM the 64×64 grid as ASCII text. A 27 B vision-
+    capable model is at its weakest with that representation; it's at
+    its strongest with PNG input. This factory uses the existing
+    ``build_inprocess_vllm_vision_planning_choice_fn`` which:
+
+    * Loads the multimodal ``Qwen3.6-27B-NVFP4`` (no MTP — the
+      MTP-NVFP4 variant is text-only, can't accept images)
+    * Renders each frame as a 16-colour ARC-palette PNG (scale=8,
+      so 64×64 grid → 512×512 image)
+    * Sends a multimodal chat message: ``[image, text-prompt]``
+    * Same plan-horizon=5 as ``_make_llm_planning``
+
+    Trade-off: no MTP speculative decoding (~30 % throughput loss
+    measured in Sprint-15). Win: the LLM can finally SEE the grid
+    structure visually instead of parsing 4 K ASCII tokens.
+    """
+    audit_path = results_dir / f"{game_id}_llm_vision.jsonl"
+    trail = ArcAuditTrail(game_id=game_id)
+    profile = GameProfile.load(game_id) or _empty_profile(game_id)
+    telemetry = LLMTelemetry()
+    try:
+        choice_fn = build_inprocess_vllm_vision_planning_choice_fn(
+            kv_cache_dtype="fp8",
+            temperature=0.0,
+            # Sprint-19 Run #25 finding: max_tokens=2048 caused 76/80
+            # LLM calls to hit ``finish_reason="length"`` — the model
+            # was truncated mid-output before the closing JSON ``}``,
+            # so EVERY plan was unparseable and the upstream decoder
+            # silently fell back to its DSL policy. Bumped to 4096 so
+            # Qwen3.6 has room to finish its plan-JSON. Cost increase
+            # is modest because vLLM batches ``n=plan_candidates`` in
+            # parallel (shared prefill, parallel decode) — empirically
+            # ~1.3x wall-clock for n=3 at 4096 tokens.
+            max_tokens=4096,
+            grid_scale=8,
+            telemetry=telemetry,
+            # Sprint-19 Hebel L: ask vLLM for 3 plan candidates per
+            # frame in a single batched generation; pick the highest
+            # plan_scorer-rated one. Cheap (shared prefill, parallel
+            # decodes) and lets us reject pure-repetition / coord-less
+            # ACTION6 / dead-action plans before execution.
+            plan_candidates=3,
+            plan_candidate_temperature=0.6,
+        )
+    except RuntimeError as exc:
+        print(f"  [llm_vision] vLLM init failed ({exc}); falling back to dsl_full")
+        return _make_dsl_full(game_id, results_dir)
+    agent = PlanningLLMReasoningAgent(
+        choice_fn=choice_fn,
+        audit_trail=trail,
+        game_profile=profile,
+        strategy_name="llm_vision",
+        frame_analyzer=FrameAnalyzer(),
+        fast_path_enabled=False,
+        plan_horizon=5,
+        telemetry=telemetry,
+    )
+    agent.__dict__["_phase_a_trail"] = trail
+    agent.__dict__["_phase_a_audit_path"] = audit_path
+    agent.__dict__["_phase_a_profile"] = profile
+    agent.__dict__["_phase_a_telemetry"] = telemetry
+    return agent, str(audit_path)
+
+
 _AGENT_FACTORIES = {
     "random_baseline": _make_random_agent,
     "dsl_baseline": _make_dsl_baseline,
     "dsl_full": _make_dsl_full,
     "llm_full": _make_llm_full,
     "llm_planning": _make_llm_planning,
+    "llm_vision": _make_llm_vision,
 }
 
 

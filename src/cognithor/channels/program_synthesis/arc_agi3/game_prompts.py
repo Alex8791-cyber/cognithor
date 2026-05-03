@@ -29,6 +29,28 @@ GENERIC_CONTEXT = (
     "INT<0,15> values."
 )
 
+
+# Sprint-19 Run #24 finding: vision-mode agent on bp35 escalated pixΔ
+# from 25 → 391 → 528 → 635 across steps and triggered GAME_OVER at
+# step 40. The agent had no signal that GAME_OVER is FATAL or that
+# monotonic-pixΔ-growth is the empirical loss trajectory. This block is
+# appended by ``build_system_prompt`` to every game's prompt so the
+# agent learns the rule once for all games.
+GAME_OVER_AVOIDANCE_HINT = (
+    "FATAL FAILURE MODE: GAME_OVER ends the episode (score = 0, no\n"
+    "recovery). Empirical evidence from prior runs on bp35: agents that\n"
+    "aggressively manipulate the grid (pixΔ > 500 per step, monotonic-\n"
+    "growth trajectories) reliably trigger GAME_OVER around step 35-40.\n"
+    "**Massive state change is NOT automatically progress — it is often\n"
+    "the path to GAME_OVER.**\n"
+    "\n"
+    "WIN-DETECTION RULE: if your last 5 actions changed pixels but\n"
+    "``levels_completed`` did NOT increase, you are NOT winning. Try\n"
+    "structurally-different actions or RESET (if available). Continuing\n"
+    "in the same direction at increasing intensity is the GAME_OVER\n"
+    "trajectory."
+)
+
 # Verbatim from arcprize/ARC-AGI-3-Agents agents/templates/llm_agents.py
 # (GuidedLLM.build_user_prompt). This is the public baseline that
 # consistently lifts win-rate by ~5-10 PP on Locksmith vs the generic
@@ -97,35 +119,53 @@ CLICK_FAMILY_HINT = (
     "  exactly N clicks of certain types to win\n"
 )
 
-# bp35-specific hints derived from Sprint-16 Run #20 observations on this
-# very game-family. Empirical (40-step LLM trace + per-step pixΔ from the
-# audit JSONL):
+# bp35-specific hints derived from Sprint-16 Run #20 + Sprint-17 Run #21 +
+# Sprint-18 Run #22 audit JSONLs.
 #
-# * Available actions = [ACTION3, ACTION4, ACTION6, ACTION7]
-# * ACTION3 / ACTION4 / ACTION7 produce LARGE state changes (pixΔ ≈ 19-25
-#   per step on the 64×64 grid)
-# * ACTION6 with arbitrary coords moves only the cursor pixel (pixΔ = 1)
-# * Greedy LLMs default to ACTION6 every step → 100 % loop → score 0
+# Run #20 observed: ACTION3/4/7 produce ~20+ pixΔ; ACTION6 with arbitrary
+# coords is a 1-pixel cursor move. Run #21 with the rule below killed the
+# ACTION6-reflex (0/36) and got monotonic-pixΔ-growth → GAME_OVER at
+# step 35. Run #22 (planning) found a strategic ACTION6 with pixΔ=635 at
+# step 35 (the click DID do something massive when targeted) but still
+# GAME_OVER. Pattern: agent engages but loses by over-engagement.
 #
-# Strategy this hint pushes: try the non-click actions FIRST to understand
-# the macro dynamics. Reserve ACTION6 for when you have a concrete cell
-# you want to commit-click on (after a non-click action has revealed the
-# board's structure).
+# Sprint-19 update: explicit win-vs-loss-vs-stuck heuristics + the rule
+# that more state-change isn't automatically progress.
 BP35_OBSERVED_RULES = (
-    "You are playing a game in the bp35 family. Observed behaviour from\n"
-    "prior episodes:\n"
+    "You are playing a game in the bp35 family. Empirical observations\n"
+    "from prior episodes (audit JSONL evidence):\n"
+    "\n"
+    "ACTION DYNAMICS:\n"
     "* Available actions are typically ACTION3, ACTION4, ACTION6, ACTION7.\n"
     "* ACTION3, ACTION4 and ACTION7 cause LARGE grid changes (~20+ pixels\n"
-    "  out of 4096 changing per step) — they advance the game state.\n"
-    "* ACTION6 is the click action (takes x/y coordinates). Without a\n"
-    "  specific target cell it usually only moves the cursor (1-pixel\n"
-    "  change) and does NOT advance the game.\n"
-    "* Strategy: use ACTION3 / ACTION4 / ACTION7 first to discover the\n"
-    "  game's transformation rules; reserve ACTION6 only for committing a\n"
-    "  click on a cell you have a concrete reason to target.\n"
-    "* The ``pixels_changed`` field in your action history shows which\n"
-    "  actions actually moved the game forward — favour repeating actions\n"
-    "  with large pixΔ over ACTION6 with pixΔ ≤ 1.\n"
+    "  out of 4096 changing per step) — they're the macro-mechanics.\n"
+    "* ACTION6 is a CLICK at (x,y). With arbitrary coords it usually only\n"
+    "  moves the cursor (1-pixel change) — but TARGETED clicks on the\n"
+    "  right cell can produce 600+ pixel cascades.\n"
+    "* RESET is also available: it restarts the level. Use it ONLY when\n"
+    "  you've clearly broken the puzzle (irreversible bad state).\n"
+    "\n"
+    "WIN-VS-LOSS HEURISTICS (this is what prior agents got wrong):\n"
+    "* GAME_OVER frequently comes from OVER-engagement: pixΔ trajectories\n"
+    "  that grow monotonically (25 → 100 → 300 → 600+) usually end in\n"
+    "  loss, not win. Massive change is NOT automatically progress.\n"
+    "* The win signal is ``levels_completed`` increasing. NOTHING ELSE.\n"
+    "  Pixels moving doesn't help if level stays at 0.\n"
+    "* If after 5+ actions the level hasn't advanced and pixΔ keeps\n"
+    "  growing, your strategy is wrong. Try fundamentally different\n"
+    "  action types (switch from movement to click, or vice versa).\n"
+    "\n"
+    "STRATEGY:\n"
+    "* Phase 1 (steps 0-4): explore — try each available action ONCE to\n"
+    "  see what it does. The PNG image + cluster decomposition tell you\n"
+    "  the structure.\n"
+    "* Phase 2 (steps 5-15): hypothesise the win-condition by comparing\n"
+    "  before/after images. What pattern do level-up events have in\n"
+    "  common? (You won't have evidence yet — speculate from grid shape.)\n"
+    "* Phase 3 (steps 15+): execute towards the hypothesised win-state\n"
+    "  using the smallest sequence of actions. Prefer ACTION6 with\n"
+    "  TARGETED coordinates over scattered movement actions.\n"
+    "* If stuck, RESET and try a different opening sequence.\n"
 )
 
 # Game family → rule scaffold. Add entries as you understand new games.
@@ -184,7 +224,7 @@ def build_system_prompt(game_id: str, action_options: str) -> str:
         f"  action: must be exactly one of [{action_options}]\n"
         f"  reasoning: one short sentence describing why you chose it"
     )
-    parts = [GENERIC_CONTEXT, behavioural]
+    parts = [GENERIC_CONTEXT, GAME_OVER_AVOIDANCE_HINT, behavioural]
     if game_rules:
         parts.append(game_rules)
     parts.append(output_schema)
@@ -195,6 +235,7 @@ __all__ = [
     "BP35_OBSERVED_RULES",
     "CLICK_FAMILY_HINT",
     "FT09_RULES",
+    "GAME_OVER_AVOIDANCE_HINT",
     "GAME_PROMPTS",
     "GENERIC_CONTEXT",
     "LS20_LOCKSMITH_RULES",

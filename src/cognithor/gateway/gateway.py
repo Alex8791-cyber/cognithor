@@ -92,7 +92,11 @@ def advance_stalled_count(current: int, tool_calls: int, successful_calls: int) 
     """Return updated stalled-turn counter.
 
     Resets to 0 when the model both called *and* succeeded at tools;
-    otherwise increments by 1.
+    otherwise increments by 1. Audit-verified intentional: see
+    ``test_tools_called_but_all_fail_counts_as_stalled`` which
+    encodes "tools called + all fail = stalled" as the desired
+    semantics (otherwise an infinite-retry loop on broken tools
+    never escalates to the user).
     """
     if tool_calls > 0 and successful_calls > 0:
         return 0

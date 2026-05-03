@@ -101,6 +101,18 @@ class FrameContext:
     # byte-identical.
     state_action_summary: str = ""
     forbidden_action_names: tuple[str, ...] = ()
+    # Sprint-19 Hebel B (vision delta): the previous frame's grid +
+    # the action that led from prev → current. Lets the vision-prompt
+    # builder send a side-by-side "before/after" image pair so the LLM
+    # can visually diff. ``None`` when no prior frame exists yet.
+    prev_grid: _Grid | None = None
+    prev_action_name: str = ""
+    # Sprint-19 Hebel D (structured text): pre-rendered cluster
+    # decomposition + recent-window delta-summary. Optional — empty
+    # strings disable the corresponding prompt sections so legacy
+    # prompts stay byte-identical.
+    cluster_summary: str = ""
+    delta_window_summary: str = ""
 
 
 # A callable that takes a :class:`FrameContext` and returns
@@ -253,9 +265,11 @@ class LLMActionDecoder(ActionDecoder):
         try:
             grid = self._bridge.extract_grid(latest_frame)
         except Exception as exc:  # pragma: no cover — bridge errors propagate
-            return self._fallback.pick_action(frames, latest_frame, available_actions) + (
-                f" [LLM bridge failed: {type(exc).__name__}]",
-            )[0:0] or self._fallback.pick_action(frames, latest_frame, available_actions)
+            # BUG-PSE-007 fix: prior code had a malformed
+            # ``+ (...)[0:0] or fallback(...)`` chain that called the
+            # fallback twice. Single clean fallback call now.
+            del exc
+            return self._fallback.pick_action(frames, latest_frame, available_actions)
 
         action_effects_summary = (
             summarise_action_effects(self._frame_analyzer)
@@ -281,6 +295,32 @@ class LLMActionDecoder(ActionDecoder):
         if len(forbidden) == len(available_actions):
             forbidden = ()
 
+        # BUG-PSE-001 fix: populate Sprint-19 fields in the single-step
+        # decoder too, matching what PlanningLLMActionDecoder does.
+        # Without these, vision-mode + cluster/delta annotation are
+        # silently disabled when wired through this decoder.
+        prev_grid = None
+        prev_action_name = ""
+        cluster_summary_text = ""
+        delta_window_text = ""
+        if len(self._memory) > 0:
+            try:
+                prev_step = self._memory.window(1)[0]
+                prev_grid = prev_step.grid
+                prev_action_name = prev_step.action_name
+            except Exception:
+                pass
+        try:
+            from cognithor.channels.program_synthesis.arc_agi3.state_renderer import (
+                render_cluster_summary,
+                render_state_changes_in_window,
+            )
+
+            cluster_summary_text = render_cluster_summary(grid)
+            delta_window_text = render_state_changes_in_window(self._memory, max_steps=5)
+        except Exception:
+            pass
+
         ctx = FrameContext(
             grid=grid,
             available_action_names=[a.name for a in available_actions],
@@ -292,6 +332,10 @@ class LLMActionDecoder(ActionDecoder):
             game_id=getattr(latest_frame, "game_id", ""),
             state_action_summary=state_action_summary,
             forbidden_action_names=forbidden,
+            prev_grid=prev_grid,
+            prev_action_name=prev_action_name,
+            cluster_summary=cluster_summary_text,
+            delta_window_summary=delta_window_text,
         )
 
         # Call the LLM (or stub). Failures fall back to the DSL decoder.
