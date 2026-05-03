@@ -21,7 +21,6 @@ import contextvars
 import dataclasses
 import json
 import time
-from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -30,7 +29,7 @@ from cognithor.models import Message, MessageRole
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Iterator
 
     from cognithor.config import CognithorConfig
 
@@ -303,6 +302,7 @@ class OllamaClient:
         format_json: bool = False,
         options: dict[str, Any] | None = None,
         images: list[str] | None = None,
+        num_ctx: int | None = None,
     ) -> dict[str, Any]:
         """Sendet eine Chat-Completion-Anfrage an Ollama.
 
@@ -318,6 +318,15 @@ class OllamaClient:
                 base64 strings. Attached to the LAST user message so the
                 VLM (e.g. qwen3.6:27b) can see them. Ollama's chat API
                 expects ``messages[i].images = [<base64>, ...]``.
+            num_ctx: Sprint-23 — explicit context-window override sent
+                via Ollama's ``options.num_ctx``. When ``None`` (default)
+                no override is sent and Ollama uses the model's built-in
+                window. When set, Ollama loads the model with this
+                window for the call. Callers typically resolve this from
+                :meth:`ModelRouter.get_model_config` so the active
+                ``ContextProfile`` (Sprint-23) actually takes effect on
+                the wire — without this kwarg, the profile machinery is
+                a no-op end-to-end.
 
         Returns:
             Ollama-Response als Dict mit 'message' Key.
@@ -360,15 +369,22 @@ class OllamaClient:
                     by_category=by_cat,
                 )
 
+        # Sprint-23 — assemble options. ``num_ctx`` only goes on the
+        # wire when explicitly set, so unaware callers keep the previous
+        # behaviour (Ollama uses the model's built-in window).
+        merged_options: dict[str, Any] = {
+            "temperature": temperature,
+            "top_p": top_p,
+            **(options or {}),
+        }
+        if num_ctx is not None:
+            merged_options["num_ctx"] = int(num_ctx)
+
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "stream": False,  # Non-streaming for this method
-            "options": {
-                "temperature": temperature,
-                "top_p": top_p,
-                **(options or {}),
-            },
+            "options": merged_options,
             "keep_alive": self._keep_alive,
         }
 
@@ -428,8 +444,14 @@ class OllamaClient:
         tools: list[dict[str, Any]] | None = None,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         """Streaming chat completion -- token by token.
+
+        ``num_ctx`` mirrors the kwarg on :meth:`chat`: when set, the
+        Ollama call carries an explicit context window override (used
+        by the Sprint-23 :class:`ContextProfile` system); when ``None``
+        the model's built-in window is used.
 
         Yields:
             Einzelne Text-Tokens als Strings.
@@ -450,14 +472,18 @@ class OllamaClient:
                     by_category=by_cat,
                 )
 
+        stream_options: dict[str, Any] = {
+            "temperature": temperature,
+            "top_p": top_p,
+        }
+        if num_ctx is not None:
+            stream_options["num_ctx"] = int(num_ctx)
+
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "stream": True,
-            "options": {
-                "temperature": temperature,
-                "top_p": top_p,
-            },
+            "options": stream_options,
             "keep_alive": self._keep_alive,
         }
 
