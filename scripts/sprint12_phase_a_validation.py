@@ -355,6 +355,13 @@ def _make_llm_vision(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
             max_tokens=2048,
             grid_scale=8,
             telemetry=telemetry,
+            # Sprint-19 Hebel L: ask vLLM for 3 plan candidates per
+            # frame in a single batched generation; pick the highest
+            # plan_scorer-rated one. Cheap (shared prefill, parallel
+            # decodes) and lets us reject pure-repetition / coord-less
+            # ACTION6 / dead-action plans before execution.
+            plan_candidates=3,
+            plan_candidate_temperature=0.6,
         )
     except RuntimeError as exc:
         print(f"  [llm_vision] vLLM init failed ({exc}); falling back to dsl_full")

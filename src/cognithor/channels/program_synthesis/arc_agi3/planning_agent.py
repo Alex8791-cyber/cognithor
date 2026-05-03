@@ -413,6 +413,8 @@ def build_inprocess_vllm_vision_planning_choice_fn(
     grid_scale: int = 8,
     kv_cache_dtype: str | None = None,
     telemetry: LLMTelemetry | None = None,
+    plan_candidates: int = 1,
+    plan_candidate_temperature: float = 0.6,
 ) -> Any:
     """Vision-mode planning choice-fn: feed Qwen3.6 the grid as a PNG.
 
@@ -471,6 +473,11 @@ def build_inprocess_vllm_vision_planning_choice_fn(
     def _sync_choice(ctx: FrameContext) -> tuple[list[PlanStep], str]:
         import time as _time
 
+        from vllm import SamplingParams as _SamplingParams
+
+        from cognithor.channels.program_synthesis.arc_agi3.plan_scorer import (
+            pick_best_plan,
+        )
         from cognithor.channels.program_synthesis.arc_agi3.vision_render import (
             render_grid_data_uri,
         )
@@ -520,18 +527,31 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             levels=ctx.levels_completed,
             win_levels=ctx.win_levels,
         )
+        messages = [
+            {"role": "system", "content": _build_planning_system_prompt(ctx)},
+            {
+                "role": "user",
+                "content": [*images, {"type": "text", "text": text_after_image}],
+            },
+        ]
+
+        # Sprint-19 Hebel L: K-candidate sampling. When plan_candidates > 1
+        # we ask vLLM for ``n=K`` samples in a single batched generation
+        # (shared prefill, K parallel decodes — much cheaper than K
+        # serial calls). Each completion is parsed independently; failed
+        # parses are skipped. The deterministic ``pick_best_plan`` then
+        # picks the highest-scoring survivor.
+        if plan_candidates > 1:
+            active_sampling = _SamplingParams(
+                temperature=plan_candidate_temperature,
+                max_tokens=max_tokens,
+                n=plan_candidates,
+            )
+        else:
+            active_sampling = sampling
 
         t0 = _time.monotonic()
-        outs = llm.chat(
-            messages=[
-                {"role": "system", "content": _build_planning_system_prompt(ctx)},
-                {
-                    "role": "user",
-                    "content": [*images, {"type": "text", "text": text_after_image}],
-                },
-            ],
-            sampling_params=sampling,
-        )
+        outs = llm.chat(messages=messages, sampling_params=active_sampling)
         wall_clock_s = _time.monotonic() - t0
         req_out = outs[0]
         # Vision factory: no MTP (no multimodal MTP-NVFP4 ckpt as of
@@ -539,6 +559,23 @@ def build_inprocess_vllm_vision_planning_choice_fn(
         # actionable for tuning the vision pass.
         if telemetry is not None:
             record_vllm_request_output(telemetry, req_out, wall_clock_s=wall_clock_s)
+
+        if plan_candidates > 1 and len(req_out.outputs) > 1:
+            candidates: list[tuple[list[PlanStep], str]] = []
+            for completion in req_out.outputs:
+                try:
+                    candidates.append(parse_plan_response(completion.text))
+                except ValueError:
+                    continue
+            if candidates:
+                return pick_best_plan(
+                    candidates,
+                    available_action_names=tuple(ctx.available_action_names),
+                )
+            # All K candidates unparseable — fall through; the next call
+            # will raise from outputs[0] and the upstream decoder
+            # transparently falls back to its DSL policy.
+
         return parse_plan_response(req_out.outputs[0].text)
 
     return _sync_choice
