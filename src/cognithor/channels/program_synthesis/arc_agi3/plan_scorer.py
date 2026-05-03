@@ -111,6 +111,40 @@ def score_plan(
     with_reasoning = sum(1 for s in plan if s.reasoning.strip())
     reasoning = with_reasoning / n
 
+    # Sprint-19 Hebel R — RESET-bonus when stalled + just-was-destructive.
+    # Run #28 stalled at level 0 for 64 steps with periodic destructive
+    # cascades; the LLM almost never picked RESET because the diversity
+    # / targetedness components don't reward it. R adds a small additive
+    # nudge applied AFTER the average is computed (so it doesn't change
+    # the baseline scale): when the agent has been at the current level
+    # for many frames AND the last action produced a high pixΔ AND
+    # ``RESET`` is actually available, plans that START with RESET get
+    # +0.30 added to the score (then clamped to 1.0). 0.30 is enough
+    # to flip a sane RESET candidate ahead of any plan that would
+    # otherwise win on a thin diversity margin.
+    reset_bonus = 0.0
+    if memory is not None and "RESET" in available_action_names and plan[0].action_name == "RESET":
+        try:
+            import numpy as _np
+
+            window = memory.window(80)
+            if len(window) >= 2:
+                current_level = window[0].levels_completed
+                steps_at = 0
+                for s in window:
+                    if s.levels_completed == current_level:
+                        steps_at += 1
+                    else:
+                        break
+                last_high_pix = False
+                a, b = window[0], window[1]
+                if a.grid.shape == b.grid.shape:
+                    last_high_pix = int(_np.sum(a.grid != b.grid)) > 500
+                if steps_at >= 15 and last_high_pix:
+                    reset_bonus = 0.30
+        except Exception:
+            pass
+
     # 6. Sprint-19 Hebel N — pixΔ-safety gate.
     #
     # Run #26c finding (motivation): the LLM queued plans whose first
@@ -171,9 +205,13 @@ def score_plan(
     # gates (plan with invalid actions, stuck-action repetition, or
     # destructive-action escalation is fundamentally broken).
     # Diversity, targetedness, reasoning are additive quality
-    # components averaged.
+    # components averaged. Sprint-19 Hebel R adds ``reset_bonus`` as
+    # a small post-hoc additive boost (0 unless triggered) and clamps
+    # the result back into [0, 1] — preserves existing scaling while
+    # giving stalled-and-destructive RESET plans a measurable edge.
     additive_avg = (diversity + targetedness + reasoning) / 3.0
-    return additive_avg * validity * anti_repetition * pix_delta_safety
+    base = additive_avg * validity * anti_repetition * pix_delta_safety
+    return min(1.0, base + reset_bonus)
 
 
 def pick_best_plan(
