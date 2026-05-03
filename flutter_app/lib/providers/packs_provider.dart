@@ -40,7 +40,7 @@ class PacksProvider extends ChangeNotifier {
   Future<void> refresh() async {
     if (_api == null) return;
     try {
-      final resp = await _api!.get('/api/v1/packs/loaded');
+      final resp = await _api!.get('packs/loaded');
       final raw = resp['packs'] as List? ?? [];
       _packs = raw
           .map((e) => LoadedPack.fromJson(e as Map<String, dynamic>))
