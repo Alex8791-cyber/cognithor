@@ -269,9 +269,12 @@ def _make_llm_planning(game_id: str, results_dir: Path) -> tuple[Any, str | None
     telemetry = LLMTelemetry()
     try:
         # Same Sprint-15/16/17 vLLM config as llm_full — only the
-        # decoder differs. Note ``max_tokens=2048`` here (planning
-        # response is multi-step JSON, needs more room than the
-        # single-action JSON of llm_full).
+        # decoder differs. Sprint-19 Run #25 audit on the *vision*
+        # variant exposed that ``max_tokens=2048`` length-caps 76/80
+        # plan responses (Qwen3.6 truncates mid-output before the
+        # closing JSON ``}`` so the upstream decoder silently falls
+        # back to DSL). Same fix applies here — multi-step plan-JSON
+        # needs the full 4096 budget.
         choice_fn = build_inprocess_vllm_planning_choice_fn(
             speculative_config={
                 "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
@@ -279,7 +282,7 @@ def _make_llm_planning(game_id: str, results_dir: Path) -> tuple[Any, str | None
             },
             kv_cache_dtype="fp8",
             temperature=0.0,
-            max_tokens=2048,
+            max_tokens=4096,
             mtp_stats=mtp_stats,
             telemetry=telemetry,
         )
