@@ -298,7 +298,9 @@ _VISION_PLANNING_USER_TEMPLATE = (
     "Recent action sequence: {history}\n"
     "{effects_line}"
     "{goal_line}"
-    "Progress: {levels}/{win_levels} levels.\n\n"
+    "Progress: {levels}/{win_levels} levels.\n"
+    "{stalled_warning}"
+    "\n"
     "PLAN-PRINCIPLE:\n"
     "- If the same action has been picked many times without level "
     "progress, the strategy is wrong — pick something else.\n"
@@ -314,6 +316,32 @@ _VISION_PLANNING_USER_TEMPLATE = (
     "exploration over exploitation.\n\n"
     "Plan the next 3-5 actions and respond as JSON with the "
     '{{"reasoning": "...", "plan": [...]}} schema.'
+)
+
+
+# Sprint-19 Hebel O — stalled-progress threshold. After this many
+# consecutive frames at the same ``levels_completed`` (and
+# ``levels_completed == 0``), the prompt builder injects an explicit
+# "you are losing" warning. Run #28 went 64 steps at level 0 without
+# any signal of failure being shown to the LLM.
+#
+# Set to 15 because :class:`EpisodeMemory` defaults to capacity 16 —
+# the decoder's consecutive-same-level counter walks memory backwards
+# and therefore caps at the buffer size. 15 means "essentially the
+# entire memory window has been at the current level", which is a
+# strong-enough signal without being over-sensitive on the very first
+# fresh-game frames where memory is also small.
+_STALLED_THRESHOLD = 15
+
+_STALLED_WARNING_TEMPLATE = (
+    "STALLED-PROGRESS WARNING: {steps} consecutive steps elapsed at "
+    "level {level} — your current strategy is not advancing the win "
+    "counter. Empirically, agents that keep picking high-pixΔ actions "
+    "after this many fruitless steps run out of episode budget and "
+    "GAME_OVER. Pivot fundamentally: try the action types you have NOT "
+    "used yet, prefer minimal-change exploration (small pixΔ) over "
+    "another big move, or RESET if it is in the available actions and "
+    "you cannot infer a path forward.\n"
 )
 
 
@@ -391,6 +419,13 @@ def _build_vision_user_content(
         if getattr(ctx, "goal_summary", "")
         else ""
     )
+    stalled_warning = ""
+    steps_at = getattr(ctx, "steps_at_current_level", 0)
+    if steps_at >= _STALLED_THRESHOLD and ctx.levels_completed == 0:
+        stalled_warning = _STALLED_WARNING_TEMPLATE.format(
+            steps=steps_at, level=ctx.levels_completed
+        )
+
     text = _VISION_PLANNING_USER_TEMPLATE.format(
         prev_image_note=prev_image_note,
         cluster_summary=cluster_summary,
@@ -401,6 +436,7 @@ def _build_vision_user_content(
         goal_line=goal_line,
         levels=ctx.levels_completed,
         win_levels=ctx.win_levels,
+        stalled_warning=stalled_warning,
     )
     return [*images, {"type": "text", "text": text}]
 
@@ -513,6 +549,12 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             )
         cluster_summary = getattr(ctx, "cluster_summary", "") or "(not annotated)"
         delta_window = getattr(ctx, "delta_window_summary", "") or "(no completed transitions yet)"
+        steps_at = getattr(ctx, "steps_at_current_level", 0)
+        stalled_warning = ""
+        if steps_at >= _STALLED_THRESHOLD and ctx.levels_completed == 0:
+            stalled_warning = _STALLED_WARNING_TEMPLATE.format(
+                steps=steps_at, level=ctx.levels_completed
+            )
         text_after_image = _VISION_PLANNING_USER_TEMPLATE.format(
             prev_image_note=prev_image_note,
             cluster_summary=cluster_summary,
@@ -531,6 +573,7 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             ),
             levels=ctx.levels_completed,
             win_levels=ctx.win_levels,
+            stalled_warning=stalled_warning,
         )
         messages = [
             {"role": "system", "content": _build_planning_system_prompt(ctx)},
