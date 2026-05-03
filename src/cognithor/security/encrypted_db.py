@@ -103,6 +103,7 @@ _KEYRING_KEY_NAME = "db_encryption_key"
 
 # Cache the encryption_enabled flag to avoid re-reading config.yaml on every connect
 _encryption_enabled_cache: bool | None = None
+_allow_plaintext_fallback_cache: bool | None = None
 
 
 def _check_encryption_enabled() -> bool:
@@ -139,6 +140,42 @@ def _check_encryption_enabled() -> bool:
     # Default: encryption disabled (safe fallback — avoids VirtualLock on first run)
     _encryption_enabled_cache = False
     return _encryption_enabled_cache
+
+
+def _check_allow_plaintext_fallback() -> bool:
+    """Read ``database.allow_plaintext_fallback`` from config.yaml.
+
+    Default ``False`` — the operator must explicitly opt into the
+    legacy plaintext fallback when SQLCipher / a key is unavailable.
+    Caches per-process like ``_check_encryption_enabled``. SEC-HIGH-4.
+    """
+    global _allow_plaintext_fallback_cache
+    if _allow_plaintext_fallback_cache is not None:
+        return _allow_plaintext_fallback_cache
+
+    try:
+        from pathlib import Path
+
+        candidates = [
+            Path(os.environ.get("COGNITHOR_HOME", "")) / "config.yaml",
+            Path.home() / ".cognithor" / "config.yaml",
+        ]
+        for cfg_path in candidates:
+            if cfg_path.is_file():
+                import yaml
+
+                with open(cfg_path) as f:
+                    data = yaml.safe_load(f) or {}
+                db_section = data.get("database", {})
+                _allow_plaintext_fallback_cache = bool(
+                    db_section.get("allow_plaintext_fallback", False)
+                )
+                return _allow_plaintext_fallback_cache
+    except Exception:
+        log.debug("encrypted_db_allow_plaintext_read_failed", exc_info=True)
+
+    _allow_plaintext_fallback_cache = False
+    return _allow_plaintext_fallback_cache
 
 
 def is_encryption_available() -> bool:
@@ -285,7 +322,9 @@ def encrypted_connect(
     Args:
         db_path: Path to the SQLite database file
         key: Encryption key. If None, auto-detected from env/keyring/credential store.
-            Pass empty string "" to force plain sqlite3 (no encryption).
+            Pass empty string "" to force plain sqlite3 (no encryption); this
+            is the explicit "I know what I'm doing" escape-hatch and bypasses
+            the SEC-HIGH-4 fail-closed guard.
         check_same_thread: sqlite3 check_same_thread parameter
         timeout: How many seconds to wait for the database lock (default 5.0)
 
@@ -293,6 +332,9 @@ def encrypted_connect(
         sqlite3.Connection (either encrypted or standard)
     """
     db_path = str(db_path)  # Ensure string — Path objects break concatenation + slicing
+    # Remember whether the caller explicitly opted out (key="" sentinel)
+    # so the SEC-HIGH-4 fail-closed guard further down can skip them.
+    _caller_opted_out = key == ""
     # Respect the global encryption_enabled config flag.
     # If encryption is disabled, skip SQLCipher entirely — avoids
     # VirtualLock quota exhaustion on Windows from dozens of open
@@ -397,7 +439,30 @@ def encrypted_connect(
             hint="pip install pysqlcipher3 keyring",
         )
 
-    # Fallback: standard sqlite3 (unencrypted)
+    # SEC-HIGH-4: We're about to fall back to *plain* sqlite3, even
+    # though the user asked for encryption (the early-out at line 314
+    # would have returned already if encryption_enabled was False). If
+    # the operator did not explicitly opt into plaintext fallback,
+    # refuse to open the DB rather than silently storing secrets in
+    # plaintext on disk. The ``key=""`` escape-hatch ALWAYS wins —
+    # callers that pass it documented they want unencrypted storage.
+    if (
+        not _caller_opted_out
+        and _check_encryption_enabled()
+        and not _check_allow_plaintext_fallback()
+    ):
+        reason = "SQLCipher unavailable" if not _sqlcipher_available else "no encryption key"
+        raise RuntimeError(
+            f"Refusing to open {db_path[-40:]!r} as plaintext sqlite3: "
+            f"encryption is enabled but {reason}. Install pysqlcipher3 "
+            "and configure a key, OR set "
+            "``database.allow_plaintext_fallback: true`` in config.yaml "
+            "to opt into the legacy fallback."
+        )
+
+    # Fallback: standard sqlite3 (unencrypted) — only reached when the
+    # user explicitly opted in via allow_plaintext_fallback=true OR
+    # encryption_enabled=false.
     conn = sqlite3.connect(db_path, check_same_thread=check_same_thread, timeout=timeout)
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
