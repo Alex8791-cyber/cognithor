@@ -182,51 +182,78 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **13,000+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
 
 ## Architecture
+```mermaid id="k8v3zp"
+flowchart TB
 
+%% ===== ENTRY POINTS =====
+subgraph ENTRY["Entry Points"]
+    UI["Flutter UI / Web UI
+(Mobile app available)"]
+    API["REST API"]
+    CHANNELS["Messaging Channels
+(19 external channels)"]
+end
+
+%% ===== CORE LOOP =====
+subgraph CORE["Autonomous Agent Loop"]
+    GATEWAY["Gateway
+Session + Routing + State"]
+
+    CONTEXT["Context Pipeline
+Memory + Vault + Episodes"]
+
+    subgraph PGE["PGE Core Engine"]
+        direction LR
+        PLANNER["Planner 
+Task Understanding
++ Planning"]
+
+        GATEKEEPER["Gatekeeper
+Policy + Risk Validation"]
+
+        EXECUTOR["Executer
+Sandbox + Action"]
+    end
+
+    MEMORY["Cognitive Memory
+6-Tier Learning System"]
+end
+
+%% ===== EXECUTION =====
+subgraph EXEC["Execution Stack"]
+    WORKFLOW["DAG Engine
+Parallel + Retry Logic"]
+
+    TOOLS["MCP Tools
+(118 tools)"]
+
+    LLM["LLM Backends
+Local + Cloud Models
+(22 API endpoints)"]
+end
+
+%% ===== FLOW =====
+
+%% Entry into loop
+UI --> GATEWAY
+API --> GATEWAY
+CHANNELS --> GATEWAY
+
+%% Core loop
+GATEWAY --> CONTEXT
+CONTEXT --> PLANNER
+PLANNER --> GATEKEEPER --> EXECUTOR
+
+%% Execution path
+EXECUTOR --> WORKFLOW --> TOOLS --> LLM --> MEMORY
+
+%% Feedback loop
+MEMORY --> CONTEXT
+
+%% Visibility (important fix)
+EXECUTOR --> UI
 ```
-┌───────────────────────────────────────────────────────────────────┐
-│      Flutter Command Center (Dart/Flutter 3.41, cross-platform)   │
-│   Sci-Fi UI · GEPA Pipeline · Robot Office · 18 Config Pages     │
-│   Chat · Voice · Observe · Knowledge Graph · Learning Dashboard   │
-├───────────────────────────────────────────────────────────────────┤
-├───────────────────────────────────────────────────────────────────┤
-│         Prometheus /metrics · Grafana Dashboard                    │
-├───────────────────────────────────────────────────────────────────┤
-│           REST API (FastAPI, 48+ endpoints, port 8741)            │
-├───────────────────────────────────────────────────────────────────┤
-│                       Channels (18)                                │
-│   CLI · Web · Telegram (poll+webhook) · Discord · Slack           │
-│   WhatsApp · Signal · iMessage · Teams · Matrix · Voice · ...     │
-├───────────────────────────────────────────────────────────────────┤
-│                     Gateway Layer                                  │
-│   Session · Agent Loop · Distributed Lock · Status Callbacks       │
-│   Personality · Sentiment · User Preferences                       │
-├───────────────────────────────────────────────────────────────────┤
-│        Durable Message Queue (SQLite, priorities, DLQ)             │
-├───────────────────────────────────────────────────────────────────┤
-│           Context Pipeline (Memory · Vault · Episodes)             │
-├─────────────┬──────────────┬──────────────────────────────────────┤
-│  Planner    │  Gatekeeper  │  Executor                            │
-│  (LLM)      │  (Policy)    │  (Sandbox)                           │
-├─────────────┴──────────────┴──────────────────────────────────────┤
-│  DAG Workflow Engine · Workflow Adapter                               │
-├───────────────────────────────────────────────────────────────────┤
-│                   MCP Tool Layer (145+ tools)                        │
-│   Filesystem · Shell · Memory · Web · Browser · Media · Vault      │
-│   Synthesis · Skills · Social Listening · Kanban · Documents        │
-├───────────────────────────────────────────────────────────────────┤
-│               Multi-LLM Backend Layer (18)                         │
-│   Ollama · OpenAI · Anthropic · Gemini · Groq · DeepSeek           │
-│   Mistral · Together · OpenRouter · xAI · Cerebras · ...           │
-├───────────────────────────────────────────────────────────────────┤
-│               6-Tier Cognitive Memory                               │
-│   Core · Episodic · Semantic · Procedural · Working · Tactical      │
-├───────────────────────────────────────────────────────────────────┤
-│         Infrastructure: Redis/File Distributed Lock                 │
-│         SQLite Durable Queue · Prometheus Telemetry                 │
-│         Worker Pool · GDPR Compliance · Deterministic Replay        │
-└───────────────────────────────────────────────────────────────────┘
-```
+
 
 ### PGE Trinity (Planner -> Gatekeeper -> Executor)
 
