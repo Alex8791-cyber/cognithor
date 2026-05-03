@@ -103,7 +103,7 @@ def _try_winsound_fallback() -> bool:
     try:
         import winsound
 
-        winsound.MessageBeep(winsound.MB_ICONASTERISK)
+        winsound.MessageBeep(winsound.MB_ICONASTERISK)  # type: ignore[attr-defined, unused-ignore]
         return True
     except Exception:
         return False

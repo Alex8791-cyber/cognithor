@@ -22,7 +22,7 @@ from cognithor.utils.logging import get_logger
 try:
     import ollama
 except ImportError:
-    ollama = None  # type: ignore[assignment]
+    ollama = None  # type: ignore[assignment, unused-ignore]
 
 __all__ = ["GameAnalyzer"]
 

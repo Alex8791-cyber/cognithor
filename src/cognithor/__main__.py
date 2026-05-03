@@ -350,7 +350,7 @@ def _expand_working_set(min_mb: int = 128, max_mb: int = 512) -> None:
         import ctypes
         from ctypes import wintypes
 
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined, unused-ignore]
 
         kernel32.GetCurrentProcess.restype = wintypes.HANDLE
         kernel32.SetProcessWorkingSetSize.argtypes = [
@@ -365,7 +365,7 @@ def _expand_working_set(min_mb: int = 128, max_mb: int = 512) -> None:
         max_bytes = ctypes.c_size_t(max_mb * 1024 * 1024)
         success = kernel32.SetProcessWorkingSetSize(handle, min_bytes, max_bytes)
         if not success:
-            err = ctypes.get_last_error()
+            err = ctypes.get_last_error()  # type: ignore[attr-defined, unused-ignore]
             print(f"  [WARN] SetProcessWorkingSetSize failed (error {err})", file=sys.stderr)
     except Exception:
         pass  # Not on Windows, or insufficient privileges

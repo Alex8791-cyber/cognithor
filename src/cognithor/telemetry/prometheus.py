@@ -291,8 +291,8 @@ class PrometheusExporter:
         try:
             import resource as _resource  # type: ignore[import-not-found,unused-ignore]
 
-            _getrusage = _resource.getrusage  # type: ignore[attr-defined]
-            _rusage_self = _resource.RUSAGE_SELF  # type: ignore[attr-defined]
+            _getrusage = _resource.getrusage  # type: ignore[attr-defined, unused-ignore]
+            _rusage_self = _resource.RUSAGE_SELF  # type: ignore[attr-defined, unused-ignore]
             rss = _getrusage(_rusage_self).ru_maxrss * 1024  # KB -> bytes
             mem_name = self._full_name("memory_usage_bytes")
             lines.extend(

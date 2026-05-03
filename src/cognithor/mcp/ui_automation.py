@@ -119,7 +119,7 @@ class UIAutomationProvider:
         try:
             import ctypes
 
-            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            hwnd = ctypes.windll.user32.GetForegroundWindow()  # type: ignore[attr-defined, unused-ignore]
             for w in windows:
                 try:
                     if w.handle == hwnd:
