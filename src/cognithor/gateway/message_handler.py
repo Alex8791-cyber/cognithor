@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.core.agent_router import RouteDecision
 from cognithor.core.autonomous_orchestrator import AutonomousOrchestrator
@@ -46,7 +46,7 @@ from cognithor.security.compliance_engine import ComplianceViolation
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
-    from cognithor.core.planner import ResponseEnvelope
+    from cognithor.core.observer import ResponseEnvelope
     from cognithor.gateway.gateway import Gateway
     from cognithor.models import SessionContext
 
@@ -394,8 +394,9 @@ async def handle_message(
 
     # ── Autonomous Orchestration (complex/recurring tasks) ──
     auto_task = None
-    if hasattr(gw, "_autonomous_orchestrator") and gw._autonomous_orchestrator.should_orchestrate(
-        msg.text
+    if (
+        getattr(gw, "_autonomous_orchestrator", None) is not None
+        and gw._autonomous_orchestrator.should_orchestrate(msg.text)
     ):
         auto_task = gw._autonomous_orchestrator.create_task(msg.text, session.session_id)
         orchestration_context = gw._autonomous_orchestrator.get_orchestration_prompt(auto_task)
@@ -430,7 +431,7 @@ async def handle_message(
     # msg.session_id = WS-URL session_id (vom Client),
     # session.session_id = interner Gateway-Key.
     # Channels nutzen msg.session_id fuer Connection-Lookup.
-    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id)
+    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id or "")
 
     try:
         if presearch_results:
@@ -938,11 +939,14 @@ async def formulate_response(
     """
     if stream_callback is not None and hasattr(gw._planner, "formulate_response_stream"):
         try:
-            return await gw._planner.formulate_response_stream(
-                user_message=msg_text,
-                results=all_results,
-                working_memory=wm,
-                stream_callback=stream_callback,
+            return cast(
+                "ResponseEnvelope",
+                await gw._planner.formulate_response_stream(
+                    user_message=msg_text,
+                    results=all_results,
+                    working_memory=wm,
+                    stream_callback=stream_callback,
+                ),
             )
         except Exception:
             log.debug("streaming_formulate_failed_fallback", exc_info=True)

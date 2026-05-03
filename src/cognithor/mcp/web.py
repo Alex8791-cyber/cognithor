@@ -786,7 +786,7 @@ class WebTools:
             from ddgs import DDGS
         except ImportError:
             try:
-                from duckduckgo_search import DDGS
+                from duckduckgo_search import DDGS  # type: ignore[assignment]
             except ImportError:
                 raise WebError(
                     "ddgs nicht installiert. Installiere mit: pip install ddgs"
@@ -900,7 +900,7 @@ class WebTools:
                 from ddgs import DDGS
             except ImportError:
                 try:
-                    from duckduckgo_search import DDGS
+                    from duckduckgo_search import DDGS  # type: ignore[assignment]
                 except ImportError:
                     raise WebError("ddgs nicht installiert. pip install ddgs") from None
 

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from cognithor.core.observer import ResponseEnvelope
 
@@ -97,10 +97,13 @@ async def run_pge_with_observer_directive(
     envelope: ResponseEnvelope | None = None
 
     for _ in range(config.security.max_iterations):
-        envelope = await planner.formulate_response(
-            user_message=current_user_msg,
-            results=results,
-            working_memory=working_memory,
+        envelope = cast(
+            "ResponseEnvelope",
+            await planner.formulate_response(
+                user_message=current_user_msg,
+                results=results,
+                working_memory=working_memory,
+            ),
         )
         session_state["pge_iteration_count"] = session_state.get("pge_iteration_count", 0) + 1
 

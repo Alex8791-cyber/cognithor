@@ -35,8 +35,8 @@ from cognithor.core.observer import (  # noqa: TC001
 # `monkeypatch.setattr(gateway_module, "run_pge_with_observer_directive", ...)`
 # intercepts the call as before. See `tests/test_integration/test_observer_flow.py::
 # TestGatewayEndToEnd::test_gateway_uses_observer_wrapper`.
-from cognithor.gateway.observer_directive import (  # noqa: F401
-    run_pge_with_observer_directive,
+from cognithor.gateway.observer_directive import (
+    run_pge_with_observer_directive as run_pge_with_observer_directive,
 )
 from cognithor.gateway.phases import (
     apply_phase,
@@ -1606,7 +1606,7 @@ class Gateway:
         """Re-init UnifiedLLMClient for a new backend type."""
         from cognithor.gateway import lifecycle
 
-        return lifecycle.rebuild_llm_client(self, new_backend_type)
+        return lifecycle.rebuild_llm_client(self, cast("Any", new_backend_type))
 
     async def execute_workflow(self, workflow_yaml: str) -> dict[str, Any]:
         """Execute a YAML-defined workflow via the DAG WorkflowEngine."""

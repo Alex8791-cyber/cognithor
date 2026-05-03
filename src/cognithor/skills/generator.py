@@ -38,7 +38,7 @@ from cognithor.utils.logging import get_logger
 try:
     from cognithor.security.encrypted_file import efile as _efile
 except ImportError:
-    _efile = None
+    _efile = None  # type: ignore[assignment]
 
 log = get_logger(__name__)
 
