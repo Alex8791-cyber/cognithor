@@ -12,6 +12,11 @@ from __future__ import annotations
 # from being flagged as unused.
 from cognithor.channels.program_synthesis.dsl import primitives as primitives
 
+# Sprint-22 — Regex/Pattern-DSL family. Layered on top of the String family
+# with character-class filters, run extraction, pattern extraction (email /
+# URL), and slug rewrites.
+from cognithor.channels.program_synthesis.dsl import regex_primitives as regex_primitives
+
 # Sprint-22 — String-DSL family. Same import-side-effect pattern: pulling
 # the module triggers ``@primitive`` decoration on every string primitive,
 # which adds them to the singleton REGISTRY. Type filtering at search time
@@ -29,5 +34,6 @@ __all__ = [
     "ObjectSet",
     "Signature",
     "primitives",
+    "regex_primitives",
     "string_primitives",
 ]
