@@ -28,7 +28,7 @@ from __future__ import annotations
 import logging
 import random
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.engine import CognitioEngine
@@ -64,12 +64,12 @@ class DreamCycle:
         self.dream_count: int = 0
         self.last_dream_at: datetime | None = None
         self._dream_log: list[str] = []
-        self._last_stats: dict = {}
+        self._last_stats: dict[str, Any] = {}
         self._rng = random.Random(seed)
         # Pending candidates awaiting wakeup validation
-        self._insight_candidates: list[dict] = []
+        self._insight_candidates: list[dict[str, Any]] = []
 
-    def run(self, engine: CognitioEngine) -> dict:
+    def run(self, engine: CognitioEngine) -> dict[str, Any]:
         """
         Run the full dream cycle.
 
@@ -249,7 +249,7 @@ class DreamCycle:
         logger.info("Dream validation: %d/%d insights confirmed.", committed, len(candidates))
         return committed
 
-    def _build_validation_prompt(self, candidates: list[dict]) -> str:
+    def _build_validation_prompt(self, candidates: list[dict[str, Any]]) -> str:
         lines = []
         for i, c in enumerate(candidates):
             lines.append(
@@ -275,7 +275,7 @@ class DreamCycle:
         nums = re.findall(r"\d+", response)
         return {int(n) for n in nums if 0 <= int(n) < total}
 
-    def _commit_candidate(self, candidate: dict, engine) -> None:
+    def _commit_candidate(self, candidate: dict[str, Any], engine) -> None:
         from cognithor.identity.cognitio.memory import MemoryRecord, MemoryType, MemoryValence
 
         insight_content = (
@@ -356,7 +356,7 @@ class DreamCycle:
                 return False
         return True
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict."""
         return {
             "dream_count": self.dream_count,
@@ -365,7 +365,7 @@ class DreamCycle:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> DreamCycle:
+    def from_dict(cls, data: dict[str, Any]) -> DreamCycle:
         """Construct a DreamCycle from a dict."""
         dc = cls()
         dc.dream_count = data.get("dream_count", 0)

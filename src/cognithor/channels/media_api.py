@@ -13,7 +13,7 @@ import asyncio
 import shutil
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -37,7 +37,7 @@ media_router = APIRouter(prefix="/api/media", tags=["media"])
 
 
 @media_router.post("/upload")
-async def upload_video(request: Request, file: UploadFile = File(...)) -> dict:  # noqa: B008
+async def upload_video(request: Request, file: UploadFile = File(...)) -> dict[str, Any]:  # noqa: B008
     config: CognithorConfig = request.app.state.config
     media_server: MediaUploadServer = request.app.state.media_server
 

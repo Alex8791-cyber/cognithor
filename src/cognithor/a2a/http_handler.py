@@ -160,7 +160,7 @@ class A2AHTTPHandler:
                 body = await request.json()
             except Exception:
 
-                async def error_gen():
+                async def error_gen() -> Any:
                     yield 'event: error\ndata: {"code": -32700, "message": "Parse error"}\n\n'
 
                 return StreamingResponse(
@@ -171,7 +171,7 @@ class A2AHTTPHandler:
             auth = request.headers.get("Authorization", "")
             token = handler._extract_token(auth)
 
-            async def event_generator():
+            async def event_generator() -> Any:
                 async for event in handler.adapter.handle_stream_request(body, auth_token=token):
                     yield event
 

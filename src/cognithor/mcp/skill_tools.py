@@ -550,7 +550,7 @@ def register_skill_tools(
 
         repo_api = "https://api.github.com/repos/Alex8791-cyber/skill-registry"
 
-        def _api_call(method: str, path: str, data: dict | None = None) -> dict:
+        def _api_call(method: str, path: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
             url = f"{repo_api}/{path}"
             body = json.dumps(data).encode() if data else None
             req = urllib.request.Request(url, data=body, method=method)
@@ -568,8 +568,8 @@ def register_skill_tools(
             r = _api_call("GET", f"contents/{path}?ref=main")
             return r.get("sha", "")
 
-        def _put(path: str, text: str, msg: str, sha: str = "") -> dict:
-            d: dict = {
+        def _put(path: str, text: str, msg: str, sha: str = "") -> dict[str, Any]:
+            d: dict[str, Any] = {
                 "message": msg,
                 "content": base64.b64encode(text.encode()).decode(),
                 "branch": "main",

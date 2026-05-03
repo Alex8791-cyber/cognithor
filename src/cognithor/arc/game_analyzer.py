@@ -50,7 +50,7 @@ PALETTE = [
 _ACTION_NAMES = {1: "UP", 2: "DOWN", 3: "LEFT", 4: "RIGHT", 5: "Interact", 6: "Click(x,y)"}
 
 
-def _grid_to_png_b64(grid: np.ndarray, scale: int = 4) -> str:
+def _grid_to_png_b64(grid: np.ndarray[Any, Any], scale: int = 4) -> str:
     """Convert 64x64 colour-index grid to upscaled PNG as base64."""
     from PIL import Image
 
@@ -67,7 +67,7 @@ def _grid_to_png_b64(grid: np.ndarray, scale: int = 4) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-def _parse_vision_json(raw: str) -> dict | None:
+def _parse_vision_json(raw: str) -> dict[str, Any] | None:
     """3-tier JSON extraction: direct parse, markdown block, balanced brace."""
     raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
 
@@ -118,7 +118,7 @@ class SacrificeReport:
     toggle_pairs: list[tuple[int, int]] = field(
         default_factory=list
     )  # (source, target) color pairs
-    frames: list[np.ndarray] = field(default_factory=list)
+    frames: list[np.ndarray[Any, Any]] = field(default_factory=list)
 
 
 class GameAnalyzer:
@@ -130,7 +130,7 @@ class GameAnalyzer:
     def _run_sacrifice_level(
         self,
         env: Any,
-        initial_grid: np.ndarray,
+        initial_grid: np.ndarray[Any, Any],
         available_action_ids: list[int],
     ) -> SacrificeReport:
         """Execute the sacrifice level: test actions systematically."""
@@ -225,7 +225,9 @@ class GameAnalyzer:
         report.unique_states_seen = len(seen_states)
         return report
 
-    def _vision_call_initial(self, grid: np.ndarray, action_ids: list[int]) -> dict | None:
+    def _vision_call_initial(
+        self, grid: np.ndarray[Any, Any], action_ids: list[int]
+    ) -> dict[str, Any] | None:
         """Vision call 1: ask what the game is from initial frame."""
         try:
             b64 = _grid_to_png_b64(grid, scale=4)
@@ -260,7 +262,9 @@ class GameAnalyzer:
             log.debug("arc.vision_call_1_failed", error=str(exc)[:200])
             return None
 
-    def _vision_call_final(self, grid_before: np.ndarray, grid_after: np.ndarray) -> dict | None:
+    def _vision_call_final(
+        self, grid_before: np.ndarray[Any, Any], grid_after: np.ndarray[Any, Any]
+    ) -> dict[str, Any] | None:
         """Vision call 2: compare before/after sacrifice level."""
         try:
             b64_before = _grid_to_png_b64(grid_before, scale=4)

@@ -136,7 +136,7 @@ _TOO_GENERIC = {
 }
 
 
-def _is_valid_entity(entity: dict) -> bool:
+def _is_valid_entity(entity: dict[str, Any]) -> bool:
     """Reject garbage entities from PDF metadata, dictionaries, navigation."""
     name = entity.get("name", "").strip()
     if not name or len(name) < 2:
@@ -241,7 +241,7 @@ def _score_source_confidence(url: str) -> float:
 # ── LLM JSON Parsing with Fallback ──────────────────────────────────
 
 
-def _parse_llm_json(raw: str, fallback_content: str, url: str) -> dict:
+def _parse_llm_json(raw: str, fallback_content: str, url: str) -> dict[str, Any]:
     """Parse LLM response with graceful degradation.
 
     4-tier strategy:
@@ -296,7 +296,7 @@ def _parse_llm_json(raw: str, fallback_content: str, url: str) -> dict:
     }
 
 
-def _validate_parsed(data: dict) -> dict:
+def _validate_parsed(data: dict[str, Any]) -> dict[str, Any]:
     """Ensure parsed dict has all required fields with correct types."""
     return {
         "summary": str(data.get("summary", ""))[:3000],
@@ -736,7 +736,9 @@ class KnowledgeBuilder:
     # Entity extraction
     # ------------------------------------------------------------------
 
-    async def extract_entities(self, text: str) -> tuple[list[dict], list[dict]]:
+    async def extract_entities(
+        self, text: str
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Ask the LLM to extract entities and relations from *text*.
 
         Returns (entities, relations). Falls back to empty lists if the

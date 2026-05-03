@@ -196,7 +196,7 @@ async def _run_docker(*args: str, timeout: int = _DEFAULT_TIMEOUT) -> tuple[int,
         return proc.returncode or 0, stdout, stderr
     except TimeoutError:
         with contextlib.suppress(ProcessLookupError):
-            proc.kill()  # type: ignore[possibly-undefined]
+            proc.kill()
         return -1, "", f"Docker command timed out after {timeout}s"
     except FileNotFoundError:
         return -1, "", "Docker CLI not found. Is Docker installed?"

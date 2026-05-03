@@ -11,7 +11,7 @@ import re
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cognithor.utils.logging import get_logger
 
@@ -273,7 +273,7 @@ class CausalAttributor:
         result = re.sub(r"\s+", " ", result).strip()
         return result
 
-    def aggregate_findings(self, findings: list[CausalFinding]) -> list[dict]:
+    def aggregate_findings(self, findings: list[CausalFinding]) -> list[dict[str, Any]]:
         """Group findings by (failure_category, tool_name, error_signature).
 
         Returns list of dicts sorted descending by priority
@@ -288,7 +288,7 @@ class CausalAttributor:
             key = (f.failure_category, f.tool_name, f.error_signature)
             groups[key].append(f)
 
-        results: list[dict] = []
+        results: list[dict[str, Any]] = []
         for (category, tool, sig), group in groups.items():
             count = len(group)
             avg_conf = sum(f.confidence for f in group) / count
@@ -315,7 +315,7 @@ class CausalAttributor:
         findings: list[CausalFinding],
         min_count: int = 2,
         min_confidence: float = 0.5,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Top improvement targets from aggregated findings, filtered by thresholds."""
         aggregated = self.aggregate_findings(findings)
         return [

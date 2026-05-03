@@ -173,7 +173,7 @@ def _register_monitoring_routes(
         hub = get_hub()
         queue = hub.events.create_sse_stream()
 
-        async def event_generator():
+        async def event_generator() -> Any:
             import asyncio
 
             try:

@@ -30,7 +30,7 @@ try:
     from cognithor.security.encrypted_db import compatible_row_factory
 except ImportError:
 
-    def compatible_row_factory():
+    def compatible_row_factory() -> Any:
         return sqlite3.Row
 
 
@@ -488,7 +488,7 @@ class ProcessMonitor:
                 )
         return changes
 
-    def _check_resources(self, job: dict) -> None:
+    def _check_resources(self, job: dict[str, Any]) -> None:
         """Optional resource check via psutil."""
         try:
             import psutil

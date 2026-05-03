@@ -32,7 +32,7 @@ try:
     from cognithor.security.encrypted_db import compatible_row_factory
 except ImportError:
 
-    def compatible_row_factory():
+    def compatible_row_factory() -> Any:
         return sqlite3.Row
 
 
@@ -581,7 +581,7 @@ class MemoryIndex:
             self.conn.commit()
             return cur.rowcount > 0
 
-    def list_entities_for_decay(self, limit: int = 500) -> list[dict]:
+    def list_entities_for_decay(self, limit: int = 500) -> list[dict[str, Any]]:
         """Return entities with their confidence and updated_at for decay processing."""
         rows = self.conn.execute(
             "SELECT id, confidence, updated_at FROM entities "

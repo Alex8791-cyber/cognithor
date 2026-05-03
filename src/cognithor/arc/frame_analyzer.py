@@ -46,7 +46,7 @@ class FrameAnalyzer:
         self._visited_positions: set[tuple[int, int]] = set()
         self._frame_count: int = 0
 
-    def analyze(self, grid: np.ndarray, action: str | None = None) -> MovementInfo | None:
+    def analyze(self, grid: np.ndarray[Any, Any], action: str | None = None) -> MovementInfo | None:
         """Analyze a new frame, optionally with the action that produced it.
 
         Returns MovementInfo if movement was detected, None otherwise.

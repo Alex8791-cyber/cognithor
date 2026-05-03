@@ -141,13 +141,17 @@ class MechanicDiscovery:
         profile.discovery_time_s = time.time() - t0
         return profile
 
-    def _analyze_colors(self, grid: np.ndarray, profile: MechanicProfile) -> MechanicProfile:
+    def _analyze_colors(
+        self, grid: np.ndarray[Any, Any], profile: MechanicProfile
+    ) -> MechanicProfile:
         colors, counts = np.unique(grid, return_counts=True)
         profile.all_colors = [int(c) for c in colors]
         profile.background_color = int(colors[np.argmax(counts)])
         return profile
 
-    def _discover_toggle_pair(self, grid: np.ndarray, profile: MechanicProfile) -> MechanicProfile:
+    def _discover_toggle_pair(
+        self, grid: np.ndarray[Any, Any], profile: MechanicProfile
+    ) -> MechanicProfile:
         """Try clicking each non-bg color's largest cluster to find toggle."""
         colors, counts = np.unique(grid, return_counts=True)
         bg = profile.background_color
@@ -189,7 +193,9 @@ class MechanicDiscovery:
 
         return profile
 
-    def _infer_win_condition(self, grid: np.ndarray, profile: MechanicProfile) -> MechanicProfile:
+    def _infer_win_condition(
+        self, grid: np.ndarray[Any, Any], profile: MechanicProfile
+    ) -> MechanicProfile:
         if profile.source_color is None:
             return profile
 

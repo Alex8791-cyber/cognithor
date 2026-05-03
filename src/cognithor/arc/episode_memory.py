@@ -87,7 +87,7 @@ class EpisodeMemory:
     # Hashing
     # ------------------------------------------------------------------
 
-    def hash_grid(self, grid: np.ndarray) -> str:
+    def hash_grid(self, grid: np.ndarray[Any, Any]) -> str:
         """Return a 16-character hex MD5 hash of *grid*, cached by content.
 
         The cache key includes shape and dtype so that arrays with identical
@@ -235,7 +235,7 @@ class EpisodeMemory:
         tried = self._state_action_index.get(current_state_hash, set())
         return [a for a in all_actions if a not in tried]
 
-    def is_novel_state(self, grid: np.ndarray) -> bool:
+    def is_novel_state(self, grid: np.ndarray[Any, Any]) -> bool:
         """Return ``True`` if *grid* has not been seen in this episode."""
         return self.hash_grid(grid) not in self.visited_states
 

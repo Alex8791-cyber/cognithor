@@ -114,5 +114,5 @@ class Channel(ABC):
         Default: no-op. Only WebUI implements this.
         """
 
-    async def send_identity_state(self, session_id: str, state: dict) -> None:
+    async def send_identity_state(self, session_id: str, state: dict[str, Any]) -> None:
         """Identity state update — default no-op."""

@@ -80,8 +80,8 @@ class HypothesisDrivenExplorer:
 
     def __init__(self) -> None:
         self.phase: ExplorationPhase = ExplorationPhase.DISCOVERY
-        self.discovery_queue: list[tuple[Any, dict]] = []
-        self.action_test_grid: dict[str, list[dict]] = {}
+        self.discovery_queue: list[tuple[Any, dict[str, Any]]] = []
+        self.action_test_grid: dict[str, list[dict[str, Any]]] = {}
         self._phase_step_count: int = 0
         self._total_actions_tested: int = 0
         # Populated by initialize_discovery(); used for random fallback
@@ -129,7 +129,7 @@ class HypothesisDrivenExplorer:
         self._complex_actions = complex_
 
         # Build queue: simple actions (no data) + complex samples at strategic positions
-        queue: list[tuple[Any, dict]] = []
+        queue: list[tuple[Any, dict[str, Any]]] = []
         for action in simple:
             queue.append((action, {}))
 
@@ -176,7 +176,7 @@ class HypothesisDrivenExplorer:
         current_obs: Any,
         episode_memory: EpisodeMemory,
         goal_module: GoalInferenceModule,
-    ) -> tuple[Any, dict]:
+    ) -> tuple[Any, dict[str, Any]]:
         """Select the next action according to the current exploration phase.
 
         Increments :attr:`_phase_step_count` and :attr:`_total_actions_tested`
@@ -222,7 +222,7 @@ class HypothesisDrivenExplorer:
         current_obs: Any,
         episode_memory: EpisodeMemory,
         goal_module: GoalInferenceModule,
-    ) -> tuple[Any, dict]:
+    ) -> tuple[Any, dict[str, Any]]:
         """Delegate to the current phase's action-selection method."""
         if self.phase == ExplorationPhase.DISCOVERY:
             return self._discovery_action(current_obs, episode_memory)
@@ -234,7 +234,7 @@ class HypothesisDrivenExplorer:
     # Phase-specific action selection
     # ------------------------------------------------------------------
 
-    def _discovery_action(self, obs: Any, memory: EpisodeMemory) -> tuple[Any, dict]:
+    def _discovery_action(self, obs: Any, memory: EpisodeMemory) -> tuple[Any, dict[str, Any]]:
         """Pop from the discovery queue, preferring unexplored actions in the current state."""
         if not self.discovery_queue:
             return self._random_action()
@@ -254,7 +254,7 @@ class HypothesisDrivenExplorer:
 
     def _hypothesis_action(
         self, obs: Any, memory: EpisodeMemory, goals: GoalInferenceModule
-    ) -> tuple[Any, dict]:
+    ) -> tuple[Any, dict[str, Any]]:
         """Choose action using a composite novelty+effectiveness score.
 
         Scoring formula:
@@ -268,7 +268,7 @@ class HypothesisDrivenExplorer:
         if not self._available_actions:
             return self._random_action()
 
-        scored: list[tuple[float, Any, dict]] = []
+        scored: list[tuple[float, Any, dict[str, Any]]] = []
 
         for action in self._simple_actions:
             name = getattr(action, "name", str(action))
@@ -308,7 +308,7 @@ class HypothesisDrivenExplorer:
 
     def _exploitation_action(
         self, obs: Any, memory: EpisodeMemory, goals: GoalInferenceModule
-    ) -> tuple[Any, dict]:
+    ) -> tuple[Any, dict[str, Any]]:
         """Replay winning action sequences; falls back to hypothesis when none exist."""
         # Look for transitions that resulted in a win
         win_transitions = [t for t in memory.transitions if t.resulted_in_win]
@@ -348,7 +348,7 @@ class HypothesisDrivenExplorer:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _anti_stuck_action(self, obs: Any, memory: EpisodeMemory) -> tuple[Any, dict]:
+    def _anti_stuck_action(self, obs: Any, memory: EpisodeMemory) -> tuple[Any, dict[str, Any]]:
         """When stuck in a cycle, pick the least-tried action to break out.
 
         Iterates over ``_simple_actions`` and selects the one with the fewest
@@ -366,7 +366,7 @@ class HypothesisDrivenExplorer:
             return least_used, {}
         return self._random_action()
 
-    def _random_action(self) -> tuple[Any, dict]:
+    def _random_action(self) -> tuple[Any, dict[str, Any]]:
         """Return a uniformly random action from the stored available actions.
 
         Falls back to the first available action when the list is empty
@@ -382,7 +382,7 @@ class HypothesisDrivenExplorer:
             return action, {"x": x, "y": y}
         return action, {}
 
-    def _parse_action_str(self, action_str: str) -> tuple[Any, dict]:
+    def _parse_action_str(self, action_str: str) -> tuple[Any, dict[str, Any]]:
         """Parse a string such as ``"ACTION6_32_15"`` back to ``(action, data)``.
 
         Performs a defensive lookup against the stored available actions by

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.arc.episode_memory import EpisodeMemory
@@ -95,7 +95,7 @@ class MechanicsModel:
     def __init__(self) -> None:
         self.mechanics: list[Mechanic] = []
         self.action_to_mechanics: dict[str, list[Mechanic]] = {}
-        self._level_snapshots: list[dict] = []
+        self._level_snapshots: list[dict[str, Any]] = []
 
     # ------------------------------------------------------------------
     # Analysis
@@ -245,7 +245,7 @@ class MechanicsModel:
             level: The level index to record.
             episode_memory: The episode memory at the time of snapshotting.
         """
-        snapshot: dict = {
+        snapshot: dict[str, Any] = {
             "level": level,
             "total_transitions": len(episode_memory.transitions),
             "visited_states": len(episode_memory.visited_states),

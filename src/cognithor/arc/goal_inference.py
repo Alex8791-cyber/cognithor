@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.arc.episode_memory import EpisodeMemory
@@ -67,7 +67,7 @@ class GoalInferenceModule:
         self.current_goals: list[InferredGoal] = []
         self.win_states_observed: list[str] = []
         self.game_over_states_observed: list[str] = []
-        self._level_progression_data: list[dict] = []
+        self._level_progression_data: list[dict[str, Any]] = []
 
     # ------------------------------------------------------------------
     # Analysis
@@ -196,7 +196,7 @@ class GoalInferenceModule:
     # Level lifecycle
     # ------------------------------------------------------------------
 
-    def on_level_complete(self, level_data: dict) -> None:
+    def on_level_complete(self, level_data: dict[str, Any]) -> None:
         """Record *level_data* for cross-level progression analysis.
 
         Args:

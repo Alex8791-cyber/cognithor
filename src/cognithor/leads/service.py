@@ -165,7 +165,7 @@ class LeadService:
         if status is not None:
             lead.status = status
         if reply_final is not None:
-            lead.reply_final = reply_final  # type: ignore[assignment]
+            lead.reply_final = reply_final
         self._store.save_lead(lead)
         return lead
 

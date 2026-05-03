@@ -3,7 +3,7 @@
 Immortal Mind's CognitioEngine expects an llm_client with:
     - complete(prompt, system_prompt=None, max_tokens=1024, temperature=0.7) -> str
     - chat(messages, system_prompt=None, max_tokens=1024, temperature=0.7) -> str
-    - complete_json(prompt, expected_keys=None, ...) -> dict
+    - complete_json(prompt, expected_keys=None, ...) -> dict[str, Any]
     - health_check() -> bool
 
 This bridge adapts Cognithor's async LLM backend to this synchronous interface.
@@ -104,7 +104,7 @@ class CognithorLLMBridge:
 
     def chat(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         system_prompt: str | None = None,
         max_tokens: int = 1024,
         temperature: float = 0.7,
@@ -134,7 +134,7 @@ class CognithorLLMBridge:
         system_prompt: str | None = None,
         max_tokens: int = 512,
         temperature: float = 0.2,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """LLM request expecting JSON output with repair logic."""
         json_instruction = (
             "\n\nREPLY ONLY IN VALID JSON FORMAT. "
@@ -161,7 +161,7 @@ class CognithorLLMBridge:
             return False
 
     @staticmethod
-    def _parse_json_safe(text: str, expected_keys: list[str] | None = None) -> dict:
+    def _parse_json_safe(text: str, expected_keys: list[str] | None = None) -> dict[str, Any]:
         """Extract JSON from LLM output with repair attempts."""
         defaults = {k: None for k in (expected_keys or [])}
 

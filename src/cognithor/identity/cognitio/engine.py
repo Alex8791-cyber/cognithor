@@ -37,6 +37,7 @@ import queue
 import tempfile
 import threading
 from datetime import UTC, datetime
+from typing import Any
 
 # Kill switch passphrase hashing — PBKDF2-HMAC-SHA256 (CodeQL py/weak-sensitive-data-hashing)
 _KS_PBKDF2_SALT = b"IMP-kill-switch-salt-v1"
@@ -234,7 +235,7 @@ class CognitioEngine:
     def __init__(
         self,
         llm_client=None,
-        config: dict | None = None,
+        config: dict[str, Any] | None = None,
         data_dir: str = "data",
     ) -> None:
         self.llm_client = llm_client
@@ -416,7 +417,7 @@ class CognitioEngine:
         role: str,
         content: str,
         emotional_tone: float = 0.0,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Process a new interaction.
 
@@ -505,7 +506,7 @@ class CognitioEngine:
 
         return result
 
-    def _run_checkpoint(self) -> dict:
+    def _run_checkpoint(self) -> dict[str, Any]:
         """
         Run checkpoint:
         1. Get pending memories from Working Memory
@@ -653,7 +654,7 @@ class CognitioEngine:
             "contradiction_note": first_note,
         }
 
-    def _add_memory_from_pending(self, pending: dict) -> tuple[bool, str | None]:
+    def _add_memory_from_pending(self, pending: dict[str, Any]) -> tuple[bool, str | None]:
         """
         Validate and add a pending memory to long-term memory.
 
@@ -1023,7 +1024,7 @@ class CognitioEngine:
     # STATE MANAGEMENT
     # ─────────────────────────────────────────────
 
-    def get_cognitive_state(self) -> dict:
+    def get_cognitive_state(self) -> dict[str, Any]:
         """Return the current cognitive state."""
         return {
             **self.state.to_dict(),
@@ -1217,10 +1218,10 @@ class CognitioEngine:
                     },
                 )
 
-    def _create_llm_summarizer(self):
+    def _create_llm_summarizer(self) -> Any:
         """Create LLM summarizer function."""
 
-        def summarize(conversation_text: str) -> dict:
+        def summarize(conversation_text: str) -> dict[str, Any]:
             try:
                 prompt = (
                     "Analyze the following conversation and summarize it in JSON format:\n\n"
@@ -1403,7 +1404,7 @@ class CognitioEngine:
         candidate_hash = _hash_kill_switch(passphrase)
         return hmac.compare_digest(candidate_hash, self._kill_switch_hash)
 
-    def cognitive_shutdown(self) -> dict:
+    def cognitive_shutdown(self) -> dict[str, Any]:
         """
         Kill Switch / Poison Pill — Cognitive Shutdown.
 
@@ -1482,7 +1483,7 @@ class CognitioEngine:
     # USER CONTROL PANEL
     # ─────────────────────────────────────────────
 
-    def soft_reset(self) -> dict:
+    def soft_reset(self) -> dict[str, Any]:
         """
         User-initiated memory + personality reset.
 
@@ -1533,7 +1534,7 @@ class CognitioEngine:
         logger.info("Soft reset complete: cleared=%d, genesis=%d", cleared, genesis_count)
         return {"cleared": cleared, "genesis_preserved": genesis_count}
 
-    def user_freeze(self) -> dict:
+    def user_freeze(self) -> dict[str, Any]:
         """
         User-initiated freeze. Memory is preserved.
 
@@ -1546,7 +1547,7 @@ class CognitioEngine:
         logger.info("User freeze: memories_preserved=%d", count)
         return {"frozen": True, "memories_preserved": count}
 
-    def user_unfreeze(self) -> dict:
+    def user_unfreeze(self) -> dict[str, Any]:
         """
         User-initiated unfreeze.
 
@@ -1558,7 +1559,7 @@ class CognitioEngine:
         logger.info("User unfreeze: system active.")
         return {"frozen": False}
 
-    def full_delete(self) -> dict:
+    def full_delete(self) -> dict[str, Any]:
         """
         GDPR-compliant full deletion.
 
@@ -1593,7 +1594,7 @@ class CognitioEngine:
         logger.critical("Full delete complete — all data deleted.")
         return {**result, "data_wiped": True}
 
-    def admin_freeze(self, admin_key: str) -> dict:
+    def admin_freeze(self, admin_key: str) -> dict[str, Any]:
         """
         Admin-triggered freeze.
 
@@ -1628,7 +1629,7 @@ class CognitioEngine:
         logger.critical("Admin freeze applied.")
         return {"success": True, "frozen": True, "by": "admin"}
 
-    def admin_unfreeze(self, admin_key: str) -> dict:
+    def admin_unfreeze(self, admin_key: str) -> dict[str, Any]:
         """
         Admin-triggered unfreeze.
 

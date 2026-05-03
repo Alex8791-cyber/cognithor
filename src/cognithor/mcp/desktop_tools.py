@@ -96,8 +96,8 @@ def _try_mss_screenshot(
 ) -> tuple[bytes, int, int] | None:
     """Capture screenshot via mss. Returns (png_bytes, width, height) or None."""
     try:
-        import mss  # type: ignore[import-untyped]
-        import mss.tools  # type: ignore[import-untyped]
+        import mss
+        import mss.tools
 
         with mss.mss() as sct:
             if region:
@@ -128,7 +128,7 @@ def _try_pil_screenshot(
     try:
         from io import BytesIO
 
-        from PIL import ImageGrab  # type: ignore[import-untyped]
+        from PIL import ImageGrab
 
         if region:
             x, y, w, h = region
@@ -182,7 +182,7 @@ def _downscale_if_needed(png_bytes: bytes, width: int, height: int) -> tuple[byt
     try:
         from io import BytesIO
 
-        from PIL import Image  # type: ignore[import-untyped]
+        from PIL import Image
 
         img = Image.open(BytesIO(png_bytes))
         ratio = min(_MAX_SCREENSHOT_WIDTH / width, _MAX_SCREENSHOT_HEIGHT / height)

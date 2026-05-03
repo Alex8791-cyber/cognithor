@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 class CrewError(Exception):
@@ -45,7 +46,7 @@ class GuardrailFailure(CrewError):
         # Keep Exception.args in sync so stack traces show a useful repr.
         super().__init__(str(self))
 
-    def __reduce__(self) -> tuple:
+    def __reduce__(self) -> tuple[Any, ...]:
         """Support pickling across process boundaries.
 
         Without this, ``pickle.dumps(GuardrailFailure(...))`` succeeds but

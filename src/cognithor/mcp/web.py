@@ -509,7 +509,7 @@ class WebTools:
         scored.sort(key=lambda x: x[0], reverse=True)
         return [r for _, r in scored[:num_results]]
 
-    # -- Raw search methods (return list[dict] instead of formatted str) --
+    # -- Raw search methods (return list[dict[str, Any]] instead of formatted str) --
 
     async def _search_raw_searxng(
         self, query: str, num_results: int, language: str
@@ -786,7 +786,7 @@ class WebTools:
             from ddgs import DDGS
         except ImportError:
             try:
-                from duckduckgo_search import DDGS  # type: ignore[no-redef]
+                from duckduckgo_search import DDGS
             except ImportError:
                 raise WebError(
                     "ddgs nicht installiert. Installiere mit: pip install ddgs"
@@ -900,7 +900,7 @@ class WebTools:
                 from ddgs import DDGS
             except ImportError:
                 try:
-                    from duckduckgo_search import DDGS  # type: ignore[no-redef]
+                    from duckduckgo_search import DDGS
                 except ImportError:
                     raise WebError("ddgs nicht installiert. pip install ddgs") from None
 
@@ -1342,7 +1342,7 @@ class _TextExtractor(HTMLParser):
         self._texts: list[str] = []
         self._in_script_or_style = False
 
-    def handle_starttag(self, tag: str, attrs) -> None:  # type: ignore[override]
+    def handle_starttag(self, tag: str, attrs) -> None:
         tag_lower = tag.lower()
         if tag_lower in ("script", "style"):
             self._in_script_or_style = True
@@ -1351,7 +1351,7 @@ class _TextExtractor(HTMLParser):
             # Treat block elements as line breaks
             self._texts.append("\n")
 
-    def handle_endtag(self, tag: str) -> None:  # type: ignore[override]
+    def handle_endtag(self, tag: str) -> None:
         tag_lower = tag.lower()
         if tag_lower in ("script", "style"):
             self._in_script_or_style = False
@@ -1359,7 +1359,7 @@ class _TextExtractor(HTMLParser):
         if tag_lower in self._BLOCK_TAGS:
             self._texts.append("\n")
 
-    def handle_data(self, data: str) -> None:  # type: ignore[override]
+    def handle_data(self, data: str) -> None:
         if not self._in_script_or_style:
             self._texts.append(data)
 

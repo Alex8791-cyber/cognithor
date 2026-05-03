@@ -16,7 +16,7 @@ import contextlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from cognithor.i18n import t
 from cognithor.models import MCPServerConfig, MCPToolInfo
@@ -468,7 +468,7 @@ class JarvisMCPClient:
         """
         try:
             from mcp.client import ClientSession  # type: ignore[attr-defined]
-            from mcp.client.sse import sse_client  # type: ignore[attr-defined]
+            from mcp.client.sse import sse_client
         except ImportError:
             log.warning(
                 "mcp_sdk_sse_not_available",

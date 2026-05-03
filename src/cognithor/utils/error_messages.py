@@ -6,6 +6,8 @@ Used across all channels. Uses the i18n language pack system for translations.
 
 from __future__ import annotations
 
+from typing import Any
+
 from cognithor.i18n import t
 
 # ── Tool-Friendly-Names ─────────────────────────────────────────
@@ -149,8 +151,8 @@ def retry_exhausted_message(tool: str, attempts: int, error: str) -> str:
 
 
 def all_actions_blocked_message(
-    steps: list,
-    decisions: list,
+    steps: list[Any],
+    decisions: list[Any],
 ) -> str:
     """Creates a specific message when all planned actions are blocked."""
     reasons: list[str] = []

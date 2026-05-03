@@ -53,7 +53,7 @@ def tool(
     idempotent: bool = False,
     read_only: bool = False,
     version: str = "0.1.0",
-) -> Callable:
+) -> Callable[..., Any]:
     """Register a function as an SDK tool.
 
     Can be used with or without arguments::
@@ -67,7 +67,7 @@ def tool(
             return "done"
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         tool_name = name or func.__name__
         schema = _infer_schema(func)
 
@@ -89,7 +89,7 @@ def tool(
     # Handle @tool without parentheses
     if callable(name):
         func = name
-        name = None  # type: ignore[assignment]
+        name = None
         return decorator(func)
 
     return decorator
@@ -111,7 +111,7 @@ def agent(
     max_iterations: int = 5,
     timeout_seconds: int = 300,
     version: str = "0.1.0",
-) -> Callable:
+) -> Callable[..., Any]:
     """Register a class as an SDK agent.
 
     Example::
@@ -153,7 +153,7 @@ def hook(
     *,
     priority: int = 0,
     description: str = "",
-) -> Callable:
+) -> Callable[..., Any]:
     """Register a function as a lifecycle hook.
 
     Example::
@@ -163,7 +163,7 @@ def hook(
             log.error(f"Agent error: {error}")
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         hook_event = HookEvent(event) if isinstance(event, str) else event
         defn = HookDefinition(
             event=hook_event,
@@ -183,7 +183,7 @@ def hook(
 # ---------------------------------------------------------------------------
 
 
-def _infer_schema(func: Callable) -> dict[str, Any]:
+def _infer_schema(func: Callable[..., Any]) -> dict[str, Any]:
     """Infer JSON Schema from function signature type hints."""
     sig = inspect.signature(func)
 
@@ -201,8 +201,8 @@ def _infer_schema(func: Callable) -> dict[str, Any]:
             "int": int,
             "float": float,
             "bool": bool,
-            "list": list,
-            "dict": dict,
+            "list": list[Any],
+            "dict": dict[str, Any],
         }
         for k, v in raw.items():
             if k == "return":
@@ -229,7 +229,7 @@ def _infer_schema(func: Callable) -> dict[str, Any]:
             continue
 
         hint = hints.get(param_name)
-        json_type = type_map.get(hint, "string") if hint else "string"  # type: ignore[arg-type]
+        json_type = type_map.get(hint, "string") if hint else "string"
         properties[param_name] = {"type": json_type}
 
         if param.default is inspect.Parameter.empty:

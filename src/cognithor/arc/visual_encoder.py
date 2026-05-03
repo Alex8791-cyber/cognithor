@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 __all__ = ["VisualStateEncoder"]
 
 import numpy as np
@@ -31,7 +33,7 @@ class VisualStateEncoder:
     # Public API
     # ------------------------------------------------------------------
 
-    def encode_for_llm(self, grid: np.ndarray, diff: np.ndarray | None = None) -> str:
+    def encode_for_llm(self, grid: np.ndarray[Any, Any], diff: np.ndarray | None = None) -> str:
         """Return a human-readable German description of *grid* for LLM context.
 
         Parameters
@@ -92,7 +94,7 @@ class VisualStateEncoder:
 
         return "\n".join(lines)
 
-    def encode_compact(self, grid: np.ndarray) -> str:
+    def encode_compact(self, grid: np.ndarray[Any, Any]) -> str:
         """Return a minimal one-line color summary: ``[color1:count, ...]``."""
         grid_2d = self._to_2d(grid)
         unique, counts = np.unique(grid_2d, return_counts=True)
@@ -106,7 +108,7 @@ class VisualStateEncoder:
 
     def _find_bounding_boxes(
         self,
-        grid_2d: np.ndarray,
+        grid_2d: np.ndarray[Any, Any],
         background: int = 0,
         min_size: int = 4,
     ) -> list[tuple[int, int, int, int, int]]:
@@ -134,7 +136,7 @@ class VisualStateEncoder:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _to_2d(arr: np.ndarray) -> np.ndarray:
+    def _to_2d(arr: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Squeeze a leading size-1 batch dimension if present."""
         if arr.ndim == 3:
             if arr.shape[0] == 1:

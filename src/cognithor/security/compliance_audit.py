@@ -56,12 +56,12 @@ class ComplianceAuditLog:
             log.debug("compliance_audit_chain_hash_read_failed", exc_info=True)
         return "genesis"
 
-    def _compute_hash(self, entry: dict) -> str:
+    def _compute_hash(self, entry: dict[str, Any]) -> str:
         """SHA-256 hash of entry content + previous hash."""
         content = json.dumps(entry, sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(f"{self._last_hash}:{content}".encode()).hexdigest()
 
-    def record(self, event: str, **kwargs: Any) -> dict:
+    def record(self, event: str, **kwargs: Any) -> dict[str, Any]:
         """Append a compliance event to the audit log (thread-safe)."""
         with self._lock:
             entry = {
@@ -107,7 +107,7 @@ class ComplianceAuditLog:
                 count += 1
         return True, count
 
-    def get_entries(self, event: str = "", limit: int = 100) -> list[dict]:
+    def get_entries(self, event: str = "", limit: int = 100) -> list[dict[str, Any]]:
         """Read entries from the log, optionally filtered by event type."""
         if not self._path.exists():
             return []

@@ -98,7 +98,7 @@ class SlackChannel(Channel):
         self._handler = handler
 
         try:
-            from slack_sdk.web.async_client import AsyncWebClient  # type: ignore[import-untyped]
+            from slack_sdk.web.async_client import AsyncWebClient
         except ImportError:
             logger.error("slack_sdk nicht installiert. pip install slack_sdk slack_bolt")
             return
@@ -131,10 +131,10 @@ class SlackChannel(Channel):
     async def _start_socket_mode(self) -> None:
         """Startet Socket Mode fuer eingehende Events + interaktive Buttons."""
         try:
-            from slack_bolt.adapter.socket_mode.async_handler import (  # type: ignore[import-untyped]
+            from slack_bolt.adapter.socket_mode.async_handler import (
                 AsyncSocketModeHandler,
             )
-            from slack_bolt.async_app import AsyncApp  # type: ignore[import-untyped]
+            from slack_bolt.async_app import AsyncApp
         except ImportError:
             logger.error("slack_bolt nicht installiert. pip install slack_bolt")
             return

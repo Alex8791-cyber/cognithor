@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.character import CognitiveState
@@ -44,8 +44,8 @@ class NarrativeSelf:
         self._reflection_count: int = 0
         self.reflect_every_n: int = reflect_every_n
         # Snapshot for differential reflection
-        self._personality_snapshot: dict | None = None
-        self._epistemic_snapshot: dict | None = None
+        self._personality_snapshot: dict[str, Any] | None = None
+        self._epistemic_snapshot: dict[str, Any] | None = None
         self._snapshot_interaction: int = 0
 
     def should_reflect(self, total_interactions: int) -> bool:
@@ -136,8 +136,8 @@ class NarrativeSelf:
 
     def take_snapshot(
         self,
-        personality_dict: dict,
-        epistemic_confidences: dict,
+        personality_dict: dict[str, Any],
+        epistemic_confidences: dict[str, Any],
         interaction_count: int,
     ) -> None:
         """
@@ -158,8 +158,8 @@ class NarrativeSelf:
     def generate_differential(
         self,
         llm_client,
-        personality_dict: dict,
-        epistemic_confidences: dict,
+        personality_dict: dict[str, Any],
+        epistemic_confidences: dict[str, Any],
         interaction_count: int,
     ) -> str | None:
         """
@@ -262,7 +262,7 @@ class NarrativeSelf:
         """Total number of reflections."""
         return self._reflection_count
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict."""
         return {
             "narrative": self._narrative,
@@ -278,7 +278,7 @@ class NarrativeSelf:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> NarrativeSelf:
+    def from_dict(cls, data: dict[str, Any]) -> NarrativeSelf:
         """Construct a NarrativeSelf from a dict."""
         ns = cls(reflect_every_n=data.get("reflect_every_n", cls.REFLECT_EVERY_N_DEFAULT))
         ns._narrative = data.get("narrative", "")

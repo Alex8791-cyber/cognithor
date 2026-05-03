@@ -261,11 +261,11 @@ class JarvisMCPServer:
         self._resources: dict[str, MCPResource] = {}
         self._resource_templates: dict[str, MCPResourceTemplate] = {}
         self._prompts: dict[str, MCPPrompt] = {}
-        self._subscribers: dict[str, list[Callable]] = {}
+        self._subscribers: dict[str, list[Callable[..., Any]]] = {}
         self._running = False
         self._request_count = 0
         self._start_time: float = 0
-        self._progress_handlers: dict[str, Callable] = {}
+        self._progress_handlers: dict[str, Callable[..., Any]] = {}
         self._request_semaphore = asyncio.Semaphore(self._config.max_concurrent_requests)
 
     # ── Registration API ─────────────────────────────────────────

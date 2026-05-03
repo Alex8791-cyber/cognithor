@@ -85,7 +85,7 @@ def parse_grid_coordinates(raw: str) -> list[tuple[int, int]]:
 async def text_strategy(
     page: Any,
     challenge: CaptchaChallenge,
-    vision_fn: Callable,
+    vision_fn: Callable[..., Any],
 ) -> SolveResult:
     """Solve a simple text-based CAPTCHA via OCR."""
     t0 = time.monotonic()
@@ -137,7 +137,7 @@ async def text_strategy(
 async def checkbox_strategy(
     page: Any,
     challenge: CaptchaChallenge,
-    vision_fn: Callable,
+    vision_fn: Callable[..., Any],
 ) -> SolveResult:
     """Click the reCAPTCHA v2 checkbox and hope stealth is enough."""
     t0 = time.monotonic()
@@ -180,7 +180,7 @@ async def checkbox_strategy(
 async def image_grid_strategy(
     page: Any,
     challenge: CaptchaChallenge,
-    vision_fn: Callable,
+    vision_fn: Callable[..., Any],
 ) -> SolveResult:
     """Solve an image-grid CAPTCHA (reCAPTCHA v2 image / hCaptcha)."""
     t0 = time.monotonic()
@@ -253,7 +253,7 @@ async def image_grid_strategy(
 async def stealth_strategy(
     page: Any,
     challenge: CaptchaChallenge,
-    vision_fn: Callable,
+    vision_fn: Callable[..., Any],
 ) -> SolveResult:
     """Wait for Turnstile / reCAPTCHA v3 to auto-solve via stealth."""
     t0 = time.monotonic()
@@ -298,7 +298,7 @@ async def stealth_strategy(
 async def generic_strategy(
     page: Any,
     challenge: CaptchaChallenge,
-    vision_fn: Callable,
+    vision_fn: Callable[..., Any],
 ) -> SolveResult:
     """Fallback: screenshot and ask the vision model what to do."""
     t0 = time.monotonic()
@@ -334,7 +334,7 @@ async def generic_strategy(
 # Dispatcher
 # ---------------------------------------------------------------------------
 
-_STRATEGY_MAP: dict[CaptchaType, Callable] = {
+_STRATEGY_MAP: dict[CaptchaType, Callable[..., Any]] = {
     CaptchaType.TEXT: text_strategy,
     CaptchaType.RECAPTCHA_V2_CHECKBOX: checkbox_strategy,
     CaptchaType.RECAPTCHA_V2_IMAGE: image_grid_strategy,

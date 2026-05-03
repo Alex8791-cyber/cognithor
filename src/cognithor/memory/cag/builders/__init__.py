@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Any
 
-def get_builder(backend: str):
+
+def get_builder(backend: str) -> Any:
     """Factory: return the appropriate CacheBuilder for the backend."""
     if backend in ("auto", "prefix"):
         from cognithor.memory.cag.builders.prefix import PrefixCacheBuilder

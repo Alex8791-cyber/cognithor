@@ -36,7 +36,7 @@ try:
     _HAS_BOTO3 = True
 except ImportError:
     _HAS_BOTO3 = False
-    boto3 = None  # type: ignore[assignment]
+    boto3 = None
     ClientError = Exception  # fallback for type hints
 
 _STATE_DB_SCHEMA = """

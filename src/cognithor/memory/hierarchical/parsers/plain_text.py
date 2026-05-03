@@ -143,7 +143,7 @@ class PlainTextParser(DocumentParser):
 
         return [
             RawSection(
-                level=int(s["level"]),  # type: ignore[arg-type]
+                level=int(s["level"]),
                 title=str(s["title"]),
                 content=str(s["content"]),
                 position=idx,

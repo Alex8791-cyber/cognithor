@@ -176,7 +176,7 @@ class GoalScopedIndex:
         self,
         name: str,
         entity_type: str,
-        attributes: dict | None = None,
+        attributes: dict[str, Any] | None = None,
         source_url: str = "",
     ) -> None:
         """Add or update an entity in the goal-scoped index."""
@@ -194,7 +194,7 @@ class GoalScopedIndex:
         source_name: str,
         relation_type: str,
         target_name: str,
-        attributes: dict | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         """Add a relation to the goal-scoped index."""
         # Avoid exact duplicates

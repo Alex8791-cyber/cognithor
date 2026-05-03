@@ -8,6 +8,7 @@ import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
 __all__ = [
     "LearningPlan",
@@ -45,7 +46,7 @@ class QualityQuestion:
     score: float | None = None
     passed: bool = False
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "question": self.question,
             "expected_answer": self.expected_answer,
@@ -55,7 +56,7 @@ class QualityQuestion:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> QualityQuestion:
+    def from_dict(cls, d: dict[str, Any]) -> QualityQuestion:
         return cls(
             question=d["question"],
             expected_answer=d["expected_answer"],
@@ -72,7 +73,7 @@ class SeedSource:
     title: str | None = None
     processed: bool = False
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "content_type": self.content_type,
             "value": self.value,
@@ -81,7 +82,7 @@ class SeedSource:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> SeedSource:
+    def from_dict(cls, d: dict[str, Any]) -> SeedSource:
         return cls(
             content_type=d["content_type"],
             value=d["value"],
@@ -103,7 +104,7 @@ class SourceSpec:
     pages_fetched: int = 0
     status: str = "pending"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "url": self.url,
             "source_type": self.source_type,
@@ -118,7 +119,7 @@ class SourceSpec:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> SourceSpec:
+    def from_dict(cls, d: dict[str, Any]) -> SourceSpec:
         return cls(
             url=d["url"],
             source_type=d["source_type"],
@@ -142,7 +143,7 @@ class ScheduleSpec:
     goal_id: str | None = None
     description: str | None = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "cron_expression": self.cron_expression,
@@ -153,7 +154,7 @@ class ScheduleSpec:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> ScheduleSpec:
+    def from_dict(cls, d: dict[str, Any]) -> ScheduleSpec:
         return cls(
             name=d["name"],
             cron_expression=d["cron_expression"],
@@ -184,7 +185,7 @@ class SubGoal:
     last_tested: str | None = None  # ISO timestamp of last quality test
     test_count: int = 0  # How many times this SubGoal has been tested
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "title": self.title,
@@ -206,7 +207,7 @@ class SubGoal:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> SubGoal:
+    def from_dict(cls, d: dict[str, Any]) -> SubGoal:
         return cls(
             id=d["id"],
             title=d["title"],
@@ -253,7 +254,7 @@ class LearningPlan:
         if not self.goal_slug:
             self.goal_slug = _slugify(self.goal)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "goal": self.goal,
@@ -274,7 +275,7 @@ class LearningPlan:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> LearningPlan:
+    def from_dict(cls, d: dict[str, Any]) -> LearningPlan:
         return cls(
             id=d["id"],
             goal=d["goal"],
@@ -294,7 +295,7 @@ class LearningPlan:
             expansions=d.get("expansions", 0),
         )
 
-    def to_summary_dict(self) -> dict:
+    def to_summary_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "goal": self.goal,

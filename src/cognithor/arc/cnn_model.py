@@ -48,7 +48,7 @@ _GRID_W: int = 64
 
 if _TORCH_AVAILABLE:
 
-    class ActionPredictor(nn.Module):  # type: ignore[misc]
+    class ActionPredictor(nn.Module):
         """CNN that predicts action probabilities and coordinate heat-maps.
 
         Input shape:  ``(batch, n_colors, 64, 64)`` — one-hot encoded grid.
@@ -161,7 +161,7 @@ if _TORCH_AVAILABLE:
             self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
 
             # Replay buffer: each entry is (grid, action_idx, coord_or_None)
-            self._buffer: deque[tuple[np.ndarray, int, tuple[int, int] | None]] = deque(
+            self._buffer: deque[tuple[np.ndarray[Any, Any], int, tuple[int, int] | None]] = deque(
                 maxlen=buffer_size
             )
             self._seen_hashes: set[str] = set()
@@ -176,7 +176,7 @@ if _TORCH_AVAILABLE:
 
         def add_experience(
             self,
-            grid: np.ndarray,
+            grid: np.ndarray[Any, Any],
             action_idx: int,
             coord: tuple[int, int] | None = None,
             frame_changed: bool = False,
@@ -213,7 +213,9 @@ if _TORCH_AVAILABLE:
                 self._train_step()
                 self._steps_since_train = 0
 
-        def predict(self, grid: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        def predict(
+            self, grid: np.ndarray[Any, Any]
+        ) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
             """Return predicted action and coordinate probabilities for *grid*.
 
             Parameters
@@ -296,7 +298,7 @@ if _TORCH_AVAILABLE:
 
             return float(loss.item())
 
-        def _grid_to_tensor(self, grid: np.ndarray) -> torch.Tensor:
+        def _grid_to_tensor(self, grid: np.ndarray[Any, Any]) -> torch.Tensor:
             """One-hot encode *grid* into a ``(n_colors, 64, 64)`` float32 tensor.
 
             Parameters
@@ -326,7 +328,7 @@ if _TORCH_AVAILABLE:
 
         @staticmethod
         def _make_key(
-            grid: np.ndarray,
+            grid: np.ndarray[Any, Any],
             action_idx: int,
             coord: tuple[int, int] | None,
         ) -> str:

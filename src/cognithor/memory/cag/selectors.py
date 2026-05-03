@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from typing import Any
+
 
 class CAGSelector:
     """Decides which memory content qualifies for CAG prefix caching."""
 
-    def select(self, core_memory_text: str) -> list[dict]:
+    def select(self, core_memory_text: str) -> list[dict[str, Any]]:
         """Return candidate entries if the core memory is substantial enough.
 
         A minimum of 50 tokens (words) is required to justify caching.

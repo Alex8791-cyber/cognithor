@@ -32,7 +32,7 @@ class DeepLearner:
 
     def __init__(
         self,
-        llm_fn: Callable,
+        llm_fn: Callable[..., Any],
         plans_dir: str | None = None,
         mcp_client=None,
         memory_manager=None,

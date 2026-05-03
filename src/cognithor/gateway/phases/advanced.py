@@ -94,28 +94,28 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
 
     # --- All subsystems via _safe_call (failures logged + tracked) ---
 
-    def _init_dag():
+    def _init_dag() -> Any:
         from cognithor.core.workflow_engine import WorkflowEngine as DAGWorkflowEngine
 
         return DAGWorkflowEngine()
 
     _init_subsystem("dag_workflow_engine", result, _init_dag)
 
-    def _init_trace_store():
+    def _init_trace_store() -> Any:
         from cognithor.learning.execution_trace import TraceStore
 
         return TraceStore(Path(str(config.db_path.with_name("memory_traces.db"))))
 
     _init_subsystem("trace_store", result, _init_trace_store)
 
-    def _init_proposal_store():
+    def _init_proposal_store() -> Any:
         from cognithor.learning.trace_optimizer import ProposalStore
 
         return ProposalStore(Path(str(config.db_path.with_name("memory_proposals.db"))))
 
     _init_subsystem("proposal_store", result, _init_proposal_store)
 
-    def _init_gepa():
+    def _init_gepa() -> Any:
         from cognithor.learning.causal_attributor import CausalAttributor
         from cognithor.learning.evolution_orchestrator import EvolutionOrchestrator
         from cognithor.learning.trace_optimizer import TraceOptimizer
@@ -139,28 +139,28 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
 
     _init_subsystem("evolution_orchestrator", result, _init_gepa)
 
-    def _init_strategy_memory():
+    def _init_strategy_memory() -> Any:
         from cognithor.learning.strategy_memory import StrategyMemory
 
         return StrategyMemory(db_path=Path(cognithor_home) / "index" / "strategy_memory.db")
 
     _init_subsystem("strategy_memory", result, _init_strategy_memory)
 
-    def _init_reflexion():
+    def _init_reflexion() -> Any:
         from cognithor.learning.reflexion import ReflexionMemory
 
         return ReflexionMemory(data_dir=Path(cognithor_home) / "memory")
 
     _init_subsystem("reflexion_memory", result, _init_reflexion)
 
-    def _init_hermes():
+    def _init_hermes() -> Any:
         from cognithor.skills.hermes_compat import HermesCompatLayer
 
         return HermesCompatLayer()
 
     _init_subsystem("hermes_compat", result, _init_hermes)
 
-    def _init_run_recorder():
+    def _init_run_recorder() -> Any:
         from cognithor.forensics.run_recorder import RunRecorder
 
         return RunRecorder(str(config.db_path.with_name("memory_runs.db")))
@@ -194,7 +194,7 @@ async def init_advanced(
 
     # --- All subsystems via _safe_call (failures logged + tracked) ---
 
-    def _init_governance():
+    def _init_governance() -> Any:
         from cognithor.governance.governor import GovernanceAgent
 
         return GovernanceAgent(
@@ -208,7 +208,7 @@ async def init_advanced(
 
     _init_subsystem("governance_agent", result, _init_governance)
 
-    def _init_improvement_gate():
+    def _init_improvement_gate() -> Any:
         from cognithor.governance.improvement_gate import ImprovementGate
 
         gate = ImprovementGate(config.improvement)
@@ -218,7 +218,7 @@ async def init_advanced(
 
     _init_subsystem("improvement_gate", result, _init_improvement_gate)
 
-    def _init_prompt_evolution():
+    def _init_prompt_evolution() -> Any:
         from cognithor.learning.prompt_evolution import PromptEvolutionEngine
 
         if not config.prompt_evolution.enabled:
@@ -232,35 +232,35 @@ async def init_advanced(
 
     _init_subsystem("prompt_evolution", result, _init_prompt_evolution)
 
-    def _init_session_analyzer():
+    def _init_session_analyzer() -> Any:
         from cognithor.learning.session_analyzer import SessionAnalyzer
 
         return SessionAnalyzer(data_dir=Path(cognithor_home) / "memory")
 
     _init_subsystem("session_analyzer", result, _init_session_analyzer)
 
-    def _init_curiosity():
+    def _init_curiosity() -> Any:
         from cognithor.learning.curiosity import CuriosityEngine
 
         return CuriosityEngine()
 
     _init_subsystem("curiosity_engine", result, _init_curiosity)
 
-    def _init_confidence():
+    def _init_confidence() -> Any:
         from cognithor.learning.confidence import KnowledgeConfidenceManager
 
         return KnowledgeConfidenceManager()
 
     _init_subsystem("confidence_manager", result, _init_confidence)
 
-    def _init_active_learner():
+    def _init_active_learner() -> Any:
         from cognithor.learning.active_learner import ActiveLearner
 
         return ActiveLearner()
 
     _init_subsystem("active_learner", result, _init_active_learner)
 
-    def _init_exploration():
+    def _init_exploration() -> Any:
         from cognithor.learning.explorer import ExplorationExecutor
 
         return ExplorationExecutor(
@@ -270,14 +270,14 @@ async def init_advanced(
 
     _init_subsystem("exploration_executor", result, _init_exploration)
 
-    def _init_knowledge_qa():
+    def _init_knowledge_qa() -> Any:
         from cognithor.learning.knowledge_qa import KnowledgeQAStore
 
         return KnowledgeQAStore(db_path=Path(cognithor_home) / "memory" / "knowledge_qa.db")
 
     _init_subsystem("knowledge_qa", result, _init_knowledge_qa)
 
-    def _init_knowledge_lineage():
+    def _init_knowledge_lineage() -> Any:
         from cognithor.learning.lineage import KnowledgeLineageTracker
 
         return KnowledgeLineageTracker(
@@ -286,7 +286,7 @@ async def init_advanced(
 
     _init_subsystem("knowledge_lineage", result, _init_knowledge_lineage)
 
-    def _init_knowledge_ingest():
+    def _init_knowledge_ingest() -> Any:
         from cognithor.learning.knowledge_ingest import KnowledgeIngestService
 
         return KnowledgeIngestService(
@@ -297,7 +297,7 @@ async def init_advanced(
 
     _init_subsystem("knowledge_ingest", result, _init_knowledge_ingest)
 
-    def _init_leads_service():
+    def _init_leads_service() -> Any:
         from cognithor.leads.service import LeadService
         from cognithor.leads.store import LeadStore
 
@@ -313,7 +313,7 @@ async def init_advanced(
 
     if gatekeeper is not None:
 
-        def _init_replay():
+        def _init_replay() -> Any:
             from cognithor.forensics.replay_engine import ReplayEngine
 
             return ReplayEngine(gatekeeper)
@@ -328,7 +328,7 @@ async def init_advanced(
         if result.get("session_analyzer"):
             orch._session_analyzer = result["session_analyzer"]
 
-    def _init_hashline():
+    def _init_hashline() -> Any:
         from cognithor.hashline import HashlineGuard
         from cognithor.hashline.config import HashlineConfig as HLConfig
 

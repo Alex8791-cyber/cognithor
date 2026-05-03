@@ -42,7 +42,7 @@ class PixelRewardExplorer:
         self.same_action_streak: int = 0
         self._max_streak: int = 5
 
-    def select_action(self, available_actions: list) -> Any:
+    def select_action(self, available_actions: list[Any]) -> Any:
         """Pick an action with balanced exploration."""
         if not available_actions:
             return None
@@ -162,7 +162,7 @@ class CognithorArcAgent:
         self.audit_trail = ArcAuditTrail(game_id)
         self.state_graph = StateGraphNavigator(max_states=200_000)
         self._navigation_mode = False
-        self._current_path: list = []
+        self._current_path: list[Any] = []
         self._path_index: int = 0
 
         # CNN Action Predictor (online learning during gameplay)

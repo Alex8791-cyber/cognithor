@@ -439,6 +439,6 @@ class KeyboardSolver:
         return obs
 
     @staticmethod
-    def _grid_hash(grid: np.ndarray) -> int:
+    def _grid_hash(grid: np.ndarray[Any, Any]) -> int:
         """Hash grid rows 2-62, excluding timer bars."""
         return hash(grid[2:62].tobytes())

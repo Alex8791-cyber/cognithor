@@ -213,7 +213,7 @@ class SmartExplorer:
 
         return None  # no frontier found
 
-    def _find_click_targets(self, grid: np.ndarray) -> list[int]:
+    def _find_click_targets(self, grid: np.ndarray[Any, Any]) -> list[int]:
         """Find click targets via connected components. Prioritize small, salient objects.
 
         Returns encoded click actions: x*1000 + y + 1000
@@ -278,6 +278,6 @@ class SmartExplorer:
         return obs
 
     @staticmethod
-    def _hash(grid: np.ndarray) -> int:
+    def _hash(grid: np.ndarray[Any, Any]) -> int:
         """Hash grid excluding timer bars."""
         return hash(grid[2:62].tobytes())

@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_history_task ON task_history(task_id);
 """
 
 
-def _dict_row_factory(cursor: sqlite3.Cursor, row: tuple) -> sqlite3.Row:
+def _dict_row_factory(cursor: sqlite3.Cursor, row: tuple[Any, ...]) -> sqlite3.Row:
     """Row factory that returns dict-like objects compatible with ``row["col"]`` access.
 
     Used as a fallback when ``sqlcipher3.Row`` is not available.

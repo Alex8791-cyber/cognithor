@@ -319,7 +319,7 @@ class VaultFileBackend(VaultBackend):
         self._update_index(fm.get("title", ""), path, tag_list, folder)
         return f"Notiz aktualisiert: {path}"
 
-    def _build_frontmatter_from_dict(self, fm: dict) -> str:
+    def _build_frontmatter_from_dict(self, fm: dict[str, Any]) -> str:
         lines = ["---"]
         for key, val in fm.items():
             if isinstance(val, list):

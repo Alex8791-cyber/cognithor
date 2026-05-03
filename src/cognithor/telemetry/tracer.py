@@ -220,7 +220,7 @@ class OTLPJsonExporter(SpanExporter):
 
     def _build_payload(self, spans: list[Span]) -> dict[str, Any]:
         """Builds OTLP ExportTraceServiceRequest."""
-        resource_spans: dict[str, list[dict]] = {}
+        resource_spans: dict[str, list[dict[str, Any]]] = {}
         for span in spans:
             svc = span.service_name
             if svc not in resource_spans:

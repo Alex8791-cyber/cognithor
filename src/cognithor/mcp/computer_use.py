@@ -25,7 +25,7 @@ log = get_logger(__name__)
 _pyautogui = None
 
 
-def _get_pyautogui():
+def _get_pyautogui() -> Any:
     global _pyautogui
     if _pyautogui is None:
         import pyautogui
@@ -131,7 +131,7 @@ class ComputerUseTools:
             self._last_scale_factor = scale_factor
 
             # Try UIA first for exact element coordinates
-            uia_elements: list[dict] = []
+            uia_elements: list[dict[str, Any]] = []
             if self._uia_provider:
                 with contextlib.suppress(Exception):
                     uia_elements = await loop.run_in_executor(
@@ -468,7 +468,7 @@ class ComputerUseTools:
             gui = _get_pyautogui()
             loop = asyncio.get_running_loop()
 
-            def _do_drag():
+            def _do_drag() -> None:
                 gui.moveTo(int(start_x), int(start_y), duration=0.2)
                 gui.drag(
                     int(end_x) - int(start_x),

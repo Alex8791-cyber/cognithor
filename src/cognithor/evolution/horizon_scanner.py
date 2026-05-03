@@ -46,7 +46,7 @@ class HorizonScanner:
             self._targeted_gaps.append(gap_topic)
             logger.info("horizon_targeted_gap_added", topic=gap_topic)
 
-    async def scan(self, plan: LearningPlan) -> list[dict]:
+    async def scan(self, plan: LearningPlan) -> list[dict[str, Any]]:
         """Run both discovery mechanisms and return deduplicated results."""
         llm_results = await self.explore_via_llm(plan)
         graph_results = await self.discover_graph_gaps(plan.goal_slug)
@@ -71,7 +71,7 @@ class HorizonScanner:
         deduplicated = [r for r in combined if r["title"].lower() not in existing_titles]
         return deduplicated
 
-    async def explore_via_llm(self, plan: LearningPlan) -> list[dict]:
+    async def explore_via_llm(self, plan: LearningPlan) -> list[dict[str, Any]]:
         """Ask the LLM for expansion suggestions based on the current plan."""
         completed = [sg.title for sg in plan.sub_goals if sg.status in ("passed", "done")]
         all_titles = [sg.title for sg in plan.sub_goals]
@@ -107,9 +107,9 @@ class HorizonScanner:
             if isinstance(e, dict) and "title" in e and "reason" in e
         ]
 
-    async def discover_graph_gaps(self, goal_slug: str) -> list[dict]:
+    async def discover_graph_gaps(self, goal_slug: str) -> list[dict[str, Any]]:
         """Find entities that have fewer than 2 memory chunks — shallow coverage."""
-        results: list[dict] = []
+        results: list[dict[str, Any]] = []
 
         try:
             entity_objs = self._memory.semantic.list_entities()

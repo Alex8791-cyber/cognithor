@@ -39,7 +39,7 @@ class _DictRow(dict):
 
     __slots__ = ("_values",)
 
-    def __init__(self, columns: list[str], values: tuple) -> None:
+    def __init__(self, columns: list[str], values: tuple[Any, ...]) -> None:
         super().__init__(zip(columns, values, strict=False))
         self._values = values
 
@@ -49,7 +49,7 @@ class _DictRow(dict):
         return super().__getitem__(key)
 
 
-def _dict_row_factory(cursor: Any, row: tuple) -> _DictRow:
+def _dict_row_factory(cursor: Any, row: tuple[Any, ...]) -> _DictRow:
     """Row factory that works with both sqlite3 and sqlcipher3 cursors.
 
     sqlite3.Row requires a sqlite3.Cursor, which sqlcipher3 doesn't provide.
@@ -87,13 +87,13 @@ except ImportError:
 # callers can catch ``encrypted_db.OperationalError`` without caring whether
 # sqlcipher3 or sqlite3 is in use.
 if _sqlcipher_available and sqlcipher is not None:
-    OperationalError: type[Exception] = sqlcipher.OperationalError  # type: ignore[assignment]
-    DatabaseError: type[Exception] = sqlcipher.DatabaseError  # type: ignore[assignment]
-    IntegrityError: type[Exception] = sqlcipher.IntegrityError  # type: ignore[assignment]
+    OperationalError: type[Exception] = sqlcipher.OperationalError
+    DatabaseError: type[Exception] = sqlcipher.DatabaseError
+    IntegrityError: type[Exception] = sqlcipher.IntegrityError
 else:
-    OperationalError = sqlite3.OperationalError  # type: ignore[assignment]
-    DatabaseError = sqlite3.DatabaseError  # type: ignore[assignment]
-    IntegrityError = sqlite3.IntegrityError  # type: ignore[assignment]
+    OperationalError = sqlite3.OperationalError
+    DatabaseError = sqlite3.DatabaseError
+    IntegrityError = sqlite3.IntegrityError
 
 _KEYRING_SERVICE = "cognithor"
 _KEYRING_KEY_NAME = "db_encryption_key"

@@ -6,8 +6,9 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003 — used at runtime in __init__
+from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 
 def _now_iso() -> str:
@@ -123,7 +124,7 @@ class GoalManager:
         goal.updated_at = _now_iso()
         self._save()
 
-    def migrate_learning_goals(self, old_goals: list) -> None:
+    def migrate_learning_goals(self, old_goals: list[Any]) -> None:
         """Convert plain string or dict goals into structured Goal objects."""
         for entry in old_goals:
             if isinstance(entry, dict):

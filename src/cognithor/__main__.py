@@ -716,7 +716,9 @@ def main() -> None:
         _loop = asyncio.get_running_loop()
         _orig_handler = _loop.get_exception_handler()
 
-        def _quiet_exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+        def _quiet_exception_handler(
+            loop: asyncio.AbstractEventLoop, context: dict[str, Any]
+        ) -> None:
             exc = context.get("exception")
             if isinstance(exc, ConnectionResetError):
                 return
@@ -1144,7 +1146,7 @@ def main() -> None:
                 _ws_last_connect: dict[str, float] = {}  # Rate-limit per session
                 _WS_MIN_CONNECT_INTERVAL = 1.0  # Minimum seconds between connects
 
-                async def _ws_safe_send(ws: WebSocket, data: dict) -> bool:
+                async def _ws_safe_send(ws: WebSocket, data: dict[str, Any]) -> bool:
                     """Send JSON over WebSocket, catching disconnection errors.
 
                     Returns True if send succeeded, False if the connection is dead.
@@ -1537,7 +1539,7 @@ def main() -> None:
                 )
                 async def _cc_approval_response_rest(
                     request: _STRequest,
-                ) -> dict:
+                ) -> dict[str, Any]:
                     try:
                         body = await request.json()
                     except Exception:
@@ -1582,7 +1584,7 @@ def main() -> None:
                         session_id: str,
                         action: Any = None,
                         tool: str = "",
-                        params: dict | None = None,
+                        params: dict[str, Any] | None = None,
                         reason: str = "",
                         **kwargs: Any,
                     ) -> bool:
@@ -1649,7 +1651,9 @@ def main() -> None:
                                 },
                             )
 
-                    async def send_pipeline_event(self, session_id: str, event: dict) -> None:
+                    async def send_pipeline_event(
+                        self, session_id: str, event: dict[str, Any]
+                    ) -> None:
                         ws = _ws_connections.get(session_id)
                         if ws:
                             await _ws_safe_send(
@@ -1661,7 +1665,9 @@ def main() -> None:
                                 },
                             )
 
-                    async def send_plan_detail(self, session_id: str, plan_data: dict) -> None:
+                    async def send_plan_detail(
+                        self, session_id: str, plan_data: dict[str, Any]
+                    ) -> None:
                         ws = _ws_connections.get(session_id)
                         if ws:
                             await _ws_safe_send(
@@ -1673,7 +1679,9 @@ def main() -> None:
                                 },
                             )
 
-                    async def send_identity_state(self, session_id: str, state: dict) -> None:
+                    async def send_identity_state(
+                        self, session_id: str, state: dict[str, Any]
+                    ) -> None:
                         ws = _ws_connections.get(session_id)
                         if ws:
                             await _ws_safe_send(
@@ -1691,7 +1699,7 @@ def main() -> None:
                 _canvas_manager_attr = getattr(gateway, "_canvas_manager", None)
                 if _canvas_manager_attr is not None:
 
-                    async def _canvas_broadcaster(session_id: str, payload: dict) -> None:
+                    async def _canvas_broadcaster(session_id: str, payload: dict[str, Any]) -> None:
                         ws = _ws_connections.get(session_id)
                         if ws:
                             await _ws_safe_send(ws, {"session_id": session_id, **payload})
@@ -2118,7 +2126,7 @@ def main() -> None:
 
                 # ── Identity Control API ────────────────────────────────
                 @api_app.get("/api/v1/identity/state", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_state():
+                async def _identity_state() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"available": False}
                     try:
@@ -2129,7 +2137,7 @@ def main() -> None:
                         return {"error": "Internal identity error", "code": "INTERNAL_ERROR"}
 
                 @api_app.post("/api/v1/identity/freeze", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_freeze():
+                async def _identity_freeze() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     gateway._identity_layer.freeze()
@@ -2138,21 +2146,21 @@ def main() -> None:
                 @api_app.post(
                     "/api/v1/identity/unfreeze", dependencies=[_Depends(_verify_cc_token)]
                 )
-                async def _identity_unfreeze():
+                async def _identity_unfreeze() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     gateway._identity_layer.unfreeze()
                     return {"status": "unfrozen"}
 
                 @api_app.post("/api/v1/identity/reset", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_reset():
+                async def _identity_reset() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     result = gateway._identity_layer.soft_reset()
                     return {"status": "reset", "details": result}
 
                 @api_app.post("/api/v1/identity/dream", dependencies=[_Depends(_verify_cc_token)])
-                async def _identity_dream():
+                async def _identity_dream() -> Any:
                     if not hasattr(gateway, "_identity_layer") or gateway._identity_layer is None:
                         return {"error": "Identity layer not available", "code": "NOT_AVAILABLE"}
                     try:

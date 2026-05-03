@@ -464,7 +464,7 @@ class A2AServer:
 
     # ── Task Execution ───────────────────────────────────────────
 
-    def _make_task_done_callback(self, a2a_task: Task):
+    def _make_task_done_callback(self, a2a_task: Task) -> Any:
         """Creates a done-callback that transitions the A2A task on failure."""
 
         def _callback(asyncio_task: asyncio.Task[None]) -> None:

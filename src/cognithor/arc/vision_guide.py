@@ -10,6 +10,7 @@ import base64
 import io
 import json
 import re
+from typing import Any
 
 import numpy as np
 
@@ -47,7 +48,7 @@ _VISION_PROMPT = (
 )
 
 
-def grid_to_png_b64(grid: np.ndarray, scale: int = 8) -> str:
+def grid_to_png_b64(grid: np.ndarray[Any, Any], scale: int = 8) -> str:
     """Convert 64x64 color-index grid to upscaled PNG base64.
 
     Args:
@@ -74,7 +75,7 @@ def grid_to_png_b64(grid: np.ndarray, scale: int = 8) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-def _parse_guidance(raw: str) -> dict | None:
+def _parse_guidance(raw: str) -> dict[str, Any] | None:
     """Parse JSON guidance from vision model response. 3-tier fallback."""
     raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
 
@@ -133,7 +134,7 @@ class ArcVisionGuide:
         self.min_pixel_change = min_pixel_change
         self._steps_since_call: int = 0
         self._pixels_since_call: int = 0
-        self._last_strategy: dict | None = None
+        self._last_strategy: dict[str, Any] | None = None
         self._force_next: bool = False  # Wait for call_interval before first call
         self.call_count: int = 0
         self.actions_followed: int = 0
@@ -155,7 +156,9 @@ class ArcVisionGuide:
         """Force the next should_call to return True (after GAME_OVER etc.)."""
         self._force_next = True
 
-    def analyze_sync(self, grid: np.ndarray, action_names: list[str]) -> dict | None:
+    def analyze_sync(
+        self, grid: np.ndarray[Any, Any], action_names: list[str]
+    ) -> dict[str, Any] | None:
         """Synchronous wrapper for analyze. Returns {goal, strategy, next_action}."""
         try:
             import ollama
@@ -213,6 +216,6 @@ class ArcVisionGuide:
             return None
 
     @property
-    def current_strategy(self) -> dict | None:
+    def current_strategy(self) -> dict[str, Any] | None:
         """Last strategy from vision model (cached between calls)."""
         return self._last_strategy

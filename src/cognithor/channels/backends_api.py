@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json as _json
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -93,7 +93,7 @@ def _resolve_orchestrator(request: Request) -> VLLMOrchestrator:
 
 
 @backends_router.get("")
-async def list_backends(request: Request) -> dict:
+async def list_backends(request: Request) -> dict[str, Any]:
     """Return every configured backend with its current readiness."""
     config: CognithorConfig = request.app.state.config
     backends = [
@@ -122,7 +122,7 @@ async def list_backends(request: Request) -> dict:
 
 
 @backends_router.get("/vllm/status")
-async def vllm_status(request: Request) -> dict:
+async def vllm_status(request: Request) -> dict[str, Any]:
     """Return the current VLLMState as JSON for the Flutter setup page."""
     orch = _resolve_orchestrator(request)
     st = orch.status()
@@ -145,7 +145,7 @@ async def vllm_status(request: Request) -> dict:
 
 
 @backends_router.post("/vllm/check-hardware")
-async def check_hardware_endpoint(request: Request) -> dict:
+async def check_hardware_endpoint(request: Request) -> dict[str, Any]:
     orch = _resolve_orchestrator(request)
     try:
         info = orch.check_hardware()
@@ -169,7 +169,7 @@ async def check_hardware_endpoint(request: Request) -> dict:
 
 
 @backends_router.post("/vllm/start")
-async def vllm_start(request: Request, body: StartRequest) -> dict:
+async def vllm_start(request: Request, body: StartRequest) -> dict[str, Any]:
     orch = _resolve_orchestrator(request)
     try:
         info = orch.start_container(body.model)
@@ -193,14 +193,14 @@ async def vllm_start(request: Request, body: StartRequest) -> dict:
 
 
 @backends_router.post("/vllm/stop")
-async def vllm_stop(request: Request) -> dict:
+async def vllm_stop(request: Request) -> dict[str, Any]:
     orch = _resolve_orchestrator(request)
     orch.stop_container()
     return {"status": "stopped"}
 
 
 @backends_router.post("/active")
-async def set_active_backend(request: Request, body: SetActiveRequest) -> dict:
+async def set_active_backend(request: Request, body: SetActiveRequest) -> dict[str, Any]:
     """Switch the active LLM backend and re-init UnifiedLLMClient."""
     gateway = request.app.state.gateway
     if gateway is None:
@@ -213,13 +213,13 @@ async def set_active_backend(request: Request, body: SetActiveRequest) -> dict:
 
 
 @backends_router.get("/vllm/logs")
-async def vllm_logs(request: Request) -> dict:
+async def vllm_logs(request: Request) -> dict[str, Any]:
     orch = _resolve_orchestrator(request)
     return {"lines": orch.get_logs()}
 
 
 @backends_router.get("/vllm/available-models")
-async def vllm_available_models(request: Request) -> dict:
+async def vllm_available_models(request: Request) -> dict[str, Any]:
     """Return the curated vLLM model registry filtered against detected hardware.
 
     Response shape:
@@ -278,9 +278,9 @@ async def vllm_pull_image(request: Request) -> StreamingResponse:
     config: CognithorConfig = request.app.state.config
     orch = _resolve_orchestrator(request)
 
-    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+    queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
 
-    def progress_cb(event: dict) -> None:
+    def progress_cb(event: dict[str, Any]) -> None:
         queue.put_nowait(event)
 
     async def worker() -> None:
@@ -294,7 +294,7 @@ async def vllm_pull_image(request: Request) -> StreamingResponse:
         finally:
             queue.put_nowait(None)
 
-    async def event_stream():
+    async def event_stream() -> Any:
         task = asyncio.create_task(worker())
         try:
             while True:

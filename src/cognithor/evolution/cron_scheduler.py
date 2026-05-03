@@ -14,6 +14,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from cognithor.utils.logging import get_logger
 
@@ -46,7 +47,7 @@ class ScheduledTask:
     description: str
     cron_expression: str  # 5-field cron (minute hour dom month dow)
     action: str = "research"  # research | ingest | retest | scan
-    task_data: dict = field(default_factory=dict)
+    task_data: dict[str, Any] = field(default_factory=dict)
     id: str = field(default_factory=_new_id)
     enabled: bool = True
     last_run: str | None = None
@@ -54,7 +55,7 @@ class ScheduledTask:
     run_count: int = 0
     created_at: str = field(default_factory=_now_iso)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -70,7 +71,7 @@ class ScheduledTask:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> ScheduledTask:
+    def from_dict(cls, d: dict[str, Any]) -> ScheduledTask:
         return cls(
             id=d.get("id", _new_id()),
             name=d["name"],

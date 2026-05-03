@@ -42,7 +42,7 @@ try:
     # Attempt to import structlog. If this fails, we'll fall back to
     # Python's built-in logging. It's important that this happens at
     # runtime so environments without structlog can still run the code.
-    structlog = import_module("structlog")  # type: ignore[assignment]
+    structlog = import_module("structlog")
 except ModuleNotFoundError:
     structlog = None  # type: ignore[assignment]
 
@@ -111,7 +111,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def get_logger(name: str | None = None):
+def get_logger(name: str | None = None) -> Any:
     """
     Return a configured logger.
 
@@ -125,7 +125,7 @@ def get_logger(name: str | None = None):
         import logging
 
         return _StructlogCompatLogger(logging.getLogger(name))
-    return structlog.get_logger(name)  # type: ignore[no-any-return]
+    return structlog.get_logger(name)
 
 
 def setup_logging(

@@ -47,11 +47,11 @@ class SevdeskClient:
             resp.raise_for_status()
             return resp.json()
 
-    async def list_contacts(self, limit: int = 50) -> list[dict]:
+    async def list_contacts(self, limit: int = 50) -> list[dict[str, Any]]:
         data = await self._get("/Contact", params={"limit": limit})
         return data.get("objects", [])
 
-    async def get_invoice(self, invoice_id: str) -> dict:
+    async def get_invoice(self, invoice_id: str) -> dict[str, Any]:
         data = await self._get(f"/Invoice/{invoice_id}")
         objs = data.get("objects") or [{}]
         return objs[0] if objs else {}

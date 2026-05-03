@@ -146,7 +146,7 @@ async def handle_arc_play(**kwargs: Any) -> str:
             use_llm_local = False
 
         if use_llm_local:
-            agent = LLMReasoningAgent(  # type: ignore[call-arg]
+            agent = LLMReasoningAgent(
                 choice_fn=choice_fn,
                 audit_trail=trail,
                 game_profile=profile,

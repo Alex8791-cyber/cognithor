@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # System prompt template (German, targeting Qwen3.5)
@@ -96,8 +97,8 @@ class AutonomousThought:
     """Parsed result of one ATL thinking cycle."""
 
     summary: str = ""
-    goal_evaluations: list[dict] = field(default_factory=list)
-    proposed_actions: list[dict] = field(default_factory=list)
+    goal_evaluations: list[dict[str, Any]] = field(default_factory=list)
+    proposed_actions: list[dict[str, Any]] = field(default_factory=list)
     wants_to_notify: bool = False
     notification: str | None = None
     priority: str = "low"
@@ -133,7 +134,7 @@ def parse_atl_response(raw: str) -> AutonomousThought:
     # 3. Try direct parse
     import contextlib
 
-    data: dict | None = None
+    data: dict[str, Any] | None = None
     with contextlib.suppress(json.JSONDecodeError, ValueError):
         data = json.loads(text)
 

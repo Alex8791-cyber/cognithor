@@ -14,7 +14,7 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 try:
     from starlette.requests import Request

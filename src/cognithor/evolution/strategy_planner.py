@@ -230,7 +230,7 @@ class StrategyPlanner:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _call_llm_json(self, prompt: str) -> dict | None:
+    async def _call_llm_json(self, prompt: str) -> dict[str, Any] | None:
         """Call LLM and parse JSON from response, retrying on failure."""
         for attempt in range(self._max_retries):
             p = prompt if attempt == 0 else prompt + _STRICT_JSON_SUFFIX
@@ -274,7 +274,7 @@ def _extract_json(text: str) -> str | None:
     return None
 
 
-def _populate_plan(plan: LearningPlan, data: dict) -> None:
+def _populate_plan(plan: LearningPlan, data: dict[str, Any]) -> None:
     """Fill *plan* fields from parsed LLM dict."""
     for sg_data in data.get("sub_goals", []):
         plan.sub_goals.append(

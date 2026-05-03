@@ -80,7 +80,7 @@ class ConsentManager:
             "SELECT 1 FROM consent "
             "WHERE user_id = ? AND channel = ? AND consent_type = ? AND status = 'accepted'"
         )
-        params: list = [user_id, channel, consent_type]
+        params: list[Any] = [user_id, channel, consent_type]
         if policy_version:
             query += " AND policy_version = ?"
             params.append(policy_version)
@@ -158,7 +158,7 @@ class ConsentManager:
         """Check if user still needs to give consent for this channel."""
         return not self.has_consent(user_id, channel, "data_processing")
 
-    def get_user_consents(self, user_id: str) -> list[dict]:
+    def get_user_consents(self, user_id: str) -> list[dict[str, Any]]:
         """Return all consent records for a user."""
         cursor = self._conn.execute(
             "SELECT * FROM consent WHERE user_id = ? AND status = 'accepted' "

@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ class ExistentialLayer:
         target = min(0.9, 0.5 + narrative_reflection_count * 0.01)
         self.self_coherence = round(target, 3)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict."""
         return {
             "consciousness_certainty": self.consciousness_certainty,
@@ -176,7 +177,7 @@ class ExistentialLayer:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> ExistentialLayer:
+    def from_dict(cls, data: dict[str, Any]) -> ExistentialLayer:
         """Construct an ExistentialLayer from a dict."""
         el = cls()
         el.consciousness_certainty = data.get("consciousness_certainty", 0.05)

@@ -1388,7 +1388,7 @@ class Gateway:
 
         return await lifecycle.auto_update_skills(self)
 
-    def on_startup_vllm(self):
+    def on_startup_vllm(self) -> Any:
         """Called during init. Adopts an already-running cognithor-managed vLLM container."""
         from cognithor.gateway import lifecycle
 
@@ -1432,7 +1432,7 @@ class Gateway:
         config: bool = False,
         core_memory: bool = False,
         skills: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Reload-Koordinator fuer Live-Updates vom UI."""
         reloaded = []
         if prompts and self._planner:

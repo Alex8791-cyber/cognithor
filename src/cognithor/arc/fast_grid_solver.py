@@ -62,7 +62,7 @@ class LevelResult:
 # ---------------------------------------------------------------------------
 
 
-def obs_to_grid(obs: Any) -> np.ndarray:
+def obs_to_grid(obs: Any) -> np.ndarray[Any, Any]:
     """Extract color grid from an ARC-AGI observation (FrameDataRaw)."""
     # arc_agi SDK: obs.frame is ndarray shape (1, 64, 64)
     if hasattr(obs, "frame"):
@@ -77,7 +77,7 @@ def obs_to_grid(obs: Any) -> np.ndarray:
     return grid.astype(np.int32)
 
 
-def find_clusters(grid: np.ndarray, target_color: int) -> list[Cluster]:
+def find_clusters(grid: np.ndarray[Any, Any], target_color: int) -> list[Cluster]:
     """Find connected regions of target_color (4-connectivity BFS)."""
     rows, cols = np.where(grid == target_color)
     if len(rows) == 0:
@@ -106,8 +106,8 @@ def find_clusters(grid: np.ndarray, target_color: int) -> list[Cluster]:
 
 
 def detect_toggle_pair(
-    grid_before: np.ndarray,
-    grid_after: np.ndarray,
+    grid_before: np.ndarray[Any, Any],
+    grid_after: np.ndarray[Any, Any],
 ) -> tuple[int, int] | None:
     """Detect which two colors swap when clicking."""
     diff_mask = grid_before != grid_after
@@ -134,11 +134,11 @@ def detect_toggle_pair(
 
 
 def simulate_toggle(
-    grid: np.ndarray,
+    grid: np.ndarray[Any, Any],
     cluster: Cluster,
     source_color: int,
     target_color: int,
-) -> np.ndarray:
+) -> np.ndarray[Any, Any]:
     """Apply a single toggle to the grid."""
     result = grid.copy()
     for r, c in cluster.pixels:
@@ -150,12 +150,12 @@ def simulate_toggle(
 
 
 def simulate_combo(
-    grid: np.ndarray,
+    grid: np.ndarray[Any, Any],
     clusters: list[Cluster],
     indices: tuple[int, ...],
     source_color: int,
     target_color: int,
-) -> np.ndarray:
+) -> np.ndarray[Any, Any]:
     """Simulate multiple toggles in sequence."""
     result = grid.copy()
     for idx in indices:
@@ -163,7 +163,7 @@ def simulate_combo(
     return result
 
 
-def is_level_complete(grid_after: np.ndarray, source_color: int) -> bool:
+def is_level_complete(grid_after: np.ndarray[Any, Any], source_color: int) -> bool:
     """Check if all source_color pixels have been eliminated."""
     return not (grid_after == source_color).any()
 
@@ -301,7 +301,7 @@ class FastGridSolver:
 
     def _fast_subset_search(
         self,
-        grid: np.ndarray,
+        grid: np.ndarray[Any, Any],
         clusters: list[Cluster],
         source_color: int,
         target_color: int,
@@ -328,7 +328,7 @@ class FastGridSolver:
 
         return None, combos_tested
 
-    def _detect_toggle_auto(self, grid: np.ndarray) -> tuple[int, int] | None:
+    def _detect_toggle_auto(self, grid: np.ndarray[Any, Any]) -> tuple[int, int] | None:
         """Do a test click on the largest non-bg cluster, observe the toggle."""
         colors, counts = np.unique(grid, return_counts=True)
         bg_color = int(colors[np.argmax(counts)])

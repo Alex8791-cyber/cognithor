@@ -12,7 +12,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,7 +37,7 @@ class InstallerInfo:
     def is_uv(self) -> bool:
         return self.backend == InstallerBackend.UV
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "backend": self.backend.value,
             "path": self.path,

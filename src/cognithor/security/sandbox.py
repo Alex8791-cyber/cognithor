@@ -24,6 +24,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from cognithor.models import SandboxConfig, SandboxLevel
 from cognithor.utils.logging import get_logger
@@ -228,7 +229,7 @@ class Sandbox:
             with contextlib.suppress(ValueError, OSError):
                 _resource.setrlimit(_resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
 
-        extra_kwargs: dict = {"process_group": 0}
+        extra_kwargs: dict[str, Any] = {"process_group": 0}
         if not _has_prlimit:
             extra_kwargs["preexec_fn"] = _set_limits
 
