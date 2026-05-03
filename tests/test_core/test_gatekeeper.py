@@ -138,6 +138,10 @@ class TestRiskClassification:
             "screenshot_desktop",
             "vault_list",
             "vault_search",
+            # Sprint-22 Track A.2: PSE tools (deterministic, sandboxed)
+            "pse_synthesize",
+            "pse_is_synthesizable",
+            "pse_status",
         ],
     )
     def test_green_tools_comprehensive(
