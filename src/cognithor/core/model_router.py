@@ -81,6 +81,87 @@ _coding_override_var: contextvars.ContextVar[str | None] = contextvars.ContextVa
 )
 
 
+# ---------------------------------------------------------------------------
+# Sprint-23 — Task-aware context profiles.
+# ---------------------------------------------------------------------------
+#
+# The urgency / concierge profile selects *which model* to call. The
+# context profile selects *how much context* to feed the chosen model
+# and *how creative* its sampling should be. The two are orthogonal:
+# you can run ``asap × deep`` (largest model, biggest window) or
+# ``no_hurry × quick`` (smallest model, tight window) — they compose.
+#
+# Four built-in profiles cover the spectrum from "snappy chat reply"
+# to "interactive ARC-AGI-3 game agent at 128 k context":
+#
+#   * ``quick``    —  8 k context,    tight sampling. Routine Q&A.
+#   * ``default``  — 32 k context,    balanced sampling. Cognithor's
+#                    standard PGE-Trinity loop.
+#   * ``deep``     — 65 k context,    creative sampling. Long-document
+#                    reasoning, retrieval-augmented generation.
+#   * ``arc_agi3`` — 128 k context, deterministic sampling. The
+#                    Sprint-22 side-quest probe verified Qwen3.6:27b
+#                    at 128k decodes correctly under vLLM (15 tok/s,
+#                    105 s init) — settings re-used here so the same
+#                    profile drives game-loop interaction.
+
+
+@dataclasses.dataclass(frozen=True)
+class ContextProfile:
+    """Task-aware context window + sampling profile.
+
+    Composes orthogonally with :class:`ConciergeProfile`: urgency picks
+    the model, the context profile decides how big a window the model
+    sees and how creative its sampling is.
+    """
+
+    name: str
+    num_ctx: int
+    temperature: float
+    top_p: float
+    description: str
+
+
+CONTEXT_PROFILES: dict[str, ContextProfile] = {
+    "quick": ContextProfile(
+        name="quick",
+        num_ctx=8192,
+        temperature=0.3,
+        top_p=0.9,
+        description="Tight 8k window for short Q&A and routine tool calls.",
+    ),
+    "default": ContextProfile(
+        name="default",
+        num_ctx=32768,
+        temperature=0.7,
+        top_p=0.9,
+        description="Balanced 32k window — Cognithor's standard PGE-Trinity setting.",
+    ),
+    "deep": ContextProfile(
+        name="deep",
+        num_ctx=65536,
+        temperature=0.8,
+        top_p=0.95,
+        description="Wide 64k window for long-document reasoning and RAG.",
+    ),
+    "arc_agi3": ContextProfile(
+        name="arc_agi3",
+        num_ctx=131072,
+        temperature=0.2,
+        top_p=0.9,
+        description=(
+            "128k window with deterministic sampling — Sprint-22 side-quest "
+            "settings for ARC-AGI-3 game-loop interaction (vLLM/Qwen3.6:27b)."
+        ),
+    ),
+}
+
+# Per-task context-profile override using ContextVar for concurrency safety.
+_context_profile_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "_context_profile", default=None
+)
+
+
 def _prepare_image_payload(images: list[str]) -> list[str]:
     """Normalize a mixed list of image paths + raw base64 strings.
 
@@ -579,6 +660,50 @@ class ModelRouter:
         """Look up a concierge profile by urgency name."""
         return CONCIERGE_PROFILES.get(urgency)
 
+    # ------------------------------------------------------------------
+    # Sprint-23 — task-aware context profiles
+    # ------------------------------------------------------------------
+    #
+    # Context profiles are orthogonal to urgency: urgency picks the
+    # model, context profile picks the window + sampling. Both are
+    # ContextVar-isolated so concurrent requests cannot bleed.
+
+    def set_context_profile(self, profile_name: str) -> None:
+        """Set the active context profile for downstream model calls.
+
+        Valid values: any key in :data:`CONTEXT_PROFILES`
+        (``"quick"``, ``"default"``, ``"deep"``, ``"arc_agi3"``).
+
+        When set, :meth:`get_model_config` overlays the profile's
+        ``num_ctx`` / ``temperature`` / ``top_p`` on top of the model
+        family defaults. ContextVar isolation means each async task
+        (asyncio.Task / ``contextvars.copy_context()``) gets its own
+        value — concurrent requests cannot interfere.
+        """
+        if profile_name not in CONTEXT_PROFILES:
+            raise ValueError(
+                f"Unknown context profile {profile_name!r}. "
+                f"Valid options: {sorted(CONTEXT_PROFILES)}"
+            )
+        _context_profile_var.set(profile_name)
+        log.info("context_profile_set", profile=profile_name)
+
+    def get_context_profile(self) -> str | None:
+        """Return the active context profile name, or ``None`` if not set."""
+        return _context_profile_var.get()
+
+    def clear_context_profile(self) -> None:
+        """Remove the context-profile override."""
+        current = _context_profile_var.get()
+        if current:
+            log.info("context_profile_cleared", profile=current)
+        _context_profile_var.set(None)
+
+    @staticmethod
+    def get_context_profile_spec(profile_name: str) -> ContextProfile | None:
+        """Look up a context profile by name. Returns ``None`` if unknown."""
+        return CONTEXT_PROFILES.get(profile_name)
+
     async def initialize(self) -> None:
         """Check which models are available.
 
@@ -745,7 +870,16 @@ class ModelRouter:
         return getattr(cfg, "backend", "") or ""
 
     def get_model_config(self, model_name: str) -> dict[str, Any]:
-        """Return the configuration parameters for a model."""
+        """Return the configuration parameters for a model.
+
+        Sprint-23: when a context profile is active for the current
+        async task, the profile's ``num_ctx`` / ``temperature`` /
+        ``top_p`` overlay the model family defaults. Embedding models
+        ignore the overlay because their sampling settings are
+        embedding-implementation specific. The overlay is task-local
+        (ContextVar) so concurrent requests with different profiles
+        don't bleed into each other.
+        """
         configs = {
             self._config.models.planner.name: self._config.models.planner,
             self._config.models.executor.name: self._config.models.executor,
@@ -755,13 +889,28 @@ class ModelRouter:
         }
         config = configs.get(model_name)
         if config:
-            return {
+            base = {
                 "temperature": config.temperature,
                 "top_p": config.top_p,
                 "context_window": config.context_window,
             }
-        # Default values for unknown models
-        return {"temperature": 0.7, "top_p": 0.9, "context_window": 32768}
+        else:
+            base = {"temperature": 0.7, "top_p": 0.9, "context_window": 32768}
+
+        # Sprint-23: apply the active context profile overlay. The
+        # embedding model keeps its hard-coded sampling because the
+        # profile's temperature / top_p are inappropriate for embedding.
+        profile_name = _context_profile_var.get()
+        is_embedding_model = model_name == self._config.models.embedding.name
+        if profile_name and not is_embedding_model:
+            profile = CONTEXT_PROFILES.get(profile_name)
+            if profile:
+                base = {
+                    "temperature": profile.temperature,
+                    "top_p": profile.top_p,
+                    "context_window": profile.num_ctx,
+                }
+        return base
 
 
 def messages_to_ollama(messages: list[Message]) -> list[dict[str, Any]]:
