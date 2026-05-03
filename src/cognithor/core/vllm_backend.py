@@ -216,8 +216,15 @@ class VLLMBackend(LLMBackend):
         format_json: bool = False,
         images: list[str] | None = None,
         video: dict[str, Any] | None = None,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
         """Send a chat-completion request to vLLM.
+
+        Sprint-23: ``num_ctx`` is forwarded as ``extra_body.num_ctx`` so
+        the vLLM engine can apply per-request truncation. The server's
+        *physical* context window is fixed at boot time via
+        ``--max-model-len`` (Sprint-22 probe verified Qwen3.6:27b at
+        128k); any value beyond that is capped server-side.
 
         Raises:
             LLMBadRequestError: on HTTP 400 (excluded from circuit breaker).
@@ -231,6 +238,8 @@ class VLLMBackend(LLMBackend):
         if video is not None:
             messages, video_extra = _attach_video_to_last_user(messages, video)
             extra_body.update(video_extra)
+        if num_ctx is not None:
+            extra_body["num_ctx"] = int(num_ctx)
 
         payload: dict[str, Any] = {
             "model": model,
@@ -292,6 +301,7 @@ class VLLMBackend(LLMBackend):
         top_p: float = 0.9,
         images: list[str] | None = None,
         video: dict[str, Any] | None = None,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         """Stream response tokens from vLLM. Parses OpenAI SSE format.
 
@@ -299,6 +309,9 @@ class VLLMBackend(LLMBackend):
         (2026-04-23). Exactly zero or one video per turn. Streaming responses
         for video are structurally identical to text responses — vLLM returns
         SSE tokens as it decodes.
+
+        ``num_ctx`` semantics match :meth:`chat`: forwarded as
+        ``extra_body.num_ctx`` for vLLM-level per-request truncation.
         """
         if images:
             messages = _attach_images_to_last_user(messages, images)
@@ -307,6 +320,8 @@ class VLLMBackend(LLMBackend):
         if video is not None:
             messages, video_extra = _attach_video_to_last_user(messages, video)
             extra_body.update(video_extra)
+        if num_ctx is not None:
+            extra_body["num_ctx"] = int(num_ctx)
 
         payload: dict[str, Any] = {
             "model": model,

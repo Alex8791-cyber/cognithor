@@ -34,6 +34,9 @@ from cognithor.core.llm_backend import (
     LLMBackendError,
     LLMBackendType,
 )
+from cognithor.utils.logging import get_logger
+
+log = get_logger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -117,8 +120,16 @@ class VLLMInProcessBackend(LLMBackend):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
         del tools, format_json  # vLLM's chat method handles formatting natively
+        # Sprint-23: in-process vLLM honours the engine-launch-time
+        # ``max_model_len``. Per-request ``num_ctx`` is a soft hint at
+        # this layer — logged for diagnostics, no change in behaviour.
+        # Operators must launch this backend with a window large enough
+        # for the largest profile they expect to use.
+        if num_ctx is not None:
+            log.debug("vllm_inprocess_num_ctx_hint", model=model, num_ctx=int(num_ctx))
         engine = await self._ensure_engine()
         # The engine is bound to a single model loaded at init time.
         # If the caller asks for a different model, fail loudly rather
@@ -146,6 +157,7 @@ class VLLMInProcessBackend(LLMBackend):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         # Streaming is supported by vLLM but the in-process API
         # delivers complete outputs. Async-iterator over the final
@@ -155,6 +167,7 @@ class VLLMInProcessBackend(LLMBackend):
             messages=messages,
             temperature=temperature,
             top_p=top_p,
+            num_ctx=num_ctx,
         )
 
         async def _gen() -> AsyncIterator[str]:

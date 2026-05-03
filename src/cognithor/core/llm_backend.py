@@ -161,8 +161,27 @@ class LLMBackend(ABC):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
-        """Send a chat request and wait for the complete response."""
+        """Send a chat request and wait for the complete response.
+
+        Sprint-23: ``num_ctx`` carries the active :class:`ContextProfile`
+        window down to the wire. Each backend translates per its own
+        contract:
+
+        * Ollama → ``payload.options.num_ctx`` (literal per-request
+          override; Ollama re-loads the KV-cache for the requested
+          window).
+        * vLLM (and OpenAI-compatible vLLM endpoints) → forwarded as
+          ``extra_body.num_ctx`` so the engine can apply per-request
+          truncation. The vLLM server's *physical* context window is
+          fixed at engine boot via ``--max-model-len``; any value
+          beyond that is silently capped server-side.
+        * Anthropic, Gemini, OpenAI proper, ClaudeCode → context
+          window is model-intrinsic and not request-resizable. Backends
+          accept the kwarg, log it for diagnostics, and otherwise
+          ignore it.
+        """
         ...
 
     @abstractmethod
@@ -173,8 +192,12 @@ class LLMBackend(ABC):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
-        """Stream the response token by token."""
+        """Stream the response token by token.
+
+        ``num_ctx`` semantics match :meth:`chat`.
+        """
         ...
 
     @abstractmethod
@@ -248,14 +271,19 @@ class OllamaBackend(LLMBackend):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
         client = await self._ensure_client()
+
+        options: dict[str, Any] = {"temperature": temperature, "top_p": top_p}
+        if num_ctx is not None:
+            options["num_ctx"] = int(num_ctx)
 
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "stream": False,
-            "options": {"temperature": temperature, "top_p": top_p},
+            "options": options,
             "keep_alive": self._keep_alive,
         }
         if tools:
@@ -301,13 +329,17 @@ class OllamaBackend(LLMBackend):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         client = await self._ensure_client()
+        options: dict[str, Any] = {"temperature": temperature, "top_p": top_p}
+        if num_ctx is not None:
+            options["num_ctx"] = int(num_ctx)
         payload = {
             "model": model,
             "messages": messages,
             "stream": True,
-            "options": {"temperature": temperature, "top_p": top_p},
+            "options": options,
             "keep_alive": self._keep_alive,
         }
 
@@ -438,6 +470,7 @@ class OpenAIBackend(LLMBackend):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
         client = await self._ensure_client()
 
@@ -458,6 +491,17 @@ class OpenAIBackend(LLMBackend):
             payload["tools"] = tools
         if format_json:
             payload["response_format"] = {"type": "json_object"}
+
+        # Sprint-23: ``num_ctx`` is forwarded as ``extra_body`` so
+        # OpenAI-compatible vLLM endpoints can apply per-request
+        # truncation. Real OpenAI ignores unknown extras silently;
+        # vLLM's OpenAI server consumes it. The server's *physical*
+        # window is fixed at boot (``--max-model-len``); any value
+        # beyond that is capped server-side.
+        if num_ctx is not None:
+            extra_body = payload.get("extra_body") or {}
+            extra_body["num_ctx"] = int(num_ctx)
+            payload["extra_body"] = extra_body
 
         start = time.monotonic()
         try:
@@ -558,6 +602,7 @@ class OpenAIBackend(LLMBackend):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         client = await self._ensure_client()
         payload: dict[str, Any] = {
@@ -568,6 +613,10 @@ class OpenAIBackend(LLMBackend):
         if not self._is_reasoning_model(model):
             payload["temperature"] = temperature
             payload["top_p"] = top_p
+        if num_ctx is not None:
+            extra_body = payload.get("extra_body") or {}
+            extra_body["num_ctx"] = int(num_ctx)
+            payload["extra_body"] = extra_body
 
         async with client.stream("POST", "/chat/completions", json=payload) as resp:
             if resp.status_code != 200:
@@ -691,8 +740,17 @@ class AnthropicBackend(LLMBackend):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
         client = await self._ensure_client()
+
+        # Sprint-23: Anthropic's context window is model-intrinsic
+        # (e.g. claude-3-opus = 200k) and not request-resizable, so
+        # ``num_ctx`` is informational here. Logged for diagnostics so
+        # operators can see whether the active profile matches the
+        # chosen model's capacity.
+        if num_ctx is not None:
+            log.debug("anthropic_num_ctx_hint", model=model, num_ctx=int(num_ctx))
 
         # Anthropic: system message separat, nicht in messages
         system_text = ""
@@ -776,8 +834,12 @@ class AnthropicBackend(LLMBackend):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         client = await self._ensure_client()
+
+        if num_ctx is not None:
+            log.debug("anthropic_stream_num_ctx_hint", model=model, num_ctx=int(num_ctx))
 
         system_text = ""
         api_messages = []
@@ -1006,8 +1068,14 @@ class GeminiBackend(LLMBackend):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
         client = await self._ensure_client()
+
+        # Sprint-23: Gemini's context window is model-intrinsic
+        # (e.g. gemini-2-pro = 2M tokens). Not request-resizable.
+        if num_ctx is not None:
+            log.debug("gemini_num_ctx_hint", model=model, num_ctx=int(num_ctx))
 
         system_text, contents = self._convert_messages(messages)
 
@@ -1093,8 +1161,12 @@ class GeminiBackend(LLMBackend):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         client = await self._ensure_client()
+
+        if num_ctx is not None:
+            log.debug("gemini_stream_num_ctx_hint", model=model, num_ctx=int(num_ctx))
 
         system_text, contents = self._convert_messages(messages)
 
@@ -1216,7 +1288,15 @@ class ClaudeCodeBackend(LLMBackend):
         temperature: float = 0.7,
         top_p: float = 0.9,
         format_json: bool = False,
+        num_ctx: int | None = None,
     ) -> ChatResponse:
+        # Sprint-23: ClaudeCode CLI does not accept a context-window
+        # override flag — Anthropic models have model-intrinsic windows
+        # (claude-sonnet-4-6 = 200k, claude-opus-4-7-1m = 1M). Logged
+        # for diagnostics; otherwise ignored.
+        if num_ctx is not None:
+            log.debug("claudecode_num_ctx_hint", model=model, num_ctx=int(num_ctx))
+
         prompt = self._messages_to_prompt(messages)
         effective_model = model or self._model
 
@@ -1281,7 +1361,11 @@ class ClaudeCodeBackend(LLMBackend):
         *,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
+        if num_ctx is not None:
+            log.debug("claudecode_stream_num_ctx_hint", model=model, num_ctx=int(num_ctx))
+
         prompt = self._messages_to_prompt(messages)
         effective_model = model or self._model
 
