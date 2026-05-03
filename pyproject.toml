@@ -295,7 +295,10 @@ show_missing = true
 python_version = "3.12"
 strict = true
 warn_return_any = true
-warn_unused_configs = true
+# Disabled: ``[[tool.mypy.overrides]]`` is intentionally over-defensive
+# (covers both ``foo`` and ``foo.*``). When some entries don't trigger,
+# that's a sign the install is healthy, not a config bug.
+warn_unused_configs = false
 # Cookiecutter-style template trees contain literal ``{{ project_name }}``
 # placeholder directories that mypy refuses to ingest as Python packages.
 # They are not on the runtime path; skip the lot.
