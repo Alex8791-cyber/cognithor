@@ -410,6 +410,18 @@ def _make_llm_vision(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
     except RuntimeError as exc:
         print(f"  [llm_vision] vLLM init failed ({exc}); falling back to dsl_full")
         return _make_dsl_full(game_id, results_dir)
+    # Sprint-20 Hebel V: wire the per-game win-demo store. Empty until
+    # an episode actually wins something on this game; once non-empty,
+    # subsequent runs prompt-inject the recorded action sequence as a
+    # few-shot demonstration of WHAT WINS the game.
+    from cognithor.channels.program_synthesis.arc_agi3.win_demos import WinDemoStore
+
+    win_demo_root = (
+        Path("/mnt/d/Jarvis/jarvis complete v20/cognithor_bench/win_demos")
+        if Path("/mnt/d").exists()
+        else Path("cognithor_bench/win_demos")
+    )
+    win_demo_store = WinDemoStore(win_demo_root)
     agent = PlanningLLMReasoningAgent(
         choice_fn=choice_fn,
         audit_trail=trail,
@@ -419,6 +431,7 @@ def _make_llm_vision(game_id: str, results_dir: Path) -> tuple[Any, str | None]:
         fast_path_enabled=False,
         plan_horizon=5,
         telemetry=telemetry,
+        win_demo_store=win_demo_store,
     )
     agent.__dict__["_phase_a_trail"] = trail
     agent.__dict__["_phase_a_audit_path"] = audit_path

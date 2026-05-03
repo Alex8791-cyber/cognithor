@@ -127,6 +127,11 @@ class FrameContext:
     # (avg) at a glance. Empty string disables the corresponding
     # prompt section.
     action_pixel_history: str = ""
+    # Sprint-20 Hebel V (few-shot win-demo): rendered text block of a
+    # previously-recorded successful episode's action sequence for
+    # this game family. Empty string when no win demo is known yet —
+    # legacy prompts stay byte-identical until at least one win lands.
+    win_demo_block: str = ""
 
 
 # A callable that takes a :class:`FrameContext` and returns

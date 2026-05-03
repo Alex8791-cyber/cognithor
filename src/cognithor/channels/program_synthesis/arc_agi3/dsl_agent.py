@@ -210,6 +210,23 @@ class Sprint10DSLAgent(CognithorPSEAgent):
             self._last_levels_seen is not None
             and latest_frame.levels_completed > self._last_levels_seen
         ):
+            # Sprint-20 Hebel V: persist the trajectory that led to the
+            # level-up BEFORE clearing memory. Future episodes on this
+            # game can then prompt-inject the action sequence as a
+            # few-shot demonstration. ``_win_demo_store`` is set by
+            # PlanningLLMReasoningAgent; missing on the heuristic agent
+            # → no-op via getattr default.
+            store = getattr(self, "_win_demo_store", None)
+            if store is not None:
+                try:
+                    store.record_level_up(
+                        game_id=getattr(latest_frame, "game_id", "") or "unknown",
+                        from_level=self._last_levels_seen,
+                        to_level=latest_frame.levels_completed,
+                        memory=self._memory,
+                    )
+                except Exception:
+                    pass
             self._memory.clear()
             self._state_counter.clear()
             self._state_graph = type(self._state_graph)()  # fresh graph

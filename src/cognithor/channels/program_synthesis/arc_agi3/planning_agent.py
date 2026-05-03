@@ -295,6 +295,7 @@ _VISION_PLANNING_USER_TEMPLATE = (
     "{delta_window}\n"
     "\n"
     "{action_pixel_history_block}"
+    "{win_demo_block}"
     "Available actions: {actions}\n"
     "Recent action sequence: {history}\n"
     "{effects_line}"
@@ -452,11 +453,20 @@ def _build_vision_user_content(
             steps=steps_at, level=ctx.levels_completed
         )
 
+    # Sprint-20 Hebel V: render the few-shot win-demo block when a
+    # winning trajectory exists for this game family. Empty string
+    # → byte-identical legacy prompt.
+    win_demo_block = ""
+    win_demo_text = getattr(ctx, "win_demo_block", "")
+    if win_demo_text:
+        win_demo_block = win_demo_text.rstrip() + "\n\n"
+
     text = _VISION_PLANNING_USER_TEMPLATE.format(
         prev_image_note=prev_image_note,
         cluster_summary=cluster_summary,
         delta_window=delta_window,
         action_pixel_history_block=action_pixel_history_block,
+        win_demo_block=win_demo_block,
         actions=", ".join(ctx.available_action_names),
         history=ctx.history_summary,
         effects_line=effects_line,
@@ -594,11 +604,15 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             stalled_warning = _STALLED_WARNING_TEMPLATE.format(
                 steps=steps_at, level=ctx.levels_completed
             )
+        # Sprint-20 Hebel V: read the decoder-populated win-demo block.
+        win_demo_text = getattr(ctx, "win_demo_block", "")
+        win_demo_block = win_demo_text.rstrip() + "\n\n" if win_demo_text else ""
         text_after_image = _VISION_PLANNING_USER_TEMPLATE.format(
             prev_image_note=prev_image_note,
             cluster_summary=cluster_summary,
             delta_window=delta_window,
             action_pixel_history_block=action_pixel_history_block,
+            win_demo_block=win_demo_block,
             actions=", ".join(ctx.available_action_names),
             history=ctx.history_summary,
             effects_line=(
@@ -688,6 +702,7 @@ class PlanningLLMReasoningAgent(Sprint10DSLAgent):
         history_steps: int = 8,
         plan_horizon: int = 5,
         goal_inferer: GoalInferer | None = None,
+        win_demo_store: Any = None,
         **parent_kwargs: Any,
     ) -> None:
         super().__init__(
@@ -713,6 +728,7 @@ class PlanningLLMReasoningAgent(Sprint10DSLAgent):
             ActionStreakDetector,
         )
 
+        self._win_demo_store = win_demo_store
         self._decoder = PlanningLLMActionDecoder(
             bridge=self._bridge,
             memory=self._memory,
@@ -723,6 +739,7 @@ class PlanningLLMReasoningAgent(Sprint10DSLAgent):
             goal_inferer=goal_inferer,
             state_counter=self._state_counter,
             action_streak_detector=ActionStreakDetector(),
+            win_demo_store=win_demo_store,
         )
 
     @property
