@@ -175,10 +175,12 @@ class VoiceWebSocketBridge:
         msg_type = msg.get("type", "")
 
         if msg_type == "audio_start":
-            return await self._handle_audio_start(session_id, msg, send_fn)
+            await self._handle_audio_start(session_id, msg, send_fn)
+            return None
 
         if msg_type == "audio_chunk":
-            return await self._handle_audio_chunk(session_id, msg, send_fn)
+            await self._handle_audio_chunk(session_id, msg, send_fn)
+            return None
 
         if msg_type == "audio_stop":
             return await self._handle_audio_stop(session_id, send_fn)

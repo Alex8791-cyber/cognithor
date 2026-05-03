@@ -232,7 +232,7 @@ class HashlineAuditor:
         This is the same shape as the gatekeeper-chain verifier in
         ``/api/v1/audit/verify`` so a single endpoint can call both.
         """
-        result = {
+        result: dict[str, Any] = {
             "status": "intact",
             "total_entries": 0,
             "valid_entries": 0,

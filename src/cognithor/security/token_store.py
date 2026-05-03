@@ -16,6 +16,7 @@ import logging
 import ssl
 import threading
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +40,10 @@ class SecureTokenStore:
     """
 
     def __init__(self) -> None:
+        self._fernet: Any = None
         if _HAS_CRYPTO:
             self._fernet = Fernet(Fernet.generate_key())
         else:
-            self._fernet = None
             logger.error(
                 "SECURITY DEGRADATION: cryptography not installed -- "
                 "Token store uses Base64 fallback (NOT encrypted!). "
@@ -87,7 +88,7 @@ class SecureTokenStore:
         with self._lock:
             encrypted = self._tokens[name]  # KeyError wenn nicht vorhanden
         if self._fernet is not None:
-            return self._fernet.decrypt(encrypted).decode("utf-8")
+            return self._fernet.decrypt(encrypted).decode("utf-8")  # type: ignore[no-any-return]
         return base64.b85decode(encrypted).decode("utf-8")
 
     def clear(self) -> None:

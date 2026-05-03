@@ -64,7 +64,7 @@ def _dict_row_factory(cursor: sqlite3.Cursor, row: tuple[Any, ...]) -> sqlite3.R
     # Build a lightweight object that supports both index and key access
     desc = cursor.description
     fields = {col[0]: row[idx] for idx, col in enumerate(desc)}
-    return type(
+    return type(  # type: ignore[no-any-return]
         "Row",
         (),
         {

@@ -8,7 +8,7 @@ import io
 import json
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 
@@ -125,7 +125,7 @@ class GameAnalyzer:
     """Analyzes ARC-AGI-3 games by sacrificing one level + 2 vision calls."""
 
     def __init__(self, arcade: Any | None = None):
-        self._arcade = arcade
+        self._arcade: Any = arcade
 
     def _run_sacrifice_level(
         self,
@@ -337,6 +337,7 @@ class GameAnalyzer:
         # Determine game type from actions
         has_click = 6 in action_ids
         has_keyboard = any(a in action_ids for a in [1, 2, 3, 4])
+        game_type: Literal["click", "keyboard", "mixed"]
         if has_click and has_keyboard:
             game_type = "mixed"
         elif has_click:
@@ -347,7 +348,10 @@ class GameAnalyzer:
         # Vision call 1
         vision1 = self._vision_call_initial(initial_grid, action_ids)
         if vision1 and "game_type" in vision1:
-            game_type = vision1["game_type"]
+            game_type = cast(
+                "Literal['click', 'keyboard', 'mixed']",
+                vision1["game_type"],
+            )
 
         # Sacrifice level
         report = self._run_sacrifice_level(env, initial_grid, action_ids)

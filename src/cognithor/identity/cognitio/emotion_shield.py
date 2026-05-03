@@ -358,7 +358,7 @@ class EmotionShield:
 
     def reset_session(self) -> None:
         """Reset session data at the start of a new session."""
-        self._session_emotion_history = []
+        self._session_emotion_history = []  # type: ignore[assignment]
         self._cooldown_remaining = 0
         self._high_emotion_count = 0
 

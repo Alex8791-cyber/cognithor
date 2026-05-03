@@ -662,6 +662,8 @@ class AuditLogger:
 
     def _persist_entry(self, entry: AuditEntry) -> None:
         """Writes an entry to the audit file."""
+        if self._log_dir is None:
+            return
         try:
             date_str = entry.timestamp[:10]  # YYYY-MM-DD
             log_file = self._log_dir / f"audit_{date_str}.jsonl"

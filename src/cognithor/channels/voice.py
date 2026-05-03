@@ -398,7 +398,7 @@ class VADDetector:
         try:
             import torch
 
-            self._model, _ = torch.hub.load(
+            self._model, _ = torch.hub.load(  # type: ignore[no-untyped-call]
                 repo_or_dir=self.SILERO_REPO,
                 model="silero_vad",
                 force_reload=False,

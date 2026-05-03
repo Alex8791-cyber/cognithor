@@ -179,9 +179,9 @@ class SystemDetector:
         )
 
     def detect_ram(self) -> DetectionResult:
-        total_gb = 0
-        available_gb = 0
-        percent = 0
+        total_gb: float = 0
+        available_gb: float = 0
+        percent: float = 0
         try:
             import psutil
 

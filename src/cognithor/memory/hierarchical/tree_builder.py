@@ -392,7 +392,7 @@ class DocumentTreeBuilder:
             if text.strip():
                 prompt = f"Summarize in 1-2 sentences:\n\n{text[:2000]}"
                 async with sem:
-                    nd["summary"] = await self._llm_fn(prompt)
+                    nd["summary"] = await self._llm_fn(prompt)  # type: ignore[misc]
             else:
                 nd["summary"] = ""
 

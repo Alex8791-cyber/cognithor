@@ -329,7 +329,7 @@ class SkillIndex:
 
         results = []
         for pid, _ in ranked[:max_results]:
-            entry = self._entries.get(pid)
+            entry = self._entries.get(pid)  # type: ignore[assignment]
             if entry:
                 results.append(entry)
 

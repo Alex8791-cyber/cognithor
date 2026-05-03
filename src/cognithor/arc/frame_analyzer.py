@@ -144,7 +144,7 @@ class FrameAnalyzer:
                 return a  # Untested = highest priority
 
             recent = effects[-10:]
-            avg_dir = abs(sum(m.direction_row for m in recent)) + abs(
+            avg_dir: float = abs(sum(m.direction_row for m in recent)) + abs(
                 sum(m.direction_col for m in recent)
             )
             avg_dir /= len(recent)

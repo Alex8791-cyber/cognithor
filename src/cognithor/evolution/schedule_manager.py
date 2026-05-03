@@ -122,7 +122,7 @@ class ScheduleManager:
                         "evolution_cron_created",
                         job=job_name,
                         cron=cron_expr,
-                        source=spec.source_url[:50],
+                        source=spec.source_url[:50],  # type: ignore[index]
                     )
                 else:
                     log.warning("evolution_cron_failed", job=job_name)

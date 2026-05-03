@@ -361,7 +361,7 @@ def encrypted_connect(
             # DB exists but is unencrypted — migrate it to encrypted
             if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
                 try:
-                    conn = _migrate_to_encrypted(db_path, hex_key, check_same_thread)
+                    conn = _migrate_to_encrypted(db_path, hex_key, check_same_thread)  # type: ignore[assignment]
                     if conn:
                         log.info("encrypted_db_migrated", path=db_path[-30:])
                         return conn

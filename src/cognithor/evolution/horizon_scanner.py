@@ -7,14 +7,15 @@ Part of Phase 5C: autonomous plan expansion.
 from __future__ import annotations
 
 import json
-import logging
 from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any
+
+from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from cognithor.evolution.models import LearningPlan
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 LLMFunction = Callable[[str], Coroutine[Any, Any, str]]
 

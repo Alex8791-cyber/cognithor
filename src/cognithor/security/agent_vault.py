@@ -322,6 +322,7 @@ class VaultRotator:
             # Check age
             last_change = secret.last_rotated or secret.created_at
             if last_change:
+                change_ts: float
                 try:
                     import calendar
 

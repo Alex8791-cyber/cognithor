@@ -268,7 +268,7 @@ class VerifiedWebLookup:
         async def _extract_trafilatura(url: str) -> SourceResult:
             start = time.monotonic()
             try:
-                text = await self._web_tools.web_fetch(url, max_chars=_DEFAULT_MAX_TEXT_PER_SOURCE)
+                text = await self._web_tools.web_fetch(url, max_chars=_DEFAULT_MAX_TEXT_PER_SOURCE)  # type: ignore[union-attr]
                 ms = (time.monotonic() - start) * 1000
                 success = bool(text and len(text.strip()) > 50)
                 return SourceResult(

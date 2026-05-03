@@ -890,7 +890,7 @@ def _avg_field(
     ]
     if not values:
         return default
-    return sum(values) / len(values)
+    return sum(values) / len(values)  # type: ignore[arg-type]
 
 
 def _extract_field(traces: list[Any], field_name: str) -> str:

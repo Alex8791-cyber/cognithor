@@ -184,7 +184,7 @@ class DreamCycle:
                 pair_key = tuple(sorted([mem_a.id, mem_b.id]))
                 if pair_key in seen_pairs:
                     continue
-                seen_pairs.add(pair_key)
+                seen_pairs.add(pair_key)  # type: ignore[arg-type]
 
                 sim = engine.embedder.cosine_similarity(mem_a.embedding, mem_b.embedding)
 

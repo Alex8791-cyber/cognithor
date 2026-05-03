@@ -204,7 +204,7 @@ class IdentityLayer:
         if not self.available:
             return {}
         try:
-            return self._engine.process_interaction(
+            return self._engine.process_interaction(  # type: ignore[no-any-return]
                 role=role,
                 content=content,
                 emotional_tone=emotional_tone,
