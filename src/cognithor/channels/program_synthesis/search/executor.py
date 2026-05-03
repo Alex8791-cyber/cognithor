@@ -57,8 +57,32 @@ class InProcessExecutor:
 
     def __init__(self, registry: PrimitiveRegistry | None = None) -> None:
         self._registry = registry if registry is not None else REGISTRY
+        # Sprint-22 perf: per-process sub-program memoization.
+        # Bottom-up enumerative search shares sub-trees across many
+        # candidates (a depth-N Program reuses depth-(N-1) bank
+        # entries). Without memoization ``_eval`` walks the same
+        # subtree once per parent candidate; with it, each unique
+        # (node-identity, input-identity) pair is evaluated once and
+        # the cache hits on every subsequent reuse.
+        #
+        # Keyed by ``(id(node), id(input_grid))`` — both are stable
+        # for the duration of a single ``execute`` batch since the
+        # search bank holds Program references and the demo inputs
+        # are constant. We don't hash the values because the search
+        # engine produces Programs at a much faster rate than hashing
+        # would tolerate; pointer-identity is sufficient and faster.
+        # The cache is cleared explicitly per ``execute()`` call so
+        # cross-call memory doesn't blow up.
+        self._eval_cache: dict[tuple[int, int], Any] = {}
 
     def execute(self, program: ProgramNode, input_grid: Any) -> ExecutionResult:
+        # Sprint-22 perf: the eval cache is keyed on ``id()`` for speed,
+        # which is only stable within a single recursive descent —
+        # Python recycles ids across GC cycles, so a cache that lives
+        # across executes can return values for collided ids. Clearing
+        # at the top of every ``execute`` keeps the win (sub-tree reuse
+        # within one program walk) without the bug (cross-call id reuse).
+        self._eval_cache.clear()
         try:
             value = self._eval(program, input_grid)
         except Exception as exc:
@@ -72,7 +96,13 @@ class InProcessExecutor:
             return input_grid
         if isinstance(node, Const):
             return node.value
-        # Program
+        # Program — pointer-identity memoization.
+        cache_key = (id(node), id(input_grid))
+        cached = self._eval_cache.get(cache_key)
+        if cached is not None:
+            return cached
         spec = self._registry.get(node.primitive)
         args = tuple(self._eval(child, input_grid) for child in node.children)
-        return spec.fn(*args)
+        result = spec.fn(*args)
+        self._eval_cache[cache_key] = result
+        return result
