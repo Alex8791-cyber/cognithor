@@ -278,3 +278,93 @@ class TestCacheUtilities:
         cache = PSECache()
         assert (123 in cache) is False
         assert (None in cache) is False
+
+
+# ---------------------------------------------------------------------------
+# Sprint-22 — JSONL persistence
+# ---------------------------------------------------------------------------
+
+
+class TestCachePersistence:
+    """JSONL persistence: cache survives process restart, stale entries
+    get filtered at load, DSL-version bump silently invalidates everything.
+    """
+
+    def test_no_persistence_path_keeps_legacy_in_memory_only(self, tmp_path: object) -> None:
+        # Default constructor: no path → no JSONL written, no load.
+        cache = PSECache()
+        cache.put(_spec(), Budget(), _ok_result())
+        assert len(cache) == 1
+        # Re-construct → empty.
+        cache2 = PSECache()
+        assert len(cache2) == 0
+
+    def test_put_appends_to_jsonl_and_load_restores(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        path = tmp_path / "pse_cache.jsonl"
+        cache_a = PSECache(persistence_path=str(path))
+        cache_a.put(_spec(), Budget(), _ok_result())
+        # File should exist with one JSONL line.
+        assert path.exists()
+        assert path.read_text().strip().count("\n") == 0  # exactly one line, no extra
+        # Re-construct → should reload that one entry.
+        cache_b = PSECache(persistence_path=str(path))
+        assert len(cache_b) == 1
+        # And a fresh get returns a refreshed entry (proves the load
+        # actually populated _entries with the right key).
+        entry = cache_b.get(_spec(), Budget())
+        assert entry is not None
+        assert entry.status == SynthesisStatus.SUCCESS
+
+    def test_clear_truncates_jsonl(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        path = tmp_path / "pse_cache.jsonl"
+        cache = PSECache(persistence_path=str(path))
+        cache.put(_spec(), Budget(), _ok_result())
+        assert path.read_text().strip() != ""
+        cache.clear()
+        assert path.read_text() == ""
+        # And a fresh load also sees nothing.
+        cache_reload = PSECache(persistence_path=str(path))
+        assert len(cache_reload) == 0
+
+    def test_load_filters_expired_entries(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        path = tmp_path / "pse_cache.jsonl"
+        # Write the entry with a clock at t=0.
+        clock_old = _FakeClock(t=0.0)
+        cache_old = PSECache(persistence_path=str(path), clock=clock_old)
+        cache_old.put(_spec(), Budget(), _ok_result())
+        # SUCCESS entry's TTL is 30 days = 2_592_000s. Re-load with a
+        # clock at t=2_600_000 (older than TTL) → should be dropped.
+        clock_future = _FakeClock(t=2_600_000.0)
+        cache_reload = PSECache(persistence_path=str(path), clock=clock_future)
+        assert len(cache_reload) == 0
+
+    def test_load_filters_dsl_version_mismatch(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        path = tmp_path / "pse_cache.jsonl"
+        cache_v1 = PSECache(persistence_path=str(path), dsl_version="1.0.0")
+        cache_v1.put(_spec(), Budget(), _ok_result())
+        # New DSL version → silent invalidation.
+        cache_v2 = PSECache(persistence_path=str(path), dsl_version="2.0.0")
+        assert len(cache_v2) == 0
+
+    def test_load_skips_corrupt_lines(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        path = tmp_path / "pse_cache.jsonl"
+        # Write valid entry first via the cache so the schema matches.
+        cache_a = PSECache(persistence_path=str(path))
+        cache_a.put(_spec(), Budget(), _ok_result())
+        # Append corrupt + partial JSON to the JSONL.
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write("not valid json\n")
+            fh.write('{"key": "x"}\n')  # missing required fields
+            fh.write('{"key": "y", "spec_hash": "abc"}\n')  # also incomplete
+        # Re-load: should still have the original entry, ignore corrupt rows.
+        cache_b = PSECache(persistence_path=str(path))
+        assert len(cache_b) == 1
+
+    def test_duplicate_keys_keep_latest(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        path = tmp_path / "pse_cache.jsonl"
+        cache_a = PSECache(persistence_path=str(path))
+        cache_a.put(_spec(), Budget(), _ok_result())
+        # Same key → JSONL gets a second line; later overwrites first.
+        cache_a.put(_spec(), Budget(), _ok_result())
+        cache_b = PSECache(persistence_path=str(path))
+        assert len(cache_b) == 1  # de-dup'd at load
