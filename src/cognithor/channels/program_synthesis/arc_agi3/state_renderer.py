@@ -152,10 +152,7 @@ def render_delta_summary(
             piece = f"color {color}: balanced ({added} added, {lost} lost)"
         else:
             sign = "+" if net > 0 else ""
-            piece = (
-                f"color {color}: {sign}{net} cells "
-                f"({added} added, {lost} lost)"
-            )
+            piece = f"color {color}: {sign}{net} cells ({added} added, {lost} lost)"
         rows.append((abs(net) if net != 0 else added + lost, piece))
     if not rows:
         return "(only background-color cells changed)"
@@ -184,9 +181,7 @@ def render_state_changes_in_window(
     direction, or am I oscillating?".
     """
     if max_steps < 1:
-        raise ValueError(
-            f"render_state_changes_in_window: max_steps must be >= 1, got {max_steps}"
-        )
+        raise ValueError(f"render_state_changes_in_window: max_steps must be >= 1, got {max_steps}")
     window = memory.window(max_steps + 1)  # +1 because we diff pairs
     if not window:
         return "(no actions yet)"
