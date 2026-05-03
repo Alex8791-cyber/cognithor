@@ -54,14 +54,39 @@ def _get_channel() -> ProgramSynthesisChannel:
     one instance per process (cache persistence + warm sandbox subprocess
     pool). Callers MUST treat the returned channel as read-only — concurrent
     callers serialise on the channel's internal locks.
+
+    Sprint-22: the cache is now JSONL-persistent at
+    ``~/.cognithor/pse_cache.jsonl`` so cross-session synthesise calls
+    benefit from prior runs. Persistence failures are non-fatal — the
+    channel falls back to the in-memory cache.
     """
     global _channel_singleton
     if _channel_singleton is None:
         from cognithor.channels.program_synthesis.integration.pge_adapter import (
             ProgramSynthesisChannel,
         )
+        from cognithor.channels.program_synthesis.integration.tactical_memory import (
+            PSECache,
+        )
 
-        _channel_singleton = ProgramSynthesisChannel(actor="mcp_tool@cognithor")
+        cache: PSECache | None = None
+        try:
+            from pathlib import Path
+
+            cache_path = Path.home() / ".cognithor" / "pse_cache.jsonl"
+            cache = PSECache(persistence_path=str(cache_path))
+            log.info(
+                "pse.cache_persistent",
+                path=str(cache_path),
+                entries=len(cache),
+            )
+        except Exception as exc:  # pragma: no cover — defensive
+            log.warning("pse.cache_persistence_disabled", error=str(exc))
+
+        _channel_singleton = ProgramSynthesisChannel(
+            actor="mcp_tool@cognithor",
+            cache=cache,
+        )
         log.info("pse.channel_initialised")
     return _channel_singleton
 

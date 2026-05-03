@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import time
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from cognithor.channels.program_synthesis.core.types import (
     Budget,
@@ -114,10 +114,21 @@ class PSECache:
         *,
         dsl_version: str = DSL_VERSION,
         clock: _Clock = time,
+        persistence_path: str | None = None,
     ) -> None:
         self._dsl_version = dsl_version
         self._clock = clock
         self._entries: dict[str, CacheEntry] = {}
+        # Sprint-22: optional JSONL persistence so the cache survives
+        # process restarts. ``None`` keeps the legacy in-memory-only
+        # behaviour (every existing test stays byte-identical). When
+        # set, the cache loads existing entries on construction and
+        # appends every ``put`` to the JSONL. Stale entries (per
+        # ``_ttl_for``) are filtered at load time so a long-idle cache
+        # doesn't bloat memory with expired junk.
+        self._persistence_path = persistence_path
+        if persistence_path is not None:
+            self._load_from_disk()
 
     # -- Public API --------------------------------------------------
 
@@ -182,7 +193,7 @@ class PSECache:
             except Exception:
                 program_hash = None
         now = self._now()
-        self._entries[key] = CacheEntry(
+        entry = CacheEntry(
             spec_hash=spec.stable_hash(),
             dsl_version=self._dsl_version,
             program_source=program_source,
@@ -195,10 +206,25 @@ class PSECache:
             last_used_at=now,
             use_count=0,
         )
+        self._entries[key] = entry
+        if self._persistence_path is not None:
+            self._append_to_disk(key, entry)
 
     def clear(self) -> None:
         """Drop every entry."""
         self._entries.clear()
+        if self._persistence_path is not None:
+            # Truncate the JSONL too — calling clear() on an in-memory
+            # cache that's also persisted should not silently leave the
+            # next process to reload the wiped entries.
+            try:
+                from pathlib import Path
+
+                path = Path(self._persistence_path)
+                if path.exists():
+                    path.write_text("", encoding="utf-8")
+            except OSError:
+                pass
 
     def __len__(self) -> int:
         return len(self._entries)
@@ -212,6 +238,115 @@ class PSECache:
         # ``self._clock`` defaults to the ``time`` module; tests can
         # inject a fake whose ``.time()`` returns a fixed value.
         return float(self._clock.time())
+
+    # -- Persistence -------------------------------------------------
+
+    def _entry_to_jsonl(self, key: str, entry: CacheEntry) -> str:
+        """Serialise a (key, entry) pair as one JSONL line."""
+        import json
+
+        return json.dumps(
+            {
+                "key": key,
+                "spec_hash": entry.spec_hash,
+                "dsl_version": entry.dsl_version,
+                "program_source": entry.program_source,
+                "program_hash": entry.program_hash,
+                "status": entry.status.value,
+                "score": entry.score,
+                "confidence": entry.confidence,
+                "cost_seconds": entry.cost_seconds,
+                "created_at": entry.created_at,
+                "last_used_at": entry.last_used_at,
+                "use_count": entry.use_count,
+            }
+        )
+
+    def _entry_from_dict(self, data: dict[str, Any]) -> tuple[str, CacheEntry] | None:
+        """Reverse of :meth:`_entry_to_jsonl`. Returns ``None`` on schema
+        mismatch so a corrupt line doesn't break the whole cache load.
+        """
+        try:
+            key = str(data["key"])
+            entry = CacheEntry(
+                spec_hash=str(data["spec_hash"]),
+                dsl_version=str(data["dsl_version"]),
+                program_source=(
+                    str(data["program_source"]) if data.get("program_source") else None
+                ),
+                program_hash=str(data["program_hash"]) if data.get("program_hash") else None,
+                status=SynthesisStatus(str(data["status"])),
+                score=float(data["score"]),
+                confidence=float(data["confidence"]),
+                cost_seconds=float(data["cost_seconds"]),
+                created_at=float(data["created_at"]),
+                last_used_at=float(data["last_used_at"]),
+                use_count=int(data.get("use_count", 0)),
+            )
+        except (KeyError, ValueError, TypeError):
+            return None
+        return key, entry
+
+    def _append_to_disk(self, key: str, entry: CacheEntry) -> None:
+        """Append one entry to the JSONL. Best-effort — IO errors are
+        suppressed so the in-memory cache stays consistent even when
+        the disk is read-only.
+        """
+        if self._persistence_path is None:
+            return
+        try:
+            from pathlib import Path
+
+            path = Path(self._persistence_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write(self._entry_to_jsonl(key, entry) + "\n")
+        except OSError:
+            pass
+
+    def _load_from_disk(self) -> None:
+        """Load entries from JSONL into ``self._entries``.
+
+        Filters out:
+        * Entries from a different ``dsl_version`` (silent invalidation
+          on DSL bump — same semantics as the live key derivation).
+        * Entries whose TTL has already elapsed.
+        * Lines that fail to parse (corrupt / partial writes).
+
+        Multiple JSONL lines with the same key keep only the LAST one
+        (chronological order — JSONL appends are time-ordered).
+        """
+        if self._persistence_path is None:
+            return
+        try:
+            import json
+            from pathlib import Path
+
+            path = Path(self._persistence_path)
+            if not path.exists():
+                return
+            now = self._now()
+            with path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    parsed = self._entry_from_dict(data)
+                    if parsed is None:
+                        continue
+                    key, entry = parsed
+                    if entry.dsl_version != self._dsl_version:
+                        continue  # silent invalidation on DSL bump
+                    ttl = _ttl_for(entry.status)
+                    if ttl > 0 and now - entry.created_at > ttl:
+                        continue  # already expired
+                    self._entries[key] = entry  # later wins on dup
+        except OSError:
+            pass
 
 
 __all__ = [
