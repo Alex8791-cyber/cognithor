@@ -35,8 +35,33 @@ def _grid_to_canonical(grid: Grid) -> list[list[int]]:
     return [[int(v) for v in row] for row in np.asarray(grid).tolist()]
 
 
+def _value_to_canonical(value: Any) -> Any:
+    """Sprint-22 — generic canonicaliser for stable hashing.
+
+    Handles every shape an Example may carry:
+
+    * ``np.ndarray`` → 2-D int list (legacy grid path, unchanged)
+    * ``str`` → the string itself (string-DSL family)
+    * ``list`` → recurse element-wise (StringList outputs from
+      ``string_split_*``; intermediate values that may appear in a
+      partially-composed program's verifier trace)
+
+    Anything else falls back to ``str(value)`` so the cache key stays
+    stable even for unexpected types — better a slightly-wider key
+    than a crash on a new family that hasn't yet registered its own
+    canonicalisation.
+    """
+    if isinstance(value, np.ndarray):
+        return _grid_to_canonical(value)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return [_value_to_canonical(v) for v in value]
+    return str(value)
+
+
 def _examples_canonical(examples: tuple[Example, ...]) -> list[list[Any]]:
-    return [[_grid_to_canonical(inp), _grid_to_canonical(out)] for inp, out in examples]
+    return [[_value_to_canonical(inp), _value_to_canonical(out)] for inp, out in examples]
 
 
 class TaskDomain(str, Enum):

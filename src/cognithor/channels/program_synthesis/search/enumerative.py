@@ -301,8 +301,20 @@ class EnumerativeSearch:
         # ------------------------------------------------------------
         # Depth 0: input ref + zero-arity primitives + Color constants
         # ------------------------------------------------------------
+        # Sprint-22: detect input type from the first demo so the
+        # InputRef leaf carries the right type tag — otherwise a
+        # String-input task would seed a Grid-typed leaf and the type
+        # filter would prune every string primitive.
+        input_type_tag = "Grid"
+        if spec.examples:
+            first_input = spec.examples[0][0]
+            if isinstance(first_input, str):
+                input_type_tag = "String"
+            elif isinstance(first_input, np.ndarray):
+                input_type_tag = "Grid"
+
         bank: dict[str, list[ProgramNode]] = _zero_arity_leaves(self._registry)
-        bank.setdefault("Grid", []).append(InputRef())
+        bank.setdefault(input_type_tag, []).append(InputRef(output_type=input_type_tag))
         _seed_color_bank(bank)
         _seed_higher_order_bank(bank)
 
@@ -354,10 +366,15 @@ class EnumerativeSearch:
                         continue
 
                     # Type-correct, reliable, and structurally novel.
-                    # Only Grid-output candidates can satisfy the spec
-                    # (demos compare grids), so we early-exit only for
-                    # Grid programs.
-                    if type_tag == "Grid" and _all_demos_correct(candidate, spec, self._executor):
+                    # Sprint-22: any "demo-output type" is a candidate
+                    # for early exit. Grid is the legacy Phase-1 type;
+                    # String + StringList are added by the Sprint-22
+                    # FlashFill-style family. Other intermediate types
+                    # (Mask, Object, Color, Predicate, Lambda, ...) only
+                    # exist as composition glue and never appear as a
+                    # demo's expected output.
+                    is_demo_output_type = type_tag in ("Grid", "String", "StringList")
+                    if is_demo_output_type and _all_demos_correct(candidate, spec, self._executor):
                         return _success(program=candidate, stats=stats, cache_hit=False)
 
                     if type_tag == "Grid":

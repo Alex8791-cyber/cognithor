@@ -71,11 +71,27 @@ class TestExamplesFromJson:
             )
 
     def test_invalid_inner_grid_propagates_with_index(self) -> None:
-        with pytest.raises(ValueError, match="example 1"):
+        # Sprint-22: ``"not a grid"`` is now a *valid* string input, so
+        # the coercion no longer rejects it per-example. Instead the
+        # mixed grid+string payload triggers the homogeneity check.
+        with pytest.raises(ValueError, match="homogeneous"):
             _examples_from_json(
                 [
                     {"input": [[0]], "output": [[1]]},
                     {"input": "not a grid", "output": [[3]]},
+                ]
+            )
+
+    def test_truly_invalid_value_still_propagates_per_example_with_index(self) -> None:
+        """A payload that is neither a grid (2-D int list) nor a string
+        is rejected by ``_coerce_value`` per-example, with the index in
+        the error so the caller can locate the bad row.
+        """
+        with pytest.raises(ValueError, match="example 1"):
+            _examples_from_json(
+                [
+                    {"input": "abc", "output": "abc"},
+                    {"input": 42, "output": "x"},  # int is not a grid or str
                 ]
             )
 
