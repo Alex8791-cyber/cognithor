@@ -581,7 +581,7 @@ class MemoryManager:
 
         # Merge: Baue results-Liste in Chunk-Reihenfolge
         new_iter = iter(new_results)
-        results = []
+        results: list[Any] = []
         for c in chunks:
             if c.content_hash in cached_results:
                 # Erstelle ein Pseudo-EmbeddingResult fuer gecachte Embeddings

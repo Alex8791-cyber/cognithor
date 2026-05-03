@@ -229,7 +229,7 @@ def _register_system_routes(
             raise HTTPException(400, "Name is required")
 
         agents_path = config_manager.config.cognithor_home / "agents.yaml"
-        raw = {}
+        raw: dict[str, Any] = {}
         if agents_path.exists():
             raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
         agents = raw.get("agents", [])
