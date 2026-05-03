@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from cognithor.channels.program_synthesis.arc_agi3.episode_memory import EpisodeMemory
 from cognithor.channels.program_synthesis.arc_agi3.plan_scorer import (
@@ -79,6 +80,56 @@ class TestScorePlanComponents:
             available_action_names=("ACTION3", "ACTION6"),
         )
         assert s_diff > s_same
+
+    def test_pix_delta_safety_penalises_repeat_after_high_delta(self) -> None:
+        """Hebel N: if the LAST action produced pixΔ>500 AND the plan's
+        first action repeats it, the plan is multiplicatively penalised
+        (0.5×). A plan that picks a different first-action wins.
+        """
+        # Build memory: one tame ACTION3 step, then one ACTION7 that
+        # flipped the entire 64×64 grid (pixΔ ~= 4096).
+        m = EpisodeMemory()
+        before = np.zeros((64, 64), dtype=np.int8)
+        m.append(grid=before, action_name="ACTION3", levels_completed=0)
+        after = np.full((64, 64), 4, dtype=np.int8)
+        m.append(grid=after, action_name="ACTION7", levels_completed=0)
+
+        # Plan A repeats the destructive action; Plan B picks something else.
+        plan_repeat = [
+            PlanStep("ACTION7", data={"x": 10, "y": 10}, reasoning="r"),
+            PlanStep("ACTION3", reasoning="r"),
+        ]
+        plan_pivot = [
+            PlanStep("ACTION3", reasoning="r"),
+            PlanStep("ACTION7", data={"x": 10, "y": 10}, reasoning="r"),
+        ]
+        actions = ("ACTION3", "ACTION7")
+        s_repeat = score_plan(plan_repeat, memory=m, available_action_names=actions)
+        s_pivot = score_plan(plan_pivot, memory=m, available_action_names=actions)
+        # Pivot must beat repeat. Same component composition modulo
+        # the pix-delta gate (0.5× for repeat, 1.0× for pivot).
+        assert s_pivot > s_repeat
+        # Pivot must be roughly twice the repeat (since the only delta
+        # is the multiplicative gate).
+        assert s_repeat == pytest.approx(s_pivot * 0.5, rel=1e-6)
+
+    def test_pix_delta_safety_no_penalty_when_last_delta_low(self) -> None:
+        """Hebel N: if the last action produced a SMALL pixΔ, the gate
+        is inactive — repeat is fine.
+        """
+        m = EpisodeMemory()
+        m.append(grid=_g([[0]]), action_name="ACTION3", levels_completed=0)
+        # Same grid → pixΔ=0, well below the 500-cell threshold.
+        m.append(grid=_g([[0]]), action_name="ACTION7", levels_completed=0)
+
+        plan_repeat = [PlanStep("ACTION7", data={"x": 1, "y": 1}, reasoning="r")]
+        plan_pivot = [PlanStep("ACTION3", reasoning="r")]
+        actions = ("ACTION3", "ACTION7")
+        s_repeat = score_plan(plan_repeat, memory=m, available_action_names=actions)
+        s_pivot = score_plan(plan_pivot, memory=m, available_action_names=actions)
+        # Both should be in the same ballpark; the repeat is targeted +
+        # different colour so it can even win on pure quality.
+        assert s_repeat >= s_pivot * 0.95
 
 
 class TestPickBestPlan:
