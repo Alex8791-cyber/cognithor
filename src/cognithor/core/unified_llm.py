@@ -247,10 +247,11 @@ class UnifiedLLMClient:
                 if not hasattr(self, "_model_router_cache"):
                     from cognithor.core.model_router import ModelRouter
 
-                    if self._ollama is not None:
-                        self._model_router_cache = ModelRouter(self._config, self._ollama)
-                    else:
-                        self._model_router_cache = None
+                    self._model_router_cache: ModelRouter | None = (
+                        ModelRouter(self._config, self._ollama)
+                        if self._ollama is not None
+                        else None
+                    )
                 if self._model_router_cache is None:
                     raise ImportError("No model router available")
                 _model_cfg = self._model_router_cache.get_model_config(model)
@@ -500,22 +501,24 @@ class UnifiedLLMClient:
         """Check whether the LLM backend is reachable."""
         if self._backend is not None:
             try:
-                return await self._backend.is_available()
+                return bool(await self._backend.is_available())
             except Exception:
                 return False
         if self._ollama is not None:
-            return await self._ollama.is_available()
+            return bool(await self._ollama.is_available())
         return False
 
     async def list_models(self) -> list[str]:
         """List available models."""
         if self._backend is not None:
             try:
-                return await self._backend.list_models()
+                models: list[str] = await self._backend.list_models()
+                return models
             except Exception:
                 return []
         if self._ollama is not None:
-            return await self._ollama.list_models()
+            ollama_models: list[str] = await self._ollama.list_models()
+            return ollama_models
         return []
 
     async def close(self) -> None:

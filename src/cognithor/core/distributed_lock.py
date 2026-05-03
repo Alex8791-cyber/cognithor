@@ -19,7 +19,7 @@ import sys
 import time
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -279,7 +279,7 @@ class RedisLockBackend(DistributedLock):
         self._key_prefix = key_prefix
         self._default_ttl = default_ttl
         self._tokens: dict[str, str] = {}  # name -> unique token
-        self._client: object | None = None
+        self._client: Any = None  # redis.asyncio client (unstubbed third-party)
         self._fallback: FileLockBackend | None = None
         self._lock_dir = lock_dir
 
@@ -295,21 +295,26 @@ class RedisLockBackend(DistributedLock):
             )
             self._redis_available = False
 
-    async def _get_client(self) -> object | None:
-        """Lazy-init the Redis async client."""
+    async def _get_client(self) -> Any:
+        """Lazy-init the Redis async client.
+
+        Return type is ``Any`` because ``redis.asyncio`` does not ship
+        type stubs — the alternative would be ``cast`` on every
+        attribute access of the returned client.
+        """
         if not self._redis_available:
             return None
         if self._client is None:
             try:
                 import redis.asyncio as aioredis
 
-                self._client = aioredis.from_url(
+                self._client = aioredis.from_url(  # type: ignore[no-untyped-call]
                     self._redis_url,
                     decode_responses=True,
                     socket_connect_timeout=3,
                 )
                 # Ping to verify connection
-                await self._client.ping()  # type: ignore[union-attr]
+                await self._client.ping()
             except Exception:
                 log.warning("Redis not reachable at %s — using file lock fallback", self._redis_url)
                 self._client = None

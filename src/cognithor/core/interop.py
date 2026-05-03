@@ -253,12 +253,12 @@ class MessageRouter:
                     results.append({"error": str(e)})
             return {"delivered": True, "broadcast": True, "receivers": len(results)}
 
-        handler = self._handlers.get(message.receiver_id)
-        if not handler:
+        target_handler = self._handlers.get(message.receiver_id)
+        if target_handler is None:
             return {"delivered": False, "error": f"Agent '{message.receiver_id}' nicht erreichbar"}
 
         try:
-            result = handler(message)
+            result = target_handler(message)
             return {"delivered": True, "result": result}
         except Exception as e:
             return {"delivered": False, "error": str(e)}

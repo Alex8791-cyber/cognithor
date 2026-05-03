@@ -240,7 +240,7 @@ class CollaborationEngine:
         try:
             result = await self._runner(task, agent_name)
             if hasattr(result, "response"):
-                return result.response
+                return str(result.response)
             return str(result)
         except Exception as exc:
             log.warning("agent_invoke_error", agent=agent_name, error=str(exc))

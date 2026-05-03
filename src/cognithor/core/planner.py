@@ -519,7 +519,10 @@ class Planner:
 
         # Tool-Descriptions-Cache (#40 Optimierung)
         self._cached_tools_section: str | None = None
-        self._cached_tools_hash: int = 0
+        # ``tuple[int, bool]``: hash of tool-schema names plus the
+        # compact-mode flag. Was once just ``int``; the bool widening
+        # came in when compact-mode was added.
+        self._cached_tools_hash: tuple[int, bool] | int = 0
 
         # Observer lazy-init (enabled in config)
         self._observer: ObserverAudit | None = None
@@ -950,6 +953,9 @@ class Planner:
                     )
                 await asyncio.sleep(1.0)  # Kurze Pause vor Retry
 
+        # The retry loop either ``break``s on success or returns early on
+        # final-attempt failure, so ``response`` is non-None here.
+        assert response is not None
         self._record_cost(response, model, session_id=working_memory.session_id)
         assistant_text = response.get("message", {}).get("content", "")
 
@@ -1090,6 +1096,9 @@ class Planner:
             if not observer_cfg.enabled:
                 return ResponseEnvelope(content=content, directive=None)
 
+            # ``observer_cfg.enabled`` was true → ``self._observer`` is the
+            # lazy-instantiated :class:`ObserverAudit` (above), never None.
+            assert self._observer is not None
             audit_result = await self._observer.audit(
                 user_message=user_message,
                 response=content,
@@ -1293,7 +1302,8 @@ class Planner:
                     video=video,
                 )
                 self._record_cost(response, model, session_id=session_id)
-                return response.get("message", {}).get("content", "")
+                content: str = response.get("message", {}).get("content", "")
+                return content
             except OllamaError as exc:
                 log.warning(
                     "formulate_response_llm_error", error=str(exc), attempt=_fmt_attempt + 1
@@ -1577,7 +1587,7 @@ class Planner:
                     getattr(working_memory, "session_id", None) or "default",
                 )
                 self._current_prompt_version_id = version_id
-                return template.format(
+                rendered: str = template.format(
                     tools_section=tools_section,
                     context_section=context_section,
                     current_datetime=current_datetime,
@@ -1586,6 +1596,7 @@ class Planner:
                     os_platform=_os_platform(),
                     personality_section=personality_section,
                 )
+                return rendered
             except Exception:
                 pass  # Fallback auf Standard-Template
 
@@ -1668,14 +1679,15 @@ class Planner:
         """
         # 1. Normales Parsing
         try:
-            return json.loads(json_str)
+            parsed: dict[str, Any] = json.loads(json_str)
+            return parsed
         except json.JSONDecodeError:
             pass
 
         # 2. Fix invalid escapes
         sanitized = self._sanitize_json_escapes(json_str)
         try:
-            data = json.loads(sanitized)
+            data: dict[str, Any] = json.loads(sanitized)
             log.debug("planner_json_sanitized", strategy="escape_fix")
             return data
         except json.JSONDecodeError:

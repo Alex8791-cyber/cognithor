@@ -30,7 +30,7 @@ try:
     from cognithor.security.encrypted_db import compatible_row_factory
 except ImportError:
 
-    def compatible_row_factory():
+    def compatible_row_factory() -> Any:
         return sqlite3.Row
 
 
@@ -67,7 +67,10 @@ class QueuedMessage:
     @property
     def message_data(self) -> dict[str, Any]:
         """Deserialisiert die Nachricht als Dict."""
-        return json.loads(self.message_json)
+        # ``json.loads`` returns ``Any``; the queue contract pins it to
+        # a JSON-object payload, so the cast is safe.
+        result: dict[str, Any] = json.loads(self.message_json)
+        return result
 
 
 # ---------------------------------------------------------------------------

@@ -243,7 +243,7 @@ class ObserverAudit:
             )
             return None
 
-        content = response.get("message", {}).get("content", "")
+        content: str = response.get("message", {}).get("content", "")
         if not content:
             log.warning("observer_empty_response", model=model_name)
             return None

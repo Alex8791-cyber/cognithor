@@ -18,7 +18,7 @@ try:
     from cognithor.security.encrypted_db import compatible_row_factory
 except ImportError:
 
-    def compatible_row_factory():
+    def compatible_row_factory() -> Any:
         return sqlite3.Row
 
 
@@ -167,7 +167,7 @@ class ConversationTree:
         node = self.get_node(node_id)
         if not node:
             return 0
-        return node.get("branch_index", 0)
+        return int(node.get("branch_index", 0))
 
     # ── Path Computation ──────────────────────────────────────────
 

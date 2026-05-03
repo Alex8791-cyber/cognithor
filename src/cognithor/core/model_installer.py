@@ -116,7 +116,8 @@ def _load_registry() -> dict[str, Any]:
     if not _REGISTRY_PATH.exists():
         return {}
     with open(_REGISTRY_PATH, encoding="utf-8") as f:
-        return json.load(f)
+        data: dict[str, Any] = json.load(f)
+        return data
 
 
 def _ollama_has_tag(base_url: str, tag: str) -> bool:

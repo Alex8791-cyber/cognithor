@@ -590,6 +590,9 @@ class SetupWizard:
         """Step 2: Recommend/select model."""
         if not self._state.hardware:
             self.step_hardware()
+        # ``step_hardware()`` populates ``self._state.hardware`` so it
+        # is non-None below; the assert keeps the type-checker happy.
+        assert self._state.hardware is not None
         recs = self._recommender.recommend(self._state.hardware)
         self._state.selected_model = override or (recs[0].model_name if recs else "qwen3.5:3b")
         self._state.current_step = SetupStep.MODEL_SELECT
@@ -651,7 +654,10 @@ class SetupWizard:
 
     def generate_config(self) -> dict[str, Any]:
         """Generiert config.yaml aus Wizard-State."""
-        preset = PRESETS.get(self._state.selected_preset, PRESETS[PresetLevel.STANDARD])
+        # Fall back to STANDARD preset when the wizard hasn't picked
+        # one yet; ``selected_preset`` is ``PresetLevel | None``.
+        preset_key = self._state.selected_preset or PresetLevel.STANDARD
+        preset = PRESETS.get(preset_key, PRESETS[PresetLevel.STANDARD])
         return {
             "jarvis": {
                 "model": self._state.selected_model,
