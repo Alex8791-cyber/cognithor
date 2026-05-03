@@ -119,6 +119,7 @@ class PlanningLLMActionDecoder(ActionDecoder):
         goal_inferer: GoalInferer | None = None,
         state_counter: Any = None,
         action_streak_detector: Any = None,
+        win_demo_store: Any = None,
     ) -> None:
         if plan_horizon < 1:
             raise ValueError(f"plan_horizon must be >= 1, got {plan_horizon}")
@@ -137,6 +138,11 @@ class PlanningLLMActionDecoder(ActionDecoder):
         # single-step decoder caught this; planning decoder didn't).
         self._state_counter = state_counter
         self._action_streak_detector = action_streak_detector
+        # Sprint-20 Hebel V: optional win-demo store. When wired, the
+        # decoder renders a previously-recorded winning trajectory into
+        # the prompt as a few-shot demonstration of WHAT WINS the game
+        # — Sprint-19 hebels only taught what loses.
+        self._win_demo_store = win_demo_store
         self._state = _PlanState()
 
     @property
@@ -334,6 +340,21 @@ class PlanningLLMActionDecoder(ActionDecoder):
                 )
 
                 ctx_kwargs["action_pixel_history"] = summarise_action_pixel_history(self._memory)
+            except Exception:
+                pass
+        if "win_demo_block" in existing and self._win_demo_store is not None:
+            # Sprint-20 Hebel V: render a previously-recorded winning
+            # trajectory for this game family if any exist. Renders to
+            # empty string when the store has no records — preserves
+            # byte-identical legacy prompts in the cold-start regime.
+            try:
+                from cognithor.channels.program_synthesis.arc_agi3.win_demos import (
+                    render_win_demo,
+                )
+
+                game_id = getattr(latest_frame, "game_id", "")
+                if game_id:
+                    ctx_kwargs["win_demo_block"] = render_win_demo(self._win_demo_store, game_id)
             except Exception:
                 pass
         ctx = FrameContext(**ctx_kwargs)
