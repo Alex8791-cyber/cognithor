@@ -120,3 +120,88 @@ class TestArcStatusUnchanged:
         _active_sessions.clear()
         result = await handle_arc_status()
         assert "No active" in result
+
+
+class TestResolveArcChoiceFn:
+    """Sprint-21: arc_tools must prefer the central HTTP VLLMBackend
+    over the Linux-only in-process factory when the configured
+    ``vllm_base_url`` resolves a backend.
+    """
+
+    def test_picks_http_path_when_central_backend_resolves(self) -> None:
+        from cognithor.mcp.arc_tools import _resolve_arc_choice_fn
+
+        captured: dict[str, Any] = {}
+
+        def fake_http_factory(*, backend: Any) -> Any:
+            captured["backend"] = backend
+            return "http_choice_fn"
+
+        def inprocess_factory_should_not_run() -> Any:
+            raise AssertionError("in-process factory must NOT be called when HTTP path resolves")
+
+        with patch("cognithor.config.load_config") as mock_cfg:
+            mock_cfg.return_value.vllm_base_url = "http://localhost:8000/v1"
+            with patch("cognithor.core.vllm_backend.VLLMBackend") as mock_backend:
+                mock_backend.return_value = "vllm_backend_instance"
+                fn = _resolve_arc_choice_fn(
+                    build_vllm_choice_fn=fake_http_factory,
+                    build_inprocess_vllm_choice_fn=inprocess_factory_should_not_run,
+                )
+        assert fn == "http_choice_fn"
+        assert captured["backend"] == "vllm_backend_instance"
+
+    def test_falls_back_to_inprocess_when_no_base_url(self) -> None:
+        from cognithor.mcp.arc_tools import _resolve_arc_choice_fn
+
+        def http_factory_should_not_run(*, backend: Any) -> Any:
+            raise AssertionError("HTTP path must NOT run when base_url is empty")
+
+        def inprocess_factory() -> Any:
+            return "inprocess_choice_fn"
+
+        with patch("cognithor.config.load_config") as mock_cfg:
+            mock_cfg.return_value.vllm_base_url = ""
+            fn = _resolve_arc_choice_fn(
+                build_vllm_choice_fn=http_factory_should_not_run,
+                build_inprocess_vllm_choice_fn=inprocess_factory,
+            )
+        assert fn == "inprocess_choice_fn"
+
+    def test_returns_none_when_both_paths_unavailable(self) -> None:
+        from cognithor.mcp.arc_tools import _resolve_arc_choice_fn
+
+        def http_factory(*, backend: Any) -> Any:
+            raise RuntimeError("vllm_backend_unavailable")
+
+        def inprocess_factory() -> Any:
+            raise RuntimeError("vllm_not_installed")
+
+        with patch("cognithor.config.load_config") as mock_cfg:
+            mock_cfg.return_value.vllm_base_url = "http://localhost:8000/v1"
+            fn = _resolve_arc_choice_fn(
+                build_vllm_choice_fn=http_factory,
+                build_inprocess_vllm_choice_fn=inprocess_factory,
+            )
+        assert fn is None
+
+    def test_falls_through_to_inprocess_when_http_construction_fails(self) -> None:
+        """Network/import failures during HTTP backend construction must
+        not crash the resolver — they should silently fall through to
+        the in-process path so Linux/WSL setups keep working.
+        """
+        from cognithor.mcp.arc_tools import _resolve_arc_choice_fn
+
+        def http_factory(*, backend: Any) -> Any:
+            raise RuntimeError("backend_init_failed")
+
+        def inprocess_factory() -> Any:
+            return "inprocess_fallback"
+
+        with patch("cognithor.config.load_config") as mock_cfg:
+            mock_cfg.return_value.vllm_base_url = "http://localhost:8000/v1"
+            fn = _resolve_arc_choice_fn(
+                build_vllm_choice_fn=http_factory,
+                build_inprocess_vllm_choice_fn=inprocess_factory,
+            )
+        assert fn == "inprocess_fallback"
