@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**116 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**130 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -123,17 +123,26 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `int_half` | `(Int) → Int` | 1.00 | Return n // 2 (integer division, rounds toward negative infinity). |
 | `int_identity` | `(Int) → Int` | 0.00 | Return the integer unchanged. Useful as a no-op leaf. |
 | `int_increment` | `(Int) → Int` | 1.00 | Return n + 1. |
+| `int_list_first` | `(IntList) → Int` | 1.00 | Return the first integer; raises on empty list. |
+| `int_list_length` | `(IntList) → Int` | 1.00 | Return the number of elements in the int list. |
+| `int_list_max` | `(IntList) → Int` | 1.00 | Return the maximum integer; raises on empty list. |
+| `int_list_min` | `(IntList) → Int` | 1.00 | Return the minimum integer; raises on empty list. |
+| `int_list_sum` | `(IntList) → Int` | 1.00 | Return the sum of the integers; 0 for an empty list. |
 | `int_negate` | `(Int) → Int` | 1.00 | Return -n. |
 | `int_square` | `(Int) → Int` | 1.00 | Return n * n. |
 | `int_triple` | `(Int) → Int` | 1.00 | Return 3 * n. |
 | `object_count` | `(ObjectSet) → Int` | 1.00 | Number of objects in the set (≥ 0). |
 | `string_length` | `(String) → Int` | 1.00 | Return the number of characters in the string. |
+| `string_list_count_nonempty` | `(StringList) → Int` | 1.00 | Return the number of elements that are not the empty string. |
+| `string_list_length` | `(StringList) → Int` | 1.00 | Return the number of elements in the list. |
 | `string_to_int` | `(String) → Int` | 1.00 | Parse the string as a base-10 integer. Raises ``ValueError`` on non-numeric input so the executor sandbox prunes the candidate. |
 
 ### Output type: other
 
 | Name | Signature | Cost | Description |
 |---|---|---|---|
+| `int_list_reverse` | `(IntList) → IntList` | 1.00 | Return the list of ints in reverse order. |
+| `int_list_sort` | `(IntList) → IntList` | 1.00 | Return the list of ints sorted ascending. |
 | `int_to_string` | `(Int) → String` | 1.00 | Return the base-10 decimal string representation of the integer. |
 | `string_capitalize` | `(String) → String` | 1.00 | Return the string with the first char uppercased and rest lowercased. |
 | `string_collapse_spaces` | `(String) → String` | 1.00 | Replace any run of whitespace with a single space (no leading/trailing strip). |
@@ -149,6 +158,8 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `string_keep_letters` | `(String) → String` | 1.00 | Return only the alphabetic characters of the string, in original order. |
 | `string_last_digit_run` | `(String) → String` | 1.00 | Return the last contiguous run of digit characters, or '' if none. |
 | `string_last_word` | `(String) → String` | 1.00 | Return the last whitespace-delimited word, or '' for an empty input. |
+| `string_list_first` | `(StringList) → String` | 1.00 | Return the first element, or '' for an empty list. |
+| `string_list_last` | `(StringList) → String` | 1.00 | Return the last element, or '' for an empty list. |
 | `string_lower` | `(String) → String` | 1.00 | Return the string in all-lowercase. |
 | `string_remove_digits` | `(String) → String` | 1.00 | Return the string with every digit character removed. |
 | `string_remove_letters` | `(String) → String` | 1.00 | Return the string with every alphabetic character removed. |
@@ -161,6 +172,9 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 | `string_reverse` | `(String) → String` | 1.00 | Return the string with characters in reverse order. |
 | `string_strip` | `(String) → String` | 1.00 | Return the string with leading/trailing whitespace removed. |
 | `string_upper` | `(String) → String` | 1.00 | Return the string in all-uppercase. |
+| `string_list_reverse` | `(StringList) → StringList` | 1.00 | Return the list with elements in reverse order. |
+| `string_list_sort` | `(StringList) → StringList` | 1.00 | Return the list sorted lexicographically (Python default str ordering). |
+| `string_list_unique` | `(StringList) → StringList` | 1.00 | Deduplicate the list, preserving first-seen order. |
 | `string_split_comma` | `(String) → StringList` | 1.00 | Split on commas. Empty fields kept (use string_strip on parts to clean). |
 | `string_split_space` | `(String) → StringList` | 1.00 | Split on any whitespace run; collapse consecutive separators. |
 

@@ -34,6 +34,13 @@ ALLOWED_TYPES: frozenset[str] = frozenset(
         # rejects all type-mismatched compositions).
         "String",
         "StringList",
+        # Sprint-22 PR#4 — List/Sequence-DSL family. ``IntList`` is the
+        # carrier for list-of-int synthesis tasks (sum / max / min /
+        # length / sort / reverse). It is structurally disjoint from
+        # ``StringList`` so the type-filter cleanly routes a list-of-
+        # ints input through the int-list primitives without a Python
+        # ``isinstance(int, str)`` accident.
+        "IntList",
     }
 )
 
