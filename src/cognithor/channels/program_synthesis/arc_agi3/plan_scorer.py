@@ -119,9 +119,7 @@ def score_plan(
     # the baseline scale): when the agent has been at the current level
     # for many frames AND the last action produced a high pixΔ AND
     # ``RESET`` is actually available, plans that START with RESET get
-    # +0.30 added to the score (then clamped to 1.0). 0.30 is enough
-    # to flip a sane RESET candidate ahead of any plan that would
-    # otherwise win on a thin diversity margin.
+    # +0.30 added to the score (then clamped to 1.0).
     reset_bonus = 0.0
     if memory is not None and "RESET" in available_action_names and plan[0].action_name == "RESET":
         try:
@@ -142,6 +140,27 @@ def score_plan(
                     last_high_pix = int(_np.sum(a.grid != b.grid)) > 500
                 if steps_at >= 15 and last_high_pix:
                     reset_bonus = 0.30
+        except Exception:
+            pass
+
+    # Sprint-19 Hebel T — exploration bonus for first-time-action.
+    # Run #28's 64-step bp35 episode used ACTION3/4/6/7 ~equally but
+    # never RESET or any other available action class. Plans whose
+    # first action has NEVER been recorded in this episode's memory
+    # get a +0.20 post-hoc additive bonus so candidate plans that
+    # explore an unused action class can beat equally-quality plans
+    # that re-use already-tried actions on a thin diversity margin.
+    exploration_bonus = 0.0
+    first_action = plan[0].action_name
+    if (
+        memory is not None
+        and len(memory) > 0
+        and (not available_action_names or first_action in available_action_names)
+    ):
+        try:
+            seen_actions = {s.action_name for s in memory.window(80)}
+            if first_action not in seen_actions:
+                exploration_bonus = 0.20
         except Exception:
             pass
 
@@ -211,7 +230,9 @@ def score_plan(
     # giving stalled-and-destructive RESET plans a measurable edge.
     additive_avg = (diversity + targetedness + reasoning) / 3.0
     base = additive_avg * validity * anti_repetition * pix_delta_safety
-    return min(1.0, base + reset_bonus)
+    # Sprint-19 Hebel R + T: post-hoc additive boosts; clamp to [0, 1]
+    # so the combined bonuses never inflate beyond a legal score.
+    return min(1.0, base + reset_bonus + exploration_bonus)
 
 
 def pick_best_plan(

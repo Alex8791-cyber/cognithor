@@ -155,14 +155,15 @@ class TestScorePlanComponents:
         m.append(grid=small_after, action_name="ACTION3", levels_completed=0)  # pixΔ=16
         m.append(grid=big_after, action_name="ACTION6", levels_completed=0)  # pixΔ=~4096
 
-        # Plan first action is ACTION7 (different from ACTION6 → no
-        # single-action-repeat trigger). Prior step pair is
+        # Plan first action is ACTION3 (different from ACTION6 → no
+        # single-action-repeat trigger; already in memory → no Hebel T
+        # exploration bonus interfering). Prior step pair is
         # (16, 4096) → second_pix_delta=16, last_pix_delta=4096,
         # so two-consecutive-high (both >500) is also False (16<500).
         # Only the new single-spike-trigger should fire.
         plan_other = [
-            PlanStep("ACTION7", data={"x": 5, "y": 5}, reasoning="r"),
             PlanStep("ACTION3", reasoning="r"),
+            PlanStep("ACTION6", data={"x": 5, "y": 5}, reasoning="r"),
         ]
         actions = ("ACTION3", "ACTION6", "ACTION7")
         s_gated = score_plan(plan_other, memory=m, available_action_names=actions)
@@ -187,12 +188,14 @@ class TestScorePlanComponents:
         m.append(grid=big_a, action_name="ACTION3", levels_completed=0)
         m.append(grid=big_b, action_name="ACTION6", levels_completed=0)
 
-        # Plan first action is COMPLETELY DIFFERENT from the last
-        # action (ACTION6) — so the single-action repeat trigger does
-        # NOT fire. The two-consecutive trigger MUST still apply.
+        # Plan first action differs from the last action (ACTION6) so
+        # the single-action repeat trigger does NOT fire. ACTION3 is
+        # already in memory so Hebel T's exploration bonus also does
+        # NOT fire — leaving the two-consecutive trigger as the only
+        # multiplicative delta.
         plan_other = [
-            PlanStep("ACTION7", data={"x": 5, "y": 5}, reasoning="r"),
             PlanStep("ACTION3", reasoning="r"),
+            PlanStep("ACTION7", data={"x": 5, "y": 5}, reasoning="r"),
         ]
         actions = ("ACTION3", "ACTION6", "ACTION7")
         s_other = score_plan(plan_other, memory=m, available_action_names=actions)
@@ -200,6 +203,60 @@ class TestScorePlanComponents:
         # inactive). The gate is the only multiplicative delta.
         s_baseline = score_plan(plan_other, available_action_names=actions)
         assert s_other == pytest.approx(s_baseline * 0.5, rel=1e-6)
+
+
+class TestExplorationBonus:
+    """Sprint-19 Hebel T — +0.20 additive bonus on plans whose first
+    action has never appeared in memory.
+    """
+
+    def test_first_time_action_gets_bonus(self) -> None:
+        m = EpisodeMemory()
+        m.append(grid=_g([[1]]), action_name="ACTION3", levels_completed=0)
+        m.append(grid=_g([[1]]), action_name="ACTION3", levels_completed=0)
+        m.append(grid=_g([[1]]), action_name="ACTION6", levels_completed=0)
+
+        # Use non-click actions on both sides so the targetedness
+        # component is identical and only the exploration bonus
+        # differentiates the scores. Plans intentionally include one
+        # step without reasoning so the base score is well below 1.0
+        # (bonus visible after the post-hoc additive boost is applied
+        # before the clamp).
+        actions = ("ACTION1", "ACTION3", "ACTION6")
+        plan_unused = [
+            PlanStep("ACTION1", reasoning="explore"),
+            PlanStep("ACTION3"),  # no reasoning → drags the reasoning component down
+        ]
+        plan_reused = [
+            PlanStep("ACTION3", reasoning="re-try"),
+            PlanStep("ACTION1"),  # no reasoning → identical structural delta
+        ]
+        s_unused = score_plan(plan_unused, memory=m, available_action_names=actions)
+        s_reused = score_plan(plan_reused, memory=m, available_action_names=actions)
+        # Unused-action plan must beat the reused-action plan, and the
+        # gap should be roughly the +0.20 bonus.
+        assert s_unused > s_reused
+        assert s_unused - s_reused >= 0.15
+
+    def test_already_used_action_gets_no_bonus(self) -> None:
+        m = EpisodeMemory()
+        m.append(grid=_g([[1]]), action_name="ACTION3", levels_completed=0)
+
+        actions = ("ACTION3", "ACTION6")
+        plan = [PlanStep("ACTION3", reasoning="re-try")]
+        s_with = score_plan(plan, memory=m, available_action_names=actions)
+        s_without = score_plan(plan, available_action_names=actions)
+        # Memory contains the action → no bonus; same score either way.
+        assert s_with == pytest.approx(s_without, rel=1e-6)
+
+    def test_no_bonus_when_action_not_in_available(self) -> None:
+        m = EpisodeMemory()
+        m.append(grid=_g([[1]]), action_name="ACTION3", levels_completed=0)
+        # ACTION99 not in available_action_names → validity=0 → score=0.
+        # Bonus does not apply because validity gate kills it first.
+        plan = [PlanStep("ACTION99", reasoning="r")]
+        s = score_plan(plan, memory=m, available_action_names=("ACTION3", "ACTION6"))
+        assert s == 0.0
 
 
 class TestResetBonus:
