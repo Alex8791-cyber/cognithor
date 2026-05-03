@@ -11,13 +11,13 @@ from cognithor.channels.config_routes.profile import (
     _profile_payload,
     _register_context_profile_routes,
 )
+from cognithor.config import CognithorConfig
 from cognithor.core.model_router import (
     CONTEXT_PROFILES,
     ModelRouter,
     OllamaClient,
     _context_profile_var,
 )
-from cognithor.config import CognithorConfig
 
 
 class _FakeApp:
