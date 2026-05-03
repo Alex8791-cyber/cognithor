@@ -674,6 +674,12 @@ class Gatekeeper:
             # sealed inside the channel. All three calls are safe to
             # auto-execute without user-confirm friction.
             "pse_synthesize",
+            # Sprint-25: synthesize + LLM-refinement wrapper. The
+            # refinement pass uses the gateway's existing LLM client
+            # (no new attack surface vs. the rest of the planner)
+            # and the synthesis itself goes through the same sandbox
+            # as ``pse_synthesize``. Safe to auto-execute.
+            "pse_synthesize_refined",
             "pse_is_synthesizable",
             "pse_status",
             # ATL (read-only)

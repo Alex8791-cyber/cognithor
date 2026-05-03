@@ -178,10 +178,23 @@ async def init_tools(
     try:
         from cognithor.mcp.pse_tools import register_pse_tools
 
-        register_pse_tools(mcp_client)
+        # Sprint-25: pass the gateway's LLM call into the registration so
+        # ``pse_synthesize_refined`` has an LLM to call for the refinement
+        # pass. ``getattr`` keeps this defensive — when the gateway boots
+        # without an LLM client (early-init / test fixtures), the new tool
+        # still registers and degrades the refinement to a neutral verdict.
+        register_pse_tools(
+            mcp_client,
+            llm_fn=getattr(gateway, "_llm_call", None),
+        )
         log.info(
             "pse_tools_registered",
-            tools=["pse_is_synthesizable", "pse_status", "pse_synthesize"],
+            tools=[
+                "pse_is_synthesizable",
+                "pse_status",
+                "pse_synthesize",
+                "pse_synthesize_refined",
+            ],
         )
     except Exception:
         log.debug("pse_tools_not_available", exc_info=True)
