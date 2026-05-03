@@ -667,6 +667,15 @@ class Gatekeeper:
             # ARC-AGI-3 (read-only)
             "arc_status",
             "arc_replay",
+            # Sprint-22 Track A.2: Program Synthesis Engine.
+            # Pure-Python deterministic search over a typed DSL with a
+            # subprocess sandbox + capability tokens — no filesystem,
+            # network, or shell side effects. Cache + verifier are
+            # sealed inside the channel. All three calls are safe to
+            # auto-execute without user-confirm friction.
+            "pse_synthesize",
+            "pse_is_synthesizable",
+            "pse_status",
             # ATL (read-only)
             "atl_status",
             "atl_journal",
