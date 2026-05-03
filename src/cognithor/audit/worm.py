@@ -30,8 +30,8 @@ log = get_logger(__name__)
 
 # Optional boto3 import
 try:
-    import boto3  # type: ignore[import-untyped]
-    from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+    import boto3
+    from botocore.exceptions import ClientError
 
     _HAS_BOTO3 = True
 except ImportError:

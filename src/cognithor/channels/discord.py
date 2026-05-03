@@ -126,7 +126,7 @@ class DiscordChannel(Channel):
                 self._session_users[key] = int(val)
 
         try:
-            import discord  # type: ignore[import-not-found]
+            import discord
         except ImportError:
             logger.error("discord.py nicht installiert. pip install discord.py")
             return

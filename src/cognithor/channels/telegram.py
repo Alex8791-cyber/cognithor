@@ -106,7 +106,7 @@ class TelegramChannel(Channel):
         self._max_reconnect = max_reconnect_attempts
         self._session_store = session_store
         self._handler: MessageHandler | None = None
-        self._app: Any | None = None  # telegram.ext.Application
+        self._app: Any = None  # telegram.ext.Application
         self._approval_events: dict[str, asyncio.Event] = {}
         self._approval_results: dict[str, bool] = {}
         self._approval_lock = asyncio.Lock()
@@ -239,7 +239,9 @@ class TelegramChannel(Channel):
         self._running = True
 
         # Periodic TTLDict cleanup (#47 optimization)
-        self._cleanup_task = asyncio.create_task(self._periodic_ttl_cleanup())
+        self._cleanup_task: asyncio.Task[None] | None = asyncio.create_task(
+            self._periodic_ttl_cleanup()
+        )
 
     async def _periodic_ttl_cleanup(self) -> None:
         """Periodischer Sweep abgelaufener TTLDict-Eintraege (alle 5 Minuten)."""
@@ -580,7 +582,7 @@ class TelegramChannel(Channel):
         # GDPR consent check for voice messages
         consent_mgr = None
         try:
-            if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
+            if self._handler is not None and hasattr(self._handler, "__self__"):
                 consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
         except Exception:
             logger.debug("telegram_voice_consent_check_failed", exc_info=True)
@@ -645,7 +647,7 @@ class TelegramChannel(Channel):
         # GDPR consent check for photo messages
         consent_mgr = None
         try:
-            if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
+            if self._handler is not None and hasattr(self._handler, "__self__"):
                 consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
         except Exception:
             logger.debug("telegram_photo_consent_check_failed", exc_info=True)
@@ -748,7 +750,7 @@ class TelegramChannel(Channel):
         # GDPR consent check for document messages
         consent_mgr = None
         try:
-            if hasattr(self, "_handler") and hasattr(self._handler, "__self__"):
+            if self._handler is not None and hasattr(self._handler, "__self__"):
                 consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
         except Exception:
             logger.debug("telegram_document_consent_check_failed", exc_info=True)
@@ -867,7 +869,7 @@ class TelegramChannel(Channel):
 
         # GDPR consent check
         consent_mgr = None
-        if hasattr(self, "_handler") and self._handler and hasattr(self._handler, "__self__"):
+        if self._handler is not None and hasattr(self._handler, "__self__"):
             consent_mgr = getattr(self._handler.__self__, "consent_manager", None)
 
         if consent_mgr and consent_mgr.requires_consent(str(user_id), "telegram"):

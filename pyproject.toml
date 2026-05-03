@@ -306,3 +306,34 @@ exclude = [
     # module resolver; the packs ship their own typing discipline.
     "src/cognithor/_bundled_packs/.*",
 ]
+
+# Third-party libraries without published type stubs. We keep ``--strict`` for
+# our own code, but tell mypy not to follow these into untyped territory.
+[[tool.mypy.overrides]]
+module = [
+    "agents",
+    "agents.*",
+    "arc_agi",
+    "arc_agi.*",
+    "arcengine",
+    "arcengine.*",
+    "boto3",
+    "boto3.*",
+    "botocore",
+    "botocore.*",
+    "discord",
+    "discord.*",
+    "faiss",
+    "faiss.*",
+    "faster_whisper",
+    "faster_whisper.*",
+    "fitz",
+    "openpyxl",
+    "openpyxl.*",
+    "pysqlcipher3",
+    "pysqlcipher3.*",
+    "scipy",
+    "scipy.*",
+    "yaml",
+]
+ignore_missing_imports = true

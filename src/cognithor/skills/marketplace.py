@@ -145,6 +145,15 @@ class CategoryInfo:
     description: str
     skill_count: int = 0
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "category": self.category.value,
+            "display_name": self.display_name,
+            "icon": self.icon,
+            "description": self.description,
+            "skill_count": self.skill_count,
+        }
+
 
 # Standard-Kategorien mit Anzeige-Infos
 CATEGORY_INFOS: dict[SkillCategory, CategoryInfo] = {

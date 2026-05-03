@@ -106,12 +106,7 @@ def _register_skill_routes(
         try:
             from cognithor.skills.marketplace import SkillMarketplace
 
-            return {
-                "categories": [
-                    c.to_dict()
-                    for c in SkillMarketplace().categories()  # type: ignore[attr-defined]
-                ]
-            }
+            return {"categories": [c.to_dict() for c in SkillMarketplace().categories()]}
         except Exception as exc:
             log.error("marketplace_categories_failed", error=str(exc))
             return {"error": "Kategorien nicht verfuegbar"}
@@ -497,7 +492,7 @@ def _register_skill_registry_routes(
         import re
         from pathlib import Path
 
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         body = await request.json()
         name = body.get("name", "").strip()

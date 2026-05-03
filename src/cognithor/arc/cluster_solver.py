@@ -13,7 +13,7 @@ import itertools
 from typing import Any
 
 import numpy as np
-from scipy import ndimage  # type: ignore[import-untyped]
+from scipy import ndimage
 
 from cognithor.utils.logging import get_logger
 

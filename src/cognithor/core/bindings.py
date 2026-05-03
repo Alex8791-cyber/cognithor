@@ -587,7 +587,7 @@ class BindingEngine:
         Args:
             path: Path to the YAML file.
         """
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         bindings_data = []
         for binding in self._sorted_bindings:

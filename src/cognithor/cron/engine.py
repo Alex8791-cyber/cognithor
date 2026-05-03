@@ -178,7 +178,7 @@ class CronEngine:
         # can still be started and manipulated even when the optional
         # APScheduler dependency is missing.
         try:
-            from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
+            from apscheduler.schedulers.asyncio import AsyncIOScheduler
         except Exception:
             # Define a dummy scheduler that provides the minimal API used
             # throughout the CronEngine.  Each scheduled job stores a
@@ -259,7 +259,7 @@ class CronEngine:
             # Versuche IntervalTrigger nur wenn APScheduler vorhanden ist.
             trigger: Any | None = None
             try:
-                from apscheduler.triggers.interval import IntervalTrigger  # type: ignore
+                from apscheduler.triggers.interval import IntervalTrigger
             except Exception:
                 logger.debug("interval_trigger_import_skipped", exc_info=True)
                 trigger = None
@@ -333,7 +333,7 @@ class CronEngine:
         # unavailable, the trigger remains None and the dummy scheduler
         # simply ignores it.
         try:
-            from apscheduler.triggers.cron import CronTrigger  # type: ignore
+            from apscheduler.triggers.cron import CronTrigger
         except Exception:
             logger.debug("cron_trigger_import_skipped", exc_info=True)
             trigger = None
@@ -582,7 +582,7 @@ class CronEngine:
 
         trigger: Any = None
         try:
-            from apscheduler.triggers.cron import CronTrigger  # type: ignore
+            from apscheduler.triggers.cron import CronTrigger
 
             trigger = CronTrigger(**fields, timezone="Europe/Berlin")
         except Exception as exc:

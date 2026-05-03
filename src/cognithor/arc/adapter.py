@@ -89,7 +89,7 @@ class ArcEnvironmentAdapter:
         ``arc_agi`` is not installed instead of failing at import time.
         """
         try:
-            import arc_agi  # type: ignore[import-untyped]
+            import arc_agi
         except ImportError as exc:
             raise EnvironmentConnectionError(
                 "arc_agi SDK is not installed. Install it to enumerate games."

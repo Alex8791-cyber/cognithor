@@ -1158,7 +1158,7 @@ class MediaPipeline:
 
             def _resize() -> tuple[str, int, int]:
                 img = Image.open(path)
-                img.thumbnail((max_width, max_height), Image.LANCZOS)
+                img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
 
                 fmt = output_format or path.suffix.lstrip(".") or "png"
                 out = self._workspace / f"{path.stem}_resized.{fmt}"
@@ -1304,11 +1304,11 @@ class MediaPipeline:
             for fname, regular_paths, bold_paths in font_candidates:
                 regular = next((p for p in regular_paths if p.exists()), None)
                 if regular:
-                    pdf.add_font(fname, "", str(regular), uni=True)
+                    pdf.add_font(fname, "", str(regular))
                     font_name = fname
                     bold = next((p for p in bold_paths if p.exists()), None)
                     if bold:
-                        pdf.add_font(fname, "B", str(bold), uni=True)
+                        pdf.add_font(fname, "B", str(bold))
                         has_bold = True
                     else:
                         has_bold = False
@@ -1358,7 +1358,8 @@ class MediaPipeline:
         # Autor/Absender
         if author:
             p = doc.add_paragraph(author)
-            p.style.font.size = Pt(10)
+            if p.style is not None:
+                p.style.font.size = Pt(10)
 
         # Titel
         if title:
@@ -1637,11 +1638,11 @@ class MediaPipeline:
             for fname, regular_paths, bold_paths in font_candidates:
                 regular = next((p for p in regular_paths if p.exists()), None)
                 if regular:
-                    pdf.add_font(fname, "", str(regular), uni=True)
+                    pdf.add_font(fname, "", str(regular))
                     font_name = fname
                     bold = next((p for p in bold_paths if p.exists()), None)
                     if bold:
-                        pdf.add_font(fname, "B", str(bold), uni=True)
+                        pdf.add_font(fname, "B", str(bold))
                         has_bold = True
                     else:
                         has_bold = False

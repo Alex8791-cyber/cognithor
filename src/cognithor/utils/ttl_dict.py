@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -101,13 +101,21 @@ class TTLDict[KT, VT]:
         self._data.move_to_end(key)
         return entry.value
 
-    def pop(self, key: KT, *args: VT) -> VT:
+    _MISSING: Any = object()
+
+    @overload
+    def pop(self, key: KT) -> VT: ...
+    @overload
+    def pop(self, key: KT, default: VT) -> VT: ...
+    @overload
+    def pop(self, key: KT, default: None) -> VT | None: ...
+    def pop(self, key: KT, default: Any = _MISSING) -> Any:
         """Entfernt und gibt den Wert zurueck. Wie dict.pop()."""
         entry = self._data.pop(key, None)
         if entry is None:
-            if args:
-                return args[0]
-            raise KeyError(key)
+            if default is TTLDict._MISSING:
+                raise KeyError(key)
+            return default
         return entry.value
 
     @overload

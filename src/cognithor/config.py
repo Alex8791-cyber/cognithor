@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Literal
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from cognithor.models import ModelConfig, SandboxConfig

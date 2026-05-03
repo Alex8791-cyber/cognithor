@@ -145,7 +145,7 @@ class FAISSIndex:
         ef_construction: int = 200,
         ef_search: int = 64,
     ) -> None:
-        import faiss  # type: ignore
+        import faiss
 
         self._dimension = dimension
         self._m = m
@@ -251,7 +251,7 @@ class FAISSIndex:
 
     def rebuild(self) -> None:
         """Baut den FAISS-Index komplett neu auf."""
-        import faiss  # type: ignore
+        import faiss
 
         if not self._vectors:
             self._index = faiss.IndexHNSWFlat(self._dimension, self._m, faiss.METRIC_INNER_PRODUCT)
@@ -310,7 +310,7 @@ def create_vector_index(backend: str = "auto", dimension: int = 768) -> VectorIn
         dimension = 768
     if backend == "faiss" or backend == "auto":
         try:
-            import faiss  # type: ignore  # noqa: F401
+            import faiss  # noqa: F401
 
             result: VectorIndex = FAISSIndex(dimension=dimension)
             logger.info("FAISSIndex erstellt (HNSW, dim=%d)", dimension)

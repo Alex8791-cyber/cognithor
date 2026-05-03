@@ -26,7 +26,7 @@ import json
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from cognithor.models import (
     PlannedAction,

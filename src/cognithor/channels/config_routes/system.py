@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any, cast
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 try:
     from starlette.requests import Request
@@ -77,7 +77,7 @@ def _register_system_routes(
         # RuntimeMonitor
         try:
             from cognithor.openclaw.runtime_monitor import (
-                RuntimeMonitor,  # type: ignore[import-untyped]
+                RuntimeMonitor,
             )
 
             monitor = RuntimeMonitor()

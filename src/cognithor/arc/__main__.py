@@ -227,7 +227,7 @@ def _run_analyzer(game_id: str, reanalyze: bool, verbose: bool, config: Any) -> 
         return 1
 
     try:
-        import arc_agi  # type: ignore[import-untyped]
+        import arc_agi
 
         arcade = arc_agi.Arcade()
     except Exception as exc:

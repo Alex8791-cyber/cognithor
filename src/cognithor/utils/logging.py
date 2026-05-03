@@ -170,7 +170,7 @@ def setup_logging(
         log_dir.mkdir(parents=True, exist_ok=True)
         # Wir verwenden RotatingFileHandler mit 5 MB Groesse und 3 Backups
         try:
-            from logging.handlers import RotatingFileHandler  # type: ignore
+            from logging.handlers import RotatingFileHandler
         except Exception:
             # Fallback auf normalen FileHandler, wenn Handler nicht verfuegbar
             file_handler = logging.FileHandler(

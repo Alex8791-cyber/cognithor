@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from cognithor.core.bindings import BindingEngine, MessageContext
 from cognithor.utils.logging import get_logger

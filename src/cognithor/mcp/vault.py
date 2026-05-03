@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from cognithor.i18n import t
 from cognithor.mcp.vault_backend import slugify as _ext_slugify
