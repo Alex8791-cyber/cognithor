@@ -257,6 +257,9 @@ class PackageSigner:
       - PackageSigner.verifier(public_key_hex)    → Nur Verifikation (kein Signieren)
     """
 
+    _ed25519_private: Any
+    _ed25519_public: Any
+
     def __init__(self, private_key: str, signer_id: str = "") -> None:
         self._hmac_key = private_key
         self._ed25519_private = None
@@ -336,7 +339,7 @@ class PackageSigner:
             return ""
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-        return self._ed25519_public.public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+        return str(self._ed25519_public.public_bytes(Encoding.Raw, PublicFormat.Raw).hex())
 
     def sign(self, content: bytes) -> PackageSignature:
         """Signiert Inhalt (Ed25519 bevorzugt, HMAC-SHA256 Fallback).
@@ -922,7 +925,7 @@ class PackageInstaller:
                 )
 
         # 2. Signature integrity
-        if package.is_signed and self._signer:
+        if package.is_signed and self._signer and package.signature is not None:
             signable = (
                 package.manifest.name + package.manifest.version + package.content_hash
             ).encode()

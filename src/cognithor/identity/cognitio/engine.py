@@ -295,7 +295,7 @@ class CognitioEngine:
         self.predictive = PredictiveEngine()
 
         # Async consolidation pipeline
-        self._consolidation_queue: queue.Queue = queue.Queue()
+        self._consolidation_queue: queue.Queue[Any] = queue.Queue()
         self._pending_notes: list[str] = []
         self._consolidation_lock = threading.Lock()
         self._consolidation_thread: threading.Thread | None = None

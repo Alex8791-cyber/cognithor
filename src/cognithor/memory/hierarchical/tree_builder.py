@@ -33,7 +33,7 @@ class DocumentTreeBuilder:
 
     def __init__(
         self,
-        llm_fn: Callable[..., Any],
+        llm_fn: Callable[..., Any] | None,
         max_parallel_summaries: int = 10,
         node_split_threshold: int = 4000,
         max_branching_factor: int = 50,

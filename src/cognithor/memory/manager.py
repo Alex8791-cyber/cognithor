@@ -12,7 +12,6 @@ Provides a unified API for search, indexing, and lifecycle management.
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -38,12 +37,13 @@ from cognithor.memory.semantic import SemanticMemory
 from cognithor.memory.vector_index import VectorIndex, create_vector_index
 from cognithor.memory.working import WorkingMemoryManager
 from cognithor.models import MemorySearchResult, MemoryTier
+from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from cognithor.memory.episodic_store import EpisodicStore
     from cognithor.memory.weight_optimizer import SearchWeightOptimizer
 
-logger = logging.getLogger("cognithor.memory.manager")
+logger = get_logger("cognithor.memory.manager")
 
 
 class MemoryManager:

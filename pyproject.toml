@@ -330,6 +330,8 @@ module = [
     "fitz",
     "openpyxl",
     "openpyxl.*",
+    "psutil",
+    "psutil.*",
     "pysqlcipher3",
     "pysqlcipher3.*",
     "scipy",

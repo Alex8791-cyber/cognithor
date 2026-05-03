@@ -359,7 +359,7 @@ class VerifiedWebLookup:
 
         # ── Smart Routing: URL-Klassifizierung → beste Methode ──────────
         # Trafilatura fuer alle URLs (schnell), Browser fuer JS-heavy URLs
-        tasks: list[asyncio.Task] = []
+        tasks: list[asyncio.Task[Any]] = []
         browser_urls: list[str] = []
         for url in urls:
             tasks.append(asyncio.ensure_future(_extract_trafilatura(url)))

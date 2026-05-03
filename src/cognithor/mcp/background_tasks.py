@@ -99,7 +99,7 @@ class BackgroundProcessManager:
         self._log_dir = Path(log_dir)
         self._log_dir.mkdir(parents=True, exist_ok=True)
         self._audit = audit_logger
-        self._processes: dict[str, subprocess.Popen] = {}
+        self._processes: dict[str, subprocess.Popen[bytes]] = {}
         self._init_db()
 
     def _init_db(self) -> None:
@@ -136,7 +136,7 @@ class BackgroundProcessManager:
 
         loop = asyncio.get_running_loop()
 
-        def _spawn() -> tuple[subprocess.Popen, Any]:
+        def _spawn() -> tuple[subprocess.Popen[bytes], Any]:
             lf = open(log_file, "w", encoding="utf-8", errors="replace")
             kwargs: dict[str, Any] = {
                 "stdout": lf,
@@ -444,7 +444,7 @@ class ProcessMonitor:
         self._on_change = on_status_change
         self._default_interval = default_interval
         self._running = False
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[Any] | None = None
 
     async def start(self) -> None:
         """Start the monitor loop as an asyncio task."""

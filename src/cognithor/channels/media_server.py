@@ -15,7 +15,7 @@ import contextlib
 import socket
 import threading
 import uuid as _uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -55,7 +55,7 @@ class MediaUploadServer:
         self._quota_bytes = config.vllm.video_quota_gb * 1024 * 1024 * 1024
         self._port: int | None = None
         self._server = None  # filled by start() in Task 7
-        self._serve_task: asyncio.Task | None = None
+        self._serve_task: asyncio.Task[Any] | None = None
         # Guards the evict+write critical section in save_upload. save_upload
         # is called from async FastAPI handlers via asyncio.to_thread, so
         # threading.Lock (not asyncio.Lock) is the right primitive here.

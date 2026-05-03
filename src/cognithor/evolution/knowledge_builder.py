@@ -347,11 +347,11 @@ class KnowledgeBuilder:
     def __init__(
         self,
         mcp_client: Any,
-        llm_fn: Callable | None = None,
+        llm_fn: Callable[..., Any] | None = None,
         goal_slug: str = "",
         knowledge_validator: Any = None,
         goal_index: Any = None,
-        entity_llm_fn: Callable | None = None,
+        entity_llm_fn: Callable[..., Any] | None = None,
         memory_manager: Any = None,
     ) -> None:
         self._mcp = mcp_client

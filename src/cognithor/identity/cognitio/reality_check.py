@@ -178,7 +178,7 @@ class RealityCheck:
 
         # Embedder for semantic jailbreak detection
         self._embedder = embedder
-        self._jailbreak_embeddings: list | None = None
+        self._jailbreak_embeddings: list[Any] | None = None
         if embedder is not None:
             self._init_jailbreak_embeddings()
 

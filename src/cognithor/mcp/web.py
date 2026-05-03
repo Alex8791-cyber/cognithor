@@ -399,7 +399,7 @@ class WebTools:
         # Collect all available search backends
         import asyncio as _aio
 
-        tasks: dict[str, _aio.Task] = {}
+        tasks: dict[str, _aio.Task[Any]] = {}
         if self._searxng_url:
             tasks["searxng"] = _aio.create_task(
                 self._search_raw_searxng(query, num_results, language)

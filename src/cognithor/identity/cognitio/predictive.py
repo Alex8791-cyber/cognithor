@@ -47,7 +47,9 @@ class PredictiveEngine:
     def __init__(self) -> None:
         self._expected_embedding: list[float] | None = None
         self._last_error: float = 0.0
-        self._error_history: collections.deque = collections.deque(maxlen=100)  # for trend analysis
+        self._error_history: collections.deque[Any] = collections.deque(
+            maxlen=100
+        )  # for trend analysis
 
     def update_expectation(self, assistant_embedding: list[float]) -> None:
         """

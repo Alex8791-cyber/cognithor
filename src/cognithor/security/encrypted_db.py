@@ -37,7 +37,7 @@ __all__ = [
 ]
 
 
-class _DictRow(dict):
+class _DictRow(dict[Any, Any]):
     """Dict that also supports integer index access like sqlite3.Row."""
 
     __slots__ = ("_values",)

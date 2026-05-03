@@ -120,7 +120,7 @@ class KnowledgeIngestService:
         self._on_progress = on_progress
         self._results: list[IngestResult] = []
         self._queue = IngestQueue()
-        self._worker_task: asyncio.Task | None = None
+        self._worker_task: asyncio.Task[Any] | None = None
 
     async def _notify(self, event: str, source: str, **kwargs: Any) -> None:
         """Fire progress callback and emit a structured log entry."""

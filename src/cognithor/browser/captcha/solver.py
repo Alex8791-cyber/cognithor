@@ -38,7 +38,7 @@ class CaptchaSolver:
 
     def __init__(
         self,
-        vision_fn: Callable | None = None,
+        vision_fn: Callable[..., Any] | None = None,
         config: CaptchaConfig | None = None,
         tactical_memory: Any = None,
     ) -> None:

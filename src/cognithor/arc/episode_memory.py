@@ -78,7 +78,7 @@ class EpisodeMemory:
         self.action_effect_map: defaultdict[str, dict[str, int]] = defaultdict(_new_effect_entry)
         self.hypotheses: list[Hypothesis] = []
         self.visited_states: set[str] = set()
-        self._state_hash_cache: dict[tuple, str] = {}
+        self._state_hash_cache: dict[tuple[Any, ...], str] = {}
         self._state_action_index: defaultdict[str, set[str]] = defaultdict(set)
         # Index of next-state hashes per action for fast novelty computation
         self._action_next_states: defaultdict[str, set[str]] = defaultdict(set)

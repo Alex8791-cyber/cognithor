@@ -21,7 +21,7 @@ class LLMNodeSelector:
 
     def __init__(
         self,
-        llm_fn: Callable[..., Any],
+        llm_fn: Callable[..., Any] | None,
         language: str = "de",
         timeout_seconds: float = 30.0,
     ) -> None:

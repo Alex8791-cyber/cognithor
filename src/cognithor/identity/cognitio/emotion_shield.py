@@ -74,13 +74,13 @@ class EmotionShield:
         self.config = {**self.DEFAULT_CONFIG, **(config or {})}
 
         # Session emotional history
-        self._session_emotion_history: collections.deque = collections.deque(maxlen=20)
+        self._session_emotion_history: collections.deque[Any] = collections.deque(maxlen=20)
         self._cooldown_remaining: int = 0  # Remaining cooldown message count
         self._high_emotion_count: int = 0  # High-emotion records this session
 
         # Embedding-based gaslighting detection
         self._embedder = embedder
-        self._gaslighting_embeddings: list | None = None
+        self._gaslighting_embeddings: list[Any] | None = None
         self._embedder_initialized: bool = False
 
         logger.info("EmotionShield initialized")
