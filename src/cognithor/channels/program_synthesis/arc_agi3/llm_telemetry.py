@@ -81,6 +81,12 @@ class LLMCallRecord:
     # vLLM, HTTP backend) — analyzers must tolerate the gap rather
     # than reject the record.
     ttft_s: float | None = None
+    # Sprint-19 Hebel P — top-level reasoning string the model
+    # produced for this call. Truncated to ≤4000 chars at record
+    # construction so audit JSONL stays parse-friendly. ``None`` when
+    # the producer didn't surface a reasoning string (e.g. legacy
+    # decoder paths or a parse-failed plan).
+    reasoning: str | None = None
 
     @property
     def post_think_tokens(self) -> int:
@@ -349,6 +355,35 @@ def record_vllm_request_output(
     except Exception:
         pass
 
+    # Sprint-19 Hebel P: best-effort reasoning capture. If the output
+    # is the JSON-with-think-block format the planning factories use,
+    # extract the top-level "reasoning" field; otherwise pass the raw
+    # post-think text. Failures fall back to ``None`` so a malformed
+    # response doesn't tank the telemetry record.
+    reasoning_text: str | None = None
+    try:
+        body = output_text
+        if "</think>" in body:
+            body = body.split("</think>", 1)[1].strip()
+        # Try strict JSON first (planning paths emit a single object).
+        start = body.find("{")
+        end = body.rfind("}")
+        if start >= 0 and end > start:
+            import json as _json
+
+            parsed = _json.loads(body[start : end + 1])
+            reasoning_field = parsed.get("reasoning")
+            if isinstance(reasoning_field, str) and reasoning_field.strip():
+                reasoning_text = reasoning_field.strip()
+        # Fallback to the raw post-think body when JSON parse failed
+        # or didn't carry a reasoning key — still a useful trace.
+        if reasoning_text is None and body.strip():
+            reasoning_text = body.strip()
+        if reasoning_text is not None and len(reasoning_text) > 4000:
+            reasoning_text = reasoning_text[:4000]
+    except Exception:
+        reasoning_text = None
+
     record = LLMCallRecord(
         call_index=len(telemetry.records),
         input_tokens=input_tokens,
@@ -357,6 +392,7 @@ def record_vllm_request_output(
         finish_reason=str(finish_reason),
         wall_clock_s=wall_clock_s,
         ttft_s=ttft_s,
+        reasoning=reasoning_text,
     )
     telemetry.records.append(record)
 

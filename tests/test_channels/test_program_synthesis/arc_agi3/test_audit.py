@@ -208,3 +208,57 @@ class TestHashlineSeal:
         out_path = tmp_path / "audit.jsonl"
         result = trail.export_jsonl(str(out_path))  # default seal_into_hashline=False
         assert result is None
+
+
+class TestHebelPReasoningPersistence:
+    def test_log_step_accepts_and_persists_reasoning(self, tmp_path: Path) -> None:
+        """Hebel P: ``log_step(..., llm_reasoning="...")`` round-trips
+        the reasoning text into the exported JSONL row.
+        """
+        trail = ArcAuditTrail(game_id="bp35")
+        trail.log_game_start()
+        trail.log_step(
+            level=0,
+            step=1,
+            action="ACTION3",
+            game_state="NOT_FINISHED",
+            pixels_changed=12,
+            llm_reasoning="explore right corridor",
+        )
+        out_path = tmp_path / "audit.jsonl"
+        trail.export_jsonl(str(out_path))
+        rows = [json.loads(line) for line in out_path.read_text().splitlines()]
+        step_row = next(r for r in rows if r["event_type"] == "step")
+        assert step_row["llm_reasoning"] == "explore right corridor"
+
+    def test_log_step_truncates_oversize_reasoning(self) -> None:
+        """Hebel P: producer-side oversize strings get capped at 4000
+        chars before joining the audit chain.
+        """
+        trail = ArcAuditTrail(game_id="bp35")
+        long_text = "y" * 5000
+        trail.log_step(
+            level=0,
+            step=1,
+            action="ACTION3",
+            game_state="NOT_FINISHED",
+            pixels_changed=12,
+            llm_reasoning=long_text,
+        )
+        event = trail.events[-1]
+        assert event.llm_reasoning is not None
+        assert len(event.llm_reasoning) == 4000
+
+    def test_log_step_reasoning_defaults_to_none(self) -> None:
+        """Hebel P: when no kwarg is passed, the field stays ``None`` —
+        legacy callers don't see a behavioural change.
+        """
+        trail = ArcAuditTrail(game_id="bp35")
+        trail.log_step(
+            level=0,
+            step=1,
+            action="ACTION3",
+            game_state="NOT_FINISHED",
+            pixels_changed=12,
+        )
+        assert trail.events[-1].llm_reasoning is None
