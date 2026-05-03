@@ -25,7 +25,7 @@ void main() {
     });
 
     test('refresh populates sources from API response', () async {
-      when(() => api.get('/api/v1/leads/sources')).thenAnswer(
+      when(() => api.get('leads/sources')).thenAnswer(
         (_) async => {
           'sources': [
             {
@@ -58,7 +58,7 @@ void main() {
 
     test('refresh sets error on failure', () async {
       when(
-        () => api.get('/api/v1/leads/sources'),
+        () => api.get('leads/sources'),
       ).thenThrow(Exception('unreachable'));
 
       await provider.refresh();
@@ -69,7 +69,7 @@ void main() {
     });
 
     test('refresh handles missing "sources" key gracefully', () async {
-      when(() => api.get('/api/v1/leads/sources')).thenAnswer((_) async => {});
+      when(() => api.get('leads/sources')).thenAnswer((_) async => {});
 
       await provider.refresh();
 

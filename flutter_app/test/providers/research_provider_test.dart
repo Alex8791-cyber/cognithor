@@ -122,7 +122,7 @@ void main() {
     });
 
     test('loadHistory populates history list', () async {
-      when(() => api.get('/api/v1/research/history')).thenAnswer(
+      when(() => api.get('research/history')).thenAnswer(
         (_) async => {
           'results': [
             {'id': 'r1', 'query': 'q1'},
@@ -139,7 +139,7 @@ void main() {
 
     test('loadHistory swallows errors silently', () async {
       when(
-        () => api.get('/api/v1/research/history'),
+        () => api.get('research/history'),
       ).thenThrow(Exception('offline'));
 
       await provider.loadHistory();
@@ -151,7 +151,7 @@ void main() {
 
     test('loadResult sets activeResult', () async {
       when(
-        () => api.get('/api/v1/research/r1'),
+        () => api.get('research/r1'),
       ).thenAnswer((_) async => {'id': 'r1', 'query': 'q', 'report_md': '# R'});
 
       await provider.loadResult('r1');
@@ -163,7 +163,7 @@ void main() {
 
     test('loadResult sets error on failure', () async {
       when(
-        () => api.get('/api/v1/research/missing'),
+        () => api.get('research/missing'),
       ).thenThrow(Exception('404'));
 
       await provider.loadResult('missing');
@@ -176,7 +176,7 @@ void main() {
       'deleteResearch removes from history + clears active if matching',
       () async {
         // Seed history.
-        when(() => api.get('/api/v1/research/history')).thenAnswer(
+        when(() => api.get('research/history')).thenAnswer(
           (_) async => {
             'results': [
               {'id': 'r1', 'query': 'a'},
@@ -187,7 +187,7 @@ void main() {
         await provider.loadHistory();
 
         when(
-          () => api.delete('/api/v1/research/r1'),
+          () => api.delete('research/r1'),
         ).thenAnswer((_) async => {});
         await provider.deleteResearch('r1');
 
@@ -197,7 +197,7 @@ void main() {
 
     test('exportResearch returns path on success', () async {
       when(
-        () => api.post('/api/v1/research/r1/export', {'format': 'pdf'}),
+        () => api.post('research/r1/export', {'format': 'pdf'}),
       ).thenAnswer((_) async => {'path': '/tmp/r1.pdf'});
 
       final path = await provider.exportResearch('r1', 'pdf');

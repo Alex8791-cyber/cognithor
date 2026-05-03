@@ -22,7 +22,7 @@ void main() {
     });
 
     test('refresh populates packs from API response', () async {
-      when(() => api.get('/api/v1/packs/loaded')).thenAnswer(
+      when(() => api.get('packs/loaded')).thenAnswer(
         (_) async => {
           'packs': [
             {
@@ -52,7 +52,7 @@ void main() {
 
     test('refresh swallows errors and leaves packs unchanged', () async {
       when(
-        () => api.get('/api/v1/packs/loaded'),
+        () => api.get('packs/loaded'),
       ).thenThrow(Exception('offline'));
 
       await provider.refresh();
@@ -61,7 +61,7 @@ void main() {
     });
 
     test('refresh handles missing "packs" key gracefully', () async {
-      when(() => api.get('/api/v1/packs/loaded')).thenAnswer((_) async => {});
+      when(() => api.get('packs/loaded')).thenAnswer((_) async => {});
 
       await provider.refresh();
 
@@ -70,7 +70,7 @@ void main() {
 
     test('refresh notifies listeners', () async {
       when(
-        () => api.get('/api/v1/packs/loaded'),
+        () => api.get('packs/loaded'),
       ).thenAnswer((_) async => {'packs': []});
 
       var notifyCount = 0;
