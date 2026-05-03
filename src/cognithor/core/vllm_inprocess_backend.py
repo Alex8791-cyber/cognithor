@@ -62,7 +62,12 @@ class VLLMInProcessBackend(LLMBackend):
         hf_home: str | None = None,
     ) -> None:
         self._model_name = model
-        self._engine_kwargs = {
+        # ``dict[str, Any]`` keeps mypy happy when these get unpacked
+        # into ``vllm.LLM(**kwargs)`` — each LLM kwarg is its own
+        # specific type (str / int / float / bool / Literal[...]) and
+        # the implicit ``dict[str, object]`` mypy would infer here
+        # would conflict with every one of them.
+        self._engine_kwargs: dict[str, Any] = {
             "model": model,
             "max_model_len": max_model_len,
             "max_num_seqs": max_num_seqs,
@@ -94,7 +99,7 @@ class VLLMInProcessBackend(LLMBackend):
             try:
                 # Heavy import — keep it lazy so the module loads on
                 # hosts without vLLM / GPU.
-                from vllm import LLM  # type: ignore[import-not-found]
+                from vllm import LLM
             except ImportError as exc:
                 raise LLMBackendError(
                     "vllm is not installed. Run inside a venv with "
@@ -139,7 +144,7 @@ class VLLMInProcessBackend(LLMBackend):
                 f"VLLMInProcessBackend is loaded with {self._model_name!r}, "
                 f"caller requested {model!r}. Construct a new backend per model."
             )
-        from vllm import SamplingParams  # type: ignore[import-not-found]
+        from vllm import SamplingParams
 
         sampling = SamplingParams(temperature=temperature, top_p=top_p, max_tokens=2048)
         outputs = await asyncio.to_thread(engine.chat, messages, sampling)
@@ -160,8 +165,11 @@ class VLLMInProcessBackend(LLMBackend):
         num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         # Streaming is supported by vLLM but the in-process API
-        # delivers complete outputs. Async-iterator over the final
-        # text in chunks keeps the interface contract.
+        # delivers complete outputs. Yield the final text as a single
+        # chunk so the caller's async-iterator contract holds — that's
+        # also what mypy expects from a function declared as
+        # ``-> AsyncIterator[str]`` (an async generator), matching the
+        # non-async abstract signature in :class:`LLMBackend`.
         response = await self.chat(
             model=model,
             messages=messages,
@@ -169,11 +177,7 @@ class VLLMInProcessBackend(LLMBackend):
             top_p=top_p,
             num_ctx=num_ctx,
         )
-
-        async def _gen() -> AsyncIterator[str]:
-            yield response.content
-
-        return _gen()
+        yield response.content
 
     async def embed(
         self,
@@ -190,7 +194,7 @@ class VLLMInProcessBackend(LLMBackend):
         # The backend is "available" once vLLM imports cleanly. We do
         # NOT eagerly load the model here — that happens on first chat().
         try:
-            import vllm  # type: ignore[import-not-found]  # noqa: F401
+            import vllm  # noqa: F401
 
             return True
         except ImportError:

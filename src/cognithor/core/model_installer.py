@@ -22,7 +22,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from cognithor.utils.logging import get_logger
 
@@ -112,7 +112,7 @@ def is_installed(
 # ---------------------------------------------------------------------------
 
 
-def _load_registry() -> dict:
+def _load_registry() -> dict[str, Any]:
     if not _REGISTRY_PATH.exists():
         return {}
     with open(_REGISTRY_PATH, encoding="utf-8") as f:
@@ -184,7 +184,7 @@ def _install_ollama_tag(
 
 def _install_community_gguf(
     hf_repo: str,
-    entry: dict,
+    entry: dict[str, Any],
     *,
     progress_cb: Callable[[str], None] | None,
 ) -> InstallResult:
@@ -219,7 +219,7 @@ def _install_community_gguf(
         )
 
     try:
-        from huggingface_hub import hf_hub_download  # type: ignore[import-untyped]
+        from huggingface_hub import hf_hub_download
     except ImportError:
         return InstallResult(
             model_name=hf_repo,

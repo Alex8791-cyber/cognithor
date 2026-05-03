@@ -13,6 +13,7 @@ Bibel-Referenz: Phase 3, Verbesserung 3 (HybridClaw).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -61,7 +62,7 @@ def truncate_head_tail(
     return text[:head_chars] + marker + text[-tail_chars:]
 
 
-def estimate_messages_tokens(messages: list[dict]) -> int:
+def estimate_messages_tokens(messages: list[dict[str, Any]]) -> int:
     """Grobe Token-Schaetzung fuer eine Message-Liste."""
     total = 2  # Overhead
     for msg in messages:
@@ -77,7 +78,7 @@ def estimate_messages_tokens(messages: list[dict]) -> int:
 
 
 def apply_context_guard(
-    messages: list[dict],
+    messages: list[dict[str, Any]],
     context_window_tokens: int = 128_000,
     config: ContextGuardConfig | None = None,
 ) -> ContextGuardResult:

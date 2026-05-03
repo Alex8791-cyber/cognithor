@@ -20,6 +20,7 @@ import socket
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 from cognithor.utils.logging import get_logger
 
@@ -147,7 +148,7 @@ class NetworkEndpointManager:
         self._config_path = config_path or (Path.home() / ".cognithor" / "network_endpoints.json")
         self._config = self._load()
 
-    def get_detected_interfaces(self) -> list[dict]:
+    def get_detected_interfaces(self) -> list[dict[str, Any]]:
         """Alle erkannten Interfaces mit Status."""
         interfaces = detect_interfaces()
         enabled = set(self._config.enabled_ips)

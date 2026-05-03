@@ -15,7 +15,7 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 TOOL_CALL_HISTORY_SIZE = 24
 NO_PROGRESS_REPEAT_THRESHOLD = 4
@@ -81,7 +81,7 @@ def _sha256(value: object) -> str:
     return hashlib.sha256(_stable_stringify(value).encode()).hexdigest()[:16]
 
 
-def _hash_call(tool_name: str, args: dict) -> str:
+def _hash_call(tool_name: str, args: dict[str, Any]) -> str:
     return f"{tool_name}:{_sha256(args)}"
 
 
@@ -100,7 +100,7 @@ class ToolLoopDetector:
     def __init__(self) -> None:
         self._history: list[ToolCallHistoryEntry] = []
 
-    def record(self, tool_name: str, args: dict, output: str, is_error: bool) -> None:
+    def record(self, tool_name: str, args: dict[str, Any], output: str, is_error: bool) -> None:
         """Zeichnet einen Tool-Call auf."""
         self._history.append(
             ToolCallHistoryEntry(
@@ -113,7 +113,7 @@ class ToolLoopDetector:
         if len(self._history) > TOOL_CALL_HISTORY_SIZE:
             self._history = self._history[-TOOL_CALL_HISTORY_SIZE:]
 
-    def detect(self, tool_name: str, args: dict) -> ToolLoopDetected:
+    def detect(self, tool_name: str, args: dict[str, Any]) -> ToolLoopDetected:
         """Prueft ob der naechste Call eine Schleife waere."""
         if tool_name not in GUARDED_TOOL_NAMES:
             return ToolLoopDetected(stuck=False)

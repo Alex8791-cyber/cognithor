@@ -335,9 +335,7 @@ class RedisLockBackend(DistributedLock):
 
         while True:
             try:
-                result = await client.set(  # type: ignore[union-attr]
-                    key, token, nx=True, ex=int(max(self._default_ttl, 1))
-                )
+                result = await client.set(key, token, nx=True, ex=int(max(self._default_ttl, 1)))
                 if result:
                     self._tokens[name] = token
                     return True
@@ -365,7 +363,7 @@ class RedisLockBackend(DistributedLock):
             end
             """
             try:
-                await client.eval(lua, 1, key, token)  # type: ignore[union-attr]
+                await client.eval(lua, 1, key, token)
                 return
             except Exception:
                 log.debug("Redis release failed for %s", name)

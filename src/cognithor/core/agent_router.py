@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from cognithor.core.bindings import BindingEngine, MessageContext
 from cognithor.utils.logging import get_logger
@@ -261,7 +261,7 @@ class AgentRouter:
     def __init__(self, audit_logger: AuditLogger | None = None) -> None:
         self._agents: dict[str, AgentProfile] = {}
         self._default_agent: str = "jarvis"
-        self._compiled_patterns: dict[str, list[re.Pattern]] = {}
+        self._compiled_patterns: dict[str, list[re.Pattern[str]]] = {}
         self._binding_engine: BindingEngine = BindingEngine()
         self._audit_logger = audit_logger
 

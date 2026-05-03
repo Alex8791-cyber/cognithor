@@ -14,6 +14,8 @@ Usage::
 
 from __future__ import annotations
 
+from typing import Any
+
 
 class JarvisError(Exception):
     """Base exception for all Cognithor errors."""
@@ -22,7 +24,7 @@ class JarvisError(Exception):
         self,
         message: str,
         error_code: str = "COGNITHOR_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.error_code = error_code
@@ -36,7 +38,7 @@ class ConfigError(JarvisError):
         self,
         message: str,
         error_code: str = "CONFIG_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -48,7 +50,7 @@ class LLMError(JarvisError):
         self,
         message: str,
         error_code: str = "LLM_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -60,7 +62,7 @@ class ToolExecutionError(JarvisError):
         self,
         message: str,
         error_code: str = "TOOL_EXECUTION_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -72,7 +74,7 @@ class SandboxError(JarvisError):
         self,
         message: str,
         error_code: str = "SANDBOX_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -84,7 +86,7 @@ class ChannelError(JarvisError):
         self,
         message: str,
         error_code: str = "CHANNEL_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -99,7 +101,7 @@ class JarvisMemoryError(JarvisError):
         self,
         message: str,
         error_code: str = "MEMORY_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -115,7 +117,7 @@ class JarvisSecurityError(JarvisError):
         self,
         message: str,
         error_code: str = "SECURITY_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -127,7 +129,7 @@ class PolicyViolation(JarvisError):
         self,
         message: str,
         error_code: str = "POLICY_VIOLATION",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -139,7 +141,7 @@ class GatekeeperDenied(PolicyViolation):
         self,
         message: str,
         error_code: str = "GATEKEEPER_DENIED",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -151,7 +153,7 @@ class AuthenticationError(JarvisError):
         self,
         message: str,
         error_code: str = "AUTHENTICATION_ERROR",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
 
@@ -163,6 +165,6 @@ class RateLimitExceeded(JarvisError):
         self,
         message: str,
         error_code: str = "RATE_LIMIT_EXCEEDED",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, error_code=error_code, details=details)
