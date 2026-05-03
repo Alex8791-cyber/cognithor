@@ -11,6 +11,7 @@ from cognithor.channels.program_synthesis.arc_agi3.state_renderer import (
     render_cluster_summary,
     render_delta_summary,
     render_state_changes_in_window,
+    summarise_action_pixel_history,
 )
 from cognithor.channels.program_synthesis.integration.capability_tokens import (  # noqa: F401
     PSECapability as _PSECapability,
@@ -193,3 +194,56 @@ class TestRenderStateChangesInWindow:
             m.append(grid=grid, action_name=f"ACTION{i % 4}", levels_completed=0)
         out = render_state_changes_in_window(m, max_steps=3)
         assert len(out.splitlines()) == 3
+
+
+class TestSummariseActionPixelHistory:
+    """Sprint-19 Hebel S — per-action pixΔ stats over the recent window."""
+
+    def test_empty_memory_returns_marker(self) -> None:
+        assert summarise_action_pixel_history(EpisodeMemory()) == "(no action history yet)"
+
+    def test_single_step_no_pair_yet(self) -> None:
+        m = EpisodeMemory()
+        m.append(grid=_g([[1]]), action_name="ACTION3", levels_completed=0)
+        assert summarise_action_pixel_history(m) == "(no action history yet)"
+
+    def test_renders_avg_max_n_per_action(self) -> None:
+        m = EpisodeMemory()
+        # ACTION3 → pixΔ=1, ACTION3 → pixΔ=1, ACTION6 → pixΔ=1
+        m.append(grid=_g([[0, 0]]), action_name="ACTION1", levels_completed=0)
+        m.append(grid=_g([[1, 0]]), action_name="ACTION3", levels_completed=0)
+        m.append(grid=_g([[1, 1]]), action_name="ACTION3", levels_completed=0)
+        m.append(grid=_g([[2, 1]]), action_name="ACTION6", levels_completed=0)
+        out = summarise_action_pixel_history(m)
+        assert "ACTION3:" in out
+        assert "ACTION6:" in out
+        assert "n=2" in out  # ACTION3 occurred twice
+
+    def test_appends_danger_suffix_above_1000(self) -> None:
+        m = EpisodeMemory()
+        small = np.zeros((64, 64), dtype=np.int8)
+        big = np.full((64, 64), 4, dtype=np.int8)  # ~4096-cell flip
+        m.append(grid=small, action_name="ACTION1", levels_completed=0)
+        m.append(grid=big, action_name="ACTION6", levels_completed=0)
+        out = summarise_action_pixel_history(m)
+        assert "DANGER: max>1000" in out
+
+    def test_appends_caution_suffix_between_500_and_1000(self) -> None:
+        m = EpisodeMemory()
+        before = np.zeros((64, 64), dtype=np.int8)
+        after = np.zeros((64, 64), dtype=np.int8)
+        # 600 cells flipped (10 rows × 60 cols)
+        after[:10, :60] = 4
+        m.append(grid=before, action_name="ACTION1", levels_completed=0)
+        m.append(grid=after, action_name="ACTION6", levels_completed=0)
+        out = summarise_action_pixel_history(m)
+        assert "CAUTION: max>500" in out
+        assert "DANGER" not in out
+
+    def test_no_suffix_when_max_below_500(self) -> None:
+        m = EpisodeMemory()
+        m.append(grid=_g([[0, 0]]), action_name="ACTION1", levels_completed=0)
+        m.append(grid=_g([[1, 0]]), action_name="ACTION3", levels_completed=0)
+        out = summarise_action_pixel_history(m)
+        assert "DANGER" not in out
+        assert "CAUTION" not in out

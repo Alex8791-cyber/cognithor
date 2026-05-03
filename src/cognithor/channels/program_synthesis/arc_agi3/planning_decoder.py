@@ -307,6 +307,18 @@ class PlanningLLMActionDecoder(ActionDecoder):
                 )
             except Exception:
                 pass
+        if "action_pixel_history" in existing:
+            # Sprint-19 Hebel S: per-action pixΔ histogram (avg / max /
+            # n with DANGER / CAUTION suffixes) so the vision prompt
+            # can show the LLM the risk profile of each action class.
+            try:
+                from cognithor.channels.program_synthesis.arc_agi3.state_renderer import (
+                    summarise_action_pixel_history,
+                )
+
+                ctx_kwargs["action_pixel_history"] = summarise_action_pixel_history(self._memory)
+            except Exception:
+                pass
         ctx = FrameContext(**ctx_kwargs)
 
         try:

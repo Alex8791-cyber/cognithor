@@ -113,6 +113,13 @@ class FrameContext:
     # prompts stay byte-identical.
     cluster_summary: str = ""
     delta_window_summary: str = ""
+    # Sprint-19 Hebel S (per-action pixΔ histogram): one line per
+    # action seen in the episode showing avg / max pixΔ + count, with
+    # DANGER / CAUTION suffixes matching Hebel M's risk vocabulary.
+    # Lets the LLM reason about per-action risk (max) and impact
+    # (avg) at a glance. Empty string disables the corresponding
+    # prompt section.
+    action_pixel_history: str = ""
 
 
 # A callable that takes a :class:`FrameContext` and returns

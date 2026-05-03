@@ -294,6 +294,7 @@ _VISION_PLANNING_USER_TEMPLATE = (
     "Trajectory (most-recent first, what each action did):\n"
     "{delta_window}\n"
     "\n"
+    "{action_pixel_history_block}"
     "Available actions: {actions}\n"
     "Recent action sequence: {history}\n"
     "{effects_line}"
@@ -391,10 +392,34 @@ def _build_vision_user_content(
         if getattr(ctx, "goal_summary", "")
         else ""
     )
+    # Sprint-19 Hebel S: per-action pixΔ histogram. The legacy helper
+    # is called with explicit memory; render the block inline so this
+    # path stays self-contained for tests that don't go through the
+    # decoder.
+    action_pixel_history_block = ""
+    if memory is not None:
+        try:
+            from cognithor.channels.program_synthesis.arc_agi3.episode_memory import (
+                EpisodeMemory as _EM,
+            )
+            from cognithor.channels.program_synthesis.arc_agi3.state_renderer import (
+                summarise_action_pixel_history,
+            )
+
+            if isinstance(memory, _EM):
+                hist = summarise_action_pixel_history(memory)
+                if hist and "no action history" not in hist:
+                    action_pixel_history_block = (
+                        "Per-action pixΔ history (this episode):\n" + hist + "\n\n"
+                    )
+        except Exception:
+            pass
+
     text = _VISION_PLANNING_USER_TEMPLATE.format(
         prev_image_note=prev_image_note,
         cluster_summary=cluster_summary,
         delta_window=delta_window,
+        action_pixel_history_block=action_pixel_history_block,
         actions=", ".join(ctx.available_action_names),
         history=ctx.history_summary,
         effects_line=effects_line,
@@ -513,10 +538,20 @@ def build_inprocess_vllm_vision_planning_choice_fn(
             )
         cluster_summary = getattr(ctx, "cluster_summary", "") or "(not annotated)"
         delta_window = getattr(ctx, "delta_window_summary", "") or "(no completed transitions yet)"
+        # Sprint-19 Hebel S: render the per-action pixΔ block from the
+        # decoder-populated ``ctx.action_pixel_history`` field. Empty
+        # string disables the block (legacy prompt byte-identical).
+        action_pixel_history = getattr(ctx, "action_pixel_history", "")
+        action_pixel_history_block = ""
+        if action_pixel_history and "no action history" not in action_pixel_history:
+            action_pixel_history_block = (
+                "Per-action pixΔ history (this episode):\n" + action_pixel_history + "\n\n"
+            )
         text_after_image = _VISION_PLANNING_USER_TEMPLATE.format(
             prev_image_note=prev_image_note,
             cluster_summary=cluster_summary,
             delta_window=delta_window,
+            action_pixel_history_block=action_pixel_history_block,
             actions=", ".join(ctx.available_action_names),
             history=ctx.history_summary,
             effects_line=(
