@@ -164,6 +164,160 @@ class TestHandleSynthesize:
             "sandbox",
             "error",
         }
+        # Sprint-22 A.4 hardening: response includes the new fields.
+        assert "held_out_examples" in out
+        assert "escalations" in out
+
+    @pytest.mark.asyncio
+    async def test_auto_held_out_promotes_last_example_when_three_or_more(self) -> None:
+        """Sprint-22 A.4: ≥3 examples + auto_held_out=True (default) →
+        last example is auto-split into held_out so the verifier has an
+        anti-overfit gate.
+        """
+        out = await handle_pse_synthesize(
+            examples=[
+                {"input": [[0]], "output": [[0]]},
+                {"input": [[1]], "output": [[1]]},
+                {"input": [[2]], "output": [[2]]},
+            ],
+            budget={"max_depth": 2, "wall_clock_seconds": 5.0},
+        )
+        assert out["held_out_examples"] == 1
+
+    @pytest.mark.asyncio
+    async def test_auto_held_out_disabled_via_flag(self) -> None:
+        out = await handle_pse_synthesize(
+            examples=[
+                {"input": [[0]], "output": [[0]]},
+                {"input": [[1]], "output": [[1]]},
+                {"input": [[2]], "output": [[2]]},
+            ],
+            auto_held_out=False,
+            budget={"max_depth": 2, "wall_clock_seconds": 5.0},
+        )
+        assert out["held_out_examples"] == 0
+
+    @pytest.mark.asyncio
+    async def test_auto_held_out_skipped_below_three_examples(self) -> None:
+        """Two examples is the engine's minimum demo set — splitting
+        one off would break it. Auto-promotion must skip in that case.
+        """
+        out = await handle_pse_synthesize(
+            examples=[
+                {"input": [[0]], "output": [[0]]},
+                {"input": [[1]], "output": [[1]]},
+            ],
+            budget={"max_depth": 2, "wall_clock_seconds": 5.0},
+        )
+        assert out["held_out_examples"] == 0
+
+    @pytest.mark.asyncio
+    async def test_explicit_held_out_overrides_auto_split(self) -> None:
+        out = await handle_pse_synthesize(
+            examples=[
+                {"input": [[0]], "output": [[0]]},
+                {"input": [[1]], "output": [[1]]},
+                {"input": [[2]], "output": [[2]]},
+            ],
+            held_out=[
+                {"input": [[5]], "output": [[5]]},
+                {"input": [[6]], "output": [[6]]},
+            ],
+            budget={"max_depth": 2, "wall_clock_seconds": 5.0},
+        )
+        assert out["held_out_examples"] == 2  # uses explicit, not auto-split
+
+    @pytest.mark.asyncio
+    async def test_invalid_held_out_propagates_error(self) -> None:
+        out = await handle_pse_synthesize(
+            examples=[
+                {"input": [[0]], "output": [[0]]},
+                {"input": [[1]], "output": [[1]]},
+            ],
+            held_out=[{"only": "input missing"}, {"only": "input missing"}],
+        )
+        assert "error" in out
+        assert "held_out" in out["error"]
+
+    @pytest.mark.asyncio
+    async def test_auto_escalate_default_off(self) -> None:
+        """Sprint-22 A.5: ``auto_escalate`` is False by default — a single
+        attempt runs even when budget exhausts.
+        """
+        out = await handle_pse_synthesize(
+            examples=[
+                {"input": [[0]], "output": [[0]]},
+                {"input": [[1]], "output": [[1]]},
+            ],
+            budget={"max_depth": 2, "wall_clock_seconds": 5.0},
+        )
+        assert out["escalations"] == 0
+
+    @pytest.mark.asyncio
+    async def test_auto_escalate_when_first_attempt_busts_budget(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sprint-22 A.5: when ``auto_escalate=True`` AND the first
+        attempt comes back BUDGET_EXCEEDED, the handler retries once
+        with depth+1 and 2× the candidate cap.
+        """
+        from cognithor.channels.program_synthesis.core.types import (
+            SynthesisResult,
+            SynthesisStatus,
+        )
+        from cognithor.mcp import pse_tools
+
+        attempts: list[dict[str, Any]] = []
+
+        class _StubChannel:
+            def synthesize(self, request: Any) -> SynthesisResult:
+                attempts.append(
+                    {
+                        "max_depth": request.budget.max_depth,
+                        "max_candidates": request.budget.max_candidates,
+                    }
+                )
+                if len(attempts) == 1:
+                    return SynthesisResult(
+                        status=SynthesisStatus.BUDGET_EXCEEDED,
+                        program=None,
+                        score=0.0,
+                        confidence=0.0,
+                        cost_seconds=0.05,
+                        cost_candidates=10,
+                    )
+                return SynthesisResult(
+                    status=SynthesisStatus.SUCCESS,
+                    program="<stub>",
+                    score=1.0,
+                    confidence=1.0,
+                    cost_seconds=0.05,
+                    cost_candidates=10,
+                )
+
+        monkeypatch.setattr(pse_tools, "_get_channel", lambda: _StubChannel())
+
+        out = await handle_pse_synthesize(
+            examples=[
+                {"input": [[0]], "output": [[0]]},
+                {"input": [[1]], "output": [[1]]},
+            ],
+            budget={
+                "max_depth": 4,
+                "max_candidates": 1000,
+                "wall_clock_seconds": 5.0,
+                "auto_escalate": True,
+            },
+        )
+        # Two attempts: first busted, second succeeded with escalated budget.
+        assert len(attempts) == 2
+        assert attempts[1]["max_depth"] == 5  # depth + 1
+        assert attempts[1]["max_candidates"] == 2000  # candidates × 2
+        assert out["status"] == "success"
+        assert out["escalations"] == 1
+        # Aggregated cost across both attempts:
+        assert out["cost_seconds"] == pytest.approx(0.1, rel=1e-6)
+        assert out["cost_candidates"] == 20
 
 
 class TestRegisterPseTools:
