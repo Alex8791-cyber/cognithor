@@ -583,7 +583,7 @@ class EcosystemPolicy:
 
     def stats(self) -> dict[str, Any]:
         badges = list(self._badges.values())
-        tier_counts = {}
+        tier_counts: dict[str, int] = {}
         for b in badges:
             tier_counts[b.tier.value] = tier_counts.get(b.tier.value, 0) + 1
         return {

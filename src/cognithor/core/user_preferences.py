@@ -12,7 +12,7 @@ import logging
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -23,7 +23,7 @@ try:
     from cognithor.security.encrypted_db import compatible_row_factory
 except ImportError:
 
-    def compatible_row_factory():
+    def compatible_row_factory() -> Any:
         return sqlite3.Row
 
 
@@ -120,7 +120,7 @@ class UserPreferenceStore:
         self._conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
         self._conn.row_factory = compatible_row_factory()
         self._ensure_table()
-        log.info("user_preferences_reconnected", path=str(self._db_path)[-30:])
+        log.info("user_preferences_reconnected", extra={"path": str(self._db_path)[-30:]})
 
     def get_or_create(self, user_id: str) -> UserPreference:
         """Gets or creates a user preference record."""

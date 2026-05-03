@@ -16,7 +16,7 @@ try:
     from cognithor.security.encrypted_db import compatible_row_factory
 except ImportError:
 
-    def compatible_row_factory():
+    def compatible_row_factory() -> Any:
         return sqlite3.Row
 
 
@@ -203,7 +203,7 @@ class TaskProfiler:
         tool_counts: dict[str, int] = {}
         for t in all_tools:
             tool_counts[t] = tool_counts.get(t, 0) + 1
-        common = sorted(tool_counts, key=tool_counts.get, reverse=True)[:5]
+        common = sorted(tool_counts, key=lambda t: tool_counts[t], reverse=True)[:5]
 
         n = len(rows)
         return TaskProfile(

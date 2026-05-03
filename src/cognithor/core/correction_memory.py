@@ -18,7 +18,7 @@ try:
     from cognithor.security.encrypted_db import compatible_row_factory
 except ImportError:
 
-    def compatible_row_factory():
+    def compatible_row_factory() -> Any:
         return sqlite3.Row
 
 
@@ -86,7 +86,7 @@ class CorrectionMemory:
                     "last_triggered_at = ? WHERE id = ?",
                     (time.time(), existing["id"]),
                 )
-                return existing["id"]
+                return str(existing["id"])
 
             conn.execute(
                 "INSERT INTO corrections (id, user_message, correction_text, "

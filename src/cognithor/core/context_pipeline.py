@@ -247,16 +247,18 @@ class ContextPipeline:
             return []
         try:
             if hasattr(self._memory_manager, "search_memory"):
-                return await self._memory_manager.search_memory(
+                results: list[MemorySearchResult] = await self._memory_manager.search_memory(
                     query=query,
                     top_k=self._config.memory_top_k,
                     enhanced=True,
                 )
+                return results
             # Fallback: sync BM25-only (legacy)
-            return self._memory_manager.search_memory_sync(
+            sync_results: list[MemorySearchResult] = self._memory_manager.search_memory_sync(
                 query=query,
                 top_k=self._config.memory_top_k,
             )
+            return sync_results
         except Exception:
             log.debug("context_memory_search_failed", exc_info=True)
             return []
@@ -266,10 +268,11 @@ class ContextPipeline:
         if not self._memory_manager:
             return []
         try:
-            return self._memory_manager.search_memory_sync(
+            results: list[MemorySearchResult] = self._memory_manager.search_memory_sync(
                 query=query,
                 top_k=self._config.memory_top_k,
             )
+            return results
         except Exception:
             log.debug("context_memory_search_failed", exc_info=True)
             return []

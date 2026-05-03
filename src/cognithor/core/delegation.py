@@ -306,12 +306,13 @@ class DelegationEngine:
 
         # Auto-discover target agent if not specified
         if not to_agent:
-            to_agent = self._auto_discover_agent(task, from_agent)
-            if not to_agent:
+            discovered = self._auto_discover_agent(task, from_agent)
+            if not discovered:
                 result.status = DelegationStatus.REJECTED
                 result.validation_errors = ["No suitable agent found for task"]
                 self._record(result, start_time)
                 return result
+            to_agent = discovered
             result.to_agent = to_agent
 
         # Check delegation permission
@@ -499,7 +500,8 @@ class DelegationEngine:
         raw = raw_response.strip()
         if raw.startswith("{"):
             try:
-                return json.loads(raw)
+                parsed: dict[str, Any] = json.loads(raw)
+                return parsed
             except json.JSONDecodeError:
                 pass  # Not valid JSON, fall through to wrap as plain response
         return {"response": raw}
@@ -511,12 +513,15 @@ class DelegationEngine:
 
         if self._audit:
             try:
-                self._audit.log(
-                    event="agent_delegation",
-                    from_agent=result.from_agent,
-                    to_agent=result.to_agent,
-                    status=result.status,
-                    duration_ms=result.duration_ms,
+                self._audit.record_event(
+                    session_id=f"deleg_{result.from_agent}_{result.to_agent}",
+                    event_type="agent_delegation",
+                    details={
+                        "from_agent": result.from_agent,
+                        "to_agent": result.to_agent,
+                        "status": str(result.status),
+                        "duration_ms": result.duration_ms,
+                    },
                 )
             except Exception as exc:
                 log.debug("delegation_audit_log_error", error=str(exc))

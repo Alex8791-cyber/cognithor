@@ -18,8 +18,14 @@ from __future__ import annotations
 
 import asyncio
 import re
+from typing import TYPE_CHECKING, TypeVar
 
 from cognithor.utils.logging import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+T = TypeVar("T")
 
 log = get_logger(__name__)
 
@@ -72,11 +78,11 @@ def should_fallback_stream_to_sync(error: Exception) -> bool:
 
 
 async def retry_llm_call(
-    call_fn,
+    call_fn: Callable[[], Awaitable[T]],
     *,
     max_retries: int = MAX_RETRIES,
-    stream_fallback_fn=None,
-):
+    stream_fallback_fn: Callable[[], Awaitable[T]] | None = None,
+) -> T:
     """Retry an async LLM call with exponential backoff.
 
     Args:

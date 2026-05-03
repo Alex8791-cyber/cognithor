@@ -487,8 +487,11 @@ class Executor:
             log.debug("fact_question_cross_check_injected", tool=tool_name)
 
         if _agent_sandbox_var.get() and tool_name == "exec_command":
-            # Pass sandbox overrides as internal params
+            # Pass sandbox overrides as internal params. The outer
+            # truthy check pins ``overrides`` to a non-None dict so
+            # the indexing below is type-safe.
             overrides = _agent_sandbox_var.get()
+            assert overrides is not None
             if "_sandbox_network" not in params and "network" in overrides:
                 params["_sandbox_network"] = overrides["network"]
             if "_sandbox_max_memory_mb" not in params and "max_memory_mb" in overrides:

@@ -808,7 +808,8 @@ class CUAgentExecutor:
         if not handler:
             return None
         try:
-            return await handler()
+            result: dict[str, Any] | None = await handler()
+            return result
         except Exception:
             log.debug("cu_agent_screenshot_failed", exc_info=True)
             return None
@@ -888,7 +889,7 @@ class CUAgentExecutor:
                 messages=[formatted],
                 temperature=0.1,
             )
-            text = response.get("message", {}).get("content", "")
+            text: str = response.get("message", {}).get("content", "")
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
             return text
         except Exception:

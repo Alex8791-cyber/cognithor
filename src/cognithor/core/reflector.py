@@ -909,7 +909,7 @@ Regeln:
 
         def _find_entity_by_name(name: str) -> Entity | None:
             """Sucht eine Entitaet per Name (exakter Match bevorzugt)."""
-            results = indexer.search_entities(name=name)
+            results: list[Entity] = indexer.search_entities(name=name)
             # Exakten Match bevorzugen
             for e in results:
                 if e.name.lower() == name.lower():

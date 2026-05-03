@@ -136,11 +136,11 @@ class Tenant:
 
     def can_add_agent(self, current_agents: int) -> bool:
         max_a = self.limits["max_agents"]
-        return max_a == -1 or current_agents < max_a
+        return bool(max_a == -1 or current_agents < max_a)
 
     def can_add_user(self) -> bool:
         max_u = self.limits["max_users"]
-        return max_u == -1 or len(self.users) < max_u
+        return bool(max_u == -1 or len(self.users) < max_u)
 
     def to_dict(self) -> dict[str, Any]:
         return {

@@ -106,7 +106,7 @@ def get_behaviour(role: AgentRole) -> dict[str, Any]:
 
 def can_spawn(role: AgentRole) -> bool:
     """Return True if the role allows spawning sub-agents."""
-    return ROLE_BEHAVIOURS[role]["can_spawn_agents"]
+    return bool(ROLE_BEHAVIOURS[role]["can_spawn_agents"])
 
 
 def is_tool_allowed_for_role(tool_name: str, role: AgentRole) -> bool:
@@ -123,9 +123,9 @@ def is_tool_allowed_for_role(tool_name: str, role: AgentRole) -> bool:
 
 def should_log_output(role: AgentRole) -> bool:
     """Return True if the role's output should be logged to conversation history."""
-    return ROLE_BEHAVIOURS[role]["log_output"]
+    return bool(ROLE_BEHAVIOURS[role]["log_output"])
 
 
 def uses_extended_thinking(role: AgentRole) -> bool:
     """Return True if the role uses extended thinking."""
-    return ROLE_BEHAVIOURS[role]["extended_thinking"]
+    return bool(ROLE_BEHAVIOURS[role]["extended_thinking"])
