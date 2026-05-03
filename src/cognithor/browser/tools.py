@@ -425,7 +425,7 @@ def register_browser_use_tools(
 
             solver._vision_fn = _vision_bridge
 
-        result = await solver.solve(agent.current_page)  # type: ignore[attr-defined]
+        result = await solver.solve(agent.current_page)
         if result.success:
             return json.dumps(
                 {

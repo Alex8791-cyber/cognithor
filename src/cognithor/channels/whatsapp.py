@@ -93,7 +93,7 @@ class WhatsAppChannel(Channel):
         # Optional voice transcription
         self._whisper = None
         try:
-            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+            from faster_whisper import WhisperModel
 
             self._whisper = WhisperModel("base", compute_type="int8")
             logger.info("WhatsApp: faster-whisper geladen fuer Voice-Transkription")

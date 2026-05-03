@@ -118,7 +118,7 @@ class ExplorationExecutor:
         try:
             # Use the memory manager's search if available
             if hasattr(self._memory, "search"):
-                results = await self._memory.search(  # type: ignore[operator]
+                results = await self._memory.search(
                     query,
                     top_k=5,
                 )

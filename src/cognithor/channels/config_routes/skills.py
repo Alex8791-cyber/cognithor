@@ -108,8 +108,8 @@ def _register_skill_routes(
 
             return {
                 "categories": [
-                    c.to_dict()  # type: ignore[attr-defined]
-                    for c in SkillMarketplace().categories()
+                    c.to_dict()
+                    for c in SkillMarketplace().categories()  # type: ignore[attr-defined]
                 ]
             }
         except Exception as exc:

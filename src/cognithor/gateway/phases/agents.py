@@ -136,7 +136,7 @@ async def init_agents(
 
         generated_dir = cognithor_home / "skills" / "generated"
         skill_lifecycle = SkillLifecycleManager(
-            registry=skill_registry,  # type: ignore[arg-type]
+            registry=skill_registry,
             generated_dir=generated_dir,
         )
         log.info("skill_lifecycle_manager_created")

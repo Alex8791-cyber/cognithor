@@ -200,8 +200,7 @@ class TextExtractor:
 
         # Fallback: PyMuPDF direkt (blocking I/O → thread)
         try:
-            import fitz  # type: ignore[import-untyped]  # PyMuPDF
-
+            import fitz  # PyMuPDF
         except ImportError as exc:
             raise OSError("PDF-Extraktion benötigt PyMuPDF: pip install pymupdf") from exc
 

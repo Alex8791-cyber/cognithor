@@ -65,8 +65,8 @@ class HIMAgent:
             gh = self._collectors["github"]
             if gh.is_available() and request.target_github:
                 profile = await gh._fetch_with_retry(
-                    f"{gh.BASE_URL}/users/{request.target_github}",  # type: ignore[attr-defined]
-                    headers=gh._headers(),  # type: ignore[attr-defined]
+                    f"{gh.BASE_URL}/users/{request.target_github}",
+                    headers=gh._headers(),
                 )
                 github_followers = profile.get("followers", 0)
         except Exception:
@@ -193,7 +193,7 @@ class HIMAgent:
         except Exception:
             log.debug("him_vault_save_failed", exc_info=True)
 
-    def _generate_summary(self, request, trust_score, claims, evidence) -> str:  # type: ignore[no-untyped-def]
+    def _generate_summary(self, request, trust_score, claims, evidence) -> str:
         confirmed = sum(1 for c in claims if c.status == VerificationStatus.CONFIRMED)
         contradicted = sum(1 for c in claims if c.status == VerificationStatus.CONTRADICTED)
         if not evidence:
@@ -208,7 +208,7 @@ class HIMAgent:
             + "."
         )
 
-    def _generate_recommendation(self, trust_score) -> str:  # type: ignore[no-untyped-def]
+    def _generate_recommendation(self, trust_score) -> str:
         if trust_score.label == "high":
             return "Credentials appear credible. Proceed with normal engagement."
         if trust_score.label == "mixed":

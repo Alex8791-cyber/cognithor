@@ -17,7 +17,7 @@ log = get_logger(__name__)
 try:
     from cognithor.security.encrypted_file import efile as _efile
 except ImportError:
-    _efile = None  # type: ignore[assignment]
+    _efile = None
 
 
 class VaultFileBackend(VaultBackend):
@@ -102,7 +102,7 @@ class VaultFileBackend(VaultBackend):
         yaml_text = content[4:close]
         body = content[close + 4 :].lstrip("\n")
         try:
-            import yaml  # type: ignore[import-untyped]
+            import yaml
 
             data = yaml.safe_load(yaml_text)
             if not isinstance(data, dict):

@@ -154,7 +154,7 @@ async def handle_arc_play(**kwargs: Any) -> str:
                 fast_path_enabled=True,
             )
         else:
-            agent = Sprint10DSLAgent(  # type: ignore[assignment]
+            agent = Sprint10DSLAgent(
                 audit_trail=trail,
                 game_profile=profile,
                 strategy_name="dsl_full",

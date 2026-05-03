@@ -45,7 +45,7 @@ class EmbeddingEngine:
             try:
                 from sentence_transformers import SentenceTransformer
 
-                self._model = SentenceTransformer(self.model_name, device=self.device)  # type: ignore[assignment]
+                self._model = SentenceTransformer(self.model_name, device=self.device)
                 logger.info(f"Model loaded: {self.model_name}")
             except ImportError:
                 logger.error(
@@ -68,7 +68,7 @@ class EmbeddingEngine:
         """
         self._load_model()
         try:
-            embedding = self._model.encode(text, convert_to_numpy=True)  # type: ignore[attr-defined]
+            embedding = self._model.encode(text, convert_to_numpy=True)
             return cast("list[float]", embedding.tolist())
 
         except Exception as e:
@@ -88,7 +88,7 @@ class EmbeddingEngine:
         """
         self._load_model()
         try:
-            embeddings = self._model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
+            embeddings = self._model.encode(texts, convert_to_numpy=True, batch_size=32)
             return cast("list[list[float]]", embeddings.tolist())
 
         except Exception as e:

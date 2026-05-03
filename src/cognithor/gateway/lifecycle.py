@@ -39,28 +39,28 @@ async def start(gw: Gateway) -> None:
             loop.add_signal_handler(sig, lambda: asyncio.create_task(gw.shutdown()))
 
     # Cron-Engine starten (wenn konfiguriert)
-    if gw._cron_engine and gw._cron_engine.has_enabled_jobs:  # type: ignore[attr-defined]
-        await gw._cron_engine.start()  # type: ignore[attr-defined]
-        log.info("cron_engine_started", jobs=gw._cron_engine.job_count)  # type: ignore[attr-defined]
+    if gw._cron_engine and gw._cron_engine.has_enabled_jobs:
+        await gw._cron_engine.start()
+        log.info("cron_engine_started", jobs=gw._cron_engine.job_count)
 
     # MCP-Server starten (OPTIONAL -- nur wenn Bridge aktiviert)
-    if gw._mcp_bridge and gw._mcp_bridge.enabled:  # type: ignore[attr-defined]
+    if gw._mcp_bridge and gw._mcp_bridge.enabled:
         try:
-            await gw._mcp_bridge.start()  # type: ignore[attr-defined]
+            await gw._mcp_bridge.start()
         except Exception as exc:
             log.warning("mcp_bridge_start_failed", error=str(exc))
 
     # A2A-Server starten (OPTIONAL)
-    if gw._a2a_adapter and gw._a2a_adapter.enabled:  # type: ignore[attr-defined]
+    if gw._a2a_adapter and gw._a2a_adapter.enabled:
         try:
-            await gw._a2a_adapter.start()  # type: ignore[attr-defined]
+            await gw._a2a_adapter.start()
             # A2A HTTP-Routes in WebUI-App registrieren
             for channel in gw._channels.values():
                 if hasattr(channel, "app") and channel.app is not None:
                     try:
                         from cognithor.a2a.http_handler import A2AHTTPHandler
 
-                        a2a_http = A2AHTTPHandler(gw._a2a_adapter)  # type: ignore[attr-defined]
+                        a2a_http = A2AHTTPHandler(gw._a2a_adapter)
                         a2a_http.register_routes(channel.app)
                     except Exception as exc:
                         log.debug("a2a_http_routes_skip", error=str(exc))
@@ -76,23 +76,23 @@ async def start(gw: Gateway) -> None:
         _task.add_done_callback(gw._background_tasks.discard)
 
     # Start active learning (background file watcher)
-    if gw._active_learner is not None:  # type: ignore[attr-defined]
+    if gw._active_learner is not None:
         try:
-            gw._active_learner._memory = getattr(gw, "_memory_manager", None)  # type: ignore[attr-defined]
+            gw._active_learner._memory = getattr(gw, "_memory_manager", None)
             # D3: Default watch_dirs if empty — scan vault + memory for new files
-            if not gw._active_learner._watch_dirs:  # type: ignore[attr-defined]
+            if not gw._active_learner._watch_dirs:
                 vault_dir = gw._config.cognithor_home / "vault"
                 wissen_dir = gw._config.cognithor_home / "vault" / "wissen"
                 for d in [vault_dir, wissen_dir]:
                     if d.exists():
-                        gw._active_learner._watch_dirs.append(str(d))  # type: ignore[attr-defined]
-            await gw._active_learner.start()  # type: ignore[attr-defined]
+                        gw._active_learner._watch_dirs.append(str(d))
+            await gw._active_learner.start()
             log.info("active_learner_started")
         except Exception:
             log.debug("active_learner_start_failed", exc_info=True)
 
     # Start curiosity gap detection (runs every 5 minutes)
-    if gw._curiosity_engine is not None:  # type: ignore[attr-defined]
+    if gw._curiosity_engine is not None:
 
         async def _curiosity_loop() -> None:
             while True:
@@ -107,10 +107,10 @@ async def start(gw: Gateway) -> None:
                         except Exception:
                             log.debug("curiosity_entity_list_failed", exc_info=True)
                         if entities:
-                            await gw._curiosity_engine.detect_gaps("", entities)  # type: ignore[attr-defined]
+                            await gw._curiosity_engine.detect_gaps("", entities)
                             log.debug(
                                 "curiosity_gaps_detected",
-                                count=gw._curiosity_engine.open_gap_count,  # type: ignore[attr-defined]
+                                count=gw._curiosity_engine.open_gap_count,
                             )
                 except Exception:
                     log.debug("curiosity_loop_error", exc_info=True)
@@ -125,7 +125,7 @@ async def start(gw: Gateway) -> None:
         try:
             from cognithor.mcp.background_tasks import ProcessMonitor
 
-            async def _notify_status_change(job_id, old, new, job):  # type: ignore[no-untyped-def]
+            async def _notify_status_change(job_id, old, new, job):
                 channel_name = job.get("channel", "")
                 session_id = job.get("session_id", "")
                 cmd_short = job.get("command", "")[:60]
@@ -137,13 +137,13 @@ async def start(gw: Gateway) -> None:
                     await cb("background", text)
                 log.info("background_job_status_change", job_id=job_id, old=old, new=new)
 
-            gw._process_monitor = ProcessMonitor(  # type: ignore[attr-defined]
+            gw._process_monitor = ProcessMonitor(
                 _bg_manager,
                 on_status_change=_notify_status_change,
             )
-            gw._process_monitor._running = True  # type: ignore[attr-defined]
+            gw._process_monitor._running = True
             _mon_task = asyncio.create_task(
-                gw._process_monitor._loop(),  # type: ignore[attr-defined]
+                gw._process_monitor._loop(),
                 name="bg-process-monitor",
             )
             gw._background_tasks.add(_mon_task)
@@ -254,7 +254,7 @@ async def start(gw: Gateway) -> None:
     _skill_lifecycle_task.add_done_callback(gw._background_tasks.discard)
 
     # Start confidence decay (runs every 24 hours)
-    if gw._confidence_manager is not None:  # type: ignore[attr-defined]
+    if gw._confidence_manager is not None:
 
         async def _decay_loop() -> None:
             while True:
@@ -274,7 +274,7 @@ async def start(gw: Gateway) -> None:
                                 try:
                                     dt = datetime.fromisoformat(updated.replace("Z", "+00:00"))
                                     days = (datetime.now(UTC) - dt).days
-                                    new_conf = gw._confidence_manager.decay(conf, days)  # type: ignore[attr-defined]
+                                    new_conf = gw._confidence_manager.decay(conf, days)
                                     if abs(new_conf - conf) > 0.01:
                                         idx.update_entity_confidence(eid, new_conf)
                                 except (ValueError, TypeError):
@@ -296,7 +296,7 @@ async def start(gw: Gateway) -> None:
 
             _breach_state = gw._config.cognithor_home / "breach_state.json"
             _cooldown = getattr(gw._config.audit, "breach_cooldown_hours", 1)
-            gw._breach_detector = BreachDetector(  # type: ignore[attr-defined]
+            gw._breach_detector = BreachDetector(
                 state_path=_breach_state,
                 cooldown_hours=_cooldown,
             )
@@ -306,7 +306,7 @@ async def start(gw: Gateway) -> None:
                     await asyncio.sleep(300)  # Every 5 minutes
                     try:
                         if hasattr(gw, "_audit_logger") and gw._audit_logger:
-                            breaches = gw._breach_detector.scan(gw._audit_logger)  # type: ignore[attr-defined]
+                            breaches = gw._breach_detector.scan(gw._audit_logger)
                             if breaches:
                                 log.critical(
                                     "gdpr_breach_notification",
@@ -342,14 +342,14 @@ async def start(gw: Gateway) -> None:
             from cognithor.skills.lifecycle import SkillLifecycleManager
 
             generated_dir = gw._config.cognithor_home / "skills" / "generated"
-            gw._skill_lifecycle = SkillLifecycleManager(skill_registry, generated_dir)  # type: ignore[attr-defined]
-            report = gw._skill_lifecycle.get_report()  # type: ignore[attr-defined]
+            gw._skill_lifecycle = SkillLifecycleManager(skill_registry, generated_dir)
+            report = gw._skill_lifecycle.get_report()
             log.info("skill_lifecycle_audit", report=report[:200])
 
             # Auto-repair broken skills
             if sl_cfg is None or sl_cfg.auto_repair:
-                for broken in gw._skill_lifecycle.get_broken_skills():  # type: ignore[attr-defined]
-                    gw._skill_lifecycle.repair_skill(broken.slug)  # type: ignore[attr-defined]
+                for broken in gw._skill_lifecycle.get_broken_skills():
+                    gw._skill_lifecycle.repair_skill(broken.slug)
 
             # Periodic audit background task
             interval_h = getattr(sl_cfg, "audit_interval_hours", 24) if sl_cfg else 24
@@ -361,7 +361,7 @@ async def start(gw: Gateway) -> None:
                 while True:
                     await _aio.sleep(interval_h * 3600)
                     try:
-                        mgr = gw._skill_lifecycle  # type: ignore[attr-defined]
+                        mgr = gw._skill_lifecycle
                         mgr.audit_all()
                         if sl_cfg is None or sl_cfg.auto_repair:
                             for b in mgr.get_broken_skills():
@@ -380,7 +380,7 @@ async def start(gw: Gateway) -> None:
         log.debug("skill_lifecycle_init_failed", exc_info=True)
 
     # Episodic Compression (daily maintenance)
-    if gw._memory_manager and hasattr(gw._memory_manager, "compressor"):  # type: ignore[attr-defined]
+    if gw._memory_manager and hasattr(gw._memory_manager, "compressor"):
         try:
             from datetime import date
 
@@ -388,7 +388,7 @@ async def start(gw: Gateway) -> None:
                 await asyncio.sleep(3600)  # First run after 1 hour
                 while True:
                     try:
-                        compressor = gw._memory_manager.compressor  # type: ignore[attr-defined]
+                        compressor = gw._memory_manager.compressor
                         ep_dir = gw._config.cognithor_home / "memory" / "episodes"
                         if ep_dir.exists():
                             dates = []
@@ -524,17 +524,17 @@ async def shutdown(gw: Gateway) -> None:
         gw._evolution_loop.stop()
 
     # Audit log BEFORE closing resources
-    if gw._audit_logger:  # type: ignore[attr-defined]
-        gw._audit_logger.log_system("shutdown", description=t("gateway.shutdown_description"))  # type: ignore[attr-defined]
+    if gw._audit_logger:
+        gw._audit_logger.log_system("shutdown", description=t("gateway.shutdown_description"))
 
     # Active learner stoppen
-    if gw._active_learner is not None:  # type: ignore[attr-defined]
+    if gw._active_learner is not None:
         with contextlib.suppress(Exception):
-            gw._active_learner.stop()  # type: ignore[attr-defined]
+            gw._active_learner.stop()
 
     # Cron-Engine stoppen
-    if gw._cron_engine:  # type: ignore[attr-defined]
-        await gw._cron_engine.stop()  # type: ignore[attr-defined]
+    if gw._cron_engine:
+        await gw._cron_engine.stop()
 
     # Channels stoppen
     for channel in gw._channels.values():
@@ -544,15 +544,15 @@ async def shutdown(gw: Gateway) -> None:
             log.warning("channel_stop_error", channel=channel.name, error=str(exc))
 
     # Sessions persistieren
-    if gw._session_store:  # type: ignore[attr-defined]
+    if gw._session_store:
         saved_count = 0
         for _key, session in gw._sessions.items():
             try:
-                gw._session_store.save_session(session)  # type: ignore[attr-defined]
+                gw._session_store.save_session(session)
                 # Chat-History speichern
                 wm = gw._working_memories.get(session.session_id)
                 if wm and wm.chat_history:
-                    gw._session_store.save_chat_history(  # type: ignore[attr-defined]
+                    gw._session_store.save_chat_history(
                         session.session_id,
                         wm.chat_history,
                     )
@@ -564,7 +564,7 @@ async def shutdown(gw: Gateway) -> None:
                     error=str(exc),
                 )
         log.info("sessions_persisted", count=saved_count)
-        gw._session_store.close()  # type: ignore[attr-defined]
+        gw._session_store.close()
 
     # Close memory manager
     if hasattr(gw, "_memory_manager") and gw._memory_manager:
@@ -574,23 +574,23 @@ async def shutdown(gw: Gateway) -> None:
             log.warning("memory_close_error", error=str(exc))
 
     # A2A-Adapter stoppen (optional)
-    if gw._a2a_adapter:  # type: ignore[attr-defined]
+    if gw._a2a_adapter:
         try:
-            await gw._a2a_adapter.stop()  # type: ignore[attr-defined]
+            await gw._a2a_adapter.stop()
         except Exception:
             log.debug("a2a_adapter_stop_skipped", exc_info=True)
 
     # Browser-Agent stoppen (optional)
-    if gw._browser_agent:  # type: ignore[attr-defined]
+    if gw._browser_agent:
         try:
-            await gw._browser_agent.stop()  # type: ignore[attr-defined]
+            await gw._browser_agent.stop()
         except Exception:
             log.debug("browser_agent_stop_skipped", exc_info=True)
 
     # MCP-Bridge stoppen (optional)
-    if gw._mcp_bridge:  # type: ignore[attr-defined]
+    if gw._mcp_bridge:
         try:
-            await gw._mcp_bridge.stop()  # type: ignore[attr-defined]
+            await gw._mcp_bridge.stop()
         except Exception:
             log.debug("mcp_bridge_stop_skipped", exc_info=True)
 
@@ -616,9 +616,9 @@ async def shutdown(gw: Gateway) -> None:
             log.debug("governance_agent_close_skipped", exc_info=True)
 
     # Flush gatekeeper audit buffer (prevent losing entries)
-    if gw._gatekeeper:  # type: ignore[attr-defined]
+    if gw._gatekeeper:
         try:
-            gw._gatekeeper._flush_audit_buffer()  # type: ignore[attr-defined]
+            gw._gatekeeper._flush_audit_buffer()
         except Exception:
             log.debug("gatekeeper_flush_skipped", exc_info=True)
 
@@ -642,12 +642,12 @@ async def shutdown(gw: Gateway) -> None:
             log.debug("media_server_stop_skipped", exc_info=True)
 
     # MCP-Client trennen
-    if gw._mcp_client:  # type: ignore[attr-defined]
-        await gw._mcp_client.disconnect_all()  # type: ignore[attr-defined]
+    if gw._mcp_client:
+        await gw._mcp_client.disconnect_all()
 
     # Close Ollama client
-    if gw._llm:  # type: ignore[has-type]
-        await gw._llm.close()  # type: ignore[has-type]
+    if gw._llm:
+        await gw._llm.close()
 
     log.info("gateway_shutdown_complete")
 
@@ -660,8 +660,8 @@ def rebuild_llm_client(gw: Gateway, new_backend_type: str) -> None:
     """
     from cognithor.core.unified_llm import UnifiedLLMClient
 
-    gw._config.llm_backend_type = new_backend_type  # type: ignore[assignment]
-    gw._llm = UnifiedLLMClient.create(gw._config)  # type: ignore[has-type]
+    gw._config.llm_backend_type = new_backend_type
+    gw._llm = UnifiedLLMClient.create(gw._config)
 
 
 async def execute_workflow(gw: Gateway, workflow_yaml: str) -> dict[str, Any]:

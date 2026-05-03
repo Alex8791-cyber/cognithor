@@ -83,7 +83,7 @@ async def init_core(config: Any) -> PhaseResult:
     if llm._backend is not None:
         model_router = ModelRouter.from_backend(config, llm._backend)
     else:
-        model_router = ModelRouter(config, llm._ollama)  # type: ignore[arg-type]
+        model_router = ModelRouter(config, llm._ollama)
 
     if llm_ok:
         await model_router.initialize()

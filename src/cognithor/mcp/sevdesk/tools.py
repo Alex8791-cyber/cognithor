@@ -15,7 +15,7 @@ from typing import Any
 from cognithor.mcp.sevdesk.client import SevdeskClient
 
 
-def mcp_tool(fn):  # type: ignore[no-untyped-def]
+def mcp_tool(fn):
     """Marker decorator — no-op. The integrations-catalog generator finds
     functions tagged with this decorator via AST parsing.
     """
@@ -23,7 +23,7 @@ def mcp_tool(fn):  # type: ignore[no-untyped-def]
     return fn
 
 
-@mcp_tool  # type: ignore[misc]
+@mcp_tool
 async def sevdesk_list_contacts(limit: int = 50) -> list[dict[str, Any]]:
     """DACH accounting: list sevDesk contacts (Kunden/Lieferanten).
 
@@ -33,7 +33,7 @@ async def sevdesk_list_contacts(limit: int = 50) -> list[dict[str, Any]]:
     return await client.list_contacts(limit=limit)
 
 
-@mcp_tool  # type: ignore[misc]
+@mcp_tool
 async def sevdesk_get_invoice(invoice_id: str) -> dict[str, Any]:
     """DACH accounting: fetch a single sevDesk invoice (Rechnung) by id.
 

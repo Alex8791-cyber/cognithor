@@ -349,7 +349,7 @@ class MCPBridge:
         Prueft zuerst die Jarvis-Config, dann die MCP-Config-YAML.
         Default: DISABLED.
         """
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         config = MCPServerConfig()  # Default: disabled
 

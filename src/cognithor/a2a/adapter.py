@@ -284,7 +284,7 @@ class A2AAdapter:
     # ── Config Loading ───────────────────────────────────────────
 
     def _load_config(self) -> A2AServerConfig:
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         config = A2AServerConfig()
         mcp_config_path = self._config.mcp_config_file

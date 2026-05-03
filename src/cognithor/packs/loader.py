@@ -330,7 +330,7 @@ class PackLoader:
         for tool_name, risk in manifest.tool_risks.items():
             existing = registry.get(tool_name)
             # Preserve a non-empty existing risk_level; only fill gaps.
-            if existing is not None and getattr(existing, "risk_level", ""):  # type: ignore[arg-type]
+            if existing is not None and getattr(existing, "risk_level", ""):
                 continue
             registry[tool_name] = MCPToolInfo(
                 name=tool_name,

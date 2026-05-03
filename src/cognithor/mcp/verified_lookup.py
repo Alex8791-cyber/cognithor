@@ -268,7 +268,7 @@ class VerifiedWebLookup:
         async def _extract_trafilatura(url: str) -> SourceResult:
             start = time.monotonic()
             try:
-                text = await self._web_tools.web_fetch(url, max_chars=_DEFAULT_MAX_TEXT_PER_SOURCE)  # type: ignore[union-attr]
+                text = await self._web_tools.web_fetch(url, max_chars=_DEFAULT_MAX_TEXT_PER_SOURCE)
                 ms = (time.monotonic() - start) * 1000
                 success = bool(text and len(text.strip()) > 50)
                 return SourceResult(
@@ -359,7 +359,7 @@ class VerifiedWebLookup:
 
         # ── Smart Routing: URL-Klassifizierung → beste Methode ──────────
         # Trafilatura fuer alle URLs (schnell), Browser fuer JS-heavy URLs
-        tasks: list[asyncio.Task] = []  # type: ignore[type-arg]
+        tasks: list[asyncio.Task] = []
         browser_urls: list[str] = []
         for url in urls:
             tasks.append(asyncio.ensure_future(_extract_trafilatura(url)))

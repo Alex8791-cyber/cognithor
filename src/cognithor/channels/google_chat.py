@@ -79,7 +79,7 @@ class GoogleChatChannel(Channel):
             return
 
         try:
-            self._credentials = service_account.Credentials.from_service_account_file(  # type: ignore[no-untyped-call]
+            self._credentials = service_account.Credentials.from_service_account_file(
                 str(creds_path),
                 scopes=["https://www.googleapis.com/auth/chat.bot"],
             )
@@ -120,7 +120,7 @@ class GoogleChatChannel(Channel):
         try:
             from google.auth.transport.requests import Request
 
-            self._credentials.refresh(Request())  # type: ignore[no-untyped-call]
+            self._credentials.refresh(Request())
             return {"Authorization": f"Bearer {self._credentials.token}"}
         except Exception as exc:
             logger.error("Google Chat Token-Refresh fehlgeschlagen: %s", exc)

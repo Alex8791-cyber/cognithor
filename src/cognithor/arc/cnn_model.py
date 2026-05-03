@@ -293,7 +293,7 @@ if _TORCH_AVAILABLE:
             loss = loss_actions + loss_coords
 
             self.optimizer.zero_grad()
-            loss.backward()  # type: ignore[no-untyped-call]
+            loss.backward()
             self.optimizer.step()
 
             return float(loss.item())
@@ -319,7 +319,7 @@ if _TORCH_AVAILABLE:
             canvas = np.zeros((_GRID_H, _GRID_W), dtype=np.int64)
             canvas[: min(h, _GRID_H), : min(w, _GRID_W)] = g[: min(h, _GRID_H), : min(w, _GRID_W)]
             # Clip values to valid color range
-            canvas = np.clip(canvas, 0, _N_COLORS - 1)  # type: ignore[assignment]
+            canvas = np.clip(canvas, 0, _N_COLORS - 1)
             # One-hot: (13, 64, 64)
             one_hot = np.zeros((_N_COLORS, _GRID_H, _GRID_W), dtype=np.float32)
             for c in range(_N_COLORS):

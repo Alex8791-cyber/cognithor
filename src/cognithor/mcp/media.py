@@ -189,7 +189,7 @@ class MediaPipeline:
             )
 
         try:
-            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+            from faster_whisper import WhisperModel
 
             loop = asyncio.get_running_loop()
 
@@ -441,7 +441,7 @@ class MediaPipeline:
         """PDF-Textextraktion mit pymupdf oder pdfplumber."""
         # Versuch 1: PyMuPDF (schnell)
         try:
-            import fitz  # type: ignore[import-untyped]  # pymupdf
+            import fitz  # pymupdf
 
             doc = fitz.open(str(path))
             pages = []
@@ -920,7 +920,7 @@ class MediaPipeline:
     def _read_xlsx_structured(self, path: Path, sheet_name: str, max_rows: int) -> MediaResult:
         """Sync worker for read_xlsx."""
         try:
-            from openpyxl import load_workbook  # type: ignore[import-untyped]
+            from openpyxl import load_workbook
         except ImportError:
             return MediaResult(
                 success=False,
@@ -1158,7 +1158,7 @@ class MediaPipeline:
 
             def _resize() -> tuple[str, int, int]:
                 img = Image.open(path)
-                img.thumbnail((max_width, max_height), Image.LANCZOS)  # type: ignore[attr-defined]
+                img.thumbnail((max_width, max_height), Image.LANCZOS)
 
                 fmt = output_format or path.suffix.lstrip(".") or "png"
                 out = self._workspace / f"{path.stem}_resized.{fmt}"
@@ -1304,11 +1304,11 @@ class MediaPipeline:
             for fname, regular_paths, bold_paths in font_candidates:
                 regular = next((p for p in regular_paths if p.exists()), None)
                 if regular:
-                    pdf.add_font(fname, "", str(regular), uni=True)  # type: ignore[call-arg]
+                    pdf.add_font(fname, "", str(regular), uni=True)
                     font_name = fname
                     bold = next((p for p in bold_paths if p.exists()), None)
                     if bold:
-                        pdf.add_font(fname, "B", str(bold), uni=True)  # type: ignore[call-arg]
+                        pdf.add_font(fname, "B", str(bold), uni=True)
                         has_bold = True
                     else:
                         has_bold = False
@@ -1358,7 +1358,7 @@ class MediaPipeline:
         # Autor/Absender
         if author:
             p = doc.add_paragraph(author)
-            p.style.font.size = Pt(10)  # type: ignore[union-attr]
+            p.style.font.size = Pt(10)
 
         # Titel
         if title:
@@ -1381,7 +1381,7 @@ class MediaPipeline:
         """
         try:
             from openpyxl import Workbook
-            from openpyxl.styles import Font  # type: ignore[import-untyped]
+            from openpyxl.styles import Font
         except ImportError as exc:
             raise ImportError("openpyxl not installed. Run: pip install openpyxl") from exc
 
@@ -1637,11 +1637,11 @@ class MediaPipeline:
             for fname, regular_paths, bold_paths in font_candidates:
                 regular = next((p for p in regular_paths if p.exists()), None)
                 if regular:
-                    pdf.add_font(fname, "", str(regular), uni=True)  # type: ignore[call-arg]
+                    pdf.add_font(fname, "", str(regular), uni=True)
                     font_name = fname
                     bold = next((p for p in bold_paths if p.exists()), None)
                     if bold:
-                        pdf.add_font(fname, "B", str(bold), uni=True)  # type: ignore[call-arg]
+                        pdf.add_font(fname, "B", str(bold), uni=True)
                         has_bold = True
                     else:
                         has_bold = False
@@ -1797,7 +1797,7 @@ class MediaPipeline:
         try:
             from openpyxl import Workbook
             from openpyxl.styles import Alignment, Font, PatternFill
-            from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
+            from openpyxl.utils import get_column_letter
         except ImportError:
             raise ImportError("openpyxl nicht installiert. pip install openpyxl") from None
 

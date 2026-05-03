@@ -274,7 +274,7 @@ class PromptEvolutionEngine:
             a=version_a_id,
             b=version_b_id,
         )
-        return test_id  # type: ignore[return-value]
+        return test_id
 
     def evaluate_test(self, test_id: int) -> str | None:
         """Evaluate an A/B test and determine the winner.

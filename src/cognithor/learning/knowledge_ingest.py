@@ -120,7 +120,7 @@ class KnowledgeIngestService:
         self._on_progress = on_progress
         self._results: list[IngestResult] = []
         self._queue = IngestQueue()
-        self._worker_task: asyncio.Task | None = None  # type: ignore[type-arg]
+        self._worker_task: asyncio.Task | None = None
 
     async def _notify(self, event: str, source: str, **kwargs: Any) -> None:
         """Fire progress callback and emit a structured log entry."""
@@ -338,8 +338,8 @@ class KnowledgeIngestService:
     def _ocr_pdf(self, content: bytes) -> str:
         """OCR a scanned PDF using Tesseract. Returns empty string on failure."""
         try:
-            from pdf2image import convert_from_bytes  # type: ignore[import-not-found]
-            from pytesseract import image_to_string  # type: ignore[import-untyped]
+            from pdf2image import convert_from_bytes
+            from pytesseract import image_to_string
         except ImportError:
             return ""
 

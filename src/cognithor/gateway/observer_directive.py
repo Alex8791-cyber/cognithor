@@ -104,17 +104,17 @@ async def run_pge_with_observer_directive(
         )
         session_state["pge_iteration_count"] = session_state.get("pge_iteration_count", 0) + 1
 
-        if envelope.directive is None:  # type: ignore[union-attr]
-            return envelope  # type: ignore[return-value]
+        if envelope.directive is None:
+            return envelope
 
         decision = handle_observer_directive(
-            directive=envelope.directive,  # type: ignore[union-attr]
+            directive=envelope.directive,
             session_state=session_state,
             config=config,
         )
         if decision.action == "downgrade_to_regen":
             # Strip the directive and deliver the envelope content as-is.
-            return ResponseEnvelope(content=envelope.content, directive=None)  # type: ignore[union-attr]
+            return ResponseEnvelope(content=envelope.content, directive=None)
 
         # reenter_pge: prepend the directive feedback into the next user message.
         current_user_msg = f"{user_message}\n\n[Observer feedback]\n{decision.planner_feedback}"

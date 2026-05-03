@@ -134,11 +134,10 @@ class MemoryManager:
                 _h_db = str(self._config.db_path.with_name("memory_hierarchical.db"))
                 _h_store = TreeStore(Path(_h_db))
                 _h_selector = LLMNodeSelector(
-                    llm_fn=None,  # type: ignore[arg-type]
-                    language=getattr(self._config, "language", "de"),
+                    llm_fn=None, language=getattr(self._config, "language", "de")
                 )
                 _h_retriever = HierarchicalRetriever(_h_store, _h_selector)
-                _h_builder = DocumentTreeBuilder(llm_fn=None)  # type: ignore[arg-type]
+                _h_builder = DocumentTreeBuilder(llm_fn=None)
                 self._hierarchical_manager = HierarchicalIndexManager(
                     _h_store, _h_builder, _h_retriever
                 )
@@ -358,13 +357,13 @@ class MemoryManager:
             if isinstance(retention_days, int) and retention_days > 0:
                 deleted = self._episodic.prune_old(retention_days)
                 if deleted:
-                    logger.info(  # type: ignore[call-arg]
+                    logger.info(
                         "episodic_pruned",
                         deleted=deleted,
                         retention_days=retention_days,
                     )
         except Exception as exc:
-            logger.warning("episodic_prune_failed", error=str(exc))  # type: ignore[call-arg]
+            logger.warning("episodic_prune_failed", error=str(exc))
 
         # Index-Schema sicherstellen (passiert lazy beim ersten Zugriff)
         _ = self._index.conn
@@ -894,7 +893,7 @@ class MemoryManager:
                 auto_rebuild_on_change=self._cag_manager._config.auto_rebuild_on_change,
                 rebuild_debounce_seconds=self._cag_manager._config.rebuild_debounce_seconds,
             )
-            logger.info("cag_enabled_changed", enabled=enabled)  # type: ignore[call-arg]
+            logger.info("cag_enabled_changed", enabled=enabled)
 
     async def refresh_cag_cache(self, core_memory_text: str, model_id: str) -> Any:
         """Force a CAG cache rebuild."""

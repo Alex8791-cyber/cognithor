@@ -174,7 +174,7 @@ class GraphEngine:
                     parallel_nodes = [graph.get_node(t) for t in parallel_targets]
                     parallel_nodes = [n for n in parallel_nodes if n is not None]
                     if parallel_nodes:
-                        parallel_results = await self._execute_parallel(parallel_nodes, state)  # type: ignore[arg-type]
+                        parallel_results = await self._execute_parallel(parallel_nodes, state)
                         for pr in parallel_results:
                             record.node_results.append(pr)
                             self._total_nodes_executed += 1

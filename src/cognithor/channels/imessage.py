@@ -449,7 +449,7 @@ class IMessageChannel(Channel):
             try:
                 await loop.run_in_executor(
                     None,
-                    lambda s=script: subprocess.run(  # type: ignore[misc]
+                    lambda s=script: subprocess.run(
                         ["osascript", "-e", s],
                         capture_output=True,
                         text=True,

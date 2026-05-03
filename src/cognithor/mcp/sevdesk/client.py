@@ -41,7 +41,7 @@ class SevdeskClient:
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         headers = {"Authorization": self._api_key, "Accept": "application/json"}
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.get(f"{self._base_url}{path}", headers=headers, params=params)  # type: ignore[arg-type]
+            resp = await client.get(f"{self._base_url}{path}", headers=headers, params=params)
             if resp.status_code == 401:
                 raise SevdeskAuthError("sevDesk rejected the API key")
             resp.raise_for_status()

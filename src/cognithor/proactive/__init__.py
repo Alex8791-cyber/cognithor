@@ -565,7 +565,7 @@ class HeartbeatScheduler:
 
         # 3. Process tasks
         while True:
-            task = self._queue.dequeue()  # type: ignore[assignment]
+            task = self._queue.dequeue()
             if task is None:
                 break
 

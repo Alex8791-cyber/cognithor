@@ -137,7 +137,7 @@ class LeadService:
         source_id: str | None = None,
     ) -> list[Lead]:
         return self._store.get_leads(
-            status=status,  # type: ignore[arg-type]
+            status=status,
             min_score=min_score,
             limit=limit,
             offset=offset,
@@ -165,7 +165,7 @@ class LeadService:
         if status is not None:
             lead.status = status
         if reply_final is not None:
-            lead.reply_final = reply_final  # type: ignore[attr-defined]
+            lead.reply_final = reply_final
         self._store.save_lead(lead)
         return lead
 

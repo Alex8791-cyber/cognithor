@@ -129,7 +129,7 @@ class RegistrySync:
 
                     # Persist in MarketplaceStore
                     if self._marketplace_store is not None:
-                        recall_entry = next(  # type: ignore[var-annotated]
+                        recall_entry = next(
                             (r for r in active_recalls if r.get("skill_name") == skill_name),
                             {},
                         )

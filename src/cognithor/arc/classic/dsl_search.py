@@ -86,7 +86,7 @@ def build_candidates(
                 candidates.append(
                     (
                         f"recolor({a},{b})",
-                        lambda g, _a=a, _b=b: dsl.recolor(g, _a, _b),  # type: ignore[misc]
+                        lambda g, _a=a, _b=b: dsl.recolor(g, _a, _b),
                     )
                 )
     for a in colors:
@@ -95,21 +95,21 @@ def build_candidates(
                 candidates.append(
                     (
                         f"swap_colors({a},{b})",
-                        lambda g, _a=a, _b=b: dsl.swap_colors(g, _a, _b),  # type: ignore[misc]
+                        lambda g, _a=a, _b=b: dsl.swap_colors(g, _a, _b),
                     )
                 )
     for c in colors:
         candidates.append(
             (
                 f"replace_background({c})",
-                lambda g, _c=c: dsl.replace_background(g, _c),  # type: ignore[misc]
+                lambda g, _c=c: dsl.replace_background(g, _c),
             )
         )
     for c in colors:
         candidates.append(
             (
                 f"get_by_color({c})",
-                lambda g, _c=c: dsl.get_by_color(g, _c),  # type: ignore[misc]
+                lambda g, _c=c: dsl.get_by_color(g, _c),
             )
         )
 
@@ -118,25 +118,25 @@ def build_candidates(
         candidates.append(
             (
                 f"scale_up({factor})",
-                lambda g, _f=factor: dsl.scale_up(g, _f),  # type: ignore[misc]
+                lambda g, _f=factor: dsl.scale_up(g, _f),
             )
         )
     for nx, ny in ((2, 1), (1, 2), (2, 2)):
         candidates.append(
             (
                 f"tile({nx},{ny})",
-                lambda g, _nx=nx, _ny=ny: dsl.tile(g, _nx, _ny),  # type: ignore[misc]
+                lambda g, _nx=nx, _ny=ny: dsl.tile(g, _nx, _ny),
             )
         )
     for n in (1, 2):
         candidates.append(
-            (f"pad({n})", lambda g, _n=n: dsl.pad(g, _n)),  # type: ignore[misc]
+            (f"pad({n})", lambda g, _n=n: dsl.pad(g, _n)),
         )
     for direction in ("down", "up", "left", "right"):
         candidates.append(
             (
                 f"gravity({direction})",
-                lambda g, _d=direction: dsl.gravity(g, _d),  # type: ignore[misc]
+                lambda g, _d=direction: dsl.gravity(g, _d),
             )
         )
 

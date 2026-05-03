@@ -68,7 +68,7 @@ class OsintTools:
             justification=justification,
         )
 
-    async def _run(  # type: ignore[no-untyped-def]
+    async def _run(
         self, *, target_name, target_github, claims, target_type, depth, justification
     ) -> str:
         try:
@@ -99,7 +99,7 @@ def register_osint_tools(mcp_client: Any, config: Any = None) -> OsintTools:
     osint_cfg = getattr(config, "osint", None)
     if osint_cfg and not getattr(osint_cfg, "enabled", True):
         log.info("osint_tools_disabled")
-        return None  # type: ignore[return-value]
+        return None
 
     tools = OsintTools(mcp_client, config)
 

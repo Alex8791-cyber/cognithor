@@ -44,7 +44,7 @@ class NativeLlamaCppBuilder(CacheBuilder):
         tokens = llm.tokenize(content.encode("utf-8"))
         llm.eval(tokens)
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        llm.save_state(str(target_path))  # type: ignore[call-arg]
+        llm.save_state(str(target_path))
         return target_path
 
     async def load_state(self, state_path: Path, model_path: str) -> Any:
@@ -55,5 +55,5 @@ class NativeLlamaCppBuilder(CacheBuilder):
             raise ImportError("llama_cpp is required for native KV-cache state loading") from exc
 
         llm = Llama(model_path=model_path, n_ctx=4096, verbose=False)
-        llm.load_state(str(state_path))  # type: ignore[arg-type]
+        llm.load_state(str(state_path))
         return llm

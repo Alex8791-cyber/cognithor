@@ -121,7 +121,7 @@ class VoiceWebSocketBridge:
     async def initialize(self) -> bool:
         """Laedt das Whisper-Modell. Gibt False zurueck wenn nicht verfuegbar."""
         try:
-            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+            from faster_whisper import WhisperModel
 
             device = "cpu"
             try:
@@ -175,10 +175,10 @@ class VoiceWebSocketBridge:
         msg_type = msg.get("type", "")
 
         if msg_type == "audio_start":
-            return await self._handle_audio_start(session_id, msg, send_fn)  # type: ignore[func-returns-value]
+            return await self._handle_audio_start(session_id, msg, send_fn)
 
         if msg_type == "audio_chunk":
-            return await self._handle_audio_chunk(session_id, msg, send_fn)  # type: ignore[func-returns-value]
+            return await self._handle_audio_chunk(session_id, msg, send_fn)
 
         if msg_type == "audio_stop":
             return await self._handle_audio_stop(session_id, send_fn)
@@ -241,7 +241,7 @@ class VoiceWebSocketBridge:
         send_fn: Any,
     ) -> str | None:
         """Beendet die Aufnahme und transkribiert das Audio."""
-        acc = self._active_sessions.pop(session_id, None)  # type: ignore[arg-type]
+        acc = self._active_sessions.pop(session_id, None)
         if acc is None or acc.is_empty:
             await send_fn(
                 {
@@ -398,7 +398,7 @@ class VoiceWebSocketBridge:
 
     def cancel_session(self, session_id: str) -> None:
         """Bricht eine laufende Audio-Session ab."""
-        self._active_sessions.pop(session_id, None)  # type: ignore[arg-type]
+        self._active_sessions.pop(session_id, None)
 
     @property
     def active_sessions(self) -> int:

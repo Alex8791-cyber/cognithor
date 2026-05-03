@@ -116,9 +116,9 @@ class HermesCompatLayer:
             "tags": skill.tags,
         }
         if skill.inputs:
-            frontmatter["inputs"] = skill.inputs  # type: ignore[assignment]
+            frontmatter["inputs"] = skill.inputs
         if skill.outputs:
-            frontmatter["outputs"] = skill.outputs  # type: ignore[assignment]
+            frontmatter["outputs"] = skill.outputs
 
         md = f"---\n{yaml.dump(frontmatter, default_flow_style=False)}---\n\n"
         md += f"# {skill.name}\n\n"

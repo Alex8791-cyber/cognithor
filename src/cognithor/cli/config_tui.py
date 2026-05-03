@@ -127,7 +127,7 @@ def _edit_field(idx: int, data: dict[str, Any]) -> bool:
 
     # Port
     if dot_path in _PORT_FIELDS:
-        new_val = _prompt_port(current_display)  # type: ignore[assignment]
+        new_val = _prompt_port(current_display)
         if new_val is not None:
             _set_nested(data, dot_path, new_val)
             return True

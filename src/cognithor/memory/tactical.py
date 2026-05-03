@@ -204,7 +204,7 @@ class TacticalMemory:
         # Append avoidance warnings
         for rule in self._avoidance_rules:
             if rule.expires_at > now:
-                eff = self._effectiveness.get(rule.tool_name)  # type: ignore[assignment]
+                eff = self._effectiveness.get(rule.tool_name)
                 fail_count = eff.failures if eff else rule.trigger_count
                 lines.append(f"  WARNUNG: {rule.tool_name} hat {fail_count}x versagt")
 

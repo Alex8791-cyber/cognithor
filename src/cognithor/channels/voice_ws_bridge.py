@@ -98,7 +98,7 @@ class VoiceMessageHandler:
             # Konvertierung zu WAV wenn noetig (fuer Whisper)
             wav_path = audio_path
             if ext != ".wav":
-                wav_path = await self._convert_to_wav(audio_path)  # type: ignore[assignment]
+                wav_path = await self._convert_to_wav(audio_path)
                 if wav_path is None:
                     # Fallback: direkt versuchen (Whisper kann manche Formate)
                     wav_path = audio_path

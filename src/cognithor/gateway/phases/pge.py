@@ -206,7 +206,7 @@ async def init_pge(
             _id_model = ""
             if llm is not None:
                 _id_llm = llm
-                _id_model = getattr(getattr(config, "models", None), "planner", None)  # type: ignore[assignment]
+                _id_model = getattr(getattr(config, "models", None), "planner", None)
                 _id_model = getattr(_id_model, "name", "") if _id_model else ""
 
             identity_layer = IdentityLayer(

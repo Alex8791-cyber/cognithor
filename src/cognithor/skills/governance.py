@@ -234,7 +234,7 @@ class ReputationEngine:
             score = self.get_or_create(entity_id, entity_type="publisher")
             return score
 
-        return handler()  # type: ignore[no-untyped-call]
+        return handler()
 
 
 # ============================================================================

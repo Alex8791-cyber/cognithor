@@ -56,7 +56,7 @@ class LLMNodeSelector:
                 content = self._trim_content(node.content, max_tokens_per_node)
                 results.append(
                     SelectedNode(
-                        node=tree.nodes[node_id]._replace(content=content)  # type: ignore[attr-defined]
+                        node=tree.nodes[node_id]._replace(content=content)
                         if hasattr(tree.nodes[node_id], "_replace")
                         else tree.nodes[node_id],
                         depth=depth,

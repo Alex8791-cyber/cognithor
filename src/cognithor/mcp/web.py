@@ -399,7 +399,7 @@ class WebTools:
         # Collect all available search backends
         import asyncio as _aio
 
-        tasks: dict[str, _aio.Task] = {}  # type: ignore[type-arg]
+        tasks: dict[str, _aio.Task] = {}
         if self._searxng_url:
             tasks["searxng"] = _aio.create_task(
                 self._search_raw_searxng(query, num_results, language)
@@ -786,7 +786,7 @@ class WebTools:
             from ddgs import DDGS
         except ImportError:
             try:
-                from duckduckgo_search import DDGS  # type: ignore[assignment]
+                from duckduckgo_search import DDGS
             except ImportError:
                 raise WebError(
                     "ddgs nicht installiert. Installiere mit: pip install ddgs"
@@ -900,7 +900,7 @@ class WebTools:
                 from ddgs import DDGS
             except ImportError:
                 try:
-                    from duckduckgo_search import DDGS  # type: ignore[assignment]
+                    from duckduckgo_search import DDGS
                 except ImportError:
                     raise WebError("ddgs nicht installiert. pip install ddgs") from None
 
@@ -1343,7 +1343,7 @@ class _TextExtractor(HTMLParser):
         self._texts: list[str] = []
         self._in_script_or_style = False
 
-    def handle_starttag(self, tag: str, attrs) -> None:  # type: ignore[no-untyped-def]
+    def handle_starttag(self, tag: str, attrs) -> None:
         tag_lower = tag.lower()
         if tag_lower in ("script", "style"):
             self._in_script_or_style = True

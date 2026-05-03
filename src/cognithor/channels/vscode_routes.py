@@ -109,7 +109,7 @@ def register_vscode_routes(
         try:
             response = await gateway.handle_message(incoming)
         except Exception as exc:
-            log.error("vscode_chat_error", error=str(exc))  # type: ignore[call-arg]
+            log.error("vscode_chat_error", error=str(exc))
             return JSONResponse(
                 status_code=500,
                 content={"error": str(exc)},
@@ -128,7 +128,7 @@ def register_vscode_routes(
             "durationMs": duration_ms,
         }
 
-        log.info(  # type: ignore[call-arg]
+        log.info(
             "vscode_chat_completion",
             session=session_id[:8],
             duration_ms=duration_ms,

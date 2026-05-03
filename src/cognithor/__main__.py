@@ -51,7 +51,7 @@ def _silence_library_loggers() -> None:
     try:
         from transformers import logging as tf_logging
 
-        tf_logging.set_verbosity_error()  # type: ignore[no-untyped-call]
+        tf_logging.set_verbosity_error()
     except Exception:
         _logging.getLogger(__name__).debug("suppress_transformers_logging_failed", exc_info=True)
 
@@ -309,7 +309,7 @@ async def _run_mcp_server_mode(config: Any) -> None:
         config.tools.desktop_tools_enabled = False
 
     # Create MCP client and register tools
-    mcp_client = JarvisMCPClient()  # type: ignore[call-arg]
+    mcp_client = JarvisMCPClient()
 
     from cognithor.gateway.phases.tools import init_tools
 
@@ -1579,7 +1579,7 @@ def main() -> None:
                         if ws:
                             await _ws_safe_send(ws, {"type": "stream_token", "token": token})
 
-                    async def request_approval(  # type: ignore[override]
+                    async def request_approval(
                         self,
                         session_id: str,
                         action: Any = None,
@@ -1999,7 +1999,7 @@ def main() -> None:
                         if audio_field is None:
                             return {"error": "Feld 'audio' fehlt", "code": "MISSING_FIELD"}
 
-                        audio_bytes = await audio_field.read()  # type: ignore[union-attr]
+                        audio_bytes = await audio_field.read()
                         if not audio_bytes:
                             return {"error": "Leere Audio-Datei", "code": "EMPTY_FILE"}
 
@@ -2047,7 +2047,7 @@ def main() -> None:
                         if image_field is None:
                             return {"error": "Feld 'image' fehlt", "code": "MISSING_FIELD"}
 
-                        image_bytes = await image_field.read()  # type: ignore[union-attr]
+                        image_bytes = await image_field.read()
                         if not image_bytes:
                             return {"error": "Leere Bilddatei", "code": "EMPTY_FILE"}
 
@@ -2372,7 +2372,7 @@ def main() -> None:
                 verify_token = config.channels.whatsapp_verify_token or os.environ.get(
                     "COGNITHOR_WHATSAPP_VERIFY_TOKEN", ""
                 )
-                allowed = config.channels.whatsapp_allowed_numbers  # type: ignore[assignment]
+                allowed = config.channels.whatsapp_allowed_numbers
                 if phone_number_id:
                     gateway.register_channel(
                         WhatsAppChannel(
@@ -2380,7 +2380,7 @@ def main() -> None:
                             phone_number_id=phone_number_id,
                             verify_token=verify_token,
                             webhook_port=config.channels.whatsapp_webhook_port,
-                            allowed_numbers=allowed,  # type: ignore[arg-type]
+                            allowed_numbers=allowed,
                             ssl_certfile=_ssl_cert,
                             ssl_keyfile=_ssl_key,
                             session_store=_session_store,
@@ -2400,7 +2400,7 @@ def main() -> None:
                 )
                 if default_user:
                     gateway.register_channel(
-                        SignalChannel(token=signal_token, default_user=default_user)  # type: ignore[call-arg]
+                        SignalChannel(token=signal_token, default_user=default_user)
                     )
                 else:
                     log.warning("signal_token_found_but_no_default_user")
@@ -2439,7 +2439,7 @@ def main() -> None:
                 gateway.register_channel(
                     TeamsChannel(
                         app_id=teams_app_id,
-                        app_password=teams_app_pw,  # type: ignore[arg-type]
+                        app_password=teams_app_pw,
                         webhook_host=teams_host,
                         webhook_port=teams_port,
                         ssl_certfile=_ssl_cert,
@@ -2456,7 +2456,7 @@ def main() -> None:
                     "COGNITHOR_IMESSAGE_DEVICE_ID"
                 )
                 # iMessage hat keine Token; device_id ist optional
-                gateway.register_channel(IMessageChannel(device_id=device_id))  # type: ignore[call-arg]
+                gateway.register_channel(IMessageChannel(device_id=device_id))
 
             # IRC channel (config-flag based, server is the gating field)
             if getattr(config.channels, "irc_enabled", False):
@@ -2570,7 +2570,7 @@ def main() -> None:
             if getattr(config.channels, "voice_enabled", False):
                 from cognithor.channels.voice import VoiceChannel
 
-                gateway.register_channel(VoiceChannel(config=config.channels.voice_config))  # type: ignore[arg-type]
+                gateway.register_channel(VoiceChannel(config=config.channels.voice_config))
                 log.info("voice_channel_registered")
 
             # Start dashboard if enabled
@@ -2586,7 +2586,7 @@ def main() -> None:
 
                         api_base = f"http://127.0.0.1:{args.api_port}"
 
-                        async def _dash_redirect(request):  # type: ignore[no-untyped-def]
+                        async def _dash_redirect(request):
                             return RedirectResponse(url=f"{api_base}/dashboard")
 
                         dash_app = Starlette(

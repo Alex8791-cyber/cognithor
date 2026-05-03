@@ -33,7 +33,7 @@ def create_backend(config: Any) -> Any:
     if getattr(db_config, "backend", "") == "postgresql":
         from cognithor.db.postgresql_backend import PostgreSQLBackend
 
-        backend = PostgreSQLBackend(  # type: ignore[assignment]
+        backend = PostgreSQLBackend(
             host=db_config.pg_host,
             port=db_config.pg_port,
             dbname=db_config.pg_dbname,

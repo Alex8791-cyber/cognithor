@@ -115,7 +115,7 @@ def append_audit(event: str, **fields: Any) -> None:
             try:
                 from cognithor.telemetry.metrics import MetricsProvider
 
-                MetricsProvider.get_instance().counter(  # type: ignore[attr-defined]
+                MetricsProvider.get_instance().counter(
                     "cognithor_crew_audit_record_failures_total",
                     1,
                     labels={"reason": type(exc).__name__},

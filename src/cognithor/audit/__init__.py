@@ -664,7 +664,7 @@ class AuditLogger:
         """Writes an entry to the audit file."""
         try:
             date_str = entry.timestamp[:10]  # YYYY-MM-DD
-            log_file = self._log_dir / f"audit_{date_str}.jsonl"  # type: ignore[operator]
+            log_file = self._log_dir / f"audit_{date_str}.jsonl"
             with log_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry.to_dict(), ensure_ascii=False) + "\n")
         except Exception as exc:

@@ -20,7 +20,7 @@ log = get_logger(__name__)
 _pywinauto_available = False
 if sys.platform == "win32":
     try:
-        from pywinauto import Desktop  # type: ignore[import-untyped]  # noqa: F401
+        from pywinauto import Desktop  # noqa: F401
 
         _pywinauto_available = True
     except ImportError:

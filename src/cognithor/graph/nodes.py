@@ -40,7 +40,7 @@ def llm_node(
     input_key: str = "messages",
     output_key: str = "response",
     model: str = "",
-    llm_handler: Callable | None = None,  # type: ignore[type-arg]
+    llm_handler: Callable | None = None,
 ) -> Callable[[GraphState], Awaitable[GraphState]]:
     """Creates an LLM call handler.
 
@@ -80,7 +80,7 @@ def tool_node(
     *,
     params_key: str = "tool_params",
     result_key: str = "tool_result",
-    tool_executor: Callable | None = None,  # type: ignore[type-arg]
+    tool_executor: Callable | None = None,
 ) -> Callable[[GraphState], Awaitable[GraphState]]:
     """Creates an MCP tool call handler.
 

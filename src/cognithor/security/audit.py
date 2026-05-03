@@ -243,9 +243,7 @@ class AuditTrail:
         # HMAC signature (cryptographically binding, not just tamper-evident)
         if self._hmac_key:
             record["hmac"] = hmac_mod.new(
-                self._hmac_key,
-                record["hash"].encode(),  # type: ignore[attr-defined]
-                hashlib.sha256,
+                self._hmac_key, record["hash"].encode(), hashlib.sha256
             ).hexdigest()
 
         # Ed25519 asymmetric signature (verify without the secret)
@@ -256,7 +254,7 @@ class AuditTrail:
                 )
 
                 private_key = Ed25519PrivateKey.from_private_bytes(self._ed25519_key[:32])
-                signature = private_key.sign(record["hash"].encode())  # type: ignore[attr-defined]
+                signature = private_key.sign(record["hash"].encode())
                 record["ed25519_sig"] = signature.hex()
             except ImportError:
                 log.warning("ed25519_requires_cryptography_package")

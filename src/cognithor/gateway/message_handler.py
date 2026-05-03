@@ -46,7 +46,7 @@ from cognithor.security.compliance_engine import ComplianceViolation
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
-    from cognithor.core.planner import ResponseEnvelope  # type: ignore[attr-defined]
+    from cognithor.core.planner import ResponseEnvelope
     from cognithor.gateway.gateway import Gateway
     from cognithor.models import SessionContext
 
@@ -80,8 +80,8 @@ async def handle_message(
     # for the entire duration of the user's wait.
     if hasattr(gw, "_idle_detector") and gw._idle_detector:
         gw._idle_detector.notify_activity()
-    if gw._active_learner is not None:  # type: ignore[attr-defined]
-        gw._active_learner.notify_activity()  # type: ignore[attr-defined]
+    if gw._active_learner is not None:
+        gw._active_learner.notify_activity()
 
     # --- Sub-Agent depth guard ---
     # The _agent_runner passes depth in msg.metadata. Enforce max depth
@@ -175,11 +175,11 @@ async def handle_message(
     # User-Feedback erkennen und speichern (vor PGE-Zyklus)
     if getattr(gw, "_session_analyzer", None):
         try:
-            signal = gw._session_analyzer._extract_feedback_signal(msg.text)  # type: ignore[attr-defined]
+            signal = gw._session_analyzer._extract_feedback_signal(msg.text)
             if signal is not None:
                 fb_type, detail = signal
                 sid = msg.session_id if hasattr(msg, "session_id") else ""
-                gw._session_analyzer.record_user_feedback(  # type: ignore[attr-defined]
+                gw._session_analyzer.record_user_feedback(
                     session_id=sid,
                     message_id=getattr(msg, "message_id", ""),
                     feedback_type=fb_type,
@@ -215,12 +215,12 @@ async def handle_message(
     # and can run in parallel.
 
     # Tool-Schemas (gefiltert nach Agent-Rechten) — synchron, schnell
-    tool_schemas = gw._mcp_client.get_tool_schemas() if gw._mcp_client else {}  # type: ignore[attr-defined]
+    tool_schemas = gw._mcp_client.get_tool_schemas() if gw._mcp_client else {}
     if route_decision and route_decision.agent.has_tool_restrictions:
         tool_schemas = route_decision.agent.filter_tools(tool_schemas)
 
     # Subsystem checks
-    if gw._planner is None or gw._gatekeeper is None or gw._executor is None:  # type: ignore[attr-defined]
+    if gw._planner is None or gw._gatekeeper is None or gw._executor is None:
         raise RuntimeError("Gateway.initialize() must be called before handle_message()")
 
     async def _run_context_pipeline() -> None:
@@ -247,11 +247,11 @@ async def handle_message(
         _coding_complexity = "simple"
         try:
             _is_coding, _coding_complexity = await gw._classify_coding_task(msg.text)
-            if _is_coding and gw._model_router:  # type: ignore[attr-defined]
+            if _is_coding and gw._model_router:
                 if _coding_complexity == "complex":
-                    _coding_model = gw._model_router._config.models.coder.name  # type: ignore[attr-defined]
+                    _coding_model = gw._model_router._config.models.coder.name
                 else:
-                    _coding_model = gw._model_router._config.models.coder_fast.name  # type: ignore[attr-defined]
+                    _coding_model = gw._model_router._config.models.coder_fast.name
                 # NOTE: Do NOT call set_coding_override() here — asyncio.create_task()
                 # runs in a copied context, so ContextVar changes are invisible to the
                 # parent. The override is applied in the parent after await (line below).
@@ -275,8 +275,8 @@ async def handle_message(
 
     # Apply coding override in parent context (ContextVar must be set here,
     # not inside the create_task — asyncio tasks get a copied context)
-    if coding_model and gw._model_router:  # type: ignore[attr-defined]
-        gw._model_router.set_coding_override(coding_model)  # type: ignore[attr-defined]
+    if coding_model and gw._model_router:
+        gw._model_router.set_coding_override(coding_model)
 
     # Coding-Tasks: mehr Iterationen fuer iteratives Fixen, Debuggen, Optimieren
     # Cognithor soll autonom arbeiten bis die Aufgabe erledigt ist
@@ -415,22 +415,22 @@ async def handle_message(
     # Hilfsfunktion: ToolEnforcer-State sicher aufraemen
     def _cleanup_skill_state() -> None:
         """Setzt active_skill und ToolEnforcer Call-Counter zurueck."""
-        if hasattr(gw._gatekeeper, "set_active_skill"):  # type: ignore[attr-defined]
-            gw._gatekeeper.set_active_skill(None)  # type: ignore[attr-defined]
+        if hasattr(gw._gatekeeper, "set_active_skill"):
+            gw._gatekeeper.set_active_skill(None)
         if (
             active_skill is not None
-            and hasattr(gw._gatekeeper, "_tool_enforcer")  # type: ignore[attr-defined]
-            and gw._gatekeeper._tool_enforcer is not None  # type: ignore[attr-defined]
+            and hasattr(gw._gatekeeper, "_tool_enforcer")
+            and gw._gatekeeper._tool_enforcer is not None
             and hasattr(active_skill, "skill")
             and active_skill.skill is not None
         ):
-            gw._gatekeeper._tool_enforcer.reset_call_count(active_skill.skill.slug)  # type: ignore[attr-defined]
+            gw._gatekeeper._tool_enforcer.reset_call_count(active_skill.skill.slug)
 
     # Pipeline callback fuer Presearch + PGE-Loop
     # msg.session_id = WS-URL session_id (vom Client),
     # session.session_id = interner Gateway-Key.
     # Channels nutzen msg.session_id fuer Connection-Lookup.
-    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id)  # type: ignore[arg-type]
+    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id)
 
     try:
         if presearch_results:
@@ -451,8 +451,8 @@ async def handle_message(
             if not final_response:
                 await _pipeline_cb("execute", "done", iteration=1, success=0, failed=1, total_ms=0)
                 # Fallback: normaler PGE-Loop wenn Antwort-Generierung fehlschlug
-                if active_skill is not None and hasattr(gw._gatekeeper, "set_active_skill"):  # type: ignore[attr-defined]
-                    gw._gatekeeper.set_active_skill(  # type: ignore[attr-defined]
+                if active_skill is not None and hasattr(gw._gatekeeper, "set_active_skill"):
+                    gw._gatekeeper.set_active_skill(
                         active_skill.skill if hasattr(active_skill, "skill") else None,
                     )
                 final_response, all_results, all_plans, all_audit = await gw._run_pge_loop(
@@ -473,8 +473,8 @@ async def handle_message(
         else:
             # Phase 3: PGE-Loop (regulaerer Ablauf)
             # Community-Skill ToolEnforcer: Aktiven Skill an Gatekeeper weiterreichen
-            if active_skill is not None and hasattr(gw._gatekeeper, "set_active_skill"):  # type: ignore[attr-defined]
-                gw._gatekeeper.set_active_skill(  # type: ignore[attr-defined]
+            if active_skill is not None and hasattr(gw._gatekeeper, "set_active_skill"):
+                gw._gatekeeper.set_active_skill(
                     active_skill.skill if hasattr(active_skill, "skill") else None,
                 )
             final_response, all_results, all_plans, all_audit = await gw._run_pge_loop(
@@ -492,8 +492,8 @@ async def handle_message(
         _cleanup_skill_state()
 
     # Coding-Override aufraeumen
-    if gw._model_router:  # type: ignore[attr-defined]
-        gw._model_router.clear_coding_override()  # type: ignore[attr-defined]
+    if gw._model_router:
+        gw._model_router.clear_coding_override()
 
     # ── Autonomous Task Evaluation ──
     if auto_task is not None:
@@ -570,7 +570,7 @@ async def handle_message(
         total_duration_ms=int((time.monotonic() - _handle_start) * 1000),
         model_used=coding_model
         if is_coding
-        else (gw._model_router.select_model("planning", "high") if gw._model_router else ""),  # type: ignore[attr-defined]
+        else (gw._model_router.select_model("planning", "high") if gw._model_router else ""),
         input_tokens=_total_input,
         output_tokens=_total_output,
         backend_type=_backend,
@@ -590,7 +590,7 @@ async def handle_message(
     # Complete explainability trail
     if getattr(gw, "_explainability", None) and _expl_trail_id:
         try:
-            gw._explainability.complete_trail(_expl_trail_id)  # type: ignore[attr-defined]
+            gw._explainability.complete_trail(_expl_trail_id)
         except Exception:
             log.debug("explainability_complete_failed", exc_info=True)
 
@@ -608,8 +608,8 @@ async def handle_message(
     attachments = gw._extract_attachments(all_results)
 
     # Notify active learner of user activity (resets idle timer)
-    if gw._active_learner is not None:  # type: ignore[attr-defined]
-        gw._active_learner.notify_activity()  # type: ignore[attr-defined]
+    if gw._active_learner is not None:
+        gw._active_learner.notify_activity()
 
     if hasattr(gw, "_idle_detector") and gw._idle_detector:
         gw._idle_detector.notify_activity()
@@ -648,10 +648,10 @@ async def resolve_agent_route(
     agent_workspace = None
     agent_name = "jarvis"
 
-    if gw._agent_router is not None:  # type: ignore[attr-defined]
+    if gw._agent_router is not None:
         target_agent = msg.metadata.get("target_agent")
         if target_agent:
-            target_profile = gw._agent_router.get_agent(target_agent)  # type: ignore[attr-defined]
+            target_profile = gw._agent_router.get_agent(target_agent)
             if target_profile:
                 route_decision = RouteDecision(
                     agent=target_profile,
@@ -668,7 +668,7 @@ async def resolve_agent_route(
             from cognithor.core.bindings import MessageContext as _MsgCtx
 
             msg_context = _MsgCtx.from_incoming(msg)
-            route_decision = gw._agent_router.route(  # type: ignore[attr-defined]
+            route_decision = gw._agent_router.route(
                 msg.text,
                 context=msg_context,
             )
@@ -710,7 +710,7 @@ async def resolve_agent_route(
     _expl_trail_id: str | None = None
     if getattr(gw, "_explainability", None) is not None:
         try:
-            _trail = gw._explainability.start_trail(  # type: ignore[attr-defined]
+            _trail = gw._explainability.start_trail(
                 request_id=session.session_id,
                 agent_id=agent_name,
             )
@@ -718,8 +718,8 @@ async def resolve_agent_route(
         except Exception:
             log.debug("explainability_start_failed", exc_info=True)
 
-    if gw._audit_logger:  # type: ignore[attr-defined]
-        gw._audit_logger.log_user_input(  # type: ignore[attr-defined]
+    if gw._audit_logger:
+        gw._audit_logger.log_user_input(
             msg.channel,
             msg.text[:100],
             agent_name=agent_name,
@@ -760,10 +760,10 @@ async def resolve_agent_route(
                 break
 
     active_skill = None
-    if gw._skill_registry is not None:  # type: ignore[attr-defined]
+    if gw._skill_registry is not None:
         try:
-            tool_list = gw._mcp_client.get_tool_list() if gw._mcp_client else []  # type: ignore[attr-defined]
-            active_skill = gw._skill_registry.inject_into_working_memory(  # type: ignore[attr-defined]
+            tool_list = gw._mcp_client.get_tool_list() if gw._mcp_client else []
+            active_skill = gw._skill_registry.inject_into_working_memory(
                 msg.text,
                 wm,
                 available_tools=tool_list,
@@ -774,8 +774,8 @@ async def resolve_agent_route(
         except Exception as exc:
             log.debug("skill_match_error", error=str(exc))
 
-    if gw._agent_router is not None and route_decision:  # type: ignore[attr-defined]
-        agent_workspace = gw._agent_router.resolve_agent_workspace(  # type: ignore[attr-defined]
+    if gw._agent_router is not None and route_decision:
+        agent_workspace = gw._agent_router.resolve_agent_workspace(
             route_decision.agent.name,
             gw._config.workspace_dir,
         )
@@ -842,11 +842,11 @@ async def prepare_execution_context(
         except Exception:
             log.debug("run_recorder_start_failed", exc_info=True)
 
-    if run_id and gw._run_recorder and gw._gatekeeper:  # type: ignore[attr-defined]
+    if run_id and gw._run_recorder and gw._gatekeeper:
         try:
-            policies = gw._gatekeeper.get_policies()  # type: ignore[attr-defined]
+            policies = gw._gatekeeper.get_policies()
             if policies:
-                gw._run_recorder.record_policy_snapshot(  # type: ignore[attr-defined]
+                gw._run_recorder.record_policy_snapshot(
                     run_id, {"rules": [r.model_dump() for r in policies]}
                 )
         except Exception:
@@ -936,9 +936,9 @@ async def formulate_response(
     Planner's internal observer loop still runs, but PGE-reloop directives
     from the streaming path are not currently re-entered (limitation).
     """
-    if stream_callback is not None and hasattr(gw._planner, "formulate_response_stream"):  # type: ignore[attr-defined]
+    if stream_callback is not None and hasattr(gw._planner, "formulate_response_stream"):
         try:
-            return await gw._planner.formulate_response_stream(  # type: ignore[attr-defined,no-any-return]
+            return await gw._planner.formulate_response_stream(
                 user_message=msg_text,
                 results=all_results,
                 working_memory=wm,
@@ -952,8 +952,8 @@ async def formulate_response(
     # `tests/test_integration/test_observer_flow.py`) intercept the call.
     from cognithor.gateway import gateway as _gw_mod
 
-    return await _gw_mod.run_pge_with_observer_directive(  # type: ignore[attr-defined]
-        planner=gw._planner,  # type: ignore[attr-defined]
+    return await _gw_mod.run_pge_with_observer_directive(
+        planner=gw._planner,
         user_message=msg_text,
         results=all_results,
         working_memory=wm,

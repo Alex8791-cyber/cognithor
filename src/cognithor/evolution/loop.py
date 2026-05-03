@@ -146,7 +146,7 @@ class EvolutionLoop:
         self._deep_learner: Any = None  # Set by gateway after construction
         self._current_checkpoint: EvolutionCheckpoint | None = None
         self._running = False
-        self._task: asyncio.Task | None = None  # type: ignore[type-arg]
+        self._task: asyncio.Task | None = None
         self._cycles_today = 0
         self._last_cycle_day = ""
         self._total_cycles = 0

@@ -116,7 +116,7 @@ def _try_mss_screenshot(
 
             img = sct.grab(mon)
             png = mss.tools.to_png(img.rgb, img.size)
-            return png, img.width, img.height  # type: ignore[return-value]
+            return png, img.width, img.height
     except Exception:
         return None
 
@@ -188,7 +188,7 @@ def _downscale_if_needed(png_bytes: bytes, width: int, height: int) -> tuple[byt
         ratio = min(_MAX_SCREENSHOT_WIDTH / width, _MAX_SCREENSHOT_HEIGHT / height)
         new_w = int(width * ratio)
         new_h = int(height * ratio)
-        img = img.resize((new_w, new_h), Image.LANCZOS)  # type: ignore[assignment,attr-defined]
+        img = img.resize((new_w, new_h), Image.LANCZOS)
         buf = BytesIO()
         img.save(buf, format="PNG")
         return buf.getvalue(), new_w, new_h

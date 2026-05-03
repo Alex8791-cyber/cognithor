@@ -102,7 +102,7 @@ class VaultTools:
         else:
             from cognithor.mcp.vault_file_backend import VaultFileBackend
 
-            self._backend = VaultFileBackend(  # type: ignore[assignment]
+            self._backend = VaultFileBackend(
                 self._vault_root,
                 encrypt_files=False,
                 default_folders=default_folders,
@@ -126,8 +126,8 @@ class VaultTools:
                 else:
                     from cognithor.mcp.vault_db_backend import VaultDBBackend as DB
 
-                    old = DB(self._vault_root)  # type: ignore[assignment]
-                    migrate_db_to_files(old, self._backend)  # type: ignore[arg-type]
+                    old = DB(self._vault_root)
+                    migrate_db_to_files(old, self._backend)
                 log.info("vault_mode_migrated", mode=current_mode)
             except Exception:
                 log.error("vault_migration_failed", exc_info=True)

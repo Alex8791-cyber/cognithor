@@ -50,7 +50,7 @@ class TrustScorer:
 
         return TrustScore(
             total=total_int,
-            label=self._label(total_int),  # type: ignore[arg-type]
+            label=self._label(total_int),
             claim_accuracy=round(ca, 1),
             source_diversity=round(sd, 1),
             technical_substance=round(ts, 1),

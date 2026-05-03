@@ -270,7 +270,7 @@ class LLMSolver:
         Subclasses (or test mocks) can override this method.
         """
         try:
-            from cognithor.config import get_config  # type: ignore[attr-defined]
+            from cognithor.config import get_config
             from cognithor.core.llm_backend import create_backend
         except ImportError as exc:
             raise RuntimeError("cognithor.core.llm_backend not available") from exc

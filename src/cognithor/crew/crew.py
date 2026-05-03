@@ -113,7 +113,7 @@ class Crew(BaseModel):
         super().__init__(**kwargs)
         object.__setattr__(self, "_planner", planner)
 
-    def model_copy(self, *, update: dict[str, Any] | None = None, deep: bool = False) -> Crew:  # type: ignore[override]
+    def model_copy(self, *, update: dict[str, Any] | None = None, deep: bool = False) -> Crew:
         """Preserve the injected ``_planner`` across ``model_copy()``.
 
         Pydantic v2's default ``model_copy`` walks only declared fields, so
