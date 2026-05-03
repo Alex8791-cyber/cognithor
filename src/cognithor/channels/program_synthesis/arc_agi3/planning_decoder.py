@@ -312,6 +312,22 @@ class PlanningLLMActionDecoder(ActionDecoder):
         try:
             plan, _top_reasoning = self._choice_fn(ctx)
         except Exception:
+            # Silent fallback hides genuine bugs in the LLM choice-fn —
+            # set ``COGNITHOR_PSE_DEBUG_LLM=1`` to surface the actual
+            # exception (full traceback to stderr) before returning the
+            # ``None`` that triggers the DSL fallback. Off by default to
+            # preserve the contract: production runs must keep playing.
+            import os as _os
+
+            if _os.environ.get("COGNITHOR_PSE_DEBUG_LLM"):
+                import sys as _sys
+                import traceback as _tb
+
+                print(
+                    "[pse-debug] choice_fn raised; falling back to DSL:",
+                    file=_sys.stderr,
+                )
+                _tb.print_exc(file=_sys.stderr)
             return None
         if not plan:
             return None
