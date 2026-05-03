@@ -152,13 +152,39 @@ class TestRenderStateChangesInWindow:
         m.append(grid=_g([[4, 4]]), action_name="ACTION3", levels_completed=0)
         out = render_state_changes_in_window(m, max_steps=5)
         lines = out.splitlines()
-        # Most recent first: step -1 then step -2
-        assert lines[0].startswith("step -1 (ACTION3):")
-        assert lines[1].startswith("step -2 (ACTION3):")
+        # Most recent first: step -1 then step -2. Sprint-19 Hebel M
+        # adds the absolute pixΔ count between the action name and the
+        # per-colour delta, so the LLM sees "pixΔ=N" directly.
+        assert lines[0].startswith("step -1 (ACTION3) pixΔ=1:")
+        assert lines[1].startswith("step -2 (ACTION3) pixΔ=1:")
         # The first transition added 1 cell of color 4
         assert "+1 cells" in lines[1]
         # Second transition added another cell of color 4
         assert "+1 cells" in lines[0]
+
+    def test_pix_delta_zero_for_no_change(self) -> None:
+        """Hebel M: identical grids → ``pixΔ=0`` even when delta-summary
+        text says ``(no change)``. Lets the LLM distinguish "no-op" from
+        "small change" in the trajectory at a glance.
+        """
+        m = EpisodeMemory()
+        m.append(grid=_g([[5, 5]]), action_name="ACTION1", levels_completed=0)
+        m.append(grid=_g([[5, 5]]), action_name="ACTION1", levels_completed=0)
+        out = render_state_changes_in_window(m, max_steps=5)
+        assert "pixΔ=0" in out
+        assert "(no change)" in out
+
+    def test_pix_delta_counts_all_changed_cells(self) -> None:
+        """Hebel M: pixΔ counts EVERY changed cell, including transitions
+        between non-background colours that the per-colour delta-summary
+        might collapse into balanced ``+N -N`` rows.
+        """
+        m = EpisodeMemory()
+        m.append(grid=_g([[1, 2, 3]]), action_name="ACTION1", levels_completed=0)
+        m.append(grid=_g([[4, 5, 6]]), action_name="ACTION1", levels_completed=0)
+        out = render_state_changes_in_window(m, max_steps=5)
+        # All 3 cells changed; pixΔ should be 3.
+        assert "pixΔ=3" in out
 
     def test_caps_at_max_steps(self) -> None:
         m = EpisodeMemory()

@@ -170,16 +170,26 @@ def render_state_changes_in_window(
 
     Format (most-recent first)::
 
-        step -1 (ACTION3): color 4: +24 cells (15 added, 9 lost)
-        step -2 (ACTION6): (no change)
-        step -3 (ACTION4): color 7: -12 cells, color 11: +12 cells
+        step -1 (ACTION3) pixΔ=24: color 4: +24 cells (15 added, 9 lost)
+        step -2 (ACTION6) pixΔ=0: (no change)
+        step -3 (ACTION4) pixΔ=24: color 7: -12 cells, color 11: +12 cells
 
     Empty memory → ``"(no actions yet)"``.
 
     This is the trajectory-of-structural-change signal. With it the
     LLM can answer "did the last few actions move things in the same
     direction, or am I oscillating?".
+
+    Sprint-19 Hebel M: each line is prefixed with the absolute number
+    of changed cells (``pixΔ=N``). Run #26c showed the agent kept
+    triggering GAME_OVER with pixΔ=525/639 at the final steps despite
+    the abstract GAME_OVER_AVOIDANCE_HINT — surfacing the concrete
+    numeric trajectory in the prompt lets the LLM react to "my last 3
+    moves changed 500+ cells each" directly instead of inferring it
+    from per-colour deltas.
     """
+    import numpy as np
+
     if max_steps < 1:
         raise ValueError(f"render_state_changes_in_window: max_steps must be >= 1, got {max_steps}")
     window = memory.window(max_steps + 1)  # +1 because we diff pairs
@@ -192,12 +202,17 @@ def render_state_changes_in_window(
         after = window[i]
         before = window[i + 1]
         idx = -(i + 1)
+        if before.grid.shape == after.grid.shape:
+            pix_delta = int(np.sum(before.grid != after.grid))
+        else:
+            pix_delta = -1  # shape change — treat as unknown rather than crashing
         delta = render_delta_summary(
             before.grid,
             after.grid,
             background_colors=background_colors,
         )
-        parts.append(f"step {idx} ({after.action_name}): {delta}")
+        pix_label = "pixΔ=?" if pix_delta < 0 else f"pixΔ={pix_delta}"
+        parts.append(f"step {idx} ({after.action_name}) {pix_label}: {delta}")
     if not parts:
         return "(no completed transitions yet)"
     return "\n".join(parts)
