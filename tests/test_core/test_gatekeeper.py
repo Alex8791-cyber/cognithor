@@ -261,6 +261,43 @@ class TestDestructiveCommands:
                 f"'{cmd}' should NOT match blocked patterns"
             )
 
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "rm -rf /",
+            "rm -rf /home",
+            "shutdown -h now",
+            "format C:",
+        ],
+    )
+    def test_start_background_destructive_commands_blocked(
+        self, gatekeeper: Gatekeeper, session: SessionContext, cmd: str
+    ) -> None:
+        """SEC-CRIT-1 (autonomous security audit, 2026-05-04):
+        ``start_background`` runs ``subprocess.Popen(shell=True)`` —
+        same threat surface as ``exec_command``. The destructive-
+        command regex/AST chain MUST fire for it too. Without this
+        guard, a jailbroken Planner could spawn ``rm -rf $HOME`` as a
+        background job that the YELLOW classification auto-allows.
+        """
+        action = PlannedAction(tool="start_background", params={"command": cmd})
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.status == GateStatus.BLOCK, f"start_background('{cmd}') should be BLOCKED"
+        assert decision.is_blocked
+
+    def test_start_background_safe_command_not_blocked(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """Legitimate background commands (``npm run dev`` etc.) must
+        still pass the destructive check. They get YELLOW (auto-execute
+        with informational notice) like before — only the dangerous
+        patterns are now caught.
+        """
+        action = PlannedAction(tool="start_background", params={"command": "npm run dev"})
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.policy_name != "blocked_command"
+        assert decision.policy_name != "blocked_command_ast"
+
 
 # ============================================================================
 # Credential-Erkennung
