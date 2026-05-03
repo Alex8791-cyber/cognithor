@@ -92,12 +92,40 @@ def _coerce_grid(raw: Any) -> Any:
     return np.array(raw, dtype=np.int8)
 
 
+def _coerce_value(raw: Any) -> Any:
+    """Sprint-22 — generic Input-Typing boundary.
+
+    Accepts the shapes any of Cognithor's DSL families understand:
+
+    * ``list[list[int]]`` → ``np.ndarray`` (grid family — ARC-DSL)
+    * ``str`` → ``str`` (string family — FlashFill-style)
+
+    More families register here as they ship (sql / regex / ast).
+    Non-fitting payloads raise :class:`ValueError` so the MCP layer
+    returns a structured error rather than crashing the engine.
+    """
+    if isinstance(raw, str):
+        return raw
+    if isinstance(raw, list) and raw and isinstance(raw[0], list):
+        return _coerce_grid(raw)
+    raise ValueError(
+        f"unsupported input type {type(raw).__name__} — expected 2-D int list (grid) or str"
+    )
+
+
 def _examples_from_json(payload: Any) -> tuple[tuple[Any, Any], ...]:
     """Parse a JSON ``examples`` list into the channel's tuple-of-Examples.
 
-    Accepts ``[{"input": [[...]], "output": [[...]]}, ...]``.  Empty
-    lists, missing keys, or mis-shaped grids raise :class:`ValueError`
-    so the MCP wrapper turns them into a structured error response.
+    Accepts ``[{"input": <value>, "output": <value>}, ...]`` where each
+    ``<value>`` is either a 2-D int list (grid) or a string. Empty
+    lists, missing keys, or unrepresentable types raise
+    :class:`ValueError` so the MCP wrapper turns them into structured
+    error responses.
+
+    Sprint-22: a single ``examples`` payload is required to be
+    homogeneous — all inputs the same family, all outputs the same
+    family. Mixed payloads are rejected up-front so the search engine
+    sees a coherent type-tagged signature.
     """
     if not isinstance(payload, list):
         raise ValueError("'examples' must be a list")
@@ -106,17 +134,25 @@ def _examples_from_json(payload: Any) -> tuple[tuple[Any, Any], ...]:
             "'examples' needs at least 2 entries (single-demo tasks are too under-specified)"
         )
     parsed: list[tuple[Any, Any]] = []
+    families: set[str] = set()
     for i, ex in enumerate(payload):
         if not isinstance(ex, dict):
             raise ValueError(f"example {i} must be a dict")
         if "input" not in ex or "output" not in ex:
             raise ValueError(f"example {i} needs both 'input' and 'output'")
         try:
-            inp = _coerce_grid(ex["input"])
-            out = _coerce_grid(ex["output"])
+            inp = _coerce_value(ex["input"])
+            out = _coerce_value(ex["output"])
         except ValueError as exc:
             raise ValueError(f"example {i}: {exc}") from exc
+        families.add(type(inp).__name__)
+        families.add(type(out).__name__)
         parsed.append((inp, out))
+    # Heterogeneous families would always lose at the type-filter; the
+    # explicit error makes the diagnostic obvious instead of silently
+    # returning ``no_solution``.
+    if "ndarray" in families and "str" in families:
+        raise ValueError("'examples' must be homogeneous (all grids OR all strings)")
     return tuple(parsed)
 
 

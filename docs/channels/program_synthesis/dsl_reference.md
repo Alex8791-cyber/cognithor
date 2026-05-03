@@ -2,7 +2,7 @@
 
 _Auto-generated. PSE version `1.2.0`, DSL version `1.2.0`._
 
-**76 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
+**90 primitives** registered, plus 13 predicate constructors and the closed Lambda / AlignMode / SortKey enums.
 
 Run `cognithor pse dsl describe <name>` for any primitive to see its full record (signature + cost + description + examples).
 
@@ -118,6 +118,25 @@ Run `cognithor pse dsl describe <name>` for any primitive to see its full record
 |---|---|---|---|
 | `color_count` | `(Grid) → Int` | 1.00 | Number of distinct colors present in the grid (0..10). |
 | `object_count` | `(ObjectSet) → Int` | 1.00 | Number of objects in the set (≥ 0). |
+
+### Output type: other
+
+| Name | Signature | Cost | Description |
+|---|---|---|---|
+| `string_capitalize` | `(String) → String` | 1.00 | Return the string with the first char uppercased and rest lowercased. |
+| `string_first_word` | `(String) → String` | 1.00 | Return the first whitespace-delimited word, or '' for an empty input. |
+| `string_identity` | `(String) → String` | 0.00 | Return the string unchanged. Useful as a no-op leaf. |
+| `string_join_comma` | `(StringList) → String` | 1.00 | Join a list of strings with comma+space. |
+| `string_join_space` | `(StringList) → String` | 1.00 | Join a list of strings with single spaces. |
+| `string_last_word` | `(String) → String` | 1.00 | Return the last whitespace-delimited word, or '' for an empty input. |
+| `string_lower` | `(String) → String` | 1.00 | Return the string in all-lowercase. |
+| `string_replace_dash_with_space` | `(String) → String` | 1.00 | Replace every '-' with a space. Common in slug → title transforms. |
+| `string_replace_underscore_with_space` | `(String) → String` | 1.00 | Replace every '_' with a space. snake_case → words. |
+| `string_reverse` | `(String) → String` | 1.00 | Return the string with characters in reverse order. |
+| `string_strip` | `(String) → String` | 1.00 | Return the string with leading/trailing whitespace removed. |
+| `string_upper` | `(String) → String` | 1.00 | Return the string in all-uppercase. |
+| `string_split_comma` | `(String) → StringList` | 1.00 | Split on commas. Empty fields kept (use string_strip on parts to clean). |
+| `string_split_space` | `(String) → StringList` | 1.00 | Split on any whitespace run; collapse consecutive separators. |
 
 ## Predicate constructors (closed set)
 

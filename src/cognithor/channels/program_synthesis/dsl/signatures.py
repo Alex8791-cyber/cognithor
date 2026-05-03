@@ -25,6 +25,15 @@ ALLOWED_TYPES: frozenset[str] = frozenset(
         "Lambda",
         "AlignMode",
         "SortKey",
+        # Sprint-22 — String-DSL family. ``String`` is the carrier for
+        # all str-based synthesis tasks (FlashFill-style normalisation,
+        # extraction, formatting). ``StringList`` is the result of
+        # ``split`` and the input to ``join``. Both stay disjoint from
+        # the grid type-tags so a Grid task and a String task never
+        # cross-pollinate during enumerative search (type-filter
+        # rejects all type-mismatched compositions).
+        "String",
+        "StringList",
     }
 )
 

@@ -11,8 +11,23 @@ from __future__ import annotations
 # primitives into the module-level REGISTRY. The re-export keeps the import
 # from being flagged as unused.
 from cognithor.channels.program_synthesis.dsl import primitives as primitives
+
+# Sprint-22 — String-DSL family. Same import-side-effect pattern: pulling
+# the module triggers ``@primitive`` decoration on every string primitive,
+# which adds them to the singleton REGISTRY. Type filtering at search time
+# keeps grid and string searches disjoint (a Grid InputRef never matches a
+# String-input primitive's signature).
+from cognithor.channels.program_synthesis.dsl import string_primitives as string_primitives
 from cognithor.channels.program_synthesis.dsl.registry import REGISTRY
 from cognithor.channels.program_synthesis.dsl.signatures import Signature
 from cognithor.channels.program_synthesis.dsl.types_grid import Mask, Object, ObjectSet
 
-__all__ = ["REGISTRY", "Mask", "Object", "ObjectSet", "Signature", "primitives"]
+__all__ = [
+    "REGISTRY",
+    "Mask",
+    "Object",
+    "ObjectSet",
+    "Signature",
+    "primitives",
+    "string_primitives",
+]
