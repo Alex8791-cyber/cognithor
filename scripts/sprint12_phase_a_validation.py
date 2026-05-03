@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 """Sprint-12 Phase-A live A/B validation driver.
 
-Runs an A/B comparison between four Cognithor PSE agents against three
+Runs an A/B comparison between four Cognithor PSE agents against the
 ARC-AGI-3 games using the in-process arc_agi SDK + EpisodeRunner.
 
 Agents:
@@ -13,20 +13,27 @@ Agents:
                      + audit + profile)
   llm_full         - LLMReasoningAgent over in-process vLLM
                      (qwen3.6:27b NVFP4) with the same persistence
+  llm_planning     - PlanningLLMReasoningAgent (text-mode, plan_horizon=5)
+  llm_vision       - PlanningLLMReasoningAgent (vision-mode, plan_horizon=5,
+                     Sprint-19 Hebel L-T stack: K=3 candidate sampling,
+                     plan_scorer gates, pixΔ trajectory + histograms,
+                     stalled-progress warnings, RESET / exploration bonuses)
 
-Games: bp35 (click-target), ft09 (click+movement), lp85 (toggle).
+Games (Sprint-19 Hebel U full sweep — 13 games with per-game prompt
+rules wired): bp35, ft09, ls20, cn04, sk48, ar25, tn36, wa30, re86,
+lp85, sc25, su15, lf52. Override with ``--games`` for subsets.
 
 Run from inside an env that has:
   * arc_agi (the official SDK) installed
   * cognithor (this repo) installed editable
-  * vllm 0.20.0 + sakamakismile/Qwen3.6-27B-NVFP4 (only needed for llm_full)
+  * vllm 0.20.0 + sakamakismile/Qwen3.6-27B-NVFP4 (only needed for llm_*)
 
 Usage::
 
     cd ~/ARC-AGI-3-Agents
     uv run python /mnt/d/Jarvis/jarvis\\ complete\\ v20/scripts/sprint12_phase_a_validation.py
     # or with a subset:
-    uv run python sprint12_phase_a_validation.py --games bp35 --agents random,dsl_baseline
+    uv run python sprint12_phase_a_validation.py --games bp35 --agents llm_vision
 
 Results land in ``cognithor_bench/results/sprint12_phase_a/<timestamp>/``.
 """
@@ -68,7 +75,30 @@ except ImportError as exc:
     sys.exit(1)
 
 
-DEFAULT_GAMES = ["bp35", "ft09", "lp85"]
+# Sprint-19 Hebel U: full multi-game default. Until now the driver
+# defaulted to bp35,ft09,lp85 (3 of the 25 environments the ARC-AGI-3
+# API exposes). All 13 games below have per-game prompts wired in
+# ``game_prompts.GAME_PROMPTS`` so the LLM agent gets real per-game
+# rules instead of the generic fallback. Order follows the
+# game_prompts registry; users can override with ``--games`` for
+# subsets / individual games. Games NOT in this list still work with
+# the generic ARC-AGI-3 prompt scaffold but are excluded from the
+# default A/B sweep until per-game observation rules ship.
+DEFAULT_GAMES = [
+    "bp35",
+    "ft09",
+    "ls20",
+    "cn04",
+    "sk48",
+    "ar25",
+    "tn36",
+    "wa30",
+    "re86",
+    "lp85",
+    "sc25",
+    "su15",
+    "lf52",
+]
 DEFAULT_AGENTS = ["random_baseline", "dsl_baseline", "dsl_full", "llm_full"]
 
 
