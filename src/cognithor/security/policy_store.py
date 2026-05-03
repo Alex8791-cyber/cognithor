@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import yaml  # type: ignore[import-untyped]
 
@@ -235,7 +235,8 @@ class PolicyStore:
         if not path.exists():
             return None
         try:
-            return yaml.safe_load(path.read_text(encoding="utf-8"))
+            return cast("dict[str, Any] | None", yaml.safe_load(path.read_text(encoding="utf-8")))
+
         except Exception:
             return None
 
@@ -401,7 +402,8 @@ class PolicyStore:
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8"))
             if isinstance(data, dict) and "rules" in data:
-                return data["rules"]
+                return cast("list[dict[str, Any]]", data["rules"])
+
         except Exception as exc:
             log.warning("policy_rules_load_error", path=str(path), error=str(exc))
         return []

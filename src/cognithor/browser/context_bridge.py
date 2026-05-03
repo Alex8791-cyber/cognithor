@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -95,7 +95,8 @@ class TabContextBridge:
         """Extract text content from a tab."""
         if self._browser is not None:
             try:
-                return await self._browser.extract_text()
+                return cast("str", await self._browser.extract_text())
+
             except Exception:
                 log.debug("tab_extract_failed", exc_info=True)
         return f"[Tab: {handle.label} — {handle.url}]"

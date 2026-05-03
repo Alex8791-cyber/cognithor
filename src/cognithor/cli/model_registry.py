@@ -7,7 +7,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -36,7 +36,7 @@ class ModelRegistry:
 
     def _provider_block(self, provider: str) -> dict[str, Any] | None:
         data = self._load()
-        return data.get("providers", {}).get(provider)
+        return cast("dict[str, Any] | None", data.get("providers", {}).get(provider))
 
     # ------------------------------------------------------------------
     # Cached (offline) access

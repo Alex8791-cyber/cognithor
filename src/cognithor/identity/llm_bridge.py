@@ -16,7 +16,7 @@ import json
 import logging
 import re
 import threading
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from cognithor.core.unified_llm import UnifiedLLMClient
@@ -97,10 +97,11 @@ class CognithorLLMBridge:
                 temperature=temperature,
             )
             if isinstance(resp, dict):
-                return resp.get("content", resp.get("message", {}).get("content", ""))
+                return cast("str", resp.get("content", resp.get("message", {}).get("content", "")))
+
             return str(resp)
 
-        return self._run_async(_call())
+        return cast("str", self._run_async(_call()))
 
     def chat(
         self,
@@ -122,10 +123,11 @@ class CognithorLLMBridge:
                 temperature=temperature,
             )
             if isinstance(resp, dict):
-                return resp.get("content", resp.get("message", {}).get("content", ""))
+                return cast("str", resp.get("content", resp.get("message", {}).get("content", "")))
+
             return str(resp)
 
-        return self._run_async(_call())
+        return cast("str", self._run_async(_call()))
 
     def complete_json(
         self,

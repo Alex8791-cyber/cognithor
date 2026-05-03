@@ -9,7 +9,7 @@ Visualisierung der DAG-Workflow-Ausfuehrung.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -70,7 +70,7 @@ def _register_workflow_graph_routes(
         t = tmpl.get(template_id)
         if not t:
             return {"error": "Template not found", "status": 404}
-        return t.to_dict()
+        return cast("dict[str, Any]", t.to_dict())
 
     # -- Simple workflow instances -----------------------------------------
 
@@ -100,7 +100,7 @@ def _register_workflow_graph_routes(
             t = tmpl.get(inst.template_id)
             if t:
                 result["steps"] = [s.to_dict() for s in t.steps]
-        return result
+        return cast("dict[str, Any]", result)
 
     @app.post("/api/v1/workflows/instances", dependencies=deps)
     async def wf_start_instance(request: Request) -> dict[str, Any]:
@@ -159,7 +159,8 @@ def _register_workflow_graph_routes(
         if not cp_file.exists():
             return {"error": "Run not found", "status": 404}
         try:
-            return json.loads(cp_file.read_text(encoding="utf-8"))
+            return cast("dict[str, Any]", json.loads(cp_file.read_text(encoding="utf-8")))
+
         except Exception as exc:
             log.error("wf_dag_run_read_failed", run_id=run_id, error=str(exc))
             return {"error": "DAG-Run konnte nicht geladen werden", "status": 500}

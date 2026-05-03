@@ -13,7 +13,7 @@ zwei verwandten Helfern fuer aktives Lernen und Knowledge-Ingestion:
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -508,7 +508,7 @@ def _register_ingest_routes(
         try:
             form = await request.form()
             file_field = form.get("file")
-            if file_field is None:
+            if file_field is None or isinstance(file_field, str):
                 return {"error": "Field 'file' is required", "code": "MISSING_FIELD"}
 
             file_bytes = await file_field.read()
@@ -670,4 +670,4 @@ def _register_ingest_routes(
         if not svc:
             return {"error": "Knowledge ingest service not initialized", "status": 503}
 
-        return svc.stats()
+        return cast("dict[str, Any]", svc.stats())

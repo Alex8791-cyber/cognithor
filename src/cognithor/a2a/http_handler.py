@@ -12,7 +12,7 @@ Import-safe: FastAPI is an optional dependency.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.a2a.types import A2A_CONTENT_TYPE, A2A_PROTOCOL_VERSION, A2A_VERSION_HEADER
 from cognithor.security.rate_limiter import RateLimiter
@@ -54,7 +54,7 @@ class A2AHTTPHandler:
 
     async def handle_agent_card(self) -> dict[str, Any]:
         """GET /.well-known/agent.json -- Agent Card Discovery."""
-        return self.adapter.get_agent_card()
+        return cast("dict[str, Any]", self.adapter.get_agent_card())
 
     async def handle_jsonrpc(
         self,

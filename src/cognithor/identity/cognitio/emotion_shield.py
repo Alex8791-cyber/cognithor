@@ -19,7 +19,7 @@ Defense Mechanisms:
 import collections
 import logging
 import math
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +263,8 @@ class EmotionShield:
 
             if max_sim > threshold:
                 # Map similarity above threshold to a 0.0-1.0 score
-                return min(1.0, (max_sim - threshold) / (1.0 - threshold + 1e-8))
+                return cast("float", min(1.0, (max_sim - threshold) / (1.0 - threshold + 1e-8)))
+
             return 0.0
 
         except Exception as e:
@@ -366,7 +367,9 @@ class EmotionShield:
         """Session emotional average."""
         if not self._session_emotion_history:
             return 0.0
-        return sum(self._session_emotion_history) / len(self._session_emotion_history)
+        return cast(
+            "float", sum(self._session_emotion_history) / len(self._session_emotion_history)
+        )
 
     @property
     def is_in_cooldown(self) -> bool:

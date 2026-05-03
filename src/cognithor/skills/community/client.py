@@ -23,7 +23,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.skills.community.validator import SkillValidator
 from cognithor.utils.logging import get_logger
@@ -378,7 +378,7 @@ class CommunityRegistryClient:
     async def _fetch_json(self, url: str) -> dict[str, Any]:
         """Load JSON from a URL."""
         text = await self._fetch_text(url)
-        return json.loads(text)
+        return cast("dict[str, Any]", json.loads(text))
 
     async def _fetch_text(self, url: str) -> str:
         """Load text from a URL.
@@ -412,7 +412,7 @@ class CommunityRegistryClient:
         def _sync_fetch() -> str:
             req = urllib.request.Request(url, headers={"User-Agent": "Jarvis-CommunityClient/1.0"})
             with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT_S) as resp:
-                return resp.read().decode("utf-8")
+                return cast("str", resp.read().decode("utf-8"))
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _sync_fetch)

@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import signal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.i18n import t
 from cognithor.utils.logging import get_logger
@@ -692,7 +692,7 @@ async def execute_workflow(gw: Gateway, workflow_yaml: str) -> dict[str, Any]:
         return {"success": False, "errors": errors}
 
     run = await engine.execute(workflow)
-    return run.model_dump(mode="json")
+    return cast("dict[str, Any]", run.model_dump(mode="json"))
 
 
 async def execute_action_plan_as_workflow(gw: Gateway, plan: ActionPlan) -> dict[str, Any]:
@@ -727,4 +727,4 @@ async def execute_action_plan_as_workflow(gw: Gateway, plan: ActionPlan) -> dict
         return {"success": False, "errors": errors}
 
     run = await engine.execute(workflow)
-    return run.model_dump(mode="json")
+    return cast("dict[str, Any]", run.model_dump(mode="json"))

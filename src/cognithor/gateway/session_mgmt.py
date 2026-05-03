@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from cognithor.models import SessionContext, WorkingMemory
 from cognithor.utils.logging import get_logger
@@ -156,7 +156,7 @@ def get_or_create_session(
                     agent=agent_name,
                     messages=stored.message_count,
                 )
-                return stored
+                return cast("SessionContext", stored)
 
         # 3. Neue Session
         session = SessionContext(

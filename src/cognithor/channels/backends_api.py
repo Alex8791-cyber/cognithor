@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json as _json
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -87,7 +87,8 @@ def _resolve_orchestrator(request: Request) -> VLLMOrchestrator:
     """
     orch = getattr(request.app.state, "vllm_orchestrator", None)
     if orch is not None:
-        return orch
+        return cast("VLLMOrchestrator", orch)
+
     config: CognithorConfig = request.app.state.config
     return _get_orchestrator(config)
 

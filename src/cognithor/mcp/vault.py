@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import yaml  # type: ignore[import-untyped]
 
@@ -181,7 +181,8 @@ class VaultTools:
     def _read_index(self) -> dict[str, Any]:
         """Liest den _index.json."""
         if hasattr(self._backend, "_read_index"):
-            return self._backend._read_index()
+            return cast("dict[str, Any]", self._backend._read_index())
+
         return {}
 
     def _write_index(self, index: dict[str, Any]) -> None:
@@ -203,7 +204,8 @@ class VaultTools:
     ) -> str:
         """Generiert Obsidian-kompatibles YAML-Frontmatter."""
         if hasattr(self._backend, "_build_frontmatter"):
-            return self._backend._build_frontmatter(title, tags, sources, linked_notes)
+            return cast("str", self._backend._build_frontmatter(title, tags, sources, linked_notes))
+
         # Fallback
         now = _now_iso()
         lines = [
@@ -225,7 +227,8 @@ class VaultTools:
     def _resolve_folder(self, folder: str) -> str:
         """Loest einen logischen Ordnernamen zu einem Pfad auf."""
         if hasattr(self._backend, "_resolve_folder"):
-            return self._backend._resolve_folder(folder)
+            return cast("str", self._backend._resolve_folder(folder))
+
         folders = self._default_folders
         if folder in folders:
             return folders[folder]
@@ -459,7 +462,7 @@ class VaultTools:
         if hasattr(self._backend, "_read_file"):
             full = self._vault_root / note.path
             if full.exists():
-                return self._backend._read_file(full)
+                return cast("str", self._backend._read_file(full))
 
         # For DBBackend: reconstruct display content
         return t(

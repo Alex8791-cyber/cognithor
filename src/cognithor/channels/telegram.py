@@ -25,7 +25,7 @@ import asyncio
 import contextlib
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.channels.base import Channel, MessageHandler, StatusType
 from cognithor.i18n import t
@@ -840,7 +840,8 @@ class TelegramChannel(Channel):
                             len(raw_text),
                             len(polished),
                         )
-                        return polished.strip()
+                        return cast("str", polished.strip())
+
         except Exception:
             logger.debug("Vision-Postprocessing fehlgeschlagen, nutze Rohtext", exc_info=True)
 

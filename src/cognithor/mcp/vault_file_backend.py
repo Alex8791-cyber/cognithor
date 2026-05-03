@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.i18n import t
 from cognithor.mcp.vault_backend import NoteData, VaultBackend, now_iso, parse_tags, slugify
@@ -69,7 +69,8 @@ class VaultFileBackend(VaultBackend):
             return {}
         try:
             raw = self._read_file(self._index_path)
-            return json.loads(raw)
+            return cast("dict[str, Any]", json.loads(raw))
+
         except Exception:
             return {}
 

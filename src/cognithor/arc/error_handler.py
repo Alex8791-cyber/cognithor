@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import functools
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
@@ -160,7 +160,7 @@ def safe_frame_extract(
     # Multi-layer frame: (N, H, W) where N > 1 → take first layer
     # ARC-AGI-3 can return multi-layer frames as game complexity increases
     if arr.ndim == 3 and arr.shape[1:] == (h, w):
-        return arr[0]
+        return cast("np.ndarray[Any, Any]", arr[0])
 
     # Flat 1-D array with exactly H*W elements → reshape
     if arr.ndim == 1 and arr.size == h * w:

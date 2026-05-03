@@ -8,7 +8,7 @@ Reddit-Lead-Hunter-Pack (`/api/v1/leads/...`).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -272,7 +272,7 @@ def _register_social_routes(
         lead = svc.get_lead(lead_id)
         if lead is None:
             raise HTTPException(404, "Lead not found")
-        return lead.to_dict()
+        return cast("dict[str, Any]", lead.to_dict())
 
     @app.patch("/api/v1/leads/{lead_id}", dependencies=deps)
     async def update_lead(lead_id: str, request: Request) -> dict[str, Any]:
@@ -287,7 +287,7 @@ def _register_social_routes(
         lead = svc.update_lead(lead_id, status=status, reply_final=reply_final)
         if lead is None:
             raise HTTPException(404, "Lead not found")
-        return lead.to_dict()
+        return cast("dict[str, Any]", lead.to_dict())
 
     @app.post("/api/v1/leads/{lead_id}/reply", dependencies=deps)
     async def reply_to_lead(lead_id: str, request: Request) -> dict[str, Any]:

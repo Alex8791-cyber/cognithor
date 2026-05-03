@@ -15,7 +15,7 @@ import sqlite3
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.db import SQLITE_BUSY_TIMEOUT_MS
 from cognithor.security.encrypted_db import encrypted_connect
@@ -272,7 +272,7 @@ class MarketplaceStore:
             ),
         )
         self.conn.commit()
-        return package_id
+        return cast("str", package_id)
 
     def get_listing(self, package_id: str) -> dict[str, Any] | None:
         """Load a single listing."""
@@ -474,7 +474,7 @@ class MarketplaceStore:
         ).fetchone()
         if row is None or row["rating_count"] == 0:
             return 0.0
-        return round(row["rating_sum"] / row["rating_count"], 1)
+        return cast("float", round(row["rating_sum"] / row["rating_count"], 1))
 
     # ------------------------------------------------------------------
     # Reputation
@@ -747,7 +747,7 @@ class MarketplaceStore:
             ),
         )
         self.conn.commit()
-        return username
+        return cast("str", username)
 
     def get_publisher(self, github_username: str) -> dict[str, Any] | None:
         """Load a publisher."""

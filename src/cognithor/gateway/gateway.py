@@ -17,7 +17,7 @@ import re
 import threading
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from cognithor.config import CognithorConfig, load_config
 from cognithor.core.agent_router import (
@@ -581,7 +581,7 @@ class Gateway:
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.8,
                     )
-                    return resp.get("message", {}).get("content", "")
+                    return cast("str", resp.get("message", {}).get("content", ""))
 
                 self._prompt_evolution._llm_client = _pe_llm_call
             except Exception:
@@ -925,7 +925,7 @@ class Gateway:
                 except TimeoutError:
                     log.debug("evolution_llm_timeout", model=model)
                     return ""
-                return resp.get("message", {}).get("content", "")
+                return cast("str", resp.get("message", {}).get("content", ""))
 
             self._llm_call = _evolution_llm_call
 
@@ -1896,7 +1896,7 @@ class Gateway:
         if not plan.has_actions and plan.direct_response:
             delegation.result = plan.direct_response
             delegation.success = True
-            return plan.direct_response
+            return cast("str", plan.direct_response)
 
         if not plan.has_actions:
             delegation.result = "Kein Plan erstellt."

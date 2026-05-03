@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import yaml  # type: ignore[import-untyped]
 
@@ -122,7 +122,7 @@ def _register_ui_routes(
         profile = getattr(gateway, "_system_profile", None)
         if not profile:
             return {"error": "System profile not available"}
-        return profile.to_dict()
+        return cast("dict[str, Any]", profile.to_dict())
 
     @app.post("/api/v1/system/rescan", dependencies=deps)
     async def rescan_system() -> dict[str, Any]:
@@ -179,7 +179,8 @@ def _register_ui_routes(
             return {"error": "Resource monitor not available"}
         try:
             snap = await monitor.sample()
-            return snap.to_dict()
+            return cast("dict[str, Any]", snap.to_dict())
+
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -205,7 +206,7 @@ def _register_ui_routes(
                     stats["resume"] = None
             except Exception:
                 stats["resume"] = None
-        return stats
+        return cast("dict[str, Any]", stats)
 
     @app.post("/api/v1/evolution/resume", dependencies=deps)
     async def resume_evolution_cycle() -> dict[str, Any]:
@@ -393,7 +394,8 @@ def _register_ui_routes(
             if updated is None:
                 return {"error": "Goal not found"}
             _save_goals(goals)
-            return updated
+            return cast("dict[str, Any]", updated)
+
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -486,7 +488,7 @@ def _register_ui_routes(
         plan = dl.get_plan(plan_id)
         if not plan:
             return {"error": "Plan not found"}
-        return plan.to_dict()
+        return cast("dict[str, Any]", plan.to_dict())
 
     @app.post("/api/v1/evolution/plans", dependencies=deps)
     async def create_evolution_plan(request: Request) -> dict[str, Any]:
@@ -512,7 +514,8 @@ def _register_ui_routes(
                     )
                 )
             plan = await dl.create_plan(goal, seed_sources=seeds if seeds else None)
-            return plan.to_summary_dict()
+            return cast("dict[str, Any]", plan.to_summary_dict())
+
         except Exception as exc:
             return {"error": str(exc)}
 

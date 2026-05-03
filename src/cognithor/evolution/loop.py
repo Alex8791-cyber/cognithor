@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.evolution.checkpoint import EvolutionCheckpoint
 from cognithor.utils.logging import get_logger
@@ -274,7 +274,8 @@ class EvolutionLoop:
             response = await self._llm_fn(prompt)
             if not response or "KEINE_RELEVANZ" in response:
                 return None
-            return response.strip()
+            return cast("str | None", response.strip())
+
         except Exception:
             log.debug("atl_synthesis_failed", exc_info=True)
             return None
@@ -912,9 +913,10 @@ class EvolutionLoop:
 
         now = datetime.now().strftime("%H:%M")
         if start <= end:
-            return start <= now <= end
+            return cast("bool", start <= now <= end)
+
         # Wrap around midnight (e.g., 23:00 to 07:00)
-        return now >= start or now <= end
+        return cast("bool", now >= start or now <= end)
 
     def _update_goal_progress_from_metrics(self, goals: list[Any]) -> None:
         """Compute goal progress from real data instead of LLM guesses.
@@ -1036,7 +1038,7 @@ class EvolutionLoop:
         if not self._atl_config or not self._atl_config.enabled:
             return False
         interval = self._atl_config.interval_minutes * 60
-        return (_time.monotonic() - self._last_thinking_time) >= interval
+        return cast("bool", (_time.monotonic() - self._last_thinking_time) >= interval)
 
     # -- Checkpointing ---------------------------------------------------
 
@@ -1079,7 +1081,8 @@ class EvolutionLoop:
                 tasks = self._curiosity.propose_exploration(max_tasks=3)
                 if tasks:
                     log.info("evolution_scout_found_gaps", count=len(tasks), source="curiosity")
-                    return tasks
+                    return cast("list[Any]", tasks)
+
             except Exception:
                 log.debug("evolution_scout_curiosity_failed", exc_info=True)
 
@@ -1399,7 +1402,8 @@ class EvolutionLoop:
                 )
                 synthesis = await self._llm_fn(prompt)
                 if synthesis:
-                    return synthesis[:3000]
+                    return cast("str", synthesis[:3000])
+
             except Exception:
                 log.debug("evolution_llm_synthesis_failed", exc_info=True)
 
@@ -1433,7 +1437,8 @@ class EvolutionLoop:
                 self._skill_gen.llm_fn = self._llm_fn
             result = await self._skill_gen.process_gap(skill_gap)
             if result and hasattr(result, "name"):
-                return result.name
+                return cast("str", result.name)
+
         except Exception:
             log.debug("evolution_build_failed", exc_info=True)
         return ""

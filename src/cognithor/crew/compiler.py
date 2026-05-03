@@ -15,7 +15,7 @@ import logging
 import threading
 import uuid as _uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.crew.agent import CrewAgent
 from cognithor.crew.errors import GuardrailFailure
@@ -229,7 +229,7 @@ async def _call_guardrail(guardrail: Any, out: TaskOutput) -> GuardrailResult:
     result = guardrail(out)
     if inspect.iscoroutine(result):
         result = await result
-    return result
+    return cast("GuardrailResult", result)
 
 
 def execute_task(

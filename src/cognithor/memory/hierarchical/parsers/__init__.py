@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from cognithor.memory.hierarchical.models import ParserError
 
@@ -54,4 +54,4 @@ def get_parser(source_path: Path) -> DocumentParser:
         ) from exc
 
     cls = getattr(mod, class_name)
-    return cls()
+    return cast("DocumentParser", cls())

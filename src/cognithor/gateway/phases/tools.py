@@ -7,7 +7,7 @@ Attributes handled:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -302,7 +302,7 @@ async def init_tools(
                     messages=[{"role": "user", "content": prompt}],
                     model=model or model_name,
                 )
-                return resp.get("content", "") if isinstance(resp, dict) else str(resp)
+                return cast("str", resp.get("content", "") if isinstance(resp, dict) else str(resp))
 
             media_pipeline._set_llm_fn(_llm_for_analysis, model_name)
             log.info("media_llm_injected", model=model_name)
@@ -357,7 +357,9 @@ async def init_tools(
                             messages=[{"role": "user", "content": prompt}],
                             model=model or model_name_synth,
                         )
-                        return resp.get("content", "") if isinstance(resp, dict) else str(resp)
+                        return cast(
+                            "str", resp.get("content", "") if isinstance(resp, dict) else str(resp)
+                        )
 
                     synthesizer._set_llm_fn(_llm_for_synthesis, model_name_synth)
                 log.info("synthesis_llm_injected")
@@ -608,7 +610,9 @@ async def init_tools(
                         messages=[{"role": "user", "content": prompt}],
                         model=model or _model_vl,
                     )
-                    return resp.get("content", "") if isinstance(resp, dict) else str(resp)
+                    return cast(
+                        "str", resp.get("content", "") if isinstance(resp, dict) else str(resp)
+                    )
 
                 verified_lookup._set_llm_fn(_llm_for_verified, _model_vl)
             except Exception:

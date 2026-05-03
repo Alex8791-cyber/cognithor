@@ -10,7 +10,7 @@ import base64
 import io
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -112,7 +112,8 @@ def _parse_guidance(raw: str) -> dict[str, Any] | None:
                     try:
                         data = json.loads(raw[brace : i + 1])
                         if "next_action" in data:
-                            return data
+                            return cast("dict[str, Any] | None", data)
+
                     except (json.JSONDecodeError, ValueError):
                         pass
                     break

@@ -11,7 +11,7 @@ Groesster Helper im Paket (~975 LOC).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -177,7 +177,7 @@ def _register_security_routes(
                 "unique_agents": 0,
                 "avg_confidence": 0.0,
             }
-        return decision_log.stats()
+        return cast("dict[str, Any]", decision_log.stats())
 
     @app.get("/api/v1/compliance/remediations", dependencies=deps)
     async def compliance_remediations() -> dict[str, Any]:
@@ -185,7 +185,7 @@ def _register_security_routes(
         tracker = getattr(gateway, "_remediation_tracker", None)
         if tracker is None:
             return {"total": 0, "open": 0, "in_progress": 0, "resolved": 0, "overdue": 0}
-        return tracker.stats()
+        return cast("dict[str, Any]", tracker.stats())
 
     @app.get("/api/v1/compliance/stats", dependencies=deps)
     async def compliance_stats() -> dict[str, Any]:
@@ -193,7 +193,7 @@ def _register_security_routes(
         exporter = getattr(gateway, "_compliance_exporter", None)
         if exporter is None:
             return {"total_reports": 0}
-        return exporter.stats()
+        return cast("dict[str, Any]", exporter.stats())
 
     @app.get("/api/v1/compliance/transparency", dependencies=deps)
     async def compliance_transparency() -> dict[str, Any]:
@@ -201,7 +201,7 @@ def _register_security_routes(
         exporter = getattr(gateway, "_compliance_exporter", None)
         if exporter is None:
             return {"total_obligations": 0}
-        return exporter.transparency.stats()
+        return cast("dict[str, Any]", exporter.transparency.stats())
 
     @app.post("/api/v1/compliance/report", dependencies=deps)
     async def compliance_generate() -> dict[str, Any]:
@@ -210,7 +210,7 @@ def _register_security_routes(
         if exporter is None:
             return {"error": "Exporter nicht verfügbar"}
         report = exporter.generate_report()
-        return report.to_dict()
+        return cast("dict[str, Any]", report.to_dict())
 
     # -- GDPR Art. 15: User Data Export -----------------------------------
 
@@ -573,7 +573,11 @@ def _register_security_routes(
                     vault = None
                     for attr in dir(gateway):
                         obj = getattr(gateway, attr, None)
-                        if hasattr(obj, "_backend") and hasattr(obj._backend, "update"):
+                        if (
+                            obj is not None
+                            and hasattr(obj, "_backend")
+                            and hasattr(obj._backend, "update")
+                        ):
                             vault = obj
                             break
                     if vault:
@@ -627,7 +631,7 @@ def _register_security_routes(
             vault = None
             for attr in dir(gateway):
                 obj = getattr(gateway, attr, None)
-                if hasattr(obj, "_backend") and hasattr(obj._backend, "save"):
+                if obj is not None and hasattr(obj, "_backend") and hasattr(obj._backend, "save"):
                     vault = obj
                     break
             if vault:
@@ -803,7 +807,7 @@ def _register_security_routes(
         pipeline = getattr(gateway, "_security_pipeline", None)
         if pipeline is None:
             return {"total_runs": 0, "last_result": "none", "total_findings": 0, "pass_rate": 0}
-        return pipeline.stats()
+        return cast("dict[str, Any]", pipeline.stats())
 
     @app.post("/api/v1/security/pipeline/run", dependencies=deps)
     async def pipeline_run(request: Request) -> dict[str, Any]:
@@ -825,7 +829,8 @@ def _register_security_routes(
                 dependencies=body.get("dependencies", []),
                 trigger=trigger,
             )
-            return run.to_dict()
+            return cast("dict[str, Any]", run.to_dict())
+
         except Exception as exc:
             log.error("pipeline_run_failed", error=str(exc))
             return {"error": "Security-Pipeline-Run fehlgeschlagen"}
@@ -847,7 +852,7 @@ def _register_security_routes(
         policy = getattr(gateway, "_ecosystem_policy", None)
         if policy is None:
             return {"total_requirements": 0, "minimum_tier": "community", "total_badges": 0}
-        return policy.stats()
+        return cast("dict[str, Any]", policy.stats())
 
     @app.post("/api/v1/ecosystem/evaluate", dependencies=deps)
     async def ecosystem_evaluate(request: Request) -> dict[str, Any]:
@@ -871,7 +876,8 @@ def _register_security_routes(
                 has_input_validation=body.get("has_input_validation", False),
                 is_dsgvo_compliant=body.get("is_dsgvo_compliant", False),
             )
-            return badge.to_dict()
+            return cast("dict[str, Any]", badge.to_dict())
+
         except Exception as exc:
             log.error("ecosystem_evaluate_failed", error=str(exc))
             return {"error": "Ecosystem-Evaluierung fehlgeschlagen"}
@@ -889,7 +895,7 @@ def _register_security_routes(
                 "resolution_rate": 100,
                 "total_incidents": 0,
             }
-        return metrics.to_dict()
+        return cast("dict[str, Any]", metrics.to_dict())
 
     @app.get("/api/v1/framework/incidents", dependencies=deps)
     async def framework_incidents() -> dict[str, Any]:
@@ -922,12 +928,13 @@ def _register_security_routes(
         metrics = getattr(gateway, "_security_metrics", None)
         pipeline = getattr(gateway, "_security_pipeline", None)
         team = getattr(gateway, "_security_team", None)
-        return scorer.calculate(
+        result = scorer.calculate(
             resolution_rate=metrics.resolution_rate() if metrics else 100,
             mttr_seconds=metrics.mttr() if metrics else 0,
             team_roles_filled=team.member_count if team else 0,
             pipeline_pass_rate=pipeline.stats().get("pass_rate", 100) if pipeline else 100,
         )
+        return cast("dict[str, Any]", result)
 
     # -- CI/CD Security Gate (Phase 24) -----------------------------------
 
@@ -937,7 +944,7 @@ def _register_security_routes(
         gate = getattr(gateway, "_security_gate", None)
         if gate is None:
             return {"total_evaluations": 0, "pass_rate": 100}
-        return gate.stats()
+        return cast("dict[str, Any]", gate.stats())
 
     @app.post("/api/v1/gate/evaluate", dependencies=deps)
     async def gate_evaluate(body: dict[str, Any]) -> dict[str, Any]:
@@ -946,7 +953,7 @@ def _register_security_routes(
         if gate is None:
             return {"verdict": "pass", "error": "Gate nicht verfügbar"}
         result = gate.evaluate(body)
-        return result.to_dict()
+        return cast("dict[str, Any]", result.to_dict())
 
     @app.get("/api/v1/gate/history", dependencies=deps)
     async def gate_history() -> dict[str, Any]:
@@ -962,7 +969,7 @@ def _register_security_routes(
         rt = getattr(gateway, "_continuous_redteam", None)
         if rt is None:
             return {"total_probes": 0, "detection_rate": 100}
-        return rt.stats()
+        return cast("dict[str, Any]", rt.stats())
 
     @app.get("/api/v1/scans/stats", dependencies=deps)
     async def scans_stats() -> dict[str, Any]:
@@ -970,7 +977,7 @@ def _register_security_routes(
         sched = getattr(gateway, "_scan_scheduler", None)
         if sched is None:
             return {"total_schedules": 0}
-        return sched.stats()
+        return cast("dict[str, Any]", sched.stats())
 
     # -- Red-Team-Framework (Phase 30) ------------------------------------
 
@@ -980,7 +987,7 @@ def _register_security_routes(
         rt = getattr(gateway, "_red_team", None)
         if rt is None:
             return {"total_runs": 0}
-        return rt.stats()
+        return cast("dict[str, Any]", rt.stats())
 
     @app.get("/api/v1/red-team/coverage", dependencies=deps)
     async def red_team_coverage() -> dict[str, Any]:
@@ -988,7 +995,7 @@ def _register_security_routes(
         rt = getattr(gateway, "_red_team", None)
         if rt is None:
             return {"coverage_rate": 0}
-        return rt.coverage_report()
+        return cast("dict[str, Any]", rt.coverage_report())
 
     @app.get("/api/v1/red-team/latest", dependencies=deps)
     async def red_team_latest() -> dict[str, Any]:
@@ -1007,4 +1014,4 @@ def _register_security_routes(
         ca = getattr(gateway, "_code_auditor", None)
         if ca is None:
             return {"total_audits": 0}
-        return ca.stats()
+        return cast("dict[str, Any]", ca.stats())

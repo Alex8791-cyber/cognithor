@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.i18n import t
 from cognithor.utils.logging import get_logger
@@ -1044,7 +1044,7 @@ class MediaPipeline:
                 result += "\n\n" + t("media.vault_save_failed", error=vault_exc)
 
         log.info("document_analyzed", path=path, type=analysis_type, chars=len(result))
-        return result
+        return cast("str", result)
 
     # ========================================================================
     # Audio-Konvertierung (ffmpeg)

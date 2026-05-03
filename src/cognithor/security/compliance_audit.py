@@ -15,7 +15,7 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -51,7 +51,8 @@ class ComplianceAuditLog:
                         last_line = line
                 if last_line:
                     data = json.loads(last_line)
-                    return data.get("hash", "genesis")
+                    return cast("str", data.get("hash", "genesis"))
+
         except Exception:
             log.debug("compliance_audit_chain_hash_read_failed", exc_info=True)
         return "genesis"

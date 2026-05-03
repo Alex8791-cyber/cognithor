@@ -12,7 +12,7 @@ import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import httpx
 
@@ -108,7 +108,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
         embeddings = data.get("embeddings", [])
         if not embeddings:
             raise ValueError("Keine Embeddings in Ollama-Antwort")
-        return embeddings[0]
+        return cast("list[float]", embeddings[0])
 
     async def embed_batch_raw(self, model: str, texts: list[str]) -> list[list[float]]:
         client = await self._get_client()
@@ -118,7 +118,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
         )
         resp.raise_for_status()
         data = resp.json()
-        return data.get("embeddings", [])
+        return cast("list[list[float]]", data.get("embeddings", []))
 
     async def close(self) -> None:
         if self._client and not self._client.is_closed:
@@ -158,7 +158,7 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
         )
         resp.raise_for_status()
         data = resp.json()
-        return data.get("data", [{}])[0].get("embedding", [])
+        return cast("list[float]", data.get("data", [{}])[0].get("embedding", []))
 
     async def embed_batch_raw(self, model: str, texts: list[str]) -> list[list[float]]:
         client = await self._get_client()
@@ -206,7 +206,7 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         )
         resp.raise_for_status()
         data = resp.json()
-        return data.get("embedding", {}).get("values", [])
+        return cast("list[float]", data.get("embedding", {}).get("values", []))
 
     async def embed_batch_raw(self, model: str, texts: list[str]) -> list[list[float]]:
         client = await self._get_client()

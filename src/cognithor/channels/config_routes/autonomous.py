@@ -11,7 +11,7 @@ zwei kleineren Helfern:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -109,7 +109,7 @@ def _register_feedback_routes(
         feedback_store = getattr(gateway, "_feedback_store", None)
         if not feedback_store:
             return {"total": 0, "positive": 0, "negative": 0, "satisfaction_rate": 0}
-        return feedback_store.get_stats(agent_name=agent_name, hours=hours)
+        return cast("dict[str, Any]", feedback_store.get_stats(agent_name=agent_name, hours=hours))
 
     @app.get("/api/v1/feedback/recent", dependencies=deps)
     async def recent_feedback(limit: int = 50) -> dict[str, Any]:
@@ -153,7 +153,7 @@ def _register_feedback_routes(
 
         if not conv_id:
             return {"nodes": [], "conversation_id": None}
-        return tree.get_tree_structure(conv_id)
+        return cast("dict[str, Any]", tree.get_tree_structure(conv_id))
 
     @app.get("/api/v1/chat/tree/{conversation_id}", dependencies=deps)
     async def get_chat_tree(conversation_id: str) -> dict[str, Any]:
@@ -161,7 +161,7 @@ def _register_feedback_routes(
         tree = getattr(gateway, "_conversation_tree", None)
         if not tree:
             return {"error": "Conversation tree not available"}
-        return tree.get_tree_structure(conversation_id)
+        return cast("dict[str, Any]", tree.get_tree_structure(conversation_id))
 
     @app.get("/api/v1/chat/path/{conversation_id}/{leaf_id}", dependencies=deps)
     async def get_chat_path(conversation_id: str, leaf_id: str) -> dict[str, Any]:

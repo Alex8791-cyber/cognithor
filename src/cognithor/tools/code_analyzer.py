@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from typing import cast
 
 from cognithor.models import CodeSmell
 from cognithor.utils.logging import get_logger
@@ -29,7 +30,8 @@ DUPLICATE_THRESHOLD = 0.7  # Jaccard Similarity
 def _count_lines(node: ast.AST) -> int:
     """Zaehlt die Zeilen eines AST-Knotens."""
     if hasattr(node, "end_lineno") and hasattr(node, "lineno"):
-        return (node.end_lineno or node.lineno) - node.lineno + 1
+        return cast("int", (node.end_lineno or node.lineno) - node.lineno + 1)
+
     return 0
 
 

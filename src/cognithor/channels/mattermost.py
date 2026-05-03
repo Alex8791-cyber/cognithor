@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 from cognithor.channels.base import Channel, MessageHandler
 from cognithor.models import IncomingMessage, OutgoingMessage, PlannedAction
@@ -270,7 +270,8 @@ class MattermostChannel(Channel):
                 json=body,
             )
             if resp.status_code == 201:
-                return resp.json().get("id", "")
+                return cast("str", resp.json().get("id", ""))
+
             logger.error("Mattermost Post fehlgeschlagen: %s", resp.status_code)
         except Exception as exc:
             logger.error("Mattermost Post fehlgeschlagen: %s", exc)

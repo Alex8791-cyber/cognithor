@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.i18n import t
 from cognithor.mcp.server import (
@@ -170,7 +170,8 @@ class JarvisResourceProvider:
         try:
             core = self._memory.get_core_memory()
             if hasattr(core, "content"):
-                return core.content
+                return cast("str", core.content)
+
             return str(core)
         except Exception as exc:
             return f"# Fehler beim Lesen der Core Memory\n\n{exc}"

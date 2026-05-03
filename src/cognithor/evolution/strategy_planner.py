@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable, Coroutine
-from typing import Any
+from typing import Any, cast
 
 from cognithor.evolution.models import (
     LearningPlan,
@@ -238,7 +238,8 @@ class StrategyPlanner:
                 raw = await self._llm_fn(p)
                 extracted = _extract_json(raw)
                 if extracted is not None:
-                    return json.loads(extracted)
+                    return cast("dict[str, Any] | None", json.loads(extracted))
+
             except (json.JSONDecodeError, TypeError, ValueError) as exc:
                 log.debug("LLM JSON parse attempt %d failed: %s", attempt + 1, exc)
             log.info("Retrying LLM call (%d/%d)", attempt + 1, self._max_retries)

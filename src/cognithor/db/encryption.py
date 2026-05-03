@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import secrets
 import sqlite3
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +53,8 @@ def open_sqlite(
             # Disable VirtualLock to prevent Windows quota exhaustion
             conn.execute("PRAGMA cipher_memory_security = OFF")
             log.info("SQLCipher-Verbindung hergestellt: %s", db_path)
-            return conn
+            return cast("sqlite3.Connection", conn)
+
         except ImportError:
             log.warning(
                 "SQLCipher angefordert aber pysqlcipher3 nicht installiert. "
@@ -62,7 +63,7 @@ def open_sqlite(
             )
 
     conn = sqlite3.connect(db_path, check_same_thread=False)
-    return conn
+    return cast("sqlite3.Connection", conn)
 
 
 def get_encryption_key(config: Any = None) -> str | None:

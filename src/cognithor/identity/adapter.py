@@ -10,7 +10,7 @@ from __future__ import annotations
 import contextlib
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger("cognithor.identity")
 
@@ -400,7 +400,8 @@ class IdentityLayer:
             state["identity_id"] = self._identity_id
             state["available"] = True
             state["is_frozen"] = self._frozen
-            return state
+            return cast("dict[str, Any]", state)
+
         except Exception:
             return {"available": False, "identity_id": self._identity_id}
 
@@ -421,17 +422,20 @@ class IdentityLayer:
     def soft_reset(self) -> dict[str, Any]:
         """Soft reset — clears memories but keeps Genesis Anchors."""
         if self._engine:
-            return self._engine.soft_reset()
+            return cast("dict[str, Any]", self._engine.soft_reset())
+
         return {}
 
     def full_delete(self) -> dict[str, Any]:
         """GDPR full delete — removes all data."""
         if self._engine:
-            return self._engine.full_delete()
+            return cast("dict[str, Any]", self._engine.full_delete())
+
         return {}
 
     def cognitive_shutdown(self, passphrase: str) -> dict[str, Any]:
         """Emergency cognitive shutdown (requires passphrase)."""
         if self._engine and self._engine.check_kill_switch(passphrase):
-            return self._engine.cognitive_shutdown()
+            return cast("dict[str, Any]", self._engine.cognitive_shutdown())
+
         return {"error": "Invalid passphrase or engine not available"}

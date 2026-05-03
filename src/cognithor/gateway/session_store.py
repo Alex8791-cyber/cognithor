@@ -16,7 +16,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.db import SQLITE_BUSY_TIMEOUT_MS
 from cognithor.models import (
@@ -597,7 +597,7 @@ class SessionStore:
             (session_id,),
         ).fetchone()
         if row and row["title"]:
-            return row["title"]
+            return cast("str", row["title"])
 
         # Find first user message
         msg_row = self.conn.execute(
@@ -619,7 +619,7 @@ class SessionStore:
             title = title[:57] + "..."
 
         self.update_session_title(session_id, title)
-        return title
+        return cast("str", title)
 
     def search_chat_history(
         self,

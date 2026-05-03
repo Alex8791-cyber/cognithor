@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.i18n import t
 from cognithor.utils.logging import get_logger
@@ -305,7 +305,7 @@ class KnowledgeSynthesizer:
                 log.warning("synthesis_vault_save_failed", error=str(vault_exc))
 
         log.info("synthesis_complete", topic=topic[:50], sources=len(sources), chars=len(result))
-        return result
+        return cast("str", result)
 
     # ── Tool: knowledge_contradictions ───────────────────────────────
 
@@ -367,7 +367,7 @@ class KnowledgeSynthesizer:
             return t("tools.synthesis_contradiction_error", exc=exc)
 
         log.info("contradiction_analysis_complete", topic=topic[:50])
-        return analysis
+        return cast("str", analysis)
 
     # ── Tool: knowledge_timeline ─────────────────────────────────────
 
@@ -413,7 +413,7 @@ class KnowledgeSynthesizer:
             return t("tools.synthesis_timeline_error", exc=exc)
 
         log.info("timeline_complete", topic=topic[:50])
-        return timeline
+        return cast("str", timeline)
 
     # ── Tool: knowledge_gaps ─────────────────────────────────────────
 
@@ -460,7 +460,7 @@ class KnowledgeSynthesizer:
             return t("tools.synthesis_gaps_error", exc=exc)
 
         log.info("gap_analysis_complete", topic=topic[:50])
-        return gaps
+        return cast("str", gaps)
 
 
 # ── Prompt builders ────────────────────────────────────────────────────────

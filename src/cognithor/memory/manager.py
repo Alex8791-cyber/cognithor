@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import anyio
 
@@ -867,7 +867,7 @@ class MemoryManager:
         """List all hierarchically indexed documents."""
         if not self._hierarchical_manager:
             return []
-        return await self._hierarchical_manager.list_documents()
+        return cast("list[Any]", await self._hierarchical_manager.list_documents())
 
     async def reindex_hierarchical_document(self, document_id: str) -> Any:
         """Re-index an existing hierarchical document.
