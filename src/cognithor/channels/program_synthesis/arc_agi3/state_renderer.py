@@ -218,8 +218,70 @@ def render_state_changes_in_window(
     return "\n".join(parts)
 
 
+def summarise_action_pixel_history(
+    memory: EpisodeMemory,
+    *,
+    max_window: int = 80,
+) -> str:
+    """Per-action pixΔ statistics over the recent memory window.
+
+    Format::
+
+        ACTION3: avg pixΔ=42, max=120, n=8
+        ACTION6: avg pixΔ=380, max=1220, n=24 (DANGER: max>1000)
+        ACTION7: avg pixΔ=156, max=636, n=10 (CAUTION: max>500)
+
+    Sprint-19 Hebel S: gives the LLM a single per-action summary of
+    "what each action has historically done in this episode" so it
+    can reason about action *risk* (max pixΔ) and *typical impact*
+    (avg pixΔ) without re-reading the entire trajectory. Empty
+    memory or single-step memory yields ``"(no action history yet)"``.
+
+    The DANGER / CAUTION suffixes match Hebel M's prompt vocabulary
+    (>1000 = single-spike danger zone, >500 = consecutive-trigger
+    danger zone) so the LLM sees a consistent risk vocabulary across
+    trajectory + per-action signals.
+    """
+    from collections import defaultdict
+
+    import numpy as np
+
+    window = memory.window(max_window)
+    if len(window) < 2:
+        return "(no action history yet)"
+
+    per_action: dict[str, list[int]] = defaultdict(list)
+    # window is most-recent first; pairs are (window[i], window[i+1])
+    # where window[i] is the AFTER and window[i+1] is the BEFORE state
+    # of action ``window[i].action_name``.
+    for i in range(len(window) - 1):
+        after = window[i]
+        before = window[i + 1]
+        if before.grid.shape == after.grid.shape:
+            pix = int(np.sum(before.grid != after.grid))
+            per_action[after.action_name].append(pix)
+
+    if not per_action:
+        return "(no action history yet)"
+
+    rows: list[tuple[int, str]] = []
+    for name, pixs in per_action.items():
+        n = len(pixs)
+        avg = sum(pixs) / n
+        mx = max(pixs)
+        suffix = ""
+        if mx > 1000:
+            suffix = " (DANGER: max>1000)"
+        elif mx > 500:
+            suffix = " (CAUTION: max>500)"
+        rows.append((n, f"{name}: avg pixΔ={avg:.0f}, max={mx}, n={n}{suffix}"))
+    rows.sort(reverse=True)
+    return "\n".join(r[1] for r in rows)
+
+
 __all__ = [
     "render_cluster_summary",
     "render_delta_summary",
     "render_state_changes_in_window",
+    "summarise_action_pixel_history",
 ]

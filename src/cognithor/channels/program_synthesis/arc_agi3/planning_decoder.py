@@ -316,16 +316,24 @@ class PlanningLLMActionDecoder(ActionDecoder):
             try:
                 current_level = latest_frame.levels_completed
                 steps_at = 0
-                # Use a generous window — bp35 has 9 levels with episodes
-                # capped at 80 steps, so a stall of >50 steps is the
-                # whole episode. Walking 80 entries is microsecond-cheap
-                # so we don't bother capping.
                 for step_entry in self._memory.window(80):
                     if step_entry.levels_completed == current_level:
                         steps_at += 1
                     else:
                         break
                 ctx_kwargs["steps_at_current_level"] = steps_at
+            except Exception:
+                pass
+        if "action_pixel_history" in existing:
+            # Sprint-19 Hebel S: per-action pixΔ histogram (avg / max /
+            # n with DANGER / CAUTION suffixes) so the vision prompt
+            # can show the LLM the risk profile of each action class.
+            try:
+                from cognithor.channels.program_synthesis.arc_agi3.state_renderer import (
+                    summarise_action_pixel_history,
+                )
+
+                ctx_kwargs["action_pixel_history"] = summarise_action_pixel_history(self._memory)
             except Exception:
                 pass
         ctx = FrameContext(**ctx_kwargs)
