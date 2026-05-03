@@ -2314,6 +2314,16 @@ class DatabaseConfig(BaseModel):
         default="keyring",
         description="Schluessel-Backend: 'keyring' (OS Credential Store)",
     )
+    allow_plaintext_fallback: bool = Field(
+        default=False,
+        description=(
+            "Wenn ``encryption_enabled=True`` aber SQLCipher bzw. der "
+            "Schluessel fehlt: nur dann lautlos auf Plain-SQLite "
+            "ausweichen, wenn dieses Flag explizit gesetzt ist. Sonst "
+            "wirft ``encrypted_connect`` einen RuntimeError statt "
+            "stillschweigend Klartext zu schreiben (SEC-HIGH-4)."
+        ),
+    )
     sqlite_max_retries: int = Field(default=5, ge=0, le=20)
     sqlite_retry_base_delay: float = Field(default=0.1, ge=0.01, le=5.0)
 
