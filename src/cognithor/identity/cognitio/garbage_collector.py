@@ -13,7 +13,6 @@ Pruning Criteria:
     CANDIDATE: recency_score < 0.01 AND entrenchment < 0.4 AND reinforcement_count < 3
 """
 
-import contextlib
 import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -68,8 +67,6 @@ class GarbageCollector:
 
         # Tombstone log: controls restoration of pruned memories
         self._tombstone_log: dict[str, dict] = {}  # memory_id → tombstone info
-        # Arweave store connection (can be set by the engine)
-        self._arweave_store = None
 
         # Active crisis references (protect from pruning)
         self._crisis_memory_ids: set[str] = set()
@@ -152,13 +149,6 @@ class GarbageCollector:
                     "arweave_uri": getattr(memory, "arweave_uri", None),
                 }
                 self._tombstone_log[memory.id] = tombstone
-
-                # Arweave audit record (optional)
-                if self._arweave_store and getattr(memory, "arweave_uri", None):
-                    with contextlib.suppress(Exception):
-                        self._arweave_store.upload(
-                            tombstone, tags={"Type": "Tombstone", "MemoryId": memory.id}
-                        )
 
                 # Pruned log (backwards compatibility)
                 self._pruned_log.append(

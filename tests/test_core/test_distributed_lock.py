@@ -49,14 +49,17 @@ class TestLockBackend:
 
 class TestDistributedLockBase:
     def test_acquire_not_implemented(self) -> None:
+        # ``asyncio.get_event_loop()`` from a main thread without a
+        # running loop raises ``RuntimeError`` on Python 3.12+.
+        # ``asyncio.run`` is the modern equivalent.
         lock = DistributedLock()
         with pytest.raises(NotImplementedError):
-            asyncio.get_event_loop().run_until_complete(lock.acquire("test"))
+            asyncio.run(lock.acquire("test"))
 
     def test_release_not_implemented(self) -> None:
         lock = DistributedLock()
         with pytest.raises(NotImplementedError):
-            asyncio.get_event_loop().run_until_complete(lock.release("test"))
+            asyncio.run(lock.release("test"))
 
     async def test_direct_aenter_without_name_raises(self) -> None:
         lock = DistributedLock()
