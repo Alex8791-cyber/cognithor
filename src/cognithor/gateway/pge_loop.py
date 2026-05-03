@@ -99,9 +99,9 @@ async def run_pge_loop(
 
     # Status callback for progress feedback
     # Nutze msg.session_id (Client/WS-ID), nicht session.session_id (intern)
-    _status_cb = gw._make_status_callback(msg.channel, msg.session_id)
+    _status_cb = gw._make_status_callback(msg.channel, msg.session_id)  # type: ignore[arg-type]
     # Pipeline callback for live PGE visualization (WebUI only)
-    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id)
+    _pipeline_cb = gw._make_pipeline_callback(msg.channel, msg.session_id)  # type: ignore[arg-type]
 
     # Identity Layer reference (set during Phase init)
     _identity = getattr(gw, "_identity_layer", None)
@@ -276,7 +276,7 @@ async def run_pge_loop(
         if _force_plan is not None:
             plan = _force_plan
         elif session.iteration_count == 1:
-            plan = await gw._planner.plan(
+            plan = await gw._planner.plan(  # type: ignore[attr-defined]
                 user_message=msg.text,
                 working_memory=wm,
                 tool_schemas=tool_schemas,
@@ -285,7 +285,7 @@ async def run_pge_loop(
                 top_p_override=_agent_top_p,
             )
         else:
-            plan = await gw._planner.replan(
+            plan = await gw._planner.replan(  # type: ignore[attr-defined]
                 original_goal=msg.text,
                 results=all_results,
                 working_memory=wm,
@@ -368,7 +368,7 @@ async def run_pge_loop(
             if channel and hasattr(channel, "send_plan_detail"):
                 try:
                     await channel.send_plan_detail(
-                        msg.session_id,
+                        msg.session_id,  # type: ignore[arg-type]
                         {
                             "iteration": session.iteration_count,
                             "goal": plan.goal,
@@ -380,9 +380,9 @@ async def run_pge_loop(
                 except Exception:
                     log.debug("plan_detail_send_failed", exc_info=True)
 
-        if run_id and gw._run_recorder:
+        if run_id and gw._run_recorder:  # type: ignore[attr-defined]
             try:
-                gw._run_recorder.record_plan(run_id, plan)
+                gw._run_recorder.record_plan(run_id, plan)  # type: ignore[attr-defined]
             except Exception:
                 log.debug("run_recorder_plan_failed", exc_info=True)
 
@@ -397,9 +397,9 @@ async def run_pge_loop(
                 None,
             )
             cu_agent = CUAgentExecutor(
-                planner=gw._planner,
-                mcp_client=gw._mcp_client,
-                gatekeeper=gw._gatekeeper,
+                planner=gw._planner,  # type: ignore[attr-defined]
+                mcp_client=gw._mcp_client,  # type: ignore[attr-defined]
+                gatekeeper=gw._gatekeeper,  # type: ignore[attr-defined]
                 working_memory=wm,
                 tool_schemas=tool_schemas,
                 config=CUAgentConfig(
@@ -578,7 +578,7 @@ async def run_pge_loop(
 
         # Gatekeeper
         await _pipeline_cb("gate", "start", iteration=session.iteration_count)
-        decisions = gw._gatekeeper.evaluate_plan(plan.steps, session)
+        decisions = gw._gatekeeper.evaluate_plan(plan.steps, session)  # type: ignore[attr-defined]
 
         for step, decision in zip(plan.steps, decisions, strict=False):
             params_hash = hashlib.sha256(
@@ -650,7 +650,7 @@ async def run_pge_loop(
             for step, decision in zip(plan.steps, approved_decisions, strict=False):
                 block_count = session.record_block(step.tool)
                 if block_count >= 3:
-                    escalation = await gw._planner.generate_escalation(
+                    escalation = await gw._planner.generate_escalation(  # type: ignore[attr-defined]
                         tool=step.tool,
                         reason=decision.reason,
                         working_memory=wm,
@@ -692,7 +692,7 @@ async def run_pge_loop(
                     log.debug("stream_tool_start_failed", exc_info=True)
 
         # Set status callback on executor for retry visibility
-        gw._executor.set_status_callback(_status_cb)
+        gw._executor.set_status_callback(_status_cb)  # type: ignore[attr-defined]
         await _pipeline_cb(
             "execute",
             "start",
@@ -702,24 +702,24 @@ async def run_pge_loop(
 
         # Executor
         if route_decision and route_decision.agent.name != "jarvis":
-            gw._executor.set_agent_context(
+            gw._executor.set_agent_context(  # type: ignore[attr-defined]
                 workspace_dir=str(agent_workspace) if agent_workspace else None,
                 sandbox_overrides=route_decision.agent.get_sandbox_config(),
                 agent_name=route_decision.agent.name,
                 session_id=session.session_id,
             )
         else:
-            gw._executor.set_agent_context(session_id=session.session_id)
+            gw._executor.set_agent_context(session_id=session.session_id)  # type: ignore[attr-defined]
 
         # Faktenfrage: cross_check fuer search_and_read auto-injizieren
         # (muss NACH set_agent_context, da dieses clear_agent_context aufruft)
         if gw._is_fact_question(msg.text):
-            gw._executor.set_fact_question_context(True)
+            gw._executor.set_fact_question_context(True)  # type: ignore[attr-defined]
 
         try:
-            results = await gw._executor.execute(plan.steps, approved_decisions)
+            results = await gw._executor.execute(plan.steps, approved_decisions)  # type: ignore[attr-defined]
         finally:
-            gw._executor.clear_agent_context()
+            gw._executor.clear_agent_context()  # type: ignore[attr-defined]
 
         # Stream: tool_result events for each completed tool
         if stream_callback is not None:
@@ -738,10 +738,10 @@ async def run_pge_loop(
                 except Exception:
                     log.debug("stream_tool_result_failed", exc_info=True)
 
-        if run_id and gw._run_recorder:
+        if run_id and gw._run_recorder:  # type: ignore[attr-defined]
             try:
-                gw._run_recorder.record_gate_decisions(run_id, approved_decisions)
-                gw._run_recorder.record_tool_results(run_id, results)
+                gw._run_recorder.record_gate_decisions(run_id, approved_decisions)  # type: ignore[attr-defined]
+                gw._run_recorder.record_tool_results(run_id, results)  # type: ignore[attr-defined]
             except Exception:
                 log.debug("run_recorder_results_failed", exc_info=True)
 
@@ -801,7 +801,7 @@ async def run_pge_loop(
                 strict=False,
             ):
                 try:
-                    gw._explainability.record_decision(
+                    gw._explainability.record_decision(  # type: ignore[attr-defined]
                         _expl_trail_id,
                         tool_name=result.tool_name,
                         gate_status=decision.status.value,

@@ -91,7 +91,7 @@ def _format_table(columns: list[str], rows: list[tuple[Any, ...]], row_count: in
 
     # Compute column widths
     widths = [len(c) for c in columns]
-    for row in str_rows:
+    for row in str_rows:  # type: ignore[assignment]
         for i, cell in enumerate(row):
             if i < len(widths):
                 widths[i] = max(widths[i], len(cell))
@@ -101,7 +101,7 @@ def _format_table(columns: list[str], rows: list[tuple[Any, ...]], row_count: in
     separator = "-+-".join("-" * w for w in widths)
 
     lines = [header, separator]
-    for row in str_rows:
+    for row in str_rows:  # type: ignore[assignment]
         line = " | ".join(
             (row[i] if i < len(row) else "").ljust(widths[i]) for i in range(len(columns))
         )

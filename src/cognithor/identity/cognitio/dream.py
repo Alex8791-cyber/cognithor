@@ -184,7 +184,7 @@ class DreamCycle:
                 pair_key = tuple(sorted([mem_a.id, mem_b.id]))
                 if pair_key in seen_pairs:
                     continue
-                seen_pairs.add(pair_key)
+                seen_pairs.add(pair_key)  # type: ignore[arg-type]
 
                 sim = engine.embedder.cosine_similarity(mem_a.embedding, mem_b.embedding)
 
@@ -208,7 +208,7 @@ class DreamCycle:
         """Are there insight candidates awaiting validation?"""
         return bool(self._insight_candidates)
 
-    def validate_and_commit(self, llm_client, engine) -> int:
+    def validate_and_commit(self, llm_client, engine) -> int:  # type: ignore[no-untyped-def]
         """
         Called on the first user message. Validates candidates with the LLM and
         writes meaningful ones to memory.
@@ -275,7 +275,7 @@ class DreamCycle:
         nums = re.findall(r"\d+", response)
         return {int(n) for n in nums if 0 <= int(n) < total}
 
-    def _commit_candidate(self, candidate: dict[str, Any], engine) -> None:
+    def _commit_candidate(self, candidate: dict[str, Any], engine) -> None:  # type: ignore[no-untyped-def]
         from cognithor.identity.cognitio.memory import MemoryRecord, MemoryType, MemoryValence
 
         insight_content = (

@@ -54,7 +54,7 @@ class KnowledgeLineageTracker:
         self._init_db()
 
     def _init_db(self) -> None:
-        with encrypted_connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:  # type: ignore[arg-type]
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS lineage (
                     id TEXT PRIMARY KEY,
@@ -105,7 +105,7 @@ class KnowledgeLineageTracker:
             ),
             timestamp=datetime.now(UTC).isoformat(),
         )
-        with encrypted_connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:  # type: ignore[arg-type]
             conn.execute(
                 "INSERT INTO lineage "
                 "(id, entity_id, source_type, source_path, "
@@ -134,7 +134,7 @@ class KnowledgeLineageTracker:
         limit: int = 50,
     ) -> list[LineageEntry]:
         """Get all lineage entries for an entity."""
-        with encrypted_connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:  # type: ignore[arg-type]
             conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM lineage WHERE entity_id = ? ORDER BY timestamp DESC LIMIT ?",
@@ -147,7 +147,7 @@ class KnowledgeLineageTracker:
         limit: int = 100,
     ) -> list[LineageEntry]:
         """Get most recent lineage entries."""
-        with encrypted_connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:  # type: ignore[arg-type]
             conn.row_factory = compatible_row_factory()
             rows = conn.execute(
                 "SELECT * FROM lineage ORDER BY timestamp DESC LIMIT ?",
@@ -157,7 +157,7 @@ class KnowledgeLineageTracker:
 
     def stats(self) -> dict[str, Any]:
         """Return lineage statistics."""
-        with encrypted_connect(self._db_path) as conn:
+        with encrypted_connect(self._db_path) as conn:  # type: ignore[arg-type]
             total = conn.execute(
                 "SELECT COUNT(*) FROM lineage",
             ).fetchone()[0]

@@ -346,6 +346,6 @@ _STRATEGY_MAP: dict[CaptchaType, Callable[..., Any]] = {
 }
 
 
-def get_strategy(captcha_type: CaptchaType) -> Callable | None:
+def get_strategy(captcha_type: CaptchaType) -> Callable | None:  # type: ignore[type-arg]
     """Return the async strategy function for *captcha_type*."""
     return cast("Callable[..., Any] | None", _STRATEGY_MAP.get(captcha_type, generic_strategy))

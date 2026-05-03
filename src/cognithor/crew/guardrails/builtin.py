@@ -129,7 +129,7 @@ def hallucination_check(*, reference: str, min_overlap: float = 0.5) -> Any:
     return _guard
 
 
-def chain(*guards):
+def chain(*guards):  # type: ignore[no-untyped-def]
     """Run guardrails in order; first failure short-circuits.
 
     R4-C4: this combinator MUST be async so ``StringGuardrail`` (whose

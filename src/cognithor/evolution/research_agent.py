@@ -33,7 +33,7 @@ class FetchResult:
 class ResearchAgent:
     """Fetches web content via MCP tools using pluggable strategies."""
 
-    def __init__(
+    def __init__(  # type: ignore[no-untyped-def]
         self,
         mcp_client,
         idle_detector=None,

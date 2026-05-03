@@ -500,7 +500,7 @@ def register_skill_tools(
             return "Error: Skill file has no YAML frontmatter."
 
         try:
-            import yaml
+            import yaml  # type: ignore[import-untyped]
 
             frontmatter = yaml.safe_load(fm_match.group(1)) or {}
         except Exception as exc:

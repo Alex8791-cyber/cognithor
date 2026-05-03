@@ -584,7 +584,7 @@ async def init_tools(
                 verified_lookup._set_browser_agent(browser_agent)
                 log.debug("verified_lookup_browser_v17_injected")
             else:
-                verified_lookup._set_browser_tool(browser_agent)
+                verified_lookup._set_browser_tool(browser_agent)  # type: ignore[arg-type]
         else:
             try:
                 from cognithor.mcp.browser import BrowserTool

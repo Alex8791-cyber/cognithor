@@ -142,7 +142,7 @@ def declare_advanced_attrs(config: Any) -> PhaseResult:
     def _init_strategy_memory() -> Any:
         from cognithor.learning.strategy_memory import StrategyMemory
 
-        return StrategyMemory(db_path=Path(cognithor_home) / "index" / "strategy_memory.db")
+        return StrategyMemory(db_path=Path(cognithor_home) / "index" / "strategy_memory.db")  # type: ignore[arg-type]
 
     _init_subsystem("strategy_memory", result, _init_strategy_memory)
 

@@ -1722,7 +1722,7 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["embedding"],
             "speed": "fast",
         },
-        "vision": None,
+        "vision": None,  # type: ignore[dict-item]
     },
     "llama_cpp": {
         "planner": {
@@ -1760,7 +1760,7 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
             "strengths": ["embedding"],
             "speed": "medium",
         },
-        "vision": None,
+        "vision": None,  # type: ignore[dict-item]
     },
     "claude-code": {
         "planner": {
@@ -1982,7 +1982,7 @@ class PIIRedactorConfig(BaseModel):
     categories: list[
         Literal["email", "phone", "api_key", "credit_card", "ssn", "iban", "private_key"]
     ] = Field(
-        default_factory=lambda: [
+        default_factory=lambda: [  # type: ignore[arg-type]
             "email",
             "phone",
             "api_key",
@@ -3292,7 +3292,7 @@ def load_config(config_path: Path | None = None) -> CognithorConfig:
         extra_errors = [e for e in exc.errors() if e.get("type") == "extra_forbidden"]
         if not extra_errors:
             raise
-        stripped = _strip_extra_forbidden_keys(data, extra_errors)
+        stripped = _strip_extra_forbidden_keys(data, extra_errors)  # type: ignore[arg-type]
         if stripped:
             import logging
 

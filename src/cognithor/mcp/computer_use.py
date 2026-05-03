@@ -28,7 +28,7 @@ _pyautogui = None
 def _get_pyautogui() -> Any:
     global _pyautogui
     if _pyautogui is None:
-        import pyautogui
+        import pyautogui  # type: ignore[import-untyped]
 
         pyautogui.FAILSAFE = True  # Move mouse to corner to abort
         pyautogui.PAUSE = 0.15  # Small pause between actions
@@ -66,7 +66,7 @@ def _take_screenshot_b64(monitor_index: int = 0) -> tuple[str, int, int, float]:
         scale_factor = 1.0
         if pil_img.width > max_w:
             scale_factor = max_w / pil_img.width
-            pil_img = pil_img.resize((max_w, int(pil_img.height * scale_factor)), Image.LANCZOS)
+            pil_img = pil_img.resize((max_w, int(pil_img.height * scale_factor)), Image.LANCZOS)  # type: ignore[attr-defined]
 
         buf = io.BytesIO()
         pil_img.save(buf, format="PNG", optimize=True)
@@ -391,7 +391,7 @@ class ComputerUseTools:
         try:
             gui = _get_pyautogui()
             loop = asyncio.get_running_loop()
-            import pyperclip
+            import pyperclip  # type: ignore[import-untyped]
 
             # Brief wait to ensure target window has focus
             await asyncio.sleep(0.3)

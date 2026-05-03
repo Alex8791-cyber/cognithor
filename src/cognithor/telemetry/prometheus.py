@@ -291,7 +291,8 @@ class PrometheusExporter:
         try:
             import resource
 
-            rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024  # KB -> bytes
+            rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024  # type: ignore[attr-defined]  # KB -> bytes
+
             mem_name = self._full_name("memory_usage_bytes")
             lines.extend(
                 self._type_help_lines(
@@ -304,7 +305,7 @@ class PrometheusExporter:
         except ImportError:
             # Windows: use psutil or os-specific approach
             try:
-                import psutil
+                import psutil  # type: ignore[import-untyped]
 
                 proc = psutil.Process(os.getpid())
                 rss = proc.memory_info().rss

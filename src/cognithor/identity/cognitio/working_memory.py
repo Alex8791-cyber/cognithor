@@ -205,7 +205,7 @@ class WorkingMemory:
         elapsed = datetime.now(UTC) - self._last_checkpoint
         return elapsed >= self.checkpoint_interval and self._message_count > 0
 
-    def checkpoint(self, llm_summarizer=None) -> list[dict[str, Any]]:
+    def checkpoint(self, llm_summarizer=None) -> list[dict[str, Any]]:  # type: ignore[no-untyped-def]
         """
         Consolidation: summarize pending interactions and write to
         pending_memories for transfer to long-term memory.
@@ -274,7 +274,7 @@ class WorkingMemory:
         )
         return pending_memories
 
-    def _create_pending_memories(
+    def _create_pending_memories(  # type: ignore[no-untyped-def]
         self,
         interactions: list[dict[str, Any]],
         llm_summarizer=None,
@@ -449,7 +449,7 @@ class WorkingMemory:
         self._message_count = 0
         logger.info("WorkingMemory cleared, new session_id=%s", self._session_id[:8])
 
-    def force_checkpoint_save(self, llm_summarizer=None) -> list[dict[str, Any]]:
+    def force_checkpoint_save(self, llm_summarizer=None) -> list[dict[str, Any]]:  # type: ignore[no-untyped-def]
         """Called when the user issues /save or on session shutdown."""
         self._message_count = self.checkpoint_every_n  # Exceed the threshold
         return self.checkpoint(llm_summarizer)

@@ -257,7 +257,7 @@ class AutonomousLearner:
 
     def __init__(
         self,
-        llm_fn: Callable | None = None,
+        llm_fn: Callable | None = None,  # type: ignore[type-arg]
         deep_learner: Any = None,
         memory_manager: Any = None,
     ) -> None:

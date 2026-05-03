@@ -279,14 +279,15 @@ class CognithorArcAgent:
         if self.adapter.level_step_count >= self.max_steps_per_level:
             return "DONE"
 
-        current_hash = self.state_graph.hash_grid(self.current_obs.raw_grid)
+        current_hash = self.state_graph.hash_grid(self.current_obs.raw_grid)  # type: ignore[union-attr]
 
         # === VISION GUIDE: consult LLM when due (before any action selection) ===
-        if self.vision_guide.should_call(self.current_obs.changed_pixels):
+        if self.vision_guide.should_call(self.current_obs.changed_pixels):  # type: ignore[union-attr]
             action_names = [
-                getattr(a, "name", str(a)) for a in (self.current_obs.available_actions or [])
+                getattr(a, "name", str(a))
+                for a in (self.current_obs.available_actions or [])  # type: ignore[union-attr]
             ]
-            guidance = self.vision_guide.analyze_sync(self.current_obs.raw_grid, action_names)
+            guidance = self.vision_guide.analyze_sync(self.current_obs.raw_grid, action_names)  # type: ignore[union-attr]
             if guidance and guidance.get("next_action"):
                 action = self._resolve_action(guidance["next_action"])
                 if action is not None:
@@ -353,14 +354,14 @@ class CognithorArcAgent:
         available_names = [getattr(a, "name", str(a)) for a in available_actions]
 
         # Decision priority: CNN prediction → Graph exploration → Explorer fallback
-        action_str: str | None = None
-        action: Any = None
-        data: dict[str, Any] = {}
+        action_str: str | None = None  # type: ignore[no-redef]
+        action: Any = None  # type: ignore[no-redef]
+        data: dict[str, Any] = {}  # type: ignore[no-redef]
 
         # 1. CNN-guided action selection (after enough training data)
         if self._cnn_trainer is not None and self.adapter.level_step_count > 20:
             try:
-                action_probs, coord_probs = self._cnn_trainer.predict(self.current_obs.raw_grid)
+                action_probs, coord_probs = self._cnn_trainer.predict(self.current_obs.raw_grid)  # type: ignore[union-attr]
                 # Mask unavailable actions: only score available ones
                 import numpy as np
 
@@ -448,7 +449,10 @@ class CognithorArcAgent:
                 frame_changed = self.current_obs.changed_pixels > 0
                 coord = (data.get("y"), data.get("x")) if data.get("x") is not None else None
                 self._cnn_trainer.add_experience(
-                    previous_obs.raw_grid, action_idx, coord, frame_changed
+                    previous_obs.raw_grid,  # type: ignore[union-attr]
+                    action_idx,
+                    coord,
+                    frame_changed,
                 )
             except Exception:
                 log.debug("arc.agent.cnn_train_failed", exc_info=True)
@@ -474,22 +478,22 @@ class CognithorArcAgent:
             level=self.current_level,
             step=self.total_steps,
             action=full_action,
-            game_state=str(self.current_obs.game_state),
-            pixels_changed=self.current_obs.changed_pixels,
+            game_state=str(self.current_obs.game_state),  # type: ignore[union-attr]
+            pixels_changed=self.current_obs.changed_pixels,  # type: ignore[union-attr]
         )
         self.state_graph.add_transition(
             from_grid=previous_obs.raw_grid,
             action_str=action_str,
             action_data=data if data else None,
-            to_grid=self.current_obs.raw_grid,
-            pixels_changed=self.current_obs.changed_pixels,
-            game_state=str(self.current_obs.game_state),
+            to_grid=self.current_obs.raw_grid,  # type: ignore[union-attr]
+            pixels_changed=self.current_obs.changed_pixels,  # type: ignore[union-attr]
+            game_state=str(self.current_obs.game_state),  # type: ignore[union-attr]
             level=self.current_level,
         )
 
     def _check_game_state(self) -> str:
         """Evaluate terminal game state from current observation."""
-        state_str = str(self.current_obs.game_state)
+        state_str = str(self.current_obs.game_state)  # type: ignore[union-attr]
         if "WIN" in state_str:
             return "WIN"
         if "GAME_OVER" in state_str:
@@ -521,7 +525,7 @@ class CognithorArcAgent:
         try:
             from arcengine import GameAction
 
-            return GameAction(value)
+            return GameAction(value)  # type: ignore[call-arg]
         except (ImportError, ValueError):
             return None
 
@@ -600,8 +604,8 @@ class CognithorArcAgent:
         """
         try:
             state_desc = self.encoder.encode_for_llm(
-                self.current_obs.raw_grid,
-                self.current_obs.grid_diff,
+                self.current_obs.raw_grid,  # type: ignore[union-attr]
+                self.current_obs.grid_diff,  # type: ignore[union-attr]
             )
             memory_summary = self.memory.get_summary_for_llm()
             goal_summary = self.goals.get_summary_for_llm()

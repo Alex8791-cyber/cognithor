@@ -165,7 +165,7 @@ class STTEngine:
     async def _load_whisper(self) -> None:
         """Laedt faster-whisper Modell."""
         try:
-            from faster_whisper import WhisperModel
+            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
             device = self._config.stt_device
             if device == "auto":
@@ -398,7 +398,7 @@ class VADDetector:
         try:
             import torch
 
-            self._model, _ = torch.hub.load(
+            self._model, _ = torch.hub.load(  # type: ignore[no-untyped-call]
                 repo_or_dir=self.SILERO_REPO,
                 model="silero_vad",
                 force_reload=False,

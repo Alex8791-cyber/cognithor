@@ -56,7 +56,7 @@ class GraphBuilder:
     def add_node(
         self,
         name: str,
-        handler: Callable | None = None,
+        handler: Callable | None = None,  # type: ignore[type-arg]
         *,
         node_type: NodeType = NodeType.FUNCTION,
         description: str = "",
@@ -103,7 +103,7 @@ class GraphBuilder:
     def add_hitl(
         self,
         name: str,
-        handler: Callable | None = None,
+        handler: Callable | None = None,  # type: ignore[type-arg]
         *,
         description: str = "",
     ) -> GraphBuilder:
@@ -258,7 +258,7 @@ def branch_graph(
     branches: dict[str, Callable[..., Any]],
     *,
     merge_node: str = "",
-    merge_handler: Callable | None = None,
+    merge_handler: Callable | None = None,  # type: ignore[type-arg]
 ) -> GraphDefinition:
     """Creates a branching graph (Router -> Branches -> Optional Merge -> END).
 

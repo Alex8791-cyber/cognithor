@@ -15,7 +15,7 @@ from dataclasses import dataclass
 __all__ = ["ShellViolation", "analyse_shell", "is_safe_shell"]
 
 try:
-    import bashlex
+    import bashlex  # type: ignore[import-not-found]
 
     _BASHLEX_AVAILABLE = True
 except ImportError:

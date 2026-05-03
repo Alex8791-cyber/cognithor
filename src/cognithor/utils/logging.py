@@ -170,7 +170,7 @@ def setup_logging(
         log_dir.mkdir(parents=True, exist_ok=True)
         # Wir verwenden RotatingFileHandler mit 5 MB Groesse und 3 Backups
         try:
-            from logging.handlers import RotatingFileHandler  # type: ignore
+            from logging.handlers import RotatingFileHandler
         except Exception:
             # Fallback auf normalen FileHandler, wenn Handler nicht verfuegbar
             file_handler = logging.FileHandler(
@@ -208,7 +208,7 @@ def setup_logging(
         return
 
     # Shared processors -- werden in jeder Log-Nachricht durchlaufen
-    shared_processors: list[structlog.types.Processor] = [
+    shared_processors: list[structlog.types.Processor] = [  # type: ignore[name-defined]
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -222,7 +222,7 @@ def setup_logging(
     # colours and ensure the output uses UTF-8 characters. Otherwise
     # use structlog.dev.ConsoleRenderer for colourised console output.
     if json_logs:
-        renderer: structlog.types.Processor = structlog.processors.JSONRenderer(
+        renderer: structlog.types.Processor = structlog.processors.JSONRenderer(  # type: ignore[name-defined]
             ensure_ascii=False,
         )
     else:
@@ -239,7 +239,7 @@ def setup_logging(
 
     # format_exc_info conflicts with ConsoleRenderer's pretty exceptions.
     # Only include it when using JSON output.
-    exc_processors: list[structlog.types.Processor] = (
+    exc_processors: list[structlog.types.Processor] = (  # type: ignore[name-defined]
         [structlog.processors.format_exc_info] if json_logs else []
     )
 

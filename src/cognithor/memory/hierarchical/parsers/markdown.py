@@ -123,7 +123,7 @@ class MarkdownParser(DocumentParser):
 
         return [
             RawSection(
-                level=int(s["level"]),
+                level=int(s["level"]),  # type: ignore[call-overload]
                 title=str(s["title"]),
                 content=str(s["content"]),
                 position=idx,

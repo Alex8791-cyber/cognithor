@@ -110,8 +110,8 @@ class BruteForceIndex:
             query = _l2_normalize_np(np.array(query_vector, dtype=np.float32))
             scores = [(key, float(np.dot(query, vec))) for key, vec in self._vectors.items()]
         else:
-            query = _l2_normalize_py(query_vector)
-            scores = [(key, _dot_py(query, vec)) for key, vec in self._vectors.items()]
+            query = _l2_normalize_py(query_vector)  # type: ignore[assignment]
+            scores = [(key, _dot_py(query, vec)) for key, vec in self._vectors.items()]  # type: ignore[arg-type]
 
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
@@ -251,7 +251,7 @@ class FAISSIndex:
 
     def rebuild(self) -> None:
         """Baut den FAISS-Index komplett neu auf."""
-        import faiss  # type: ignore
+        import faiss
 
         if not self._vectors:
             self._index = faiss.IndexHNSWFlat(self._dimension, self._m, faiss.METRIC_INNER_PRODUCT)
@@ -310,7 +310,7 @@ def create_vector_index(backend: str = "auto", dimension: int = 768) -> VectorIn
         dimension = 768
     if backend == "faiss" or backend == "auto":
         try:
-            import faiss  # type: ignore  # noqa: F401
+            import faiss  # noqa: F401
 
             result: VectorIndex = FAISSIndex(dimension=dimension)
             logger.info("FAISSIndex erstellt (HNSW, dim=%d)", dimension)

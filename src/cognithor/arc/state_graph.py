@@ -76,7 +76,8 @@ class StateGraphNavigator:
         self._cached_win_path: list[tuple[str, dict[str, Any] | None, str]] | None = None
         self._cache_valid_from: str | None = None
         self.max_states = max_states
-        self._hash_cache: dict[tuple, str] = {}  # shape-aware like episode_memory
+        self._hash_cache: dict[tuple, str] = {}  # type: ignore[type-arg]  # shape-aware like episode_memory
+
         self.total_edges: int = 0
         self.action_patterns_from_previous: dict[str, float] = {}
 

@@ -47,15 +47,15 @@ class VectorStore:
             import chromadb
 
             os.makedirs(self.persist_dir, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=self.persist_dir)
-            self._collection = self._client.get_or_create_collection(
+            self._client = chromadb.PersistentClient(path=self.persist_dir)  # type: ignore[assignment]
+            self._collection = self._client.get_or_create_collection(  # type: ignore[attr-defined]
                 name=self.collection_name,
                 metadata={"hnsw:space": "cosine"},  # Cosine similarity
             )
             logger.info(
                 "VectorStore initialized: collection=%s, record_count=%d",
                 self.collection_name,
-                self._collection.count(),
+                self._collection.count(),  # type: ignore[attr-defined]
             )
         except ImportError:
             logger.error("chromadb not installed: pip install chromadb")
@@ -90,10 +90,10 @@ class VectorStore:
                 clean_metadata = {"_meta_empty": True}
 
             # Check for existing record
-            existing = self._collection.get(ids=[memory_id])
+            existing = self._collection.get(ids=[memory_id])  # type: ignore[attr-defined]
             if existing["ids"]:
                 # Update
-                self._collection.update(
+                self._collection.update(  # type: ignore[attr-defined]
                     ids=[memory_id],
                     embeddings=[embedding],
                     metadatas=[clean_metadata],
@@ -101,7 +101,7 @@ class VectorStore:
                 logger.debug(f"Record updated: {memory_id[:8]}")
             else:
                 # Add
-                self._collection.add(
+                self._collection.add(  # type: ignore[attr-defined]
                     ids=[memory_id],
                     embeddings=[embedding],
                     metadatas=[clean_metadata],
@@ -134,7 +134,7 @@ class VectorStore:
             list[str]: List of memory_ids (in order of semantic proximity)
         """
         try:
-            total = self._collection.count()
+            total = self._collection.count()  # type: ignore[attr-defined]
             if total == 0:
                 return []
 
@@ -147,7 +147,7 @@ class VectorStore:
             if where:
                 query_kwargs["where"] = where
 
-            results = self._collection.query(**query_kwargs)
+            results = self._collection.query(**query_kwargs)  # type: ignore[attr-defined]
             return results["ids"][0] if results["ids"] else []
 
         except Exception as e:
@@ -166,7 +166,7 @@ class VectorStore:
             metadata: Metadata fields to update
         """
         try:
-            existing = self._collection.get(ids=[memory_id], include=["metadatas"])
+            existing = self._collection.get(ids=[memory_id], include=["metadatas"])  # type: ignore[attr-defined]
             if not existing["ids"]:
                 logger.warning(f"update_metadata: record not found: {memory_id[:8]}")
                 return
@@ -174,7 +174,7 @@ class VectorStore:
             current = existing["metadatas"][0] if existing["metadatas"] else {}
             current.update(self._clean_metadata(metadata))
 
-            self._collection.update(
+            self._collection.update(  # type: ignore[attr-defined]
                 ids=[memory_id],
                 metadatas=[current],
             )
@@ -192,7 +192,7 @@ class VectorStore:
             memory_id: ID of the memory to delete
         """
         try:
-            self._collection.delete(ids=[memory_id])
+            self._collection.delete(ids=[memory_id])  # type: ignore[attr-defined]
             logger.debug(f"Record deleted: {memory_id[:8]}")
         except Exception as e:
             logger.error(f"VectorStore.delete error: {e}")
@@ -200,7 +200,7 @@ class VectorStore:
     def count(self) -> int:
         """Total record count."""
         try:
-            return cast("int", self._collection.count())
+            return cast("int", self._collection.count())  # type: ignore[attr-defined]
 
         except Exception as e:
             logger.error(f"VectorStore.count error: {e}")
@@ -209,7 +209,7 @@ class VectorStore:
     def exists(self, memory_id: str) -> bool:
         """Does a specific record exist?"""
         try:
-            result = self._collection.get(ids=[memory_id])
+            result = self._collection.get(ids=[memory_id])  # type: ignore[attr-defined]
             return bool(result["ids"])
         except Exception:
             return False
@@ -217,7 +217,7 @@ class VectorStore:
     def get_all_ids(self) -> list[str]:
         """Retrieve all memory IDs."""
         try:
-            result = self._collection.get(include=[])
+            result = self._collection.get(include=[])  # type: ignore[attr-defined]
             return cast("list[str]", result["ids"])
 
         except Exception as e:
@@ -232,9 +232,9 @@ class VectorStore:
         separately by the engine.
         """
         try:
-            name = self._collection.name
-            self._client.delete_collection(name)
-            self._collection = self._client.get_or_create_collection(
+            name = self._collection.name  # type: ignore[attr-defined]
+            self._client.delete_collection(name)  # type: ignore[attr-defined]
+            self._collection = self._client.get_or_create_collection(  # type: ignore[attr-defined]
                 name=name,
                 metadata={"hnsw:space": "cosine"},
             )
@@ -259,11 +259,11 @@ class VectorStore:
             if isinstance(value, int | float | bool):
                 clean[key] = value
             elif isinstance(value, str):
-                clean[key] = value[:max_str]
+                clean[key] = value[:max_str]  # type: ignore[assignment]
             elif isinstance(value, list):
-                clean[key] = ",".join(str(v) for v in value[:max_list])
+                clean[key] = ",".join(str(v) for v in value[:max_list])  # type: ignore[assignment]
             elif value is None:
-                clean[key] = ""
+                clean[key] = ""  # type: ignore[assignment]
             else:
-                clean[key] = str(value)[:max_str]
+                clean[key] = str(value)[:max_str]  # type: ignore[assignment]
         return clean

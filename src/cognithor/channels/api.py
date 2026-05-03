@@ -41,7 +41,7 @@ try:
 except ImportError:
     BaseModel = object  # type: ignore[assignment, misc]
 
-    def Field(**kw: object) -> None:
+    def Field(**kw: object) -> None:  # type: ignore[no-redef]
         return None
 
 

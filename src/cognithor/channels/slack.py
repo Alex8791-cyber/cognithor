@@ -98,7 +98,7 @@ class SlackChannel(Channel):
         self._handler = handler
 
         try:
-            from slack_sdk.web.async_client import AsyncWebClient
+            from slack_sdk.web.async_client import AsyncWebClient  # type: ignore[import-not-found]
         except ImportError:
             logger.error("slack_sdk nicht installiert. pip install slack_sdk slack_bolt")
             return
@@ -131,30 +131,30 @@ class SlackChannel(Channel):
     async def _start_socket_mode(self) -> None:
         """Startet Socket Mode fuer eingehende Events + interaktive Buttons."""
         try:
-            from slack_bolt.adapter.socket_mode.async_handler import (
+            from slack_bolt.adapter.socket_mode.async_handler import (  # type: ignore[import-not-found]
                 AsyncSocketModeHandler,
             )
-            from slack_bolt.async_app import AsyncApp
+            from slack_bolt.async_app import AsyncApp  # type: ignore[import-not-found]
         except ImportError:
             logger.error("slack_bolt nicht installiert. pip install slack_bolt")
             return
 
         app = AsyncApp(token=self.token)
 
-        @app.event("message")
+        @app.event("message")  # type: ignore[misc]
         async def _on_msg(event: dict[str, Any], say: Any) -> None:
             await self._on_message(event)
 
-        @app.event("app_mention")
+        @app.event("app_mention")  # type: ignore[misc]
         async def _on_mention(event: dict[str, Any], say: Any) -> None:
             await self._on_message(event)
 
-        @app.action("jarvis_approve")
+        @app.action("jarvis_approve")  # type: ignore[misc]
         async def _approve(ack: Any, body: dict[str, Any]) -> None:
             await ack()
             await self._on_approval(body, approved=True)
 
-        @app.action("jarvis_reject")
+        @app.action("jarvis_reject")  # type: ignore[misc]
         async def _reject(ack: Any, body: dict[str, Any]) -> None:
             await ack()
             await self._on_approval(body, approved=False)
@@ -204,7 +204,7 @@ class SlackChannel(Channel):
             try:
                 response = await self._handler(incoming)
                 try:
-                    await self._client.chat_postMessage(
+                    await self._client.chat_postMessage(  # type: ignore[union-attr]
                         channel=channel_id,
                         text=response.text,
                         thread_ts=thread_ts,
@@ -220,7 +220,7 @@ class SlackChannel(Channel):
                 except Exception:
                     friendly = "Ein Fehler ist bei der Verarbeitung aufgetreten."
                 with contextlib.suppress(Exception):
-                    await self._client.chat_postMessage(
+                    await self._client.chat_postMessage(  # type: ignore[union-attr]
                         channel=channel_id,
                         text=friendly,
                         thread_ts=thread_ts,
@@ -261,7 +261,7 @@ class SlackChannel(Channel):
             ch = body.get("channel", {}).get("id", "")
             ts = body.get("message", {}).get("ts", "")
             if ch and ts:
-                await self._client.chat_update(
+                await self._client.chat_update(  # type: ignore[union-attr]
                     channel=ch,
                     ts=ts,
                     text=f"{status} von {user_name}",

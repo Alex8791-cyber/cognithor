@@ -582,7 +582,7 @@ class CronEngine:
 
         trigger: Any = None
         try:
-            from apscheduler.triggers.cron import CronTrigger  # type: ignore
+            from apscheduler.triggers.cron import CronTrigger
 
             trigger = CronTrigger(**fields, timezone="Europe/Berlin")
         except Exception as exc:

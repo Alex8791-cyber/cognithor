@@ -219,7 +219,7 @@ class SmartExplorer:
         Returns encoded click actions: x*1000 + y + 1000
         (offset to avoid collision with action IDs).
         """
-        from scipy import ndimage
+        from scipy import ndimage  # type: ignore[import-untyped]
 
         targets: list[tuple[int, int, int]] = []  # (size, x, y)
 
