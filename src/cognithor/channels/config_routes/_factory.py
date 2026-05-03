@@ -45,6 +45,7 @@ from cognithor.channels.config_routes.monitoring import (
     _register_monitoring_routes,
     _register_prometheus_routes,
 )
+from cognithor.channels.config_routes.profile import _register_context_profile_routes
 from cognithor.channels.config_routes.security import _register_security_routes
 from cognithor.channels.config_routes.session import (
     _register_memory_routes,
@@ -95,6 +96,7 @@ def create_config_routes(
 
     _register_system_routes(app, deps, config_manager, gateway)
     _register_config_routes(app, deps, config_manager, gateway)
+    _register_context_profile_routes(app, deps, gateway)
     _register_session_routes(app, deps, gateway)
     _register_memory_routes(app, deps, gateway)
     _register_skill_routes(app, deps, gateway)

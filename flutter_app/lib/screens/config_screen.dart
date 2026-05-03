@@ -27,6 +27,7 @@ import 'package:cognithor_ui/screens/config/bindings_page.dart';
 import 'package:cognithor_ui/screens/config/system_page.dart';
 import 'package:cognithor_ui/screens/config/system_profile_page.dart';
 import 'package:cognithor_ui/screens/config/budget_page.dart';
+import 'package:cognithor_ui/screens/config/context_profile_page.dart';
 import 'package:cognithor_ui/screens/config/tools_page.dart';
 import 'package:cognithor_ui/screens/config/audit_page.dart';
 import 'package:cognithor_ui/screens/config/vault_page.dart';
@@ -49,6 +50,7 @@ final _categories = [
     'planner',
     'executor',
     'prompts',
+    'context_profile',
   ]),
   _Category((l) => l.catChannels, Icons.cell_tower, ['channels']),
   _Category((l) => l.catKnowledge, Icons.storage, [
@@ -177,6 +179,11 @@ final _pageRegistry = <String, _SubPageDef>{
     Icons.account_balance_wallet,
     (l) => l.configPageBudget,
     () => const BudgetPage(),
+  ),
+  'context_profile': _SubPageDef(
+    Icons.tune,
+    (l) => 'Kontext-Profil',
+    () => const ContextProfilePage(),
   ),
   'atl': _SubPageDef(
     Icons.psychology,
