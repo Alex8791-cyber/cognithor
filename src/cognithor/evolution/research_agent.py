@@ -6,7 +6,7 @@ import asyncio
 import re
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urljoin, urlparse
 
 from cognithor.utils.logging import get_logger
@@ -169,7 +169,8 @@ class ResearchAgent:
                 "web_fetch", {"url": url, "extract_text": True, "max_chars": 50000}
             )
             if result and not result.is_error and result.content:
-                return result.content
+                return cast("str", result.content)
+
         except Exception:
             log.debug("research_pdf_fetch_failed", url=url[:60], exc_info=True)
         return ""
@@ -276,7 +277,7 @@ class ResearchAgent:
                         await asyncio.sleep(backoffs[attempt])
                     continue
 
-                return result.content
+                return cast("str | None", result.content)
 
             except Exception:
                 log.exception(

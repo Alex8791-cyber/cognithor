@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -244,7 +244,8 @@ class PublisherVerifier:
         url = f"{self._registry_url}/publishers/{github_username}.json"
         try:
             text = await self._fetch_text(url)
-            return json.loads(text)
+            return cast("dict[str, Any] | None", json.loads(text))
+
         except Exception as exc:
             log.debug("publisher_profile_not_found", user=github_username, error=str(exc))
             return None
@@ -281,7 +282,7 @@ class PublisherVerifier:
         def _sync() -> str:
             req = urllib.request.Request(url, headers={"User-Agent": "Jarvis-Publisher/1.0"})
             with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT_S) as resp:
-                return resp.read().decode("utf-8")
+                return cast("str", resp.read().decode("utf-8"))
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _sync)

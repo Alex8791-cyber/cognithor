@@ -9,7 +9,7 @@ Impact-Assessor und Ecosystem-Controller.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from fastapi import HTTPException
@@ -53,7 +53,7 @@ def _register_governance_routes(
                 "flagged_count": 0,
                 "trust_distribution": {},
             }
-        return engine.stats()
+        return cast("dict[str, Any]", engine.stats())
 
     @app.get("/api/v1/governance/reputation/{entity_id}", dependencies=deps)
     async def governance_reputation_detail(entity_id: str) -> dict[str, Any]:
@@ -64,7 +64,7 @@ def _register_governance_routes(
         score = engine.get_score(entity_id)
         if score is None:
             return {"error": f"Entity '{entity_id}' nicht gefunden"}
-        return score.to_dict()
+        return cast("dict[str, Any]", score.to_dict())
 
     @app.get("/api/v1/governance/recalls/stats", dependencies=deps)
     async def governance_recalls_stats() -> dict[str, Any]:
@@ -72,7 +72,7 @@ def _register_governance_routes(
         mgr = getattr(gateway, "_recall_manager", None)
         if mgr is None:
             return {"total_recalls": 0, "active_blocks": 0}
-        return mgr.stats()
+        return cast("dict[str, Any]", mgr.stats())
 
     @app.get("/api/v1/governance/recalls/active", dependencies=deps)
     async def governance_recalls_active() -> dict[str, Any]:
@@ -88,7 +88,7 @@ def _register_governance_routes(
         reporter = getattr(gateway, "_abuse_reporter", None)
         if reporter is None:
             return {"total_reports": 0, "open": 0, "investigating": 0}
-        return reporter.stats()
+        return cast("dict[str, Any]", reporter.stats())
 
     @app.get("/api/v1/governance/policy/stats", dependencies=deps)
     async def governance_policy_stats() -> dict[str, Any]:
@@ -96,7 +96,7 @@ def _register_governance_routes(
         policy = getattr(gateway, "_governance_policy", None)
         if policy is None:
             return {"total_rules": 0, "enabled": 0, "total_triggered": 0}
-        return policy.stats()
+        return cast("dict[str, Any]", policy.stats())
 
     # -- Cross-Agent Interop (Phase 22) -----------------------------------
 
@@ -106,7 +106,7 @@ def _register_governance_routes(
         interop = getattr(gateway, "_interop", None)
         if interop is None:
             return {"registered_agents": 0, "online": 0}
-        return interop.stats()
+        return cast("dict[str, Any]", interop.stats())
 
     @app.get("/api/v1/interop/agents", dependencies=deps)
     async def interop_agents() -> dict[str, Any]:
@@ -135,7 +135,7 @@ def _register_governance_routes(
         gov = getattr(gateway, "_economic_governor", None)
         if gov is None:
             return {"budget": {}, "costs": {}, "bias": {}, "fairness": {}, "ethics": {}}
-        return gov.stats()
+        return cast("dict[str, Any]", gov.stats())
 
     @app.get("/api/v1/economics/budget", dependencies=deps)
     async def economics_budget() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def _register_governance_routes(
         gov = getattr(gateway, "_economic_governor", None)
         if gov is None:
             return {"total_entities": 0}
-        return gov.budget.stats()
+        return cast("dict[str, Any]", gov.budget.stats())
 
     @app.get("/api/v1/economics/costs", dependencies=deps)
     async def economics_costs() -> dict[str, Any]:
@@ -151,7 +151,7 @@ def _register_governance_routes(
         gov = getattr(gateway, "_economic_governor", None)
         if gov is None:
             return {"total_entries": 0, "total_cost_eur": 0}
-        return gov.costs.stats()
+        return cast("dict[str, Any]", gov.costs.stats())
 
     @app.get("/api/v1/economics/fairness", dependencies=deps)
     async def economics_fairness() -> dict[str, Any]:
@@ -159,7 +159,7 @@ def _register_governance_routes(
         gov = getattr(gateway, "_economic_governor", None)
         if gov is None:
             return {"total_audits": 0, "pass_rate": 100}
-        return gov.fairness.stats()
+        return cast("dict[str, Any]", gov.fairness.stats())
 
     @app.get("/api/v1/economics/ethics", dependencies=deps)
     async def economics_ethics() -> dict[str, Any]:
@@ -167,7 +167,7 @@ def _register_governance_routes(
         gov = getattr(gateway, "_economic_governor", None)
         if gov is None:
             return {"total_violations": 0}
-        return gov.ethics.stats()
+        return cast("dict[str, Any]", gov.ethics.stats())
 
     # -- Governance Hub (Phase 31) ----------------------------------------
 
@@ -177,7 +177,7 @@ def _register_governance_routes(
         gh = getattr(gateway, "_governance_hub", None)
         if gh is None:
             return {"skill_reviews": 0}
-        return gh.ecosystem_health()
+        return cast("dict[str, Any]", gh.ecosystem_health())
 
     @app.get("/api/v1/governance/curation", dependencies=deps)
     async def governance_curation() -> dict[str, Any]:
@@ -185,7 +185,7 @@ def _register_governance_routes(
         gh = getattr(gateway, "_governance_hub", None)
         if gh is None:
             return {"total_reviews": 0}
-        return gh.curation.stats()
+        return cast("dict[str, Any]", gh.curation.stats())
 
     @app.get("/api/v1/governance/diversity", dependencies=deps)
     async def governance_diversity() -> dict[str, Any]:
@@ -193,7 +193,7 @@ def _register_governance_routes(
         gh = getattr(gateway, "_governance_hub", None)
         if gh is None:
             return {"total_audits": 0}
-        return gh.diversity.stats()
+        return cast("dict[str, Any]", gh.diversity.stats())
 
     @app.get("/api/v1/governance/budget", dependencies=deps)
     async def governance_budget_transfers() -> dict[str, Any]:
@@ -201,7 +201,7 @@ def _register_governance_routes(
         gh = getattr(gateway, "_governance_hub", None)
         if gh is None:
             return {"total_transfers": 0}
-        return gh.budget.stats()
+        return cast("dict[str, Any]", gh.budget.stats())
 
     @app.get("/api/v1/governance/explainer", dependencies=deps)
     async def governance_explainer() -> dict[str, Any]:
@@ -209,7 +209,7 @@ def _register_governance_routes(
         gh = getattr(gateway, "_governance_hub", None)
         if gh is None:
             return {"total_explanations": 0}
-        return gh.explainer.stats()
+        return cast("dict[str, Any]", gh.explainer.stats())
 
     # -- AI Impact Assessment (Phase 32) ----------------------------------
 
@@ -219,7 +219,7 @@ def _register_governance_routes(
         ia = getattr(gateway, "_impact_assessor", None)
         if ia is None:
             return {"total_assessments": 0}
-        return ia.stats()
+        return cast("dict[str, Any]", ia.stats())
 
     @app.get("/api/v1/impact/board", dependencies=deps)
     async def impact_board() -> dict[str, Any]:
@@ -227,7 +227,7 @@ def _register_governance_routes(
         ia = getattr(gateway, "_impact_assessor", None)
         if ia is None:
             return {"board_members": 0}
-        return ia.board.stats()
+        return cast("dict[str, Any]", ia.board.stats())
 
     @app.get("/api/v1/impact/stakeholders", dependencies=deps)
     async def impact_stakeholders() -> dict[str, Any]:
@@ -235,7 +235,7 @@ def _register_governance_routes(
         ia = getattr(gateway, "_impact_assessor", None)
         if ia is None:
             return {"total": 0}
-        return ia.stakeholders.stats()
+        return cast("dict[str, Any]", ia.stakeholders.stats())
 
     @app.get("/api/v1/impact/mitigations", dependencies=deps)
     async def impact_mitigations() -> dict[str, Any]:
@@ -243,4 +243,4 @@ def _register_governance_routes(
         ia = getattr(gateway, "_impact_assessor", None)
         if ia is None:
             return {"total": 0}
-        return ia.mitigations.stats()
+        return cast("dict[str, Any]", ia.mitigations.stats())

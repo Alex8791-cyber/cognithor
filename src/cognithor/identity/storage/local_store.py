@@ -13,7 +13,7 @@ import logging
 import os
 import re as _re
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 _SAFE_ID_RE = _re.compile(r"[^a-zA-Z0-9_\-]")
 
@@ -102,7 +102,8 @@ class LocalStore:
 
         try:
             with open(filepath, encoding="utf-8") as f:
-                return json.load(f)
+                return cast("dict[str, Any] | None", json.load(f))
+
         except Exception as e:
             logger.error(f"Snapshot could not be loaded: {e}")
             return None

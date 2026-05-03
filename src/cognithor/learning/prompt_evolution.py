@@ -11,7 +11,7 @@ import hashlib
 import sqlite3
 import time as _time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from cognithor.db import SQLITE_BUSY_TIMEOUT_MS
 from cognithor.security.encrypted_db import encrypted_connect
@@ -320,7 +320,7 @@ class PromptEvolutionEngine:
         self._conn.commit()
         self._last_evolution_at = _time.monotonic()
         logger.info("ab_test_completed", test_id=test_id, winner=winner_id, diff=round(diff, 4))
-        return winner_id
+        return cast("str | None", winner_id)
 
     async def maybe_evolve(self, template_name: str) -> str | None:
         """Check if evolution is possible and generate a new variant if so.

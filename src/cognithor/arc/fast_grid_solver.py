@@ -13,7 +13,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -390,7 +390,7 @@ class FastGridSolver:
             return False
         from arcengine.enums import GameState
 
-        return obs.state == GameState.WIN
+        return cast("bool", obs.state == GameState.WIN)
 
     def _log(self, msg: str) -> None:
         if self.verbose:

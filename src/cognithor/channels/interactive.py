@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import UTC
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -651,7 +651,7 @@ class ProgressTracker:
             builder.section(line)
 
         builder.progress_bar(self.percent_complete, "Fortschritt")
-        return builder.build()["blocks"]
+        return cast("list[dict[str, Any]]", builder.build()["blocks"])
 
     def to_discord_embed(self) -> dict[str, Any]:
         """Generiert Discord Embed fuer Fortschritts-Anzeige."""
@@ -850,7 +850,8 @@ class SlashCommandRegistry:
         if not handler:
             return {"error": f"Unknown command: {name}", "ephemeral": True}
         try:
-            return handler(payload)
+            return cast("dict[str, Any]", handler(payload))
+
         except Exception as exc:
             return {"error": str(exc), "ephemeral": True}
 
@@ -905,7 +906,8 @@ class ModalHandler:
         if not handler:
             return {"error": f"Unknown callback: {submission.callback_id}"}
         try:
-            return handler(submission)
+            return cast("dict[str, Any]", handler(submission))
+
         except Exception as exc:
             return {"error": str(exc)}
 

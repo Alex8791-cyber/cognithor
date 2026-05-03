@@ -17,7 +17,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from cognithor.packs.errors import PackInstallError
 from cognithor.packs.installer import PackInstaller
@@ -254,7 +254,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     parser = build_parser()
     args = parser.parse_args(argv)
-    return args.func(args)
+    return cast("int", args.func(args))
 
 
 if __name__ == "__main__":

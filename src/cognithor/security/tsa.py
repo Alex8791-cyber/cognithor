@@ -23,7 +23,7 @@ import shutil
 import subprocess
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -144,7 +144,8 @@ class TSAClient:
                     if resp.status == 200:
                         tsr_data = resp.read()
                         log.info("tsa_response_received", url=url, size=len(tsr_data))
-                        return tsr_data
+                        return cast("bytes | None", tsr_data)
+
             except Exception as exc:
                 log.debug("tsa_send_failed", url=url, error=str(exc))
                 continue

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.browser.captcha.classifier import select_vision_model
 from cognithor.browser.captcha.detector import detect_captcha
@@ -105,7 +105,7 @@ class CaptchaSolver:
                         duration_ms=result.duration_ms,
                     )
                     self._record_tactical(result, challenge)
-                    return result
+                    return cast("SolveResult", result)
 
                 last_result = result
                 log.debug(

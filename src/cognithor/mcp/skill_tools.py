@@ -16,7 +16,7 @@ from __future__ import annotations
 import contextlib
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.i18n import t
 from cognithor.utils.logging import get_logger
@@ -560,13 +560,14 @@ def register_skill_tools(
                 req.add_header("Content-Type", "application/json")
             try:
                 with urllib.request.urlopen(req, timeout=15) as resp:
-                    return json.loads(resp.read())
+                    return cast("dict[str, Any]", json.loads(resp.read()))
+
             except urllib.error.HTTPError as e:
                 return {"error": e.read().decode(), "status": e.code}
 
         def _get_sha(path: str) -> str:
             r = _api_call("GET", f"contents/{path}?ref=main")
-            return r.get("sha", "")
+            return cast("str", r.get("sha", ""))
 
         def _put(path: str, text: str, msg: str, sha: str = "") -> dict[str, Any]:
             d: dict[str, Any] = {

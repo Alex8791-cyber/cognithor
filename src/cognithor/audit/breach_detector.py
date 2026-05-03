@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -123,7 +123,10 @@ class BreachDetector:
     def _load_state(self) -> dict[str, Any]:
         try:
             if self._state_path.exists():
-                return json.loads(self._state_path.read_text(encoding="utf-8"))
+                return cast(
+                    "dict[str, Any]", json.loads(self._state_path.read_text(encoding="utf-8"))
+                )
+
         except (json.JSONDecodeError, OSError):
             log.debug("breach_state_load_failed", exc_info=True)
         return {}

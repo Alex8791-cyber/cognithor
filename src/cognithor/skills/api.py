@@ -9,7 +9,7 @@ Architecture reference: SS14 (Skills & Ecosystem)
 
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -161,7 +161,7 @@ def _build_router() -> Any:
     async def get_marketplace_stats() -> dict[str, Any]:
         """Aggregated marketplace statistics."""
         store = _get_store()
-        return store.get_stats()
+        return cast("dict[str, Any]", store.get_stats())
 
     # ------------------------------------------------------------------
     # Skill Detail
@@ -174,7 +174,7 @@ def _build_router() -> Any:
         listing = store.get_listing(package_id)
         if listing is None:
             raise HTTPException(status_code=404, detail="Skill not found")
-        return listing
+        return cast("dict[str, Any]", listing)
 
     # ------------------------------------------------------------------
     # Install / Uninstall
@@ -383,7 +383,7 @@ def _build_community_router() -> Any:
         publisher = store.get_publisher(github)
         if publisher is None:
             raise HTTPException(status_code=404, detail="Publisher not found")
-        return publisher
+        return cast("dict[str, Any]", publisher)
 
     # ------------------------------------------------------------------
     # Sync (static route — must come BEFORE /{name})

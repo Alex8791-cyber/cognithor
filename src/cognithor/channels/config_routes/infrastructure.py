@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -59,7 +59,7 @@ def _register_infrastructure_routes(
         ctrl = getattr(gateway, "_ecosystem_controller", None)
         if ctrl is None:
             return {"curator": {}, "fraud": {}}
-        return ctrl.stats()
+        return cast("dict[str, Any]", ctrl.stats())
 
     @app.get("/api/v1/ecosystem/curator", dependencies=deps)
     async def ecosystem_curator() -> dict[str, Any]:
@@ -67,7 +67,7 @@ def _register_infrastructure_routes(
         ctrl = getattr(gateway, "_ecosystem_controller", None)
         if ctrl is None:
             return {"total_reviews": 0}
-        return ctrl.curator.stats()
+        return cast("dict[str, Any]", ctrl.curator.stats())
 
     @app.get("/api/v1/ecosystem/fraud", dependencies=deps)
     async def ecosystem_fraud() -> dict[str, Any]:
@@ -75,7 +75,7 @@ def _register_infrastructure_routes(
         ctrl = getattr(gateway, "_ecosystem_controller", None)
         if ctrl is None:
             return {"total_signals": 0}
-        return ctrl.fraud.stats()
+        return cast("dict[str, Any]", ctrl.fraud.stats())
 
     @app.get("/api/v1/ecosystem/training", dependencies=deps)
     async def ecosystem_training() -> dict[str, Any]:
@@ -83,7 +83,7 @@ def _register_infrastructure_routes(
         ctrl = getattr(gateway, "_ecosystem_controller", None)
         if ctrl is None:
             return {"total_modules": 0}
-        return ctrl.trainer.stats()
+        return cast("dict[str, Any]", ctrl.trainer.stats())
 
     @app.get("/api/v1/ecosystem/trust", dependencies=deps)
     async def ecosystem_trust() -> dict[str, Any]:
@@ -91,7 +91,7 @@ def _register_infrastructure_routes(
         ctrl = getattr(gateway, "_ecosystem_controller", None)
         if ctrl is None:
             return {"total_boundaries": 0}
-        return ctrl.trust.stats()
+        return cast("dict[str, Any]", ctrl.trust.stats())
 
     # -- Performance-Manager (Phase 37) -----------------------------------
 
@@ -101,7 +101,7 @@ def _register_infrastructure_routes(
         pm = getattr(gateway, "_perf_manager", None)
         if pm is None:
             return {"vector_store": {"entries": 0}}
-        return pm.health()
+        return cast("dict[str, Any]", pm.health())
 
     @app.get("/api/v1/performance/latency", dependencies=deps)
     async def perf_latency() -> dict[str, Any]:
@@ -109,7 +109,7 @@ def _register_infrastructure_routes(
         pm = getattr(gateway, "_perf_manager", None)
         if pm is None:
             return {"total_samples": 0}
-        return pm.latency.stats()
+        return cast("dict[str, Any]", pm.latency.stats())
 
     @app.get("/api/v1/performance/resources", dependencies=deps)
     async def perf_resources() -> dict[str, Any]:
@@ -117,7 +117,7 @@ def _register_infrastructure_routes(
         pm = getattr(gateway, "_perf_manager", None)
         if pm is None:
             return {"snapshots": 0}
-        return pm.optimizer.stats()
+        return cast("dict[str, Any]", pm.optimizer.stats())
 
 
 # ======================================================================
@@ -138,7 +138,7 @@ def _register_portal_routes(
         up = getattr(gateway, "_user_portal", None)
         if up is None:
             return {"consents": {"total_users": 0}}
-        return up.stats()
+        return cast("dict[str, Any]", up.stats())
 
     @app.get("/api/v1/portal/consents", dependencies=deps)
     async def portal_consents() -> dict[str, Any]:
@@ -146,7 +146,7 @@ def _register_portal_routes(
         up = getattr(gateway, "_user_portal", None)
         if up is None:
             return {"total_users": 0}
-        return up.consents.stats()
+        return cast("dict[str, Any]", up.consents.stats())
 
 
 # ======================================================================

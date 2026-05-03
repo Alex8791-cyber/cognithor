@@ -17,7 +17,7 @@ import asyncio
 import base64
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -113,7 +113,7 @@ class VoiceMessageHandler:
 
             if result.success and result.text.strip():
                 log.info("voice_ws_transcribed", text=result.text[:80])
-                return result.text.strip()
+                return cast("str | None", result.text.strip())
 
             log.warning("voice_ws_empty_transcription")
             return None

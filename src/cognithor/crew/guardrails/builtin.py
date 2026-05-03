@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 import json as _json
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel, ValidationError
 
@@ -150,7 +150,8 @@ def chain(*guards):
             if inspect.iscoroutine(r):
                 r = await r
             if not r.passed:
-                return r
+                return cast("GuardrailResult", r)
+
         return GuardrailResult(passed=True, feedback=None)
 
     # Mark the closure as a Guardrail so the compiler's ``_normalize_guardrail``

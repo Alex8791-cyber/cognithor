@@ -11,7 +11,7 @@ der in `_factory.py` gehalten wird.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from fastapi import HTTPException
@@ -46,7 +46,7 @@ def _register_monitoring_routes(
     @app.get("/api/v1/monitoring/dashboard", dependencies=deps)
     async def monitoring_dashboard() -> dict[str, Any]:
         """Komplett-Snapshot fuer das Live-Dashboard."""
-        return get_hub().dashboard_snapshot()
+        return cast("dict[str, Any]", get_hub().dashboard_snapshot())
 
     @app.get("/api/v1/monitoring/metrics", dependencies=deps)
     async def monitoring_metrics() -> dict[str, Any]:

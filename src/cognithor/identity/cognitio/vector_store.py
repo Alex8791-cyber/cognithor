@@ -14,7 +14,7 @@ even across millions of records.
 
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +200,8 @@ class VectorStore:
     def count(self) -> int:
         """Total record count."""
         try:
-            return self._collection.count()
+            return cast("int", self._collection.count())
+
         except Exception as e:
             logger.error(f"VectorStore.count error: {e}")
             return 0
@@ -217,7 +218,8 @@ class VectorStore:
         """Retrieve all memory IDs."""
         try:
             result = self._collection.get(include=[])
-            return result["ids"]
+            return cast("list[str]", result["ids"])
+
         except Exception as e:
             logger.error(f"VectorStore.get_all_ids error: {e}")
             return []

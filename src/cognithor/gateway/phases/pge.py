@@ -6,7 +6,7 @@ Attributes handled:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -136,7 +136,7 @@ async def init_pge(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=model_config.get("temperature", 0.3),
             )
-            return response.get("message", {}).get("content", "")
+            return cast("str", response.get("message", {}).get("content", ""))
 
         # SandboxExecutor for testing generated skills
         sandbox_executor = None

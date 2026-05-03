@@ -16,7 +16,7 @@ Inkl. `_proposal_to_dict` und `_trace_to_dict` Modul-Level-Helfer
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -144,7 +144,7 @@ def _register_self_improvement_routes(
         improver = _get_improver()
         if not improver:
             return {"error": "Self-improvement engine not initialized", "status": 503}
-        return improver.stats()
+        return cast("dict[str, Any]", improver.stats())
 
     @app.get("/api/v1/learning/self-improvement/pending", dependencies=deps)
     async def self_improvement_pending() -> dict[str, Any]:
@@ -213,7 +213,7 @@ def _register_gepa_evolution_routes(
         orch = _get_orch()
         if not orch:
             return {"enabled": False, "message": "GEPA not enabled"}
-        return orch.get_status()
+        return cast("dict[str, Any]", orch.get_status())
 
     @app.get("/api/v1/learning/gepa/status", dependencies=deps)
     async def gepa_status() -> dict[str, Any]:
@@ -246,7 +246,7 @@ def _register_gepa_evolution_routes(
         detail = orch.get_proposal_detail(proposal_id)
         if not detail:
             return {"error": "Proposal not found", "status": 404}
-        return detail
+        return cast("dict[str, Any]", detail)
 
     @app.post("/api/v1/evolution/proposals/{proposal_id}/apply", dependencies=deps)
     async def apply_evolution_proposal(proposal_id: str) -> dict[str, Any]:

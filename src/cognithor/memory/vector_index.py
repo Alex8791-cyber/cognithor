@@ -21,7 +21,7 @@ Architektur-Bibel: §4.7 (Vector Search)
 from __future__ import annotations
 
 import logging
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 try:
     import numpy as np
@@ -65,7 +65,8 @@ def _l2_normalize_np(vec: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """L2-Normalisierung eines Vektors (numpy)."""
     norm = np.linalg.norm(vec)
     if norm > 0:
-        return vec / norm
+        return cast("np.ndarray[Any, Any]", vec / norm)
+
     return vec
 
 

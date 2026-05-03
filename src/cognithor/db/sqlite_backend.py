@@ -13,7 +13,7 @@ import random
 import sqlite3
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -129,7 +129,7 @@ class SQLiteBackend:
                 return None
             return dict(row)
 
-        return self._retry_on_locked(_do)
+        return cast("dict[str, Any] | None", self._retry_on_locked(_do))
 
     def _fetchall_sync(self, query: str, params: Sequence[Any] = ()) -> list[dict[str, Any]]:
         conn = self._ensure_connection()
@@ -138,7 +138,7 @@ class SQLiteBackend:
             rows = conn.execute(query, params).fetchall()
             return [dict(r) for r in rows]
 
-        return self._retry_on_locked(_do)
+        return cast("list[dict[str, Any]]", self._retry_on_locked(_do))
 
     def _commit_sync(self) -> None:
         if self._conn:

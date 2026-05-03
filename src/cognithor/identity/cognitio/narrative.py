@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.character import CognitiveState
@@ -232,7 +232,8 @@ class NarrativeSelf:
                     len(result),
                     elapsed,
                 )
-                return result
+                return cast("str | None", result)
+
         except Exception as e:
             logger.warning("Differential reflection failed: %s", e)
 

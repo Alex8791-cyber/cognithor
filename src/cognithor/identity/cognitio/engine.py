@@ -37,7 +37,7 @@ import queue
 import tempfile
 import threading
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 # Kill switch passphrase hashing — PBKDF2-HMAC-SHA256 (CodeQL py/weak-sensitive-data-hashing)
 _KS_PBKDF2_SALT = b"IMP-kill-switch-salt-v1"
@@ -1247,7 +1247,8 @@ class CognitioEngine:
 
                 json_match = re.search(r"\{.*\}", response, re.DOTALL)
                 if json_match:
-                    return json.loads(json_match.group())
+                    return cast("dict[str, Any]", json.loads(json_match.group()))
+
                 return {"summary": conversation_text[:300]}
 
             except Exception as e:

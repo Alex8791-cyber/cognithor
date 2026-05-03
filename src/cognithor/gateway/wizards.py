@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -76,7 +76,8 @@ def _get_model_for_role(role: str, fallback: str = "") -> str:
 
     role_info = provider_defaults.get(role, {})
     if isinstance(role_info, dict) and role_info.get("name"):
-        return role_info["name"]
+        return cast("str", role_info["name"])
+
     return fallback
 
 

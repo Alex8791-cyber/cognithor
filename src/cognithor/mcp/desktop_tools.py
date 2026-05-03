@@ -19,7 +19,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -389,7 +389,7 @@ def register_desktop_tools(
             desc = result.get("description", "")
             extra = f"\nDescription: {desc}" if desc else ""
             return f"Clipboard contains an image, saved to: {result['path']}{extra}"
-        return result["content"]
+        return cast("str", result["content"])
 
     mcp_client.register_builtin_handler(
         "get_clipboard",

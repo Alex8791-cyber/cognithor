@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 __all__ = ["VisualStateEncoder"]
 
@@ -140,7 +140,9 @@ class VisualStateEncoder:
         """Squeeze a leading size-1 batch dimension if present."""
         if arr.ndim == 3:
             if arr.shape[0] == 1:
-                return arr[0]
+                return cast("np.ndarray[Any, Any]", arr[0])
+
             # Fallback: take first slice
-            return arr[0]
+            return cast("np.ndarray[Any, Any]", arr[0])
+
         return arr

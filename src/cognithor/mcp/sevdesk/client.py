@@ -7,7 +7,7 @@ OAuth-free. All requests go through httpx.AsyncClient.
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -49,7 +49,7 @@ class SevdeskClient:
 
     async def list_contacts(self, limit: int = 50) -> list[dict[str, Any]]:
         data = await self._get("/Contact", params={"limit": limit})
-        return data.get("objects", [])
+        return cast("list[dict[str, Any]]", data.get("objects", []))
 
     async def get_invoice(self, invoice_id: str) -> dict[str, Any]:
         data = await self._get(f"/Invoice/{invoice_id}")

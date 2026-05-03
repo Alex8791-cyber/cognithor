@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -138,14 +138,16 @@ class LLMNodeSelector:
     def _parse_response(response: str) -> dict[str, Any] | None:
         """Parse JSON from LLM response, with regex fallback."""
         try:
-            return json.loads(response)
+            return cast("dict[str, Any] | None", json.loads(response))
+
         except (json.JSONDecodeError, TypeError):
             pass
 
         match = re.search(r"\{.*\}", response, re.DOTALL)
         if match:
             try:
-                return json.loads(match.group())
+                return cast("dict[str, Any] | None", json.loads(match.group()))
+
             except (json.JSONDecodeError, TypeError):
                 pass
 

@@ -33,7 +33,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, cast
 
 from cognithor.models import Entity, MemorySearchResult
 
@@ -285,7 +285,7 @@ class GraphRanking:
             return 0.0
 
         # Korrekte Halbwertszeit: nach half_life Tagen ist staleness = 0.5
-        return 1.0 - 0.5 ** (age_days / self._staleness_half_life)
+        return cast("float", 1.0 - 0.5 ** (age_days / self._staleness_half_life))
 
     # ========================================================================
     # Graph-Score Boost fuer HybridSearch
@@ -455,7 +455,7 @@ class GraphRanking:
         entity.updated_at = datetime.now(UTC)
         self._index.upsert_entity(entity)
 
-        return new_conf
+        return cast("float | None", new_conf)
 
     def touch_entity(self, entity_id: str) -> bool:
         """Aktualisiert den Zeitstempel einer Entitaet (Reset Staleness).

@@ -14,7 +14,7 @@ Compatible with any Playwright Page object.
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from typing import Any, cast
 
 from cognithor.browser.types import (
     ElementInfo,
@@ -237,7 +237,8 @@ class PageAnalyzer:
     async def detect_cookie_banner(self, page: Any) -> dict[str, Any]:
         """Detects cookie banner and returns accept selector."""
         try:
-            return await page.evaluate(JS_DETECT_COOKIE_BANNER)
+            return cast("dict[str, Any]", await page.evaluate(JS_DETECT_COOKIE_BANNER))
+
         except Exception:
             return {"found": False}
 

@@ -15,7 +15,7 @@ public API, sub-modules host the bulk logic. Public surface stays at
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.models import ActionPlan, PlannedAction, RiskLevel, ToolResult
 from cognithor.utils.logging import get_logger
@@ -395,7 +395,8 @@ async def maybe_presearch(gw: Gateway, msg: IncomingMessage, wm: WorkingMemory) 
             and _PRESEARCH_NO_ENGINE not in result_text
         ):
             log.info("presearch_found", chars=len(result_text))
-            return result_text[:8000]
+            return cast("str | None", result_text[:8000])
+
         else:
             log.info("presearch_no_results", query=query[:80])
             return None
@@ -460,7 +461,7 @@ async def answer_from_presearch(gw: Gateway, user_message: str, search_results: 
         answer = re.sub(r"<think>.*?</think>\s*", "", answer, flags=re.DOTALL)
         if answer.strip():
             log.info("presearch_answer_generated", chars=len(answer))
-            return answer.strip()
+            return cast("str", answer.strip())
 
     except Exception as exc:
         log.error("presearch_answer_failed", error=str(exc)[:200])

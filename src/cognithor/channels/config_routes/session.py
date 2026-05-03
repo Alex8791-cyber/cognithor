@@ -9,7 +9,7 @@ Integrity-Checker, Decision-Explainer / Explainability).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -53,7 +53,7 @@ def _register_session_routes(
         mgr = getattr(gateway, "_vault_manager", None)
         if mgr is None:
             return {"total_vaults": 0, "agents": [], "total_entries": 0}
-        return mgr.stats()
+        return cast("dict[str, Any]", mgr.stats())
 
     @app.get("/api/v1/vault/agents", dependencies=deps)
     async def vault_agents() -> dict[str, Any]:
@@ -69,7 +69,7 @@ def _register_session_routes(
         store = getattr(gateway, "_isolated_sessions", None)
         if store is None:
             return {"total_agents": 0, "total_sessions": 0, "active_sessions": 0}
-        return store.stats()
+        return cast("dict[str, Any]", store.stats())
 
     @app.get("/api/v1/sessions/guard/violations", dependencies=deps)
     async def guard_violations() -> dict[str, Any]:
@@ -101,7 +101,7 @@ def _register_session_routes(
             from cognithor.core.isolation import MultiUserIsolation
 
             iso = MultiUserIsolation()
-            return {"quotas": iso.all_quota_summaries()}
+            return {"quotas": iso.all_quota_summaries()}  # type: ignore[attr-defined]
         except Exception as exc:
             log.error("isolation_quotas_failed", error=str(exc))
             return {"error": "Quota-Uebersicht nicht verfuegbar"}
@@ -110,10 +110,16 @@ def _register_session_routes(
     async def isolation_violations() -> dict[str, Any]:
         """Workspace-Violations."""
         try:
+            from pathlib import Path
+
             from cognithor.core.isolation import WorkspaceGuard
 
-            guard = WorkspaceGuard()
-            return {"violations": guard.violations, "count": guard.violation_count}
+            # Prefer the gateway's already-initialised guard if available;
+            # else fall back to a per-call instance pointing at cwd.
+            existing = getattr(gateway, "_workspace_guard", None)
+            guard = existing or WorkspaceGuard(workspace_root=Path.cwd())
+            violations = guard.violations()
+            return {"violations": violations, "count": len(violations)}
         except Exception as exc:
             log.error("isolation_violations_failed", error=str(exc))
             return {"error": "Violations konnten nicht geladen werden"}
@@ -134,7 +140,7 @@ def _register_session_routes(
         enforcer = getattr(gateway, "_isolation_enforcer", None)
         if enforcer is None:
             return {"total_tenants": 0}
-        return enforcer.tenants.stats()
+        return cast("dict[str, Any]", enforcer.tenants.stats())
 
     @app.get("/api/v1/isolation/secrets", dependencies=deps)
     async def isolation_secrets() -> dict[str, Any]:
@@ -142,7 +148,7 @@ def _register_session_routes(
         enforcer = getattr(gateway, "_isolation_enforcer", None)
         if enforcer is None:
             return {"total_secrets": 0}
-        return enforcer.secrets.stats()
+        return cast("dict[str, Any]", enforcer.secrets.stats())
 
     # -- Per-Agent Vault & Session-Isolation (Phase 29) -------------------
 
@@ -152,7 +158,7 @@ def _register_session_routes(
         vm = getattr(gateway, "_vault_manager", None)
         if vm is None:
             return {"total_vaults": 0}
-        return vm.stats()
+        return cast("dict[str, Any]", vm.stats())
 
     @app.get("/api/v1/vaults/sessions", dependencies=deps)
     async def vaults_sessions() -> dict[str, Any]:
@@ -160,7 +166,7 @@ def _register_session_routes(
         vm = getattr(gateway, "_vault_manager", None)
         if vm is None:
             return {"agent_stores": 0}
-        return vm.sessions.stats()
+        return cast("dict[str, Any]", vm.sessions.stats())
 
     @app.get("/api/v1/vaults/firewall", dependencies=deps)
     async def vaults_firewall() -> dict[str, Any]:
@@ -168,7 +174,7 @@ def _register_session_routes(
         vm = getattr(gateway, "_vault_manager", None)
         if vm is None:
             return {"total_violations": 0}
-        return vm.firewall.stats()
+        return cast("dict[str, Any]", vm.firewall.stats())
 
     # -- Chat-History API (fuer WebUI Sidebar) ------------------------------
 
@@ -228,7 +234,7 @@ def _register_session_routes(
         store = _get_session_store()
         if not store:
             return {"error": "Store not available"}
-        return store.export_session(session_id)
+        return cast("dict[str, Any]", store.export_session(session_id))
 
     @app.get("/api/v1/sessions/folders", dependencies=deps)
     async def list_folders(channel: str = "webui") -> dict[str, Any]:
@@ -383,7 +389,7 @@ def _register_memory_routes(
                 "quarantined": 0,
                 "threat_rate": 0.0,
             }
-        return engine.stats()
+        return cast("dict[str, Any]", engine.stats())
 
     @app.get("/api/v1/memory/hygiene/quarantine", dependencies=deps)
     async def memory_quarantine() -> dict[str, Any]:
@@ -401,7 +407,7 @@ def _register_memory_routes(
         checker = getattr(gateway, "_integrity_checker", None)
         if checker is None:
             return {"total_checks": 0, "last_score": 100}
-        return checker.stats()
+        return cast("dict[str, Any]", checker.stats())
 
     @app.get("/api/v1/memory/explainability", dependencies=deps)
     async def memory_explainability() -> dict[str, Any]:
@@ -409,7 +415,7 @@ def _register_memory_routes(
         explainer = getattr(gateway, "_decision_explainer", None)
         if explainer is None:
             return {"total_explanations": 0}
-        return explainer.stats()
+        return cast("dict[str, Any]", explainer.stats())
 
     # -- Explainability ---------------------------------------------------
 
@@ -433,7 +439,7 @@ def _register_memory_routes(
                 "completed_trails": 0,
                 "avg_confidence": 0.0,
             }
-        return engine.stats()
+        return cast("dict[str, Any]", engine.stats())
 
     @app.get("/api/v1/explainability/low-trust", dependencies=deps)
     async def explainability_low_trust() -> dict[str, Any]:
@@ -457,7 +463,9 @@ def _register_memory_routes(
             relations = getattr(semantic, "relations", None) or []
             type_counts: dict[str, int] = {}
             for e in entities.values() if isinstance(entities, dict) else entities:
-                etype = getattr(e, "type", None) or getattr(e, "entity_type", "unknown")
+                etype = (
+                    getattr(e, "type", None) or getattr(e, "entity_type", "unknown") or "unknown"
+                )
                 type_counts[etype] = type_counts.get(etype, 0) + 1
             return {
                 "entities": len(entities),

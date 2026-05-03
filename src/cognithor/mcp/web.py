@@ -26,7 +26,7 @@ import re
 import time
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -974,7 +974,8 @@ class WebTools:
                 # Expired → delete
                 cache_file.unlink(missing_ok=True)
                 return None
-            return data.get("results")
+            return cast("list[dict[str, Any]] | None", data.get("results"))
+
         except Exception:
             return None
 

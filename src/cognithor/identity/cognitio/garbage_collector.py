@@ -15,7 +15,7 @@ Pruning Criteria:
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from cognithor.identity.cognitio.memory import MemoryRecord, MemoryStore
@@ -229,7 +229,7 @@ class GarbageCollector:
     def _get_recency(self, memory: "MemoryRecord") -> float:
         """Compute Availability Bias recency score."""
         if self.bias_engine is not None:
-            return self.bias_engine.recency_score(memory)
+            return cast("float", self.bias_engine.recency_score(memory))
 
         # Fallback: simple exponential decay
         import math
@@ -368,7 +368,7 @@ class GarbageCollector:
             return active_count > 0
 
         hours_since_last = (datetime.now(UTC) - self._last_run).total_seconds() / 3600
-        return hours_since_last >= self.config["prune_interval_hours"]
+        return cast("bool", hours_since_last >= self.config["prune_interval_hours"])
 
     def register_crisis_memory(self, memory_id: str) -> None:
         """Register an active crisis reference (to protect from pruning)."""

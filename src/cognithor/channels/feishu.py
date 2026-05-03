@@ -23,7 +23,7 @@ import hmac
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from cognithor.channels.base import Channel, MessageHandler
 from cognithor.models import IncomingMessage, OutgoingMessage, PlannedAction
@@ -341,6 +341,7 @@ def _parse_json_safe(s: str) -> dict[str, Any]:
     try:
         import json
 
-        return json.loads(s)
+        return cast("dict[str, Any]", json.loads(s))
+
     except Exception:
         return {}

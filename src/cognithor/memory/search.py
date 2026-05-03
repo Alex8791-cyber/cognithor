@@ -16,7 +16,7 @@ import asyncio
 import logging
 from collections import OrderedDict
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.config import MemoryConfig
 from cognithor.memory.embeddings import EmbeddingClient, cosine_similarity
@@ -63,7 +63,7 @@ def recency_decay(
         return 1.0
 
     # Half-life decay: after half_life_days the value is exactly 0.5
-    return 2.0 ** (-age_days / half_life_days)
+    return cast("float", 2.0 ** (-age_days / half_life_days))
 
 
 class HybridSearch:

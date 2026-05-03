@@ -22,7 +22,7 @@ Note: No LLM calls — only cosine distance in embedding space.
 import collections
 import logging
 import math
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,9 @@ class PredictiveEngine:
         hist = list(self._error_history)
         first_half = hist[-_MIN_HISTORY * 2 : -_MIN_HISTORY]
         second_half = hist[-_MIN_HISTORY:]
-        return (sum(second_half) / _MIN_HISTORY) > (sum(first_half) / _MIN_HISTORY) + 0.1
+        return cast(
+            "bool", (sum(second_half) / _MIN_HISTORY) > (sum(first_half) / _MIN_HISTORY) + 0.1
+        )
 
     @property
     def last_error(self) -> float:

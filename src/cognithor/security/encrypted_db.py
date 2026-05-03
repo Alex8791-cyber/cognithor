@@ -18,7 +18,7 @@ from __future__ import annotations
 import contextlib
 import os
 import sqlite3
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -262,7 +262,8 @@ def _migrate_to_encrypted(
         conn.execute("PRAGMA cipher_memory_security = OFF")
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("SELECT count(*) FROM sqlite_master")
-        return conn
+        return cast("sqlite3.Connection | None", conn)
+
     except Exception:
         # Cleanup on failure
         if os.path.exists(tmp_path):

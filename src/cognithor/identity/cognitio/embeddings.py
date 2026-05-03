@@ -10,6 +10,7 @@ Model: all-MiniLM-L6-v2 (lightweight, fast, 384-dimensional)
 """
 
 import logging
+from typing import cast
 
 import numpy as np
 
@@ -68,7 +69,8 @@ class EmbeddingEngine:
         self._load_model()
         try:
             embedding = self._model.encode(text, convert_to_numpy=True)
-            return embedding.tolist()
+            return cast("list[float]", embedding.tolist())
+
         except Exception as e:
             logger.error(f"Encoding error: {e}")
             # Return zero vector on error
@@ -87,7 +89,8 @@ class EmbeddingEngine:
         self._load_model()
         try:
             embeddings = self._model.encode(texts, convert_to_numpy=True, batch_size=32)
-            return embeddings.tolist()
+            return cast("list[list[float]]", embeddings.tolist())
+
         except Exception as e:
             logger.error(f"Batch encoding error: {e}")
             return [[0.0] * self.EMBEDDING_DIM for _ in texts]

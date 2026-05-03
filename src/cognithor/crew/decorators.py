@@ -19,7 +19,7 @@ Usage::
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,7 +38,7 @@ def agent[T](fn: Callable[..., T]) -> Callable[..., T]:
         attr = f"_crew_agent_cache__{fn.__name__}"
         if not hasattr(self, attr):
             setattr(self, attr, fn(self, *args, **kwargs))
-        return getattr(self, attr)
+        return cast("T", getattr(self, attr))
 
     wrapper._crew_role = "agent"  # type: ignore[attr-defined]
     return wrapper
@@ -57,7 +57,7 @@ def task[T](fn: Callable[..., T]) -> Callable[..., T]:
         attr = f"_crew_task_cache__{fn.__name__}"
         if not hasattr(self, attr):
             setattr(self, attr, fn(self, *args, **kwargs))
-        return getattr(self, attr)
+        return cast("T", getattr(self, attr))
 
     wrapper._crew_role = "task"  # type: ignore[attr-defined]
     return wrapper

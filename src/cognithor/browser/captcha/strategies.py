@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import re
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.browser.captcha.models import CaptchaChallenge, CaptchaType, SolveResult
 from cognithor.utils.logging import get_logger
@@ -348,4 +348,4 @@ _STRATEGY_MAP: dict[CaptchaType, Callable[..., Any]] = {
 
 def get_strategy(captcha_type: CaptchaType) -> Callable | None:
     """Return the async strategy function for *captcha_type*."""
-    return _STRATEGY_MAP.get(captcha_type, generic_strategy)
+    return cast("Callable[..., Any] | None", _STRATEGY_MAP.get(captcha_type, generic_strategy))

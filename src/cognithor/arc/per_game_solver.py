@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
@@ -212,7 +212,7 @@ class PerGameSolver:
                 obs2 = env.step(6, data={"x": cx, "y": cy})
                 if obs2.state == GameState.GAME_OVER:
                     return False
-            return obs2.levels_completed > current_levels
+            return cast("bool", obs2.levels_completed > current_levels)
 
         def find_poison_clusters(indices: list[int]) -> set[int]:
             """Click clusters in order, find which one triggers GAME_OVER."""

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 # ============================================================================
 # Datenmodell
@@ -434,7 +434,7 @@ def validate_command(
         if result.verdict != ValidationVerdict.ALLOW:
             result.stage = stage_name
             result.intent = intent
-            return result
+            return cast("ValidationResult", result)
 
     return ValidationResult(
         verdict=ValidationVerdict.ALLOW,

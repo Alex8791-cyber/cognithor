@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import contextlib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from starlette.requests import Request
@@ -61,7 +61,10 @@ def _register_skill_routes(
         try:
             from cognithor.skills.marketplace import SkillMarketplace
 
-            return SkillMarketplace().curated_feed()
+            # ``curated_feed`` may not exist on every marketplace
+            # implementation; the outer ``try`` catches AttributeError.
+            return cast("dict[str, Any]", SkillMarketplace().curated_feed())  # type: ignore[attr-defined]
+
         except Exception as exc:
             log.error("marketplace_feed_failed", error=str(exc))
             return {"error": "Marketplace-Feed nicht verfuegbar"}
@@ -76,12 +79,18 @@ def _register_skill_routes(
     ) -> dict[str, Any]:
         """Durchsucht den Skill-Marktplatz."""
         try:
-            from cognithor.skills.marketplace import SkillMarketplace
+            from cognithor.skills.marketplace import SkillCategory, SkillMarketplace
 
             mp = SkillMarketplace()
+            cat_enum: SkillCategory | None = None
+            if category:
+                try:
+                    cat_enum = SkillCategory(category)
+                except ValueError:
+                    cat_enum = None
             results = mp.search(
                 query=q,
-                category=category,
+                category=cat_enum,
                 verified_only=verified_only,
                 sort_by=sort_by,
                 max_results=max_results,
@@ -97,7 +106,12 @@ def _register_skill_routes(
         try:
             from cognithor.skills.marketplace import SkillMarketplace
 
-            return {"categories": [c.to_dict() for c in SkillMarketplace().categories()]}
+            return {
+                "categories": [
+                    c.to_dict()
+                    for c in SkillMarketplace().categories()  # type: ignore[attr-defined]
+                ]
+            }
         except Exception as exc:
             log.error("marketplace_categories_failed", error=str(exc))
             return {"error": "Kategorien nicht verfuegbar"}
@@ -242,7 +256,7 @@ def _register_skill_routes(
                 "connectors": [],
                 "scope_guard": {"policies": 0, "violations": 0},
             }
-        return reg.stats()
+        return cast("dict[str, Any]", reg.stats())
 
     # -- Workflows (categories + legacy start — main endpoints in _register_workflow_graph_routes)
 
@@ -268,7 +282,8 @@ def _register_skill_routes(
             if not template:
                 return {"error": f"Template nicht gefunden: {template_id}"}
             inst = engine.start(template, created_by=body.get("created_by", ""))
-            return inst.to_dict()
+            return cast("dict[str, Any]", inst.to_dict())
+
         except Exception as exc:
             log.error("workflow_start_failed", error=str(exc))
             return {"error": "Workflow konnte nicht gestartet werden"}
@@ -328,7 +343,7 @@ def _register_skill_routes(
         reg = getattr(gateway, "_model_registry", None)
         if reg is None:
             return {"total_models": 0, "providers": [], "capabilities": [], "languages": []}
-        return reg.stats()
+        return cast("dict[str, Any]", reg.stats())
 
     # -- i18n -------------------------------------------------------------
 
@@ -368,7 +383,7 @@ def _register_skill_routes(
         cli = getattr(gateway, "_skill_cli", None)
         if cli is None:
             return {"scaffolder": {"templates": 0}}
-        return cli.stats()
+        return cast("dict[str, Any]", cli.stats())
 
     @app.get("/api/v1/skill-cli/templates", dependencies=deps)
     async def skill_cli_templates() -> dict[str, Any]:
@@ -384,7 +399,7 @@ def _register_skill_routes(
         cli = getattr(gateway, "_skill_cli", None)
         if cli is None:
             return {"contributors": 0}
-        return cli.rewards.stats()
+        return cast("dict[str, Any]", cli.rewards.stats())
 
     # -- Setup-Wizard (Phase 36) ------------------------------------------
 
@@ -394,7 +409,7 @@ def _register_skill_routes(
         wiz = getattr(gateway, "_setup_wizard", None)
         if wiz is None:
             return {"step": "unavailable"}
-        return wiz.state.to_dict()
+        return cast("dict[str, Any]", wiz.state.to_dict())
 
     @app.get("/api/v1/setup/stats", dependencies=deps)
     async def setup_stats() -> dict[str, Any]:
@@ -402,7 +417,7 @@ def _register_skill_routes(
         wiz = getattr(gateway, "_setup_wizard", None)
         if wiz is None:
             return {"state": {}}
-        return wiz.stats()
+        return cast("dict[str, Any]", wiz.stats())
 
 
 # ======================================================================
@@ -482,7 +497,7 @@ def _register_skill_registry_routes(
         import re
         from pathlib import Path
 
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         body = await request.json()
         name = body.get("name", "").strip()

@@ -32,7 +32,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -194,7 +194,8 @@ class TextExtractor:
         if self._media_pipeline:
             result = await self._media_pipeline.extract_text(str(file_path))
             if result.success:
-                return result.text
+                return cast("str", result.text)
+
             raise OSError(f"PDF-Extraktion fehlgeschlagen: {result.error}")
 
         # Fallback: PyMuPDF direkt (blocking I/O → thread)
@@ -216,7 +217,8 @@ class TextExtractor:
         if self._media_pipeline:
             result = await self._media_pipeline.extract_text(str(file_path))
             if result.success:
-                return result.text
+                return cast("str", result.text)
+
             raise OSError(f"DOCX-Extraktion fehlgeschlagen: {result.error}")
 
         # Fallback: python-docx direkt (blocking I/O → thread)

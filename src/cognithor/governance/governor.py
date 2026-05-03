@@ -4,7 +4,7 @@ import json
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cognithor.db import SQLITE_BUSY_TIMEOUT_MS
 from cognithor.models import PolicyChange, PolicyProposal
@@ -93,7 +93,7 @@ class GovernanceAgent:
             (category, title),
         ).fetchone()
         if existing:
-            return existing[0]
+            return cast("int", existing[0])
 
         now = datetime.now(UTC).isoformat()
         cursor = self._conn.execute(

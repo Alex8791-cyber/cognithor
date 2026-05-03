@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.a2a.types import (
     A2A_CONTENT_TYPE,
@@ -352,7 +352,7 @@ class A2AClient:
                 if remote:
                     remote.error_count += 1
                 return None
-            return data.get("result", {})
+            return cast("dict[str, Any] | None", data.get("result", {}))
 
         except ImportError:
             log.warning("a2a_httpx_not_installed")

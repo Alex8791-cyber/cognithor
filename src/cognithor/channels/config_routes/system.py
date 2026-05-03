@@ -10,7 +10,7 @@ Auth-Stats und Agent-Heartbeat-Endpoints.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import yaml  # type: ignore[import-untyped]
 
@@ -76,7 +76,9 @@ def _register_system_routes(
 
         # RuntimeMonitor
         try:
-            from cognithor.openclaw.runtime_monitor import RuntimeMonitor
+            from cognithor.openclaw.runtime_monitor import (
+                RuntimeMonitor,  # type: ignore[import-untyped]
+            )
 
             monitor = RuntimeMonitor()
             status["runtime"] = {"metrics_count": len(monitor._metrics)}
@@ -173,7 +175,7 @@ def _register_system_routes(
             raw = yaml.safe_load(agents_path.read_text(encoding="utf-8")) or {}
             for a in raw.get("agents", []):
                 if a.get("name") == agent_name:
-                    return a
+                    return cast("dict[str, Any]", a)
 
         # Fallback: check the live agent router
         router = getattr(gateway, "_agent_router", None) if gateway else None

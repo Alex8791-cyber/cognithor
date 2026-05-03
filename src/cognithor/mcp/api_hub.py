@@ -23,7 +23,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cognithor.utils.logging import get_logger
 
@@ -225,13 +225,15 @@ def _load_integrations(config: Any) -> dict[str, Any]:
     if fernet is not None:
         try:
             decrypted = fernet.decrypt(raw.encode("utf-8"))
-            return json.loads(decrypted)
+            return cast("dict[str, Any]", json.loads(decrypted))
+
         except Exception:
             pass  # Fallthrough zu Plaintext
 
     # Plaintext-Fallback
     try:
-        return json.loads(raw)
+        return cast("dict[str, Any]", json.loads(raw))
+
     except json.JSONDecodeError as exc:
         log.error("integrations_json_invalid", error=str(exc))
         return {}
