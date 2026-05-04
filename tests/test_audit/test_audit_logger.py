@@ -640,6 +640,39 @@ class TestFailureModeClassification:
         )
         assert AuditLogger.classify_failure(entry) == FailureMode.MIGRATION_CHAIN_ERROR
 
+    def test_explicit_failure_mode_via_log_gatekeeper(self) -> None:
+        # log_gatekeeper now accepts an explicit failure_mode kwarg so
+        # the gatekeeper can stamp the structured value directly
+        # instead of relying on the description-pattern classifier.
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_gatekeeper(
+            "BLOCK",
+            "scoped blocked",
+            tool_name="shell",
+            failure_mode=FailureMode.PERMISSION_SCOPE_DENIED,
+        )
+        # The classifier returns the explicit value unchanged.
+        assert AuditLogger.classify_failure(entry) == FailureMode.PERMISSION_SCOPE_DENIED
+        # And it serialises to the to_dict() shape.
+        assert entry.to_dict()["failure_mode"] == "permission_scope_denied"
+
+    def test_explicit_failure_mode_ignored_on_allow(self) -> None:
+        # ALLOW path: failure_mode kwarg is silently dropped because
+        # success entries don't carry one.
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_gatekeeper(
+            "ALLOW",
+            "ok",
+            tool_name="read_file",
+            failure_mode=FailureMode.PERMISSION_SCOPE_DENIED,
+        )
+        assert entry.success is True
+        assert entry.failure_mode is None
+
 
 # ============================================================================
 # TRUST-1 — Run-Receipts (operational-trust audit, 2026-05-04)
