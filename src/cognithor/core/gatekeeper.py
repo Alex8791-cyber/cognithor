@@ -1485,6 +1485,17 @@ class Gatekeeper:
             return FailureMode.GATEKEEPER_BLOCK
         if policy == "credential_masking":
             return FailureMode.AUTH_ERROR
+        if policy == "tool_disabled_by_config":
+            # Tool group toggled off in config.tools — surfaces as a
+            # generic block in the failure-mode taxonomy. The
+            # rule_id="tool_disabled_by_config" carries the precise
+            # reason for the Trace-UI; the failure-mode aggregate
+            # only needs to know it was a gatekeeper block.
+            return FailureMode.GATEKEEPER_BLOCK
+        if policy == "capability_matrix":
+            # CapabilityMatrix violation — the violated capability
+            # labels are in decision.explanation.matched_pattern.
+            return FailureMode.GATEKEEPER_BLOCK
         return None
 
     def _flush_audit_buffer(self) -> None:
