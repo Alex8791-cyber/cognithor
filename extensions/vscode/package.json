@@ -35,6 +35,8 @@
   "main": "./dist/extension.js",
   "activationEvents": [
     "onCommand:cognithor.runPlan",
+    "onCommand:cognithor.viewReceipt",
+    "onView:cognithor.receipts",
     "onStartupFinished"
   ],
   "contributes": {
@@ -43,8 +45,64 @@
         "command": "cognithor.runPlan",
         "title": "Cognithor: Run Plan",
         "category": "Cognithor"
+      },
+      {
+        "command": "cognithor.viewReceipt",
+        "title": "Cognithor: View TRUST-1 Receipt",
+        "category": "Cognithor",
+        "icon": "$(file-binary)"
+      },
+      {
+        "command": "cognithor.refreshReceipts",
+        "title": "Cognithor: Refresh Receipts",
+        "category": "Cognithor",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cognithor.forgetReceipts",
+        "title": "Cognithor: Forget All Receipts",
+        "category": "Cognithor",
+        "icon": "$(clear-all)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cognithor",
+          "title": "Cognithor",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "cognithor": [
+        {
+          "id": "cognithor.receipts",
+          "name": "TRUST-1 Receipts",
+          "icon": "$(file-binary)",
+          "contextualTitle": "Cognithor"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "cognithor.refreshReceipts",
+          "when": "view == cognithor.receipts",
+          "group": "navigation"
+        },
+        {
+          "command": "cognithor.viewReceipt",
+          "when": "view == cognithor.receipts",
+          "group": "navigation"
+        },
+        {
+          "command": "cognithor.forgetReceipts",
+          "when": "view == cognithor.receipts",
+          "group": "1_modification"
+        }
+      ]
+    },
     "configuration": {
       "title": "Cognithor",
       "properties": {
@@ -62,6 +120,21 @@
           "type": "string",
           "default": "127.0.0.1",
           "description": "Bind address for the cognithor agent ws server. Keep this as 127.0.0.1 unless you know what you are doing."
+        },
+        "cognithor.apiHost": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Host of the cognithor REST API server (default: 127.0.0.1)."
+        },
+        "cognithor.apiPort": {
+          "type": "number",
+          "default": 8741,
+          "description": "Port of the cognithor REST API server (default: 8741)."
+        },
+        "cognithor.receiptIncludeTrust": {
+          "type": "boolean",
+          "default": true,
+          "description": "Fold the TRUST-5..10 ledger bundle into receipts when fetching."
         }
       }
     }
