@@ -669,9 +669,7 @@ def main() -> None:
                 agent_cmd.cmd_run(
                     plan_path=Path(args.agent_run_plan),
                     stream=getattr(args, "agent_run_stream", False),
-                    out=Path(args.agent_run_out)
-                    if getattr(args, "agent_run_out", None)
-                    else None,
+                    out=Path(args.agent_run_out) if getattr(args, "agent_run_out", None) else None,
                 ),
             )
         elif action == "ws":
