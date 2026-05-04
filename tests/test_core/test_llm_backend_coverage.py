@@ -444,6 +444,7 @@ class TestOllamaBackendExtended:
     @pytest.mark.asyncio
     async def test_chat_basic(self) -> None:
         backend = self._make_backend()
+        backend._fingerprinted_models.add("llama3")
         mock_client = AsyncMock()
         mock_resp = MagicMock()
         mock_resp.status_code = 200
