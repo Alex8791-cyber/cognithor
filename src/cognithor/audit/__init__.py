@@ -238,6 +238,49 @@ class AuditLogger:
         if log_dir:
             log_dir.mkdir(parents=True, exist_ok=True)
 
+        # TRUST-10 backfill: record the audit-log schema move from
+        # v0 (flat JSONL, no prev_hash) to v1 (hash-chained JSONL,
+        # SEC-HIGH-5) into the canonical MIGRATION_LEDGER. The hook
+        # is idempotent (the ledger rejects duplicate migration_id);
+        # safe to call on every AuditLogger construction.
+        self._record_audit_schema_migration()
+
+    @staticmethod
+    def _record_audit_schema_migration() -> None:
+        """Record the SEC-HIGH-5 audit-log schema migration.
+
+        Idempotent: the canonical MIGRATION_LEDGER rejects duplicate
+        migration_id with a chain error, which we silently swallow —
+        re-recording the same logical migration after a process
+        restart is a no-op, not a failure.
+
+        Best-effort: any exception is logged + swallowed. AuditLogger
+        construction MUST NEVER fail because of TRUST-10 backfill.
+        """
+        from contextlib import suppress
+
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationChainError,
+            MigrationDomain,
+            MigrationStatus,
+            MigrationStep,
+        )
+
+        with suppress(MigrationChainError, ValueError):
+            MIGRATION_LEDGER.record(
+                MigrationStep(
+                    domain=MigrationDomain.AUDIT_LOG,
+                    source_version="v0-flat-jsonl",
+                    target_version="v1-hashchain-jsonl",
+                    status=MigrationStatus.APPLIED,
+                    applied_by="system",
+                    item_count=-1,  # schema-only, no row migration
+                    migration_id="audit_log:v0-flat-jsonl:v1-hashchain-jsonl",
+                    notes="SEC-HIGH-5: prev_hash chain on every audit entry",
+                )
+            )
+
     # ── Logging-Methoden ─────────────────────────────────────────
 
     def log_tool_call(
