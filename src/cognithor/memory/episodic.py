@@ -45,6 +45,9 @@ class EpisodicMemory:
         content: str,
         *,
         timestamp: datetime | None = None,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
     ) -> str:
         """Fuegt einen Eintrag zum Tageslog hinzu. Append-only.
 
@@ -52,6 +55,16 @@ class EpisodicMemory:
             topic: Short title of the entry.
             content: Detail text (can be multiline).
             timestamp: Timestamp (default: now).
+            provenance_source_type: Optional TRUST-9 SourceType value
+                (``"chat_utterance"``, ``"tool_output"``, etc.). When
+                set together with ``provenance_source_id``, a
+                ProvenanceTag is written to the canonical ledger
+                keyed by ``episode:{date}:{HH:MM}:{topic-slug}``.
+            provenance_source_id: Stable upstream id (audit-log
+                entry id, message id, …). Required when
+                ``provenance_source_type`` is set.
+            provenance_notes: Short audit-log breadcrumb. MUST NOT
+                contain prompt or response content.
 
         Returns:
             The written entry as string.
@@ -83,7 +96,77 @@ class EpisodicMemory:
                 with open(file_path, "a", encoding="utf-8") as f:
                     f.write(entry)
 
+        if provenance_source_type and provenance_source_id:
+            self._tag_provenance(
+                item_id=self._episode_item_id(timestamp, topic),
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                notes=provenance_notes,
+            )
+
         return entry.strip()
+
+    @staticmethod
+    def _episode_item_id(timestamp: datetime, topic: str) -> str:
+        """Build a deterministic provenance item_id for an episode entry.
+
+        Shape: ``episode:{YYYY-MM-DD}:{HH:MM}:{topic-slug}``. The
+        slug lower-cases ASCII letters, replaces non-alphanumerics
+        with ``-``, and collapses runs. Stable enough for cross-session
+        lookups while staying URL-safe for the Trace-UI.
+        """
+        date_str = timestamp.date().isoformat()
+        time_str = timestamp.strftime("%H:%M")
+        slug_chars: list[str] = []
+        prev_dash = False
+        for ch in topic.lower():
+            if ch.isalnum():
+                slug_chars.append(ch)
+                prev_dash = False
+            elif not prev_dash:
+                slug_chars.append("-")
+                prev_dash = True
+        slug = "".join(slug_chars).strip("-") or "untitled"
+        return f"episode:{date_str}:{time_str}:{slug}"
+
+    @staticmethod
+    def _tag_provenance(
+        *,
+        item_id: str,
+        source_type_value: str,
+        source_id: str,
+        notes: str,
+    ) -> None:
+        """Best-effort TRUST-9 provenance tag — failures are swallowed.
+
+        Unknown ``source_type_value`` is coerced to
+        :data:`SourceType.UNKNOWN` rather than raising, so a typo at
+        the call site doesn't break log appends.
+        """
+        from cognithor.memory.provenance import (
+            PROVENANCE_LEDGER,
+            ProvenanceTag,
+            SourceType,
+        )
+
+        try:
+            try:
+                source_type = SourceType(source_type_value)
+            except ValueError:
+                source_type = SourceType.UNKNOWN
+            PROVENANCE_LEDGER.tag(
+                item_id,
+                ProvenanceTag(
+                    source_type=source_type,
+                    source_id=source_id,
+                    notes=notes,
+                ),
+            )
+        except ValueError:
+            # Construction-time validation may reject empty source_id
+            # or out-of-range confidence — silently skip; logging
+            # episodic events MUST NEVER fail.
+            pass
 
     def get_today(self) -> str:
         """Return today's daily log."""

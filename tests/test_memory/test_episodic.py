@@ -106,3 +106,133 @@ class TestEpisodicMemory:
 
     def test_directory_property(self, ep: EpisodicMemory, ep_dir: Path):
         assert ep.directory == ep_dir
+
+
+class TestEpisodicMemoryProvenance:
+    """TRUST-9 wiring: passing ``provenance_source_type`` +
+    ``provenance_source_id`` to ``append_entry`` writes a tag to the
+    canonical PROVENANCE_LEDGER keyed by a deterministic episode id.
+    """
+
+    def test_episode_item_id_shape(self) -> None:
+        ts = datetime(2026, 2, 21, 14, 30)
+        item_id = EpisodicMemory._episode_item_id(ts, "  My Topic / Slug!  ")
+        assert item_id == "episode:2026-02-21:14:30:my-topic-slug"
+
+    def test_episode_item_id_empty_topic_falls_back(self) -> None:
+        ts = datetime(2026, 2, 21, 14, 30)
+        item_id = EpisodicMemory._episode_item_id(ts, "!!!")
+        assert item_id == "episode:2026-02-21:14:30:untitled"
+
+    def test_append_without_provenance_does_not_tag(self, ep: EpisodicMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            ep.append_entry(
+                "Probe",
+                "content",
+                timestamp=datetime(2026, 2, 21, 14, 30),
+            )
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_append_with_provenance_tags_ledger(self, ep: EpisodicMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            ts = datetime(2026, 2, 21, 14, 30)
+            ep.append_entry(
+                "User says hello",
+                "content",
+                timestamp=ts,
+                provenance_source_type="chat_utterance",
+                provenance_source_id="msg-7",
+                provenance_notes="from telegram",
+            )
+            tag = isolated.current("episode:2026-02-21:14:30:user-says-hello")
+            assert tag is not None
+            assert tag.source_type == SourceType.CHAT_UTTERANCE
+            assert tag.source_id == "msg-7"
+            assert tag.notes == "from telegram"
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_unknown_source_type_falls_back(self, ep: EpisodicMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            ts = datetime(2026, 2, 21, 14, 30)
+            ep.append_entry(
+                "Probe",
+                "content",
+                timestamp=ts,
+                provenance_source_type="not_real",
+                provenance_source_id="x",
+            )
+            tag = isolated.current("episode:2026-02-21:14:30:probe")
+            assert tag is not None
+            assert tag.source_type == SourceType.UNKNOWN
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_partial_provenance_args_skip_tag(self, ep: EpisodicMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            ts = datetime(2026, 2, 21, 14, 30)
+            ep.append_entry(
+                "Only-Type",
+                "c",
+                timestamp=ts,
+                provenance_source_type="chat_utterance",
+            )
+            ep.append_entry(
+                "Only-Id",
+                "c",
+                timestamp=ts,
+                provenance_source_id="msg-7",
+            )
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_empty_source_id_does_not_break_append(self, ep: EpisodicMemory) -> None:
+        # ProvenanceTag construction rejects empty source_id; the
+        # episodic helper must swallow that ValueError so log-write
+        # still succeeds.
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            # source_id is "" → fails the both-required check, no tag.
+            result = ep.append_entry(
+                "Probe",
+                "c",
+                timestamp=datetime(2026, 2, 21, 14, 30),
+                provenance_source_type="chat_utterance",
+                provenance_source_id="",
+            )
+            assert "Probe" in result
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
