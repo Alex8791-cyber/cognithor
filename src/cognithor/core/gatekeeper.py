@@ -537,6 +537,18 @@ class Gatekeeper:
                             risk_level=RiskLevel.RED,
                             original_action=action,
                             policy_name="capability_matrix",
+                            # TRUST-2: structured explanation listing the violated
+                            # capabilities. Each violation comes from
+                            # CapabilityMatrix.get_violations and names a stable
+                            # capability label (NETWORK_HTTP, FILE_WRITE, etc.).
+                            explanation=DecisionExplanation(
+                                rule_id="capability_matrix",
+                                rule_source=(
+                                    "cognithor.security.capabilities:"
+                                    "CapabilityMatrix.get_violations"
+                                ),
+                                matched_pattern=",".join([action.tool, *violations])[:200],
+                            ),
                         )
                         self._write_audit(action, decision, context)
                         return decision
