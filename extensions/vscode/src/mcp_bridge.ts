@@ -215,7 +215,7 @@ export class McpBridge implements vscode.Disposable {
     let message: JsonRpcMessage;
     try {
       message = JSON.parse(line) as JsonRpcMessage;
-    } catch (_err) {
+    } catch {
       this.logEmitter.fire(`malformed stdout line: ${line.slice(0, 200)}`);
       return;
     }
@@ -293,7 +293,7 @@ export class McpBridge implements vscode.Disposable {
           );
         }),
       ]);
-    } catch (_err) {
+    } catch {
       this.logEmitter.fire(
         `heartbeat: no pong within ${this.config.pongTimeoutMs}ms — restarting`,
       );

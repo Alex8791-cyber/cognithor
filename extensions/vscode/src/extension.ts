@@ -1,17 +1,15 @@
 /**
  * Cognithor VS Code extension — entry point.
  *
- * PR-D shipped the scaffold. PR-E (this file's update) wires the
- * MCP-stdio bridge so the extension auto-spawns
- * `cognithor mcp --stdio` on activation, heartbeats it every
- * 30 s, and restarts on no-pong within 5 s. Mitigates plan-doc
- * §6 risk-1 (MCP-stdio handshake instability for VS-Code's
- * activate/deactivate cycle).
+ * PR-D shipped the scaffold. PR-E wired the MCP-stdio bridge
+ * (auto-spawn on activation, heartbeat every 30 s, restart on
+ * no-pong within 5 s). PR-F (this update) ships the
+ * "Cognithor: Run Plan" palette command + WebSocket client that
+ * talks to the `cognithor agent ws` server (PR-C) and streams
+ * events into the output channel.
  *
  * Subsequent wiring lands in:
  *
- *   - PR-F (#121): WebSocket client + plan picker (uses bridge
- *                  for procedural-memory queries)
  *   - PR-G (#122): TRUST-1 receipt sidebar webview
  *   - PR-H (#123): Decision-Explanation hover provider
  *   - PR-I (#124): Cost-budget gutter decoration
@@ -19,6 +17,7 @@
 
 import * as vscode from "vscode";
 import { McpBridge, readBridgeConfig } from "./mcp_bridge";
+import { WsClient } from "./ws_client";
 
 let bridge: McpBridge | null = null;
 let outputChannel: vscode.OutputChannel | null = null;
@@ -60,17 +59,78 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   // --------------------------------------------------------------------
-  // Palette command stub (PR-F replaces this with the real flow)
+  // Palette command: Cognithor: Run Plan (PR-F)
   // --------------------------------------------------------------------
   const runPlan = vscode.commands.registerCommand(
     "cognithor.runPlan",
     async () => {
-      void vscode.window.showInformationMessage(
-        "Cognithor: Run Plan — wiring lands in Sprint-27 PR-F (#121).",
-      );
+      const log = outputChannel;
+      const planUri = await pickPlanFile();
+      if (!planUri) {
+        return;
+      }
+      log?.show(true);
+      log?.appendLine(`[plan] running: ${planUri.fsPath}`);
+
+      const config = vscode.workspace.getConfiguration("cognithor");
+      const port = config.get<number>("wsPort", 8742);
+      const bind = config.get<string>("wsBind", "127.0.0.1");
+
+      let client: WsClient;
+      try {
+        client = new WsClient({ bind, port });
+      } catch (err) {
+        const message = (err as Error).message;
+        log?.appendLine(`[plan] WS client init failed: ${message}`);
+        void vscode.window.showErrorMessage(`Cognithor: ${message}`);
+        return;
+      }
+
+      client.onEvent((evt) => {
+        const type = typeof evt.type === "string" ? evt.type : "?";
+        log?.appendLine(`[evt] ${type} ${JSON.stringify(evt)}`);
+      });
+      client.onError((err) => {
+        log?.appendLine(`[plan] error: ${err.message}`);
+      });
+
+      try {
+        const info = await client.runPlan({ planPath: planUri.fsPath });
+        log?.appendLine(
+          `[plan] closed (code=${info.code}, clean=${info.wasClean})${info.reason ? ` — ${info.reason}` : ""}`,
+        );
+      } catch (err) {
+        const message = (err as Error).message;
+        log?.appendLine(`[plan] failed: ${message}`);
+        void vscode.window.showErrorMessage(`Cognithor: ${message}`);
+      }
     },
   );
   context.subscriptions.push(runPlan);
+}
+
+async function pickPlanFile(): Promise<vscode.Uri | undefined> {
+  const editor = vscode.window.activeTextEditor;
+  if (editor && editor.document.fileName.toLowerCase().endsWith(".json")) {
+    const useActive = await vscode.window.showQuickPick(
+      [
+        { label: "Active file", description: editor.document.fileName, value: "active" },
+        { label: "Pick a plan file...", description: "Browse for a plan JSON file", value: "browse" },
+      ],
+      { placeHolder: "Which plan should Cognithor run?" },
+    );
+    if (!useActive) return undefined;
+    if (useActive.value === "active") {
+      return editor.document.uri;
+    }
+  }
+
+  const picked = await vscode.window.showOpenDialog({
+    canSelectMany: false,
+    filters: { "Plan files": ["json"] },
+    openLabel: "Run plan",
+  });
+  return picked?.[0];
 }
 
 export function deactivate(): void {
