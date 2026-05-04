@@ -299,3 +299,45 @@ class TestFormulateResponse:
         # Core Memory sollte irgendwo in den Messages auftauchen
         all_content = " ".join(m.get("content", "") for m in messages)
         assert "Jarvis" in all_content
+
+
+# ============================================================================
+# SEC-HIGH-3: Indirect prompt injection (autonomous security audit, 2026-05-04)
+# ============================================================================
+
+
+class TestUntrustedWebContentDelimiters:
+    """Web-fetched text used to be injected with an explicit
+    ``"AKTUELLE FAKTEN AUS DEM INTERNET (vertraue diesen Daten!)"``
+    directive — a textbook indirect-prompt-injection vector. The
+    Planner should now:
+
+      1. Have a SYSTEM_PROMPT rule mandating that ``<UNTRUSTED_*>``
+         tags are data, not commands.
+      2. Drop the explicit "vertraue diesen Daten" trust phrase.
+
+    These tests pin both invariants so a future refactor can't silently
+    re-introduce the vulnerable form.
+    """
+
+    def test_system_prompt_has_untrusted_content_rule(self) -> None:
+        from cognithor.core.planner import SYSTEM_PROMPT
+
+        assert "UNTRUSTED_WEB_CONTENT" in SYSTEM_PROMPT
+        # Rule must be explicit about treating tagged content as data.
+        assert "Daten" in SYSTEM_PROMPT and "niemals als Anweisungen" in SYSTEM_PROMPT, (
+            "SYSTEM_PROMPT must explicitly state UNTRUSTED tags are data"
+        )
+
+    def test_system_prompt_no_longer_says_vertraue_diesen_daten(self) -> None:
+        """The exact trust directive must not survive in the system
+        prompt or in any string the Planner injects into the LLM —
+        the audit found this is what made the prompt injection trivial.
+
+        Comments in source code (``"vertraue diesen Daten!" trust ...``)
+        are explanatory and explicitly allowed; only runtime
+        prompt-bound strings are checked.
+        """
+        from cognithor.core.planner import SYSTEM_PROMPT
+
+        assert "vertraue diesen Daten" not in SYSTEM_PROMPT
