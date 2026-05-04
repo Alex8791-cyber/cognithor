@@ -19,7 +19,7 @@ Siehe `catalog.json` für die vollständige Liste. Hauptkategorien:
 - `memory` — Zugriff auf das 6-Tier Cognitive Memory
 - `identity` — Ed25519-Key-Management
 - `shell` — Sandboxed Shell-Execution
-- `sevdesk` — **DACH:** sevDesk-Buchhaltung (v1.0 Launch)
+- `sevdesk` — **DACH:** sevDesk-Buchhaltung (in Entwicklung — Modul liegt unter `src/cognithor/mcp/sevdesk/` aber ist noch nicht im MCP-Server registriert; wird über Agent Pack ausgeliefert)
 
 ## MCP-Protokoll
 
