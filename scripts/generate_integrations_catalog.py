@@ -117,7 +117,11 @@ def extract_register_builtin_calls(py_file: Path) -> list[dict]:
         tool_name = name_node.value
         description = ""
         for kw in node.keywords:
-            if kw.arg == "description" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+            if (
+                kw.arg == "description"
+                and isinstance(kw.value, ast.Constant)
+                and isinstance(kw.value.value, str)
+            ):
                 description = kw.value.value
                 break
             # Some call-sites use a parenthesized string-concat for description;
@@ -125,12 +129,73 @@ def extract_register_builtin_calls(py_file: Path) -> list[dict]:
             if kw.arg == "description" and isinstance(kw.value, ast.BinOp):
                 description = _fold_str_concat(kw.value)
                 break
-        module = (
-            py_file.relative_to(REPO_ROOT / "src")
-            .with_suffix("")
-            .as_posix()
-            .replace("/", ".")
+        module = py_file.relative_to(REPO_ROOT / "src").with_suffix("").as_posix().replace("/", ".")
+        category = _infer_category(py_file, description)
+        name_lower = tool_name.lower()
+        desc_lower = description.lower()
+        dach = any(marker in name_lower or marker in desc_lower for marker in DACH_MARKERS)
+        results.append(
+            {
+                "name": tool_name,
+                "module": module,
+                "category": category,
+                "description": description.split("\n")[0][:200],
+                "dach_specific": dach,
+            }
         )
+    return results
+
+
+def extract_register_tool_calls(py_file: Path) -> list[dict]:
+    """Find `<obj>.register_tool(name=..., description=...)` style registrations.
+
+    PSE tools (``mcp/pse_tools.py``) and similar modules call
+    ``mcp_client.register_tool(name=..., description=..., handler=...,
+    schema=...)`` either directly or via a local alias bound by
+    ``register = getattr(mcp_client, "register_tool", None)``. The first form
+    we match by attribute name; the second by detecting a kwarg-only call
+    that has the full ``name``/``description``/``handler`` triplet.
+    """
+    try:
+        tree = ast.parse(py_file.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return []
+    results: list[dict] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+
+        is_register_tool_attr = isinstance(func, ast.Attribute) and func.attr == "register_tool"
+        # Aliased local var: `register(name=..., description=..., handler=...)`
+        kwarg_names = {kw.arg for kw in node.keywords}
+        is_aliased_register = (
+            isinstance(func, ast.Name)
+            and not node.args
+            and {"name", "description", "handler"}.issubset(kwarg_names)
+        )
+
+        if not (is_register_tool_attr or is_aliased_register):
+            continue
+
+        tool_name = ""
+        description = ""
+        for kw in node.keywords:
+            if (
+                kw.arg == "name"
+                and isinstance(kw.value, ast.Constant)
+                and isinstance(kw.value.value, str)
+            ):
+                tool_name = kw.value.value
+            elif kw.arg == "description":
+                if isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                    description = kw.value.value
+                elif isinstance(kw.value, ast.BinOp):
+                    description = _fold_str_concat(kw.value)
+        if not tool_name:
+            continue
+
+        module = py_file.relative_to(REPO_ROOT / "src").with_suffix("").as_posix().replace("/", ".")
         category = _infer_category(py_file, description)
         name_lower = tool_name.lower()
         desc_lower = description.lower()
@@ -153,13 +218,17 @@ def _fold_str_concat(node: ast.BinOp) -> str:
         left = node.left
         right = node.right
         left_s = (
-            left.value if isinstance(left, ast.Constant) and isinstance(left.value, str)
-            else _fold_str_concat(left) if isinstance(left, ast.BinOp)
+            left.value
+            if isinstance(left, ast.Constant) and isinstance(left.value, str)
+            else _fold_str_concat(left)
+            if isinstance(left, ast.BinOp)
             else ""
         )
         right_s = (
-            right.value if isinstance(right, ast.Constant) and isinstance(right.value, str)
-            else _fold_str_concat(right) if isinstance(right, ast.BinOp)
+            right.value
+            if isinstance(right, ast.Constant) and isinstance(right.value, str)
+            else _fold_str_concat(right)
+            if isinstance(right, ast.BinOp)
             else ""
         )
         return left_s + right_s
@@ -210,6 +279,7 @@ def main() -> int:
     for py in MCP_DIR.rglob("*.py"):
         tools.extend(extract_tools(py))
         tools.extend(extract_register_builtin_calls(py))
+        tools.extend(extract_register_tool_calls(py))
 
     # Filter out tools from modules that aren't wired into the live server yet.
     # See NOT_YET_REGISTERED_PREFIXES at top of file.
