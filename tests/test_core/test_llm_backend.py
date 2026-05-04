@@ -921,3 +921,193 @@ class TestGeminiBackend:
         await b.close()
         mock_client.aclose.assert_awaited_once()
         assert b._client is None
+
+
+# ============================================================================
+# OllamaBackend.fingerprint_model (TRUST-7 MODEL-kind capture)
+# ============================================================================
+
+
+class TestOllamaBackendFingerprintModel:
+    """``OllamaBackend.fingerprint_model`` calls ``/api/show`` once per
+    process per model name, parses the digest, and registers a
+    MODEL-kind ToolFingerprint into the canonical FINGERPRINT_LEDGER.
+    """
+
+    @staticmethod
+    def _isolate_ledger() -> tuple[object, object]:
+        """Return (fp_module, original_ledger) and install a fresh ledger."""
+        import cognithor.security.fingerprint as fp_mod
+        from cognithor.security.fingerprint import FingerprintLedger
+
+        isolated = FingerprintLedger()
+        original = fp_mod.FINGERPRINT_LEDGER
+        fp_mod.FINGERPRINT_LEDGER = isolated  # type: ignore[misc]
+        return fp_mod, original
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_registers_with_top_level_digest(self) -> None:
+        from cognithor.security.fingerprint import BinaryKind
+
+        fp_mod, original = self._isolate_ledger()
+        try:
+            digest = "a" * 64
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {
+                "digest": digest,
+                "details": {"parameter_size": "30B"},
+            }
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            result = await b.fingerprint_model("qwen3:30b")
+            assert result == digest
+            history = fp_mod.FINGERPRINT_LEDGER.history("qwen3:30b")  # type: ignore[attr-defined]
+            assert len(history) == 1
+            fp = history[0]
+            assert fp.kind == BinaryKind.MODEL
+            assert fp.content_hash == digest
+            assert fp.version == "30B"
+            assert fp.upstream_url == "ollama:qwen3:30b"
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_strips_sha256_prefix(self) -> None:
+        fp_mod, original = self._isolate_ledger()
+        try:
+            digest = "b" * 64
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {"digest": "sha256:" + digest}
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            assert await b.fingerprint_model("qwen3:8b") == digest
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_falls_back_to_details_digest(self) -> None:
+        fp_mod, original = self._isolate_ledger()
+        try:
+            digest = "c" * 64
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            # Top-level digest missing — fall back to ``details.digest``.
+            mock_resp.json.return_value = {"details": {"digest": digest}}
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            assert await b.fingerprint_model("nested-digest") == digest
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_idempotent_per_model_name(self) -> None:
+        fp_mod, original = self._isolate_ledger()
+        try:
+            digest = "d" * 64
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {"digest": digest}
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            first = await b.fingerprint_model("qwen3:8b")
+            second = await b.fingerprint_model("qwen3:8b")
+            assert first == digest
+            # Second call short-circuits — no /api/show on the wire.
+            assert second is None
+            assert mock_client.post.await_count == 1
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_skips_empty_model(self) -> None:
+        fp_mod, original = self._isolate_ledger()
+        try:
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock()
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            assert await b.fingerprint_model("") is None
+            mock_client.post.assert_not_awaited()
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_returns_none_on_404(self) -> None:
+        fp_mod, original = self._isolate_ledger()
+        try:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 404
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            assert await b.fingerprint_model("missing") is None
+            # Cached so a flaky probe doesn't retry.
+            assert "missing" in b._fingerprinted_models
+            assert len(fp_mod.FINGERPRINT_LEDGER) == 0  # type: ignore[arg-type]
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_returns_none_on_connect_error(self) -> None:
+        fp_mod, original = self._isolate_ledger()
+        try:
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(side_effect=httpx.ConnectError("down"))
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            assert await b.fingerprint_model("qwen3:30b") is None
+            assert len(fp_mod.FINGERPRINT_LEDGER) == 0  # type: ignore[arg-type]
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_fingerprint_model_rejects_malformed_digest(self) -> None:
+        fp_mod, original = self._isolate_ledger()
+        try:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            # Wrong length / not lowercase hex.
+            mock_resp.json.return_value = {"digest": "TOO-SHORT"}
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            assert await b.fingerprint_model("bad-digest") is None
+            assert len(fp_mod.FINGERPRINT_LEDGER) == 0  # type: ignore[arg-type]
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
