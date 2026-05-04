@@ -7,6 +7,117 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.97.0] — 2026-05-04 — "Operational Trust"
+
+A reviewer-feedback-driven release that closes Cognithor's "post-mortem
+reconstruction" gap. Every audit-relevant decision the agent makes is now
+captured as a structured, queryable, signed receipt — not as free-form log
+strings. 42 PRs (#395–#437), ~10 500 LOC, ~330 new tests, 0 regressions,
+mypy --strict + ruff clean across the new surface.
+
+The canonical reference for the stack is **`docs/operational_trust.md`**
+(298 lines, TRUST-1..10).
+
+### Added — TRUST-1 Run Receipts
+
+- `cognithor.audit.AuditLogger.run_receipt(run_id, *, include_trust, signing_key)`
+  — aggregates every audit entry for a run into a deterministic JSON bundle
+  with optional HMAC-SHA-256 signature. (#403)
+- `AuditLogger.verify_receipt_signature(bundle, signing_key)` — round-trip
+  verification of persisted bundles. (#403)
+- Append-only audit hash chain (each entry seals the previous SHA-256), so
+  receipts surface tamper events explicitly. (#373, #422)
+- `cognithor receipt show / verify / list / export-all / diff` — five CLI
+  subcommands for operator post-mortems. `show` dumps a single bundle (with
+  optional `--include-trust --sign-key`); `verify` validates a stored bundle;
+  `list` enumerates known run-ids; `export-all` writes every bundle for a
+  date-range to disk; `diff` produces a structural diff between two
+  bundles. (#404, #424, #430, #431)
+- `GET /api/crew/trace/{trace_id}/receipt?include_trust=true` — REST
+  surface, owner-token gated, returns the same bundle shape as the CLI. (#405)
+
+### Added — TRUST-2 Decision Explanations
+
+- `DecisionExplanation` (frozen dataclass) carries `rule_id`, `rule_source`,
+  and `matched_pattern` (truncated to 200 chars). Attached to every
+  Gatekeeper block path (12 sites) so downstream tools can render a
+  structured "why we said no" instead of parsing prose. (#396, #415, #418,
+  #419, #422, #423, #428, #429)
+
+### Added — TRUST-3 Failure-Mode Taxonomy
+
+- `FailureMode` `StrEnum` with 15 canonical values (9 baseline + 6 added
+  this release: `policy_block`, `quota_exceeded`, `tool_timeout`,
+  `parse_error`, `dependency_missing`, `pack_eula_missing`). Aggregated
+  per-run via `AuditLogger.failure_mode_summary(run_id)`. (#403, #421)
+
+### Added — TRUST-4 Pack Rollback
+
+- `cognithor pack rollback <id> [--to-version VER]` — restores a pack to a
+  prior version and seals the rollback into the audit chain. Pre-flight
+  validates the target version is locally cached; otherwise refuses. (#108
+  task closure)
+
+### Added — TRUST-5..10 Operational Trust Stack
+
+The bulk of this release. Six independent ledgers, all frozen-dataclass +
+`StrEnum` + append-only + JSON-serialisable, all wired through every
+relevant capture site:
+
+- **TRUST-5 Provenance** — `cognithor.memory.provenance.ProvenanceLedger`.
+  9 memory-tier capture sites: semantic-store add/remove (#409, #411),
+  episodic-store append (#410), agent-vault put/delete (#412, #420),
+  procedural memory write (#425), core-memory replace (#426), knowledge
+  ingest enqueue/dequeue (#433), indexer rebuild (#435). Each tag carries
+  `source_type`, `source_id`, `expiry_policy`, and the canonical timestamp.
+  Both `source_type` and `source_id` are required; partial args skip the
+  tag rather than fail; unknown source types coerce to `SourceType.UNKNOWN`.
+  Capture is best-effort and never raises into the calling tier. (#397)
+- **TRUST-6 Permission Scopes** — `cognithor.security.permission_scope`
+  with `PermissionScope` + `ScopeAxis` + `ScopeRegistry`. Encodes
+  least-privilege per axis (filesystem, network, llm, tool). (#395)
+- **TRUST-7 Tool Fingerprints** — `cognithor.security.fingerprint` with
+  `ToolFingerprint` + `BinaryKind` (`TOOL`, `PACK`, `MODEL`, `SCHEMA`,
+  `BINARY`). 4 of 5 kinds captured automatically — MCP tools (#407), packs
+  (#408), models (#413, #414), MCP schemas (#427). `BINARY` capture is
+  hardware-gated and shipped behind a feature flag. (#398)
+- **TRUST-8 Cloud-Escalation** — `cognithor.security.cloud_escalation`
+  with `EscalationEvent` + `EscalationReason`. Metadata-only privacy
+  contract: ledger entries record _that_ a cloud call happened, never
+  the prompt or response. Backend-side dispatch wiring deferred to a
+  follow-up. (#399)
+- **TRUST-9 Cost Ledger** — `cognithor.security.cost_ledger` with
+  `CostEntry` + `CostKind` and `BudgetReport`. Canonical unit is integer
+  micro-USD (no float rounding drift). Wired through the provenance tags
+  on every memory write. (#401)
+- **TRUST-10 Migration Ledger** — `cognithor.security.migration_ledger`
+  with `MigrationStep` + `MigrationDomain` + `MigrationStatus`. Per-domain
+  chain integrity, so a corrupt audit entry in one domain doesn't poison
+  the others. Self-audit recorders shipped for 7 self-audit domains
+  (#416, #417, #432, #434).
+
+### Added — Glue & surface
+
+- `cognithor.security.trust_bundle.build_trust_bundle(run_id)` — composer
+  that folds all six ledgers into a single canonical receipt block. (#402)
+- `cognithor.security.trust_wiring` — module-level recorders consumed by
+  capture sites under `contextlib.suppress(Exception)`. (#406)
+- `docs/operational_trust.md` — canonical 298-line reference doc covering
+  every TRUST tier, capture-site matrix, and operator runbook. (#436)
+- `docs/superpowers/plans/2026-05-04-sprint27-ide-integration.md` —
+  forward-looking plan for the VS-Code / JetBrains / Cursor extension
+  family that consumes the receipt API. (#437)
+
+### Notes
+
+- Disk persistence of TRUST ledgers (SQLCipher) is in-memory-only this
+  release; persistence + retention windows ship in 0.98.x.
+- TRUST-7 `BINARY`-kind capture and TRUST-8 backend-dispatch wiring
+  are scaffolded but feature-flagged; no operator-visible regression if
+  they remain off.
+- `Flutter TrustBundlePanel` UI widget is queued for a follow-up release;
+  the CLI + REST surfaces are the supported entry points today.
+
 ## [0.96.0] — 2026-05-01 — "ARC-AGI-3 Pass"
 
 ### Added — PSE Phase-2 ARC-AGI-3 capability

@@ -29,7 +29,7 @@
 
 > **Pre-v1.0 Beta** — Cognithor is under active development. APIs may change between releases. Not recommended for production customer-facing deployments. Bug reports and feedback welcome via [Issues](../../issues).
 >
-> While the test suite is extensive (13,000+ tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. See [Status & Maturity](#status--maturity) for details. For non-technical users, wait until version 1.0.0 for stable long-term support.
+> While the test suite is extensive (14,500+ tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. See [Status & Maturity](#status--maturity) for details. For non-technical users, wait until version 1.0.0 for stable long-term support.
 
   [![clawdboard](https://clawdboard.ai/api/badge/Alex8791-cyber)](https://clawdboard.ai/user/Alex8791-cyber)
 
@@ -37,7 +37,7 @@
   <a href="https://clawdboard.ai/recap/6fd37b26-7e41-4b0f-958a-3f2580427ccf"><strong>Weekly Recap: Rank #1 | $1,644 spent vibe-engineering</strong></a>
 </p>
 
-> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security), backed by 13,000+ tests, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
+> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security, TRUST-1..10 operational-trust stack), backed by 14,500+ tests, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
 
 ---
 
@@ -45,7 +45,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 18 channels, 145+ MCP tools, 6-tier memory with 4-channel hybrid search, knowledge vault, voice, browser automation, Computer Use, cross-platform social listening, and more — all wired together from day one. 13,000+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 18 channels, 136 MCP tools across 30 modules, 6-tier memory with 4-channel hybrid search, knowledge vault, voice, browser automation, Computer Use, cross-platform social listening, signed audit receipts (TRUST-1..10), and more — all wired together from day one. 14,500+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 **In plain terms:** Cognithor is an AI assistant that lives entirely on your computer. You talk to it through your terminal, a web UI, Telegram, Discord, or any of 18 supported channels — and it talks back, remembers what you said last week, and acts on your behalf. It can search the web, write and edit files, run shell commands, control your browser, automate your desktop (clicking, typing, reading windows), manage your calendar, and learn new skills over time. Think of it as a local, private, self-improving Jarvis.
 
@@ -89,7 +89,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 | **OSINT / HIM Module** | Beta — person/project/org investigation with trust scoring |
 | **Observer Audit Layer** | Stable — post-response LLM quality check across 4 dimensions (hallucinations, sycophancy, laziness, tool-ignorance); triggers regeneration or full PGE re-loop; fails open |
 
-**What the test suite covers:** Unit tests, integration tests, real-life scenario tests, and live Ollama tests for all modules. The 13,000+ tests verify code correctness in controlled environments.
+**What the test suite covers:** Unit tests, integration tests, real-life scenario tests, and live Ollama tests for all modules. The 14,500+ tests verify code correctness in controlled environments.
 
 **What the test suite does NOT cover:** Real-world deployment scenarios, network edge cases, long-running stability, multi-user load, hardware-specific voice/GPU issues, or actual LLM response quality.
 
@@ -116,6 +116,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - [Quick Start](#quick-start) (under 5 minutes)
 - [Configuration](#configuration)
 - [Security](#security)
+- [Operational Trust (TRUST-1..10)](#operational-trust-trust-110)
 - [MCP Tools](#mcp-tools)
 - [Tests](#tests)
 - [Deployment](#deployment)
@@ -136,7 +137,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
 - **Video Input** — Attach local videos (`.mp4` / `.webm` / `.mov` / `.mkv` / `.avi`) or paste direct video URLs; Qwen3.6-27B (or any video-capable VLM) analyzes them end-to-end via vLLM's native `video_url` content type. Adaptive frame sampling (fps=3 for short clips, `num_frames=32` for long) via `ffprobe`. Single video per turn, served from a 127.0.0.1-only HTTP file server, 24h auto-cleanup. Requires vLLM backend — Windows installer bundles LGPL ffmpeg. See [`docs/vllm-user-guide.md`](docs/vllm-user-guide.md).
-- **Model Context Protocol (MCP)** — 145+ tools across 14 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, documents, reddit, social, kanban, identity) + A2A delegation
+- **Model Context Protocol (MCP)** — 136 tools across 30 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, documents, social, kanban, identity, evolution, computer-use, sevDesk, A2A and more) — counts auto-verified against [`docs/integrations/catalog.json`](docs/integrations/catalog.json) on every release
 - **Computer Use** — Complete desktop automation: screenshots, clicking, typing, scrolling, dragging, Windows UI Automation via pywinauto for exact element coordinates, 3-layer security, adaptive wait
 - **ARC-AGI-3 Benchmark Agent** — Compete in ARC Prize 2026: 13/25 games solved (24 levels), 4 solver families (ClusterClick, SequenceClick+SimA*, KeyboardDFS, SmartExplorer), persistent game profiles, multimodal vision (qwen3-vl)
 - **Distributed Locking** — Redis-backed (with file-based fallback) locks for multi-instance deployments
@@ -177,9 +178,10 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **`_safe_call()` Pattern** — Unified error handling replacing silent `except Exception: pass`. Failure registry with per-function tracking, async variant, circuit-breaker integration
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
 - **Observer Audit Layer** — Every response audited against 4 quality dimensions (hallucination, sycophancy, laziness, tool-ignorance) with differentiated retry strategies. Runs locally with qwen3:32b.
+- **Operational Trust (TRUST-1..10)** — Signed run-receipts (`cognithor receipt show / verify / list / export-all / diff`), structured Gatekeeper decision-explanations (`rule_id` + `rule_source` + `matched_pattern`), 15-value `FailureMode` taxonomy, pack rollback, six append-only ledgers (Provenance, Permission-Scopes, Tool-Fingerprints, Cloud-Escalation, Cost in micro-USD, Migration). REST: `GET /api/crew/trace/{trace_id}/receipt`. See [Operational Trust](#operational-trust-trust-110) and [`docs/operational_trust.md`](docs/operational_trust.md)
 - **Integrations Catalog** — Auto-generated from `src/cognithor/mcp/` — see [`docs/integrations/catalog.json`](docs/integrations/catalog.json). DACH-specific: sevDesk REST connector (accounting).
 - **Competitive Analysis** — [`docs/competitive-analysis/`](docs/competitive-analysis/README.md) — Cognithor vs AutoGen / MAF / LangGraph / CrewAI.
-- **13,000+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts**
+- **14,500+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts** · **mypy --strict** clean across the new TRUST surface
 
 ## Architecture
 ```mermaid id="k8v3zp"
@@ -225,7 +227,7 @@ subgraph EXEC["Execution Stack"]
 Parallel + Retry Logic"]
 
     TOOLS["MCP Tools
-(118 tools)"]
+(136 tools / 30 modules)"]
 
     LLM["LLM Backends
 Local + Cloud Models
@@ -367,13 +369,6 @@ llm_backend_type: "lmstudio"
 | **Twitch** | TwitchIO | Live stream chat integration |
 | **Voice** | Whisper + Piper + ElevenLabs | STT, TTS, wake word (Levenshtein), Konversationsmodus, Piper TTS (Thorsten Emotional) |
 
-## Demo
-
-```bash
-python demo.py           # Full experience (~3 minutes)
-python demo.py --fast    # Speed run (~15 seconds)
-```
-
 ## Quick Start
 
 **Under 5 minutes from download to running agent.**
@@ -414,7 +409,7 @@ ollama pull qwen3:8b                # Pull a model
 cognithor                           # Start
 
 # Upgrade to a specific version:
-pip install cognithor[all]==0.92.2
+pip install cognithor[all]==0.97.0
 
 # Upgrade to latest:
 pip install --upgrade cognithor[all]
@@ -668,6 +663,56 @@ Cognithor implements GDPR compliance at the architecture level with full coverag
 - **Privacy Mode** — Runtime toggle disabling all persistent storage.
 - **Processing Register** — Art. 30 compliant register of all 13 processing activities.
 
+## Operational Trust (TRUST-1..10)
+
+Since v0.97.0, every audit-relevant decision the agent makes is captured as a
+structured, queryable, signed receipt rather than a free-form log string. The
+canonical reference is [`docs/operational_trust.md`](docs/operational_trust.md).
+
+### Receipt CLI
+
+```bash
+cognithor receipt show <run_id> --include-trust --sign-key $KEY      # full bundle
+cognithor receipt verify path/to/bundle.json --sign-key $KEY         # round-trip check
+cognithor receipt list --since 2026-05-01                            # enumerate run-ids
+cognithor receipt export-all --since 2026-05-01 --out ./bundles/     # batch export
+cognithor receipt diff bundle-A.json bundle-B.json                   # structural diff
+```
+
+The same bundle is also reachable via REST (owner-token gated):
+
+```bash
+curl -H "X-Cognithor-User: $COGNITHOR_OWNER_USER_ID" \
+  "http://localhost:8741/api/crew/trace/<trace_id>/receipt?include_trust=true"
+```
+
+### Trust Ledgers
+
+| Tier | Module | What it captures |
+|------|--------|------------------|
+| **TRUST-1** | `cognithor.audit.AuditLogger.run_receipt()` | Deterministic per-run JSON bundle; optional HMAC-SHA-256 signature |
+| **TRUST-2** | `DecisionExplanation` (in `core/gatekeeper.py`) | `rule_id`, `rule_source`, `matched_pattern` for every block decision (12 sites) |
+| **TRUST-3** | `FailureMode` (15 values) + `failure_mode_summary()` | Canonical taxonomy across runs |
+| **TRUST-4** | `cognithor pack rollback` | Restores a pack to a prior cached version; seals into audit chain |
+| **TRUST-5** | `cognithor.memory.provenance.ProvenanceLedger` | 9 memory-tier capture sites; `source_type` + `source_id` + `expiry_policy` |
+| **TRUST-6** | `cognithor.security.permission_scope.ScopeRegistry` | Least-privilege per axis (filesystem / network / llm / tool) |
+| **TRUST-7** | `cognithor.security.fingerprint.FingerprintLedger` | 4 of 5 kinds: `TOOL`, `PACK`, `MODEL`, `SCHEMA` (`BINARY` feature-flagged) |
+| **TRUST-8** | `cognithor.security.cloud_escalation` | Metadata-only: ledger never stores prompt or response payloads |
+| **TRUST-9** | `cognithor.security.cost_ledger.CostEntry` | Integer micro-USD canonical unit (no float rounding drift) |
+| **TRUST-10** | `cognithor.security.migration_ledger` | Per-domain chain integrity; corruption in one domain doesn't poison others |
+
+All six TRUST-5..10 ledgers are append-only frozen-dataclass + `StrEnum` +
+JSON-serialisable. Capture is best-effort (`contextlib.suppress(Exception)`),
+so a ledger fault cannot brick the calling tier. The composer
+`cognithor.security.trust_bundle.build_trust_bundle(run_id)` folds all six
+into a single canonical block under `bundle["trust"]`.
+
+> **Status:** in-memory persistence only this release. Disk persistence
+> (SQLCipher) + retention windows + TRUST-7 `BINARY` capture + TRUST-8
+> backend-dispatch wiring + a Flutter `TrustBundlePanel` ship in 0.98.x.
+> See [Sprint-27 IDE-Integration plan](docs/superpowers/plans/2026-05-04-sprint27-ide-integration.md)
+> for the consuming-extension roadmap.
+
 ## MCP Tools
 
 | Tool Server | Tools | Description |
@@ -696,7 +741,7 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **13,000+ tests** · **100% pass rate** · **89% coverage** · **~205,000 LOC source** · **~168,000 LOC tests**
+Current status: **14,500+ tests** · **100% pass rate** · **89% coverage** · **~257,000 LOC Python source** · **~224,000 LOC Python tests** · **~66,000 LOC Flutter (Dart)**
 
 Notable test suites: 183 Computer Use tests, 176 ARC tests, 136 Hierarchical Retrieval tests, 71 CAG tests.
 
@@ -824,7 +869,7 @@ print(t("error.timeout"))  # "The operation timed out..."
 3. Run `python -c "from cognithor.i18n import generate_pack_hash; generate_pack_hash('<locale>')"`
 4. Submit a PR
 
-**Metrics:** ~205,000 LOC source · ~168,000 LOC tests · 13,000+ tests · 89% coverage · 0 lint errors · **Status: Beta**
+**Metrics:** ~257,000 LOC Python source · ~224,000 LOC Python tests · ~66,000 LOC Flutter (Dart) · 14,500+ tests · 89% coverage · 0 lint errors · **Status: Beta**
 
 ## Contributors
 
@@ -858,6 +903,46 @@ Copyright 2026 Alexander Soellner
 ---
 
 ## What's New
+
+### v0.97.0 — Operational Trust (2026-05-04)
+
+A reviewer-feedback-driven release that closes Cognithor's "post-mortem
+reconstruction" gap. Every audit-relevant decision the agent makes is now
+captured as a structured, queryable, signed receipt — not a free-form log
+string. **42 PRs (#395–#437), ~10,500 LOC, ~330 new tests, 0 regressions,
+mypy --strict + ruff clean across the new surface.**
+
+The canonical reference for the stack is **[`docs/operational_trust.md`](docs/operational_trust.md)**.
+
+- **TRUST-1 Run Receipts** — `AuditLogger.run_receipt(run_id, *, include_trust, signing_key)`
+  aggregates every audit entry for a run into a deterministic JSON bundle
+  with optional HMAC-SHA-256 signature. Five new CLI subcommands
+  (`cognithor receipt show / verify / list / export-all / diff`) and a
+  REST endpoint `GET /api/crew/trace/{trace_id}/receipt?include_trust=true`
+  give operators a single front door for post-mortems.
+- **TRUST-2 Decision Explanations** — every Gatekeeper block path (12 sites)
+  now attaches a structured `DecisionExplanation` (`rule_id`, `rule_source`,
+  `matched_pattern`) so downstream tools can render a precise "why we said no"
+  instead of parsing prose.
+- **TRUST-3 Failure-Mode Taxonomy** — `FailureMode` `StrEnum` with 15 canonical
+  values; aggregated per-run via `AuditLogger.failure_mode_summary(run_id)`.
+- **TRUST-4 Pack Rollback** — `cognithor pack rollback <id> [--to-version VER]`
+  restores a pack to a prior version and seals the rollback into the audit chain.
+- **TRUST-5..10 Operational-Trust Stack** — six independent append-only
+  ledgers (Provenance, Permission-Scopes, Tool-Fingerprints, Cloud-Escalation,
+  Cost, Migration). 9 memory-tier capture sites, 4 of 5 fingerprint kinds
+  captured, integer micro-USD as the canonical cost unit. The composer
+  `build_trust_bundle(run_id)` folds all six into a single receipt block.
+- **Append-only audit hash chain** — each entry seals the previous SHA-256;
+  receipts surface tamper events explicitly.
+- **Sprint-27 plan-doc** ([`docs/superpowers/plans/2026-05-04-sprint27-ide-integration.md`](docs/superpowers/plans/2026-05-04-sprint27-ide-integration.md))
+  — forward-looking VS-Code / JetBrains / Cursor extension plan that
+  consumes the new receipt API.
+
+> Disk persistence of the TRUST ledgers (SQLCipher), TRUST-7 `BINARY`-kind
+> capture, and TRUST-8 backend-dispatch wiring are scaffolded but ship
+> in 0.98.x — the CLI + REST surfaces above are the supported entry points
+> today.
 
 ### v0.96.0 — ARC-AGI-3 Pass (2026-05-01)
 
