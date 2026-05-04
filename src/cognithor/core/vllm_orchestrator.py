@@ -430,6 +430,36 @@ class VLLMOrchestrator:
         if cfg.enforce_eager:
             cmd.append("--enforce-eager")
 
+        # VLM mode (Sprint-27 VLM-2). Only applied when the operator
+        # explicitly opted in — otherwise the Qwen3-VL flags would
+        # break a plain Qwen3-text deployment. See
+        # docs/superpowers/spikes/2026-05-04-qwen3-vl-quant-spike.md.
+        if cfg.vlm_enabled:
+            cmd.extend(["--quantization", cfg.vlm_quantization])
+            cmd.extend(["--kv-cache-dtype", cfg.vlm_kv_cache_dtype])
+            if cfg.vlm_enable_prefix_caching:
+                cmd.append("--enable-prefix-caching")
+            if cfg.vlm_num_speculative_tokens > 0:
+                cmd.extend(
+                    [
+                        "--num-speculative-tokens",
+                        str(cfg.vlm_num_speculative_tokens),
+                    ],
+                )
+            if cfg.vlm_served_model_name:
+                cmd.extend(["--served-model-name", cfg.vlm_served_model_name])
+            cmd.extend(
+                [
+                    "--limit-mm-per-prompt",
+                    _json.dumps(
+                        {
+                            "image": cfg.vlm_image_max_per_prompt,
+                            "video": cfg.vlm_video_max_per_prompt,
+                        },
+                    ),
+                ],
+            )
+
         # Redact HF_TOKEN before logging — it's in the cmd list as "HF_TOKEN=<value>"
         _cmd_for_log = _redact_hf_token(cmd)
         log.info(

@@ -2603,6 +2603,78 @@ class VLLMConfig(BaseModel):
     cpu_offload_gb: int = Field(default=4, ge=0, le=128)
     enforce_eager: bool = Field(default=True)
 
+    # VLM mode (Sprint-27 VLM-2 — qwen3-vl on RTX 5090 spike).
+    # See docs/superpowers/spikes/2026-05-04-qwen3-vl-quant-spike.md.
+    # When ``vlm_enabled`` is True and the model has vision support
+    # the orchestrator passes the additional flags below to the
+    # ``docker run`` invocation. Default fp8 because: vLLM-tested
+    # for Qwen3-VL family, ~10-15 % faster than NVFP4, near-identical
+    # quality to BF16 (Qwen team's own benchmarks).
+    vlm_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable vision/video content-type forwarding (image_url + "
+            "video_url) and the VLM-tuned launcher flags below. The model "
+            "selected via `model` must support vision (e.g. "
+            "Qwen/Qwen3-VL-32B-Instruct-FP8)."
+        ),
+    )
+    vlm_quantization: Literal["fp8", "nvfp4", "awq", "bf16"] = Field(
+        default="fp8",
+        description=(
+            "vLLM `--quantization` for VLM mode. fp8 is the spike-doc "
+            "recommendation for RTX 5090 32 GB; nvfp4 saves ~5 GB at "
+            "10-15 %% throughput cost and needs the cu130-nightly image; "
+            "awq is a fallback for pre-Blackwell GPUs; bf16 disables "
+            "quantization (>32 GB only)."
+        ),
+    )
+    vlm_kv_cache_dtype: Literal["auto", "fp8"] = Field(
+        default="fp8",
+        description="vLLM `--kv-cache-dtype`. fp8 halves KV-cache RAM at near-zero quality loss.",
+    )
+    vlm_enable_prefix_caching: bool = Field(
+        default=True,
+        description=(
+            "vLLM `--enable-prefix-caching`. Reuses the KV cache across "
+            "repeated prompts (common in agent loops)."
+        ),
+    )
+    vlm_num_speculative_tokens: int = Field(
+        default=1,
+        ge=0,
+        le=8,
+        description=(
+            "vLLM `--num-speculative-tokens`. Sprint-16 SM120 finding: "
+            "values > 1 still crash on RTX 5090 with the Qwen3-VL stack "
+            "as of 2026-04. Keep at 1 unless you've validated on your "
+            "exact driver+kernel."
+        ),
+    )
+    vlm_served_model_name: str = Field(
+        default="",
+        description=(
+            "vLLM `--served-model-name`. Decouples the served name from "
+            "the HF repo path so a model_registry alias survives a swap. "
+            "Empty = use the model field verbatim."
+        ),
+    )
+    vlm_image_max_per_prompt: int = Field(
+        default=4,
+        ge=0,
+        le=64,
+        description="vLLM `--limit-mm-per-prompt {image: N}`. Hard cap on images per chat turn.",
+    )
+    vlm_video_max_per_prompt: int = Field(
+        default=1,
+        ge=0,
+        le=8,
+        description=(
+            "vLLM `--limit-mm-per-prompt {video: N}`. Matches the v0.92.7 "
+            "video-input contract (single video per turn)."
+        ),
+    )
+
 
 # ============================================================================
 # Haupt-Konfiguration
