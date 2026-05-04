@@ -446,3 +446,170 @@ class TestHashChain:
 
         ok, errors = second.validate_chain(log_file)
         assert ok, f"chain broken after restart: {errors}"
+
+
+# ============================================================================
+# TRUST-1 — Run-Receipts (operational-trust audit, 2026-05-04)
+# ============================================================================
+
+
+class TestRunReceipt:
+    """``AuditLogger.run_receipt(session_id)`` aggregates every entry
+    tagged with that session into a signed JSON bundle for post-mortem
+    reconstruction. Reviewer asked: "If something goes wrong, can an
+    operator reconstruct exactly what the agent did?" — receipts are
+    the answer.
+    """
+
+    def _logger_with_two_runs(self) -> AuditLogger:
+        logger = AuditLogger()
+        # Run A: tool call + gatekeeper allow + delegation
+        logger.log_tool_call(
+            "read_file",
+            {"path": "/tmp/x"},
+            agent_name="planner",
+            session_id="run_A",
+            duration_ms=12.5,
+        )
+        logger.log_gatekeeper(
+            "ALLOW",
+            "GREEN tool",
+            tool_name="read_file",
+            session_id="run_A",
+        )
+        logger.log_agent_delegation("planner", "executor", task="read it", session_id="run_A")
+        # Run B: failed tool call + security warning
+        logger.log_tool_call(
+            "exec_command",
+            {"command": "rm -rf /"},
+            agent_name="planner",
+            success=False,
+            session_id="run_B",
+        )
+        logger.log_security(
+            "Destructive command blocked",
+            blocked=True,
+            session_id="run_B",
+        )
+        # Untagged entry (e.g. boot-time) — must NOT appear in either receipt
+        logger.log_system("startup")
+        return logger
+
+    def test_session_id_threads_through_log_methods(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_tool_call("x", session_id="run_42", agent_name="a", success=True)
+        assert entry.session_id == "run_42"
+
+        gk = logger.log_gatekeeper("ALLOW", "ok", tool_name="x", session_id="run_42")
+        assert gk.session_id == "run_42"
+
+    def test_receipt_aggregates_only_matching_session(self) -> None:
+        logger = self._logger_with_two_runs()
+        receipt = logger.run_receipt("run_A")
+        assert receipt["session_id"] == "run_A"
+        assert receipt["entry_count"] == 3
+        # No run_B entries leaked in.
+        for entry in receipt["entries"]:
+            assert entry["session_id"] == "run_A"
+        # Untagged system entry must also not leak.
+        actions = [e["action"] for e in receipt["entries"]]
+        assert "system:startup" not in actions
+
+    def test_receipt_aggregate_counts(self) -> None:
+        logger = self._logger_with_two_runs()
+        receipt = logger.run_receipt("run_A")
+        agg = receipt["aggregate"]
+        assert agg["success_count"] == 3
+        assert agg["failure_count"] == 0
+        assert agg["by_category"]["tool_call"] == 1
+        assert agg["by_category"]["gatekeeper"] == 1
+        # ``by_tool`` counts every entry that references the tool — both
+        # the tool_call itself and the gatekeeper decision about it.
+        assert agg["by_tool"]["read_file"] == 2
+        assert agg["total_duration_ms"] == pytest.approx(12.5, rel=1e-6)
+
+    def test_receipt_failure_run_marked(self) -> None:
+        logger = self._logger_with_two_runs()
+        receipt = logger.run_receipt("run_B")
+        agg = receipt["aggregate"]
+        assert agg["failure_count"] == 2  # tool failed + security blocked
+        assert agg["success_count"] == 0
+        assert "destructive command" in receipt["entries"][1]["description"].lower()
+
+    def test_unknown_session_returns_empty_receipt(self) -> None:
+        """Reading a session that was never logged returns a structured
+        empty receipt — caller can distinguish 'no run' from 'crash'.
+        """
+        logger = AuditLogger()
+        logger.log_tool_call("x", session_id="real")
+        receipt = logger.run_receipt("ghost")
+        assert receipt["entry_count"] == 0
+        assert receipt["entries"] == []
+        assert receipt["session_id"] == "ghost"
+        assert receipt["schema_version"] == AuditLogger.RECEIPT_SCHEMA_VERSION
+
+    def test_signed_receipt_round_trip(self) -> None:
+        logger = self._logger_with_two_runs()
+        key = "test-secret-key-do-not-use-in-prod"
+        receipt = logger.run_receipt("run_A", signing_key=key)
+        assert receipt["signature"]  # non-empty
+        assert AuditLogger.verify_receipt_signature(receipt, key)
+
+    def test_signed_receipt_rejects_tampering(self) -> None:
+        logger = self._logger_with_two_runs()
+        key = "k"
+        receipt = logger.run_receipt("run_A", signing_key=key)
+        # Tamper with one entry's parameters.
+        receipt["entries"][0]["parameters"] = {"path": "/etc/shadow"}
+        assert not AuditLogger.verify_receipt_signature(receipt, key)
+
+    def test_signed_receipt_rejects_wrong_key(self) -> None:
+        logger = self._logger_with_two_runs()
+        receipt = logger.run_receipt("run_A", signing_key="key1")
+        assert not AuditLogger.verify_receipt_signature(receipt, "key2")
+
+    def test_unsigned_receipt_signature_empty(self) -> None:
+        logger = self._logger_with_two_runs()
+        receipt = logger.run_receipt("run_A")  # no signing_key
+        assert receipt["signature"] == ""
+        # Verifying an unsigned receipt with any key returns False.
+        assert not AuditLogger.verify_receipt_signature(receipt, "anything")
+
+    def test_receipt_entries_ordered_by_entry_id(self) -> None:
+        """Entry order in the bundle is deterministic — sorted by the
+        numeric tail of ``audit_<n>``. Important for repeatable
+        signatures + readable receipts.
+        """
+        logger = self._logger_with_two_runs()
+        receipt = logger.run_receipt("run_A")
+        ids = [e["entry_id"] for e in receipt["entries"]]
+        # Numeric-tail sort (audit_1 < audit_2 < ... < audit_10)
+        nums = [int(eid.rsplit("_", 1)[-1]) for eid in ids]
+        assert nums == sorted(nums)
+
+    def test_receipt_reads_from_disk_when_in_memory_empty(self, tmp_path: Path) -> None:
+        """A fresh logger pointed at an existing log_dir can still
+        produce a receipt for a past run — important for post-mortem
+        audits across process restarts.
+        """
+        audit_dir = tmp_path / "audit"
+        first = AuditLogger(log_dir=audit_dir)
+        first.log_tool_call("x", session_id="past_run", agent_name="a")
+        first.log_tool_call("y", session_id="past_run", agent_name="a")
+
+        # New logger (cold cache).
+        second = AuditLogger(log_dir=audit_dir)
+        receipt = second.run_receipt("past_run")
+        assert receipt["entry_count"] == 2
+        # Both entries share the session.
+        assert all(e["session_id"] == "past_run" for e in receipt["entries"])
+
+    def test_legacy_entries_without_session_id_default_to_empty(self) -> None:
+        """Existing callers that didn't pass session_id keep working —
+        the default is empty string, and run_receipt('') would match
+        all such entries (use case: 'show me everything outside any run').
+        """
+        logger = AuditLogger()
+        logger.log_tool_call("legacy_call")  # no session_id
+        receipt = logger.run_receipt("")
+        assert receipt["entry_count"] == 1
