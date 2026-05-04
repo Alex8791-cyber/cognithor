@@ -105,6 +105,11 @@ class AuditEntry:
     success: bool = True
     duration_ms: float = 0.0
     contains_pii: bool = False  # Contains personal data
+    # TRUST-1 (operational-trust audit, 2026-05-04): correlation key
+    # tying every entry from a single Plan→Gate→Execute run together.
+    # Empty for entries logged outside a run scope (boot-time, scheduler,
+    # GC). ``AuditLogger.run_receipt(session_id)`` aggregates by this.
+    session_id: str = ""
     # TRUST-3: structured failure-mode classification (operational-trust
     # audit, 2026-05-04). ``None`` for successful entries; a
     # ``FailureMode`` enum value otherwise. Aggregated by
@@ -129,6 +134,7 @@ class AuditEntry:
             "success": self.success,
             "duration_ms": self.duration_ms,
             "contains_pii": self.contains_pii,
+            "session_id": self.session_id,
             "failure_mode": self.failure_mode.value if self.failure_mode else None,
             "prev_hash": self.prev_hash,
         }
@@ -243,6 +249,7 @@ class AuditLogger:
         result: str = "",
         success: bool = True,
         duration_ms: float = 0.0,
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a tool call."""
         # Parameter sanitizing (do not log credentials)
@@ -259,6 +266,7 @@ class AuditLogger:
             result=result[:500],  # Truncate result
             success=success,
             duration_ms=duration_ms,
+            session_id=session_id,
         )
 
     def log_file_access(
@@ -268,6 +276,7 @@ class AuditLogger:
         *,
         agent_name: str = "",
         success: bool = True,
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a file access."""
         return self._log(
@@ -278,6 +287,7 @@ class AuditLogger:
             description=f"File {operation}: {path}",
             parameters={"path": path, "operation": operation},
             success=success,
+            session_id=session_id,
         )
 
     def log_network(
@@ -288,6 +298,7 @@ class AuditLogger:
         agent_name: str = "",
         status_code: int = 0,
         success: bool = True,
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a network access."""
         return self._log(
@@ -298,6 +309,7 @@ class AuditLogger:
             description=f"{method} {url}",
             parameters={"url": url, "method": method, "status": status_code},
             success=success,
+            session_id=session_id,
         )
 
     def log_agent_delegation(
@@ -305,6 +317,8 @@ class AuditLogger:
         from_agent: str,
         to_agent: str,
         task: str = "",
+        *,
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs an agent-to-agent delegation."""
         return self._log(
@@ -314,6 +328,7 @@ class AuditLogger:
             agent_name=from_agent,
             description=f"Delegation: {from_agent} → {to_agent}",
             parameters={"from": from_agent, "to": to_agent, "task": task[:200]},
+            session_id=session_id,
         )
 
     def log_skill_install(
@@ -323,6 +338,7 @@ class AuditLogger:
         source: str = "",
         success: bool = True,
         analysis_verdict: str = "",
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a skill installation."""
         return self._log(
@@ -336,6 +352,7 @@ class AuditLogger:
                 "analysis": analysis_verdict,
             },
             success=success,
+            session_id=session_id,
         )
 
     def log_gatekeeper(
@@ -345,6 +362,7 @@ class AuditLogger:
         *,
         tool_name: str = "",
         agent_name: str = "",
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a gatekeeper decision."""
         is_block = decision.upper() in ("BLOCK", "DENY")
@@ -357,6 +375,7 @@ class AuditLogger:
             description=f"Gatekeeper: {decision} -- {reason}",
             parameters={"decision": decision, "reason": reason},
             success=not is_block,
+            session_id=session_id,
         )
 
     def log_memory_op(
@@ -365,6 +384,7 @@ class AuditLogger:
         *,
         details: str = "",
         agent_name: str = "",
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a memory operation."""
         return self._log(
@@ -373,6 +393,7 @@ class AuditLogger:
             action=f"memory:{operation}",
             agent_name=agent_name,
             description=f"Memory {operation}: {details}",
+            session_id=session_id,
         )
 
     def log_security(
@@ -383,6 +404,7 @@ class AuditLogger:
         tool_name: str = "",
         agent_name: str = "",
         blocked: bool = False,
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a security event."""
         return self._log(
@@ -393,6 +415,7 @@ class AuditLogger:
             agent_name=agent_name,
             description=event_description,
             success=not blocked,
+            session_id=session_id,
         )
 
     def log_user_input(
@@ -401,6 +424,7 @@ class AuditLogger:
         text_preview: str,
         *,
         agent_name: str = "",
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs an incoming user message."""
         return self._log(
@@ -410,6 +434,7 @@ class AuditLogger:
             agent_name=agent_name,
             description=f"[{channel}] {text_preview[:100]}",
             success=True,
+            session_id=session_id,
         )
 
     def log_system(
@@ -418,6 +443,7 @@ class AuditLogger:
         *,
         description: str = "",
         severity: AuditSeverity = AuditSeverity.INFO,
+        session_id: str = "",
     ) -> AuditEntry:
         """Logs a system event (start, stop, config change)."""
         return self._log(
@@ -426,6 +452,7 @@ class AuditLogger:
             action=f"system:{event}",
             description=description or event,
             success=True,
+            session_id=session_id,
         )
 
     # ── Queries ─────────────────────────────────────────────────
@@ -889,6 +916,214 @@ class AuditLogger:
             key = mode.value
             counts[key] = counts.get(key, 0) + 1
         return dict(sorted(counts.items(), key=lambda kv: kv[1], reverse=True))
+
+    # ── Run-Receipt (TRUST-1) ───────────────────────────────────────
+
+    # Schema version of the receipt format. Bump on breaking changes
+    # so consumers can detect old/new bundles.
+    RECEIPT_SCHEMA_VERSION = 1
+
+    def run_receipt(
+        self,
+        session_id: str,
+        *,
+        signing_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Aggregate every audit entry tagged with *session_id* into a
+        single receipt bundle, suitable for post-mortem reconstruction
+        of "what did the agent do during run X".
+
+        TRUST-1 (operational-trust audit, 2026-05-04). Reviewer asked:
+        "If something goes wrong, can an operator reconstruct exactly
+        what the agent knew, what it decided, which tool it called,
+        why it was allowed, what changed, and how to roll it back?"
+
+        The bundle contains:
+
+        * ``schema_version`` — bump on breaking changes
+        * ``session_id``
+        * ``period_start`` / ``period_end`` — first + last entry timestamps
+        * ``entry_count``
+        * ``aggregate`` — counts by category, severity, tool; total
+          duration_ms; success / failure counts; PII-flagged count
+        * ``entries`` — every full ``AuditEntry.to_dict()`` for the run,
+          ordered by entry_id
+        * ``hash_chain_head`` / ``hash_chain_tail`` — first + last
+          ``prev_hash`` values (lets a verifier locate the run inside
+          the JSONL chain)
+        * ``signature`` — HMAC-SHA-256 of the canonical bundle (without
+          the signature field). Empty when *signing_key* is None.
+
+        The receipt is purely an aggregation over already-persisted
+        data — no side effects, no mutation. Safe to call on a live
+        logger or post-mortem on disk-only entries via a logger
+        instantiated against the persisted ``log_dir``.
+        """
+        import hashlib
+        import hmac
+
+        # 1. Pull matching entries from the in-memory ring buffer.
+        entries = [e for e in self._entries if e.session_id == session_id]
+
+        # 2. If we have a log_dir but no in-memory hits (e.g. restarted
+        # process), scan today's JSONL too. We do NOT walk every file
+        # by default — operators can replay specific files via
+        # ``run_receipt_from_file`` for cross-day audits.
+        from_disk: list[dict[str, Any]] = []
+        if not entries and self._log_dir is not None:
+            for jsonl in sorted(self._log_dir.glob("audit_*.jsonl")):
+                try:
+                    for raw_line in jsonl.read_text(encoding="utf-8").splitlines():
+                        line = raw_line.strip()
+                        if not line:
+                            continue
+                        data = json.loads(line)
+                        if data.get("session_id", "") == session_id:
+                            from_disk.append(data)
+                except (OSError, json.JSONDecodeError):
+                    continue
+
+        # 3. Build the entry list — prefer in-memory (richer enums,
+        # known-good shape); fall back to disk dicts.
+        if entries:
+            entry_dicts = [e.to_dict() for e in entries]
+        else:
+            entry_dicts = from_disk
+
+        if not entry_dicts:
+            # Empty receipt is still valid — return a structured "no
+            # match" rather than raising, so callers can distinguish
+            # "this run never happened" from "exception".
+            bundle: dict[str, Any] = {
+                "schema_version": self.RECEIPT_SCHEMA_VERSION,
+                "session_id": session_id,
+                "period_start": "",
+                "period_end": "",
+                "entry_count": 0,
+                "aggregate": {
+                    "by_category": {},
+                    "by_severity": {},
+                    "by_tool": {},
+                    "total_duration_ms": 0.0,
+                    "success_count": 0,
+                    "failure_count": 0,
+                    "pii_count": 0,
+                },
+                "entries": [],
+                "hash_chain_head": "",
+                "hash_chain_tail": "",
+                "signature": "",
+            }
+            return bundle
+
+        # 4. Aggregate.
+        by_category: dict[str, int] = {}
+        by_severity: dict[str, int] = {}
+        by_tool: dict[str, int] = {}
+        total_duration = 0.0
+        success_count = 0
+        failure_count = 0
+        pii_count = 0
+        for d in entry_dicts:
+            by_category[d.get("category", "unknown")] = (
+                by_category.get(d.get("category", "unknown"), 0) + 1
+            )
+            by_severity[d.get("severity", "unknown")] = (
+                by_severity.get(d.get("severity", "unknown"), 0) + 1
+            )
+            tool = d.get("tool_name", "")
+            if tool:
+                by_tool[tool] = by_tool.get(tool, 0) + 1
+            total_duration += float(d.get("duration_ms", 0.0))
+            if d.get("success", True):
+                success_count += 1
+            else:
+                failure_count += 1
+            if d.get("contains_pii", False):
+                pii_count += 1
+
+        # Sort entries by entry_id for deterministic ordering. entry_id
+        # has the form ``audit_<n>`` so a numeric tail-sort is stable.
+        def _entry_sort_key(d: dict[str, Any]) -> tuple[int, str]:
+            eid = str(d.get("entry_id", ""))
+            try:
+                return (int(eid.rsplit("_", 1)[-1]), eid)
+            except (ValueError, IndexError):
+                return (0, eid)
+
+        ordered = sorted(entry_dicts, key=_entry_sort_key)
+
+        bundle = {
+            "schema_version": self.RECEIPT_SCHEMA_VERSION,
+            "session_id": session_id,
+            "period_start": ordered[0].get("timestamp", ""),
+            "period_end": ordered[-1].get("timestamp", ""),
+            "entry_count": len(ordered),
+            "aggregate": {
+                "by_category": by_category,
+                "by_severity": by_severity,
+                "by_tool": by_tool,
+                "total_duration_ms": round(total_duration, 2),
+                "success_count": success_count,
+                "failure_count": failure_count,
+                "pii_count": pii_count,
+            },
+            "entries": ordered,
+            "hash_chain_head": ordered[0].get("prev_hash", ""),
+            "hash_chain_tail": ordered[-1].get("prev_hash", ""),
+            "signature": "",
+        }
+
+        # 5. Optional HMAC-SHA-256 over the canonical (signature-less)
+        # form. Lets the operator verify the bundle wasn't tampered
+        # with after extraction. Without a key, leave empty — the
+        # underlying hash chain on disk is the primary integrity gate.
+        if signing_key:
+            canonical = json.dumps(
+                {k: v for k, v in bundle.items() if k != "signature"},
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+            sig = hmac.new(
+                signing_key.encode("utf-8"),
+                canonical.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+            bundle["signature"] = sig
+
+        return bundle
+
+    @staticmethod
+    def verify_receipt_signature(
+        receipt: dict[str, Any],
+        signing_key: str,
+    ) -> bool:
+        """Verify a signed receipt bundle against the same signing
+        key. Returns ``True`` only if the recomputed HMAC matches
+        the receipt's ``signature`` field.
+
+        Use case: the operator persists a receipt as evidence and
+        later wants to confirm it hasn't been edited.
+        """
+        import hashlib
+        import hmac
+
+        sig = receipt.get("signature", "")
+        if not sig:
+            return False
+        canonical = json.dumps(
+            {k: v for k, v in receipt.items() if k != "signature"},
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        expected = hmac.new(
+            signing_key.encode("utf-8"),
+            canonical.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        # ``compare_digest`` is constant-time to defend against timing
+        # oracles (the receipt could come from an untrusted source).
+        return hmac.compare_digest(expected, sig)
 
     @staticmethod
     def _sanitize_params(params: dict[str, Any]) -> dict[str, Any]:

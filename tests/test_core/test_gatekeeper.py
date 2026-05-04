@@ -502,3 +502,79 @@ class TestGateDecisionFromGatekeeper:
         action = PlannedAction(tool="read_file", params={"path": "/test"})
         decision = gatekeeper.evaluate(action, session)
         assert decision.policy_name  # Sollte gesetzt sein
+
+
+# ============================================================================
+# TRUST-2: structured "why" explanations (operational-trust audit, 2026-05-04)
+# ============================================================================
+
+
+class TestDecisionExplanation:
+    """Reddit reviewer asked for operator-readable Gatekeeper "why".
+    ``GateDecision.explanation`` (DecisionExplanation) carries
+    ``rule_id``, ``rule_source``, ``matched_pattern`` so receipts and
+    Trace-UI can render the decision path without parsing free-text
+    ``reason``.
+    """
+
+    def test_destructive_command_attaches_explanation(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """``exec_command rm -rf /`` is blocked. Whichever guard fires
+        first (YAML policy / AST / regex) MUST attach a structured
+        explanation — that's the entire point.
+        """
+        action = PlannedAction(tool="exec_command", params={"command": "rm -rf /"})
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.is_blocked
+        assert decision.explanation is not None
+        assert decision.explanation.rule_id  # any non-empty id
+        # rule_source must be a code/policy reference, never bare text.
+        assert ":" in decision.explanation.rule_source
+
+    def test_destructive_regex_path_explanation(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """``start_background`` doesn't match the YAML
+        ``no_destructive_shell`` policy (which targets exec_command) so
+        it falls through to ``_check_command`` regex/AST — the path
+        added in SEC-CRIT-1. That's where dest_cmd_ast / dest_cmd_regex
+        fire.
+        """
+        action = PlannedAction(tool="start_background", params={"command": "shutdown -h now"})
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.is_blocked
+        assert decision.explanation is not None
+        assert decision.explanation.rule_id in {"dest_cmd_ast", "dest_cmd_regex"}
+        assert decision.explanation.matched_pattern
+
+    def test_safe_command_no_explanation(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """A non-destructive command shouldn't trigger the explain
+        path — explanation stays None for the catch-all default.
+        """
+        action = PlannedAction(tool="exec_command", params={"command": "ls -la"})
+        decision = gatekeeper.evaluate(action, session)
+        # Either the action passes (no explanation) or hits a different
+        # default — but the destructive rule must NOT fire.
+        if decision.explanation is not None:
+            assert decision.explanation.rule_id not in {
+                "dest_cmd_ast",
+                "dest_cmd_regex",
+            }
+
+    def test_explanation_is_structured_not_freetext(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """The structured fields must not be empty strings when set —
+        the reviewer's whole point was 'don't make me parse text'.
+        """
+        action = PlannedAction(tool="exec_command", params={"command": "rm -rf /"})
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.explanation is not None
+        # rule_id is a stable short identifier
+        assert decision.explanation.rule_id
+        assert " " not in decision.explanation.rule_id  # no whitespace = stable
+        # rule_source points at code location (file:line or module:func)
+        assert ":" in decision.explanation.rule_source
