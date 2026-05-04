@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cognithor.ai/schemas/streaming/v1/events.json",
+  "title": "Cognithor Streaming Events v1",
+  "description": "Schema for the per-line JSON / WebSocket event stream emitted by `cognithor agent run --stream` and `cognithor agent ws`. Each event carries its own `schema_version` so individual events can evolve independently. Consumed by the VS Code extension (Sprint-27) and by external orchestrators wrapping the headless CLI.",
+  "oneOf": [
+    {"$ref": "#/$defs/run_started"},
+    {"$ref": "#/$defs/plan_step"},
+    {"$ref": "#/$defs/gate_decision"},
+    {"$ref": "#/$defs/tool_result"},
+    {"$ref": "#/$defs/run_complete"},
+    {"$ref": "#/$defs/run_error"},
+    {"$ref": "#/$defs/run_cancelled"},
+    {"$ref": "#/$defs/sink_dropped"}
+  ],
+  "$defs": {
+    "EnvelopeFields": {
+      "type": "object",
+      "description": "Fields every event carries. Per-event `schema_version` (NOT envelope-level) so single events can evolve independently.",
+      "required": ["event", "schema_version", "run_id", "ts"],
+      "properties": {
+        "event": {
+          "type": "string",
+          "description": "Discriminator: one of run_started / plan_step / gate_decision / tool_result / run_complete / run_error / run_cancelled / sink_dropped."
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable identifier for the run / trace. Matches the trace_id used by GET /api/crew/trace/{trace_id}/receipt."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp."
+        }
+      }
+    },
+    "FailureMode": {
+      "type": "string",
+      "description": "Mirrors cognithor.models.FailureMode StrEnum.",
+      "enum": [
+        "unknown",
+        "tool_not_found",
+        "tool_argument_invalid",
+        "internal_error",
+        "user_cancelled",
+        "rate_limited",
+        "permission_denied",
+        "external_service_unavailable",
+        "validation_failure",
+        "policy_block",
+        "quota_exceeded",
+        "tool_timeout",
+        "parse_error",
+        "dependency_missing",
+        "pack_eula_missing"
+      ]
+    },
+    "DecisionExplanation": {
+      "type": "object",
+      "description": "TRUST-2 structured 'why' attached to every Gatekeeper block path.",
+      "required": ["rule_id", "rule_source"],
+      "properties": {
+        "rule_id": {"type": "string"},
+        "rule_source": {"type": "string"},
+        "matched_pattern": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Producer-side truncated to 200 chars."
+        }
+      }
+    },
+    "run_started": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["plan_path", "step_count"],
+      "properties": {
+        "event": {"const": "run_started"},
+        "schema_version": {"const": 1},
+        "plan_path": {
+          "type": "string",
+          "description": "Path to the ActionPlan JSON file, or '<inline>' if supplied as JSON literal."
+        },
+        "step_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of steps the planner produced. Final per-step events may be fewer (early exit) or more (REPLAN)."
+        },
+        "agent_id": {"type": "string"}
+      }
+    },
+    "plan_step": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["step", "action"],
+      "properties": {
+        "event": {"const": "plan_step"},
+        "schema_version": {"const": 1},
+        "step": {"type": "integer", "minimum": 0},
+        "action": {
+          "type": "object",
+          "required": ["tool"],
+          "properties": {
+            "tool": {"type": "string"},
+            "arguments": {"type": "object"},
+            "rationale": {"type": "string"}
+          }
+        }
+      }
+    },
+    "gate_decision": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["step", "status"],
+      "properties": {
+        "event": {"const": "gate_decision"},
+        "schema_version": {"const": 1},
+        "step": {"type": "integer", "minimum": 0},
+        "status": {
+          "type": "string",
+          "enum": ["green", "yellow", "orange_approved", "orange_blocked", "red"]
+        },
+        "explanation": {"$ref": "#/$defs/DecisionExplanation"}
+      }
+    },
+    "tool_result": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["step", "ok"],
+      "properties": {
+        "event": {"const": "tool_result"},
+        "schema_version": {"const": 1},
+        "step": {"type": "integer", "minimum": 0},
+        "ok": {"type": "boolean"},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "chunks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of chunks for chunked results (file writes, searches). Omitted for scalar results."
+        },
+        "preview": {
+          "type": "string",
+          "description": "Optional truncated preview of tool output (<=500 chars) for UI; full output stays in audit log."
+        },
+        "error": {
+          "type": "string",
+          "description": "Single-line error summary; set when ok=false."
+        }
+      }
+    },
+    "run_complete": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["status", "receipt"],
+      "properties": {
+        "event": {"const": "run_complete"},
+        "schema_version": {"const": 1},
+        "status": {"type": "string", "enum": ["success"]},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "receipt": {
+          "type": "object",
+          "description": "TRUST-1 receipt bundle as returned by AuditLogger.run_receipt(). Same shape as GET /api/crew/trace/{trace_id}/receipt?include_trust=true."
+        }
+      }
+    },
+    "run_error": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["status", "failure_mode"],
+      "properties": {
+        "event": {"const": "run_error"},
+        "schema_version": {"const": 1},
+        "status": {"type": "string", "enum": ["error"]},
+        "failure_mode": {"$ref": "#/$defs/FailureMode"},
+        "error": {"type": "string"},
+        "step": {"type": "integer", "minimum": 0},
+        "receipt": {
+          "type": "object",
+          "description": "TRUST-1 receipt bundle for the partial run, when available."
+        }
+      }
+    },
+    "run_cancelled": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["status"],
+      "properties": {
+        "event": {"const": "run_cancelled"},
+        "schema_version": {"const": 1},
+        "status": {"type": "string", "enum": ["cancelled"]},
+        "reason": {"type": "string"},
+        "step": {"type": "integer", "minimum": 0},
+        "receipt": {
+          "type": "object",
+          "description": "TRUST-1 receipt bundle for the partial run, when available."
+        }
+      }
+    },
+    "sink_dropped": {
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/EnvelopeFields"}],
+      "required": ["sink", "dropped_count"],
+      "properties": {
+        "event": {"const": "sink_dropped"},
+        "schema_version": {"const": 1},
+        "sink": {
+          "type": "string",
+          "description": "Name of the sink that dropped events (e.g. 'jsonl', 'websocket')."
+        },
+        "dropped_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of events dropped since the sink started, OR since the previous sink_dropped notification."
+        }
+      }
+    }
+  }
+}
