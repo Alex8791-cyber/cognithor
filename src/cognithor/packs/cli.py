@@ -118,6 +118,38 @@ def _cmd_update(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_rollback(args: argparse.Namespace) -> int:
+    """``cognithor pack rollback <qualified_id> [--to-version X]``.
+
+    TRUST-4 (operational-trust audit, 2026-05-04). Restore a pack from
+    its pre-upgrade snapshot taken automatically during the last
+    ``install``. With ``--list`` shows available versions instead of
+    rolling back.
+    """
+    installer = _make_installer()
+    try:
+        if args.list:
+            versions = installer.list_backups(args.qualified_id)
+            if not versions:
+                print(f"No backups available for {args.qualified_id}.")
+                return 0
+            print(f"Available rollback versions for {args.qualified_id}:")
+            for v in versions:
+                print(f"  - {v}")
+            return 0
+
+        manifest = installer.rollback(
+            args.qualified_id,
+            to_version=args.to_version,
+        )
+    except PackInstallError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"[OK] Rolled back {args.qualified_id} to version {manifest.version}")
+    return 0
+
+
 def _cmd_accept_eula(args: argparse.Namespace) -> int:
     installer = _make_installer()
     try:
@@ -215,6 +247,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="Qualified pack identifier.",
     )
     p_eula.set_defaults(func=_cmd_accept_eula)
+
+    # rollback (TRUST-4)
+    p_rollback = sub.add_parser(
+        "rollback",
+        help="Roll an installed pack back to a previously-snapshotted version.",
+    )
+    p_rollback.add_argument(
+        "qualified_id",
+        metavar="NAMESPACE/PACK_ID",
+        help="Qualified pack identifier.",
+    )
+    p_rollback.add_argument(
+        "--to-version",
+        dest="to_version",
+        metavar="VERSION",
+        default=None,
+        help="Specific version to restore. Default: most recent snapshot.",
+    )
+    p_rollback.add_argument(
+        "--list",
+        action="store_true",
+        help="List available rollback versions instead of rolling back.",
+    )
+    p_rollback.set_defaults(func=_cmd_rollback)
 
     # create
     p_create = sub.add_parser("create", help="Scaffold a new pack from template.")
