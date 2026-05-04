@@ -366,7 +366,6 @@ class Gateway:
     _idle_detector: Any = None
     _trace_bus: Any = None
     _heartbeat_scheduler: Any = None
-    _idle_loop: Any = None
     _flow_engine: Any = None
     _workflow_engine: Any = None
     _backup_scheduler: Any = None
