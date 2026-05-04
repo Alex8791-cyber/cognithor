@@ -79,6 +79,13 @@ class AuditEntry:
     """A single audit entry.
 
     Immutable after creation (append-only log).
+
+    Hash chain (SEC-HIGH-5, autonomous security audit, 2026-05-04):
+    every persisted entry stores ``prev_hash`` = SHA-256 of the
+    previous entry's canonical JSON form. ``AuditLogger.validate_chain()``
+    walks the JSONL on disk and verifies each link, surfacing any
+    tampering (insertion, deletion, mutation). The first entry of a
+    chain stores the empty string.
     """
 
     entry_id: str
@@ -96,6 +103,9 @@ class AuditEntry:
     success: bool = True
     duration_ms: float = 0.0
     contains_pii: bool = False  # Contains personal data
+    # SEC-HIGH-5: SHA-256 of the previous entry's canonical JSON.
+    # Empty for the first entry written to a freshly-rotated log file.
+    prev_hash: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -112,7 +122,21 @@ class AuditEntry:
             "success": self.success,
             "duration_ms": self.duration_ms,
             "contains_pii": self.contains_pii,
+            "prev_hash": self.prev_hash,
         }
+
+    def canonical_hash(self) -> str:
+        """SHA-256 of this entry's canonical JSON form.
+
+        Used by the next entry as its ``prev_hash``. ``sort_keys=True``
+        + ``ensure_ascii=False`` make the form deterministic across
+        runs so the verification on disk matches what was hashed at
+        write time.
+        """
+        import hashlib
+
+        canon = json.dumps(self.to_dict(), sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(canon.encode("utf-8")).hexdigest()
 
 
 # ============================================================================
@@ -191,6 +215,11 @@ class AuditLogger:
         self._entries: deque[AuditEntry] = deque(maxlen=max_entries)
         self._counter = 0
         self._retention_days = retention_days
+        # SEC-HIGH-5: tracks SHA-256 of the most recently persisted
+        # entry per log file (key = file path) so the next entry can
+        # link to it via ``prev_hash``. Loaded lazily from disk on
+        # first persist to a given file (handles process restarts).
+        self._last_hash_per_file: dict[Path, str] = {}
 
         if log_dir:
             log_dir.mkdir(parents=True, exist_ok=True)
@@ -660,17 +689,111 @@ class AuditLogger:
 
         return entry
 
+    def _last_hash_for_file(self, log_file: Path) -> str:
+        """Return the canonical SHA-256 of the last entry already in
+        ``log_file``, or "" if the file is empty / missing.
+
+        Used to compute ``prev_hash`` for the next entry. Caches per
+        path so a busy logger doesn't re-read the file on every write.
+        """
+        if log_file in self._last_hash_per_file:
+            return self._last_hash_per_file[log_file]
+        if not log_file.exists():
+            self._last_hash_per_file[log_file] = ""
+            return ""
+        try:
+            # Walk the file to find the last non-blank line.
+            last_line = ""
+            with log_file.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        last_line = line
+            if not last_line:
+                self._last_hash_per_file[log_file] = ""
+                return ""
+            data = json.loads(last_line)
+            # Reconstruct a minimal AuditEntry to compute the hash; we
+            # only need the canonical JSON form, so a generic dict is
+            # fine.
+            import hashlib
+
+            canon = json.dumps(data, sort_keys=True, ensure_ascii=False)
+            h = hashlib.sha256(canon.encode("utf-8")).hexdigest()
+            self._last_hash_per_file[log_file] = h
+            return h
+        except Exception as exc:
+            logger.warning("Audit chain head read failed for %s: %s", log_file, exc)
+            self._last_hash_per_file[log_file] = ""
+            return ""
+
     def _persist_entry(self, entry: AuditEntry) -> None:
-        """Writes an entry to the audit file."""
+        """Writes an entry to the audit file with hash-chain link.
+
+        SEC-HIGH-5: ``entry.prev_hash`` is set to the SHA-256 of the
+        previous entry already on disk for this date's log file before
+        writing, then this entry's own hash is cached for the next
+        write. Tampering after-the-fact (insertion / deletion / edit)
+        can be surfaced by ``validate_chain``.
+        """
         if self._log_dir is None:
             return
         try:
             date_str = entry.timestamp[:10]  # YYYY-MM-DD
             log_file = self._log_dir / f"audit_{date_str}.jsonl"
+            entry.prev_hash = self._last_hash_for_file(log_file)
             with log_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry.to_dict(), ensure_ascii=False) + "\n")
+            # Cache this entry's hash for the next persist.
+            self._last_hash_per_file[log_file] = entry.canonical_hash()
         except Exception as exc:
             logger.error("Audit persistence failed: %s", exc)
+
+    def validate_chain(self, log_file: Path) -> tuple[bool, list[str]]:
+        """Walk an audit JSONL and verify the SHA-256 hash chain.
+
+        Returns ``(ok, errors)``. ``ok=True`` means every line's
+        ``prev_hash`` matches the canonical hash of the line above it.
+        Errors carry human-readable descriptions of which entry broke
+        the chain (insertion, deletion, or mutation).
+
+        SEC-HIGH-5: invoke at startup or on demand to detect post-hoc
+        tampering of the audit log on disk.
+        """
+        import hashlib
+
+        if not log_file.exists():
+            return True, []
+
+        errors: list[str] = []
+        expected_prev = ""
+        line_no = 0
+        try:
+            with log_file.open("r", encoding="utf-8") as f:
+                for raw_line in f:
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    line_no += 1
+                    try:
+                        data = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        errors.append(f"line {line_no}: invalid JSON ({exc})")
+                        return False, errors
+                    actual_prev = data.get("prev_hash", "")
+                    if actual_prev != expected_prev:
+                        errors.append(
+                            f"line {line_no} (entry_id={data.get('entry_id', '?')}): "
+                            f"prev_hash mismatch — expected {expected_prev[:12] or '(empty)'} "
+                            f"but found {actual_prev[:12] or '(empty)'}"
+                        )
+                    canon = json.dumps(data, sort_keys=True, ensure_ascii=False)
+                    expected_prev = hashlib.sha256(canon.encode("utf-8")).hexdigest()
+        except OSError as exc:
+            errors.append(f"read error: {exc}")
+            return False, errors
+
+        return len(errors) == 0, errors
 
     @staticmethod
     def _sanitize_params(params: dict[str, Any]) -> dict[str, Any]:
