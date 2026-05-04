@@ -66,6 +66,9 @@ class MigrationDomain(StrEnum):
     CONFIG_SCHEMA = "config_schema"
     PROVENANCE_LEDGER = "provenance_ledger"
     FINGERPRINT_LEDGER = "fingerprint_ledger"
+    COST_LEDGER = "cost_ledger"
+    ESCALATION_LEDGER = "escalation_ledger"
+    SCOPE_REGISTRY = "scope_registry"
 
 
 class MigrationStatus(StrEnum):

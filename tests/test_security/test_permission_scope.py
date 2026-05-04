@@ -254,3 +254,33 @@ class TestScopeViolation:
         assert "cron" in msg
         assert "shell" in msg
         assert "max_risk" in msg
+
+
+class TestScopeRegistrySelfAuditMigration:
+    """TRUST-10 self-audit: permission_scope module-import records
+    a v0→v1 step in the canonical MIGRATION_LEDGER.
+    """
+
+    def test_migration_step_landed(self) -> None:
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationDomain,
+            MigrationStatus,
+        )
+
+        step = MIGRATION_LEDGER.get("scope_registry:v0-no-registry:v1-axis-identity-registry")
+        assert step is not None
+        assert step.status == MigrationStatus.APPLIED
+        assert step.domain == MigrationDomain.SCOPE_REGISTRY
+        assert (
+            MIGRATION_LEDGER.head_version(MigrationDomain.SCOPE_REGISTRY)
+            == "v1-axis-identity-registry"
+        )
+
+    def test_repeated_calls_idempotent(self) -> None:
+        from cognithor.security.permission_scope import (
+            _record_scope_registry_migration,
+        )
+
+        _record_scope_registry_migration()
+        _record_scope_registry_migration()

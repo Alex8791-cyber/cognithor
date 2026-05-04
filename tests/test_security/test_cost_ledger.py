@@ -427,3 +427,29 @@ class TestCostLedgerSnapshot:
 class TestProcessLocalLedger:
     def test_default_is_a_cost_ledger(self) -> None:
         assert isinstance(COST_LEDGER, CostLedger)
+
+
+class TestCostLedgerSelfAuditMigration:
+    """TRUST-10 self-audit: cost_ledger module-import records a
+    v0→v1 step in the canonical MIGRATION_LEDGER.
+    """
+
+    def test_migration_step_landed(self) -> None:
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationDomain,
+            MigrationStatus,
+        )
+
+        step = MIGRATION_LEDGER.get("cost_ledger:v0-no-ledger:v1-micro-usd-ledger")
+        assert step is not None
+        assert step.status == MigrationStatus.APPLIED
+        assert step.domain == MigrationDomain.COST_LEDGER
+        assert MIGRATION_LEDGER.head_version(MigrationDomain.COST_LEDGER) == "v1-micro-usd-ledger"
+
+    def test_repeated_calls_idempotent(self) -> None:
+        from cognithor.security.cost_ledger import _record_cost_ledger_migration
+
+        _record_cost_ledger_migration()
+        _record_cost_ledger_migration()
+        _record_cost_ledger_migration()
