@@ -326,6 +326,12 @@ def parse_args() -> argparse.Namespace:
         default=50,
         help="Max sessions to print, newest-first (default: 50)",
     )
+    diff_p = receipt_sub.add_parser(
+        "diff",
+        help="Diff two receipt JSON files — surface trust-ledger deltas",
+    )
+    diff_p.add_argument("a", help="Path to the first receipt JSON file")
+    diff_p.add_argument("b", help="Path to the second receipt JSON file")
     export_p = receipt_sub.add_parser(
         "export-all",
         help="Bulk-export one receipt JSON per session_id",
@@ -644,9 +650,16 @@ def main() -> None:
                     signing_key=getattr(args, "receipt_export_signing_key", None),
                 )
             )
+        elif action == "diff":
+            sys.exit(
+                receipt_cmd.cmd_diff(
+                    a_path=Path(args.a),
+                    b_path=Path(args.b),
+                )
+            )
         else:
             print(
-                "Usage: cognithor receipt <show|verify|list|export-all>",
+                "Usage: cognithor receipt <show|verify|list|export-all|diff>",
                 file=sys.stderr,
             )
             sys.exit(2)
