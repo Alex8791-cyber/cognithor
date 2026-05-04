@@ -105,6 +105,51 @@ class PackLoader:
         self._root = packs_dir
         self._cognithor_version = cognithor_version
         self._loaded: dict[str, AgentPack] = {}
+        # TRUST-10 backfill: record the pack-manifest schema lineage
+        # in the canonical MIGRATION_LEDGER. Idempotent + best-effort
+        # (see _record_pack_schema_migration). Pack loading MUST NEVER
+        # fail because of this hook.
+        self._record_pack_schema_migration()
+
+    @staticmethod
+    def _record_pack_schema_migration() -> None:
+        """Record the pack_manifest schema lineage (v0 implicit → v1).
+
+        v0 = pre-#395 era when packs shipped without an explicit
+        ``schema_version`` field. v1 = current ``schema_version: int = 1``
+        contract enforced by :class:`PackManifest`.
+
+        Idempotent: duplicate ``migration_id`` is silently swallowed
+        via :class:`MigrationChainError` suppression. Multiple
+        :class:`PackLoader` instances in the same process share one
+        ledger entry.
+        """
+        from contextlib import suppress
+
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationChainError,
+            MigrationDomain,
+            MigrationStatus,
+            MigrationStep,
+        )
+
+        with suppress(MigrationChainError, ValueError):
+            MIGRATION_LEDGER.record(
+                MigrationStep(
+                    domain=MigrationDomain.PACK_MANIFEST,
+                    source_version="v0-implicit",
+                    target_version="v1-explicit-schema_version",
+                    status=MigrationStatus.APPLIED,
+                    applied_by="system",
+                    item_count=-1,
+                    migration_id=("pack_manifest:v0-implicit:v1-explicit-schema_version"),
+                    notes=(
+                        "PackManifest now requires an explicit schema_version "
+                        "field (default=1) and forbids extra keys"
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # Public API

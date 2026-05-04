@@ -214,3 +214,53 @@ class TestPackLoaderFingerprint:
             assert isolated.history("cognithor-official/exploding") == ()
         finally:
             fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+
+class TestPackLoaderMigrationBackfill:
+    """TRUST-10 backfill: PackLoader construction records the
+    pack_manifest schema lineage into the canonical MIGRATION_LEDGER.
+    """
+
+    def test_construction_records_migration_step(self, packs_dir: Path) -> None:
+        import cognithor.security.migration_ledger as mig_mod
+        from cognithor.security.migration_ledger import (
+            MigrationDomain,
+            MigrationLedger,
+            MigrationStatus,
+        )
+
+        isolated = MigrationLedger()
+        original = mig_mod.MIGRATION_LEDGER
+        mig_mod.MIGRATION_LEDGER = isolated  # type: ignore[misc]
+        try:
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            head = isolated.head_version(MigrationDomain.PACK_MANIFEST)
+            assert head == "v1-explicit-schema_version"
+            step = isolated.get("pack_manifest:v0-implicit:v1-explicit-schema_version")
+            assert step is not None
+            assert step.status == MigrationStatus.APPLIED
+            assert step.applied_by == "system"
+            assert step.domain == MigrationDomain.PACK_MANIFEST
+        finally:
+            mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
+
+    def test_multiple_constructions_are_idempotent(self, packs_dir: Path) -> None:
+        import cognithor.security.migration_ledger as mig_mod
+        from cognithor.security.migration_ledger import (
+            MigrationDomain,
+            MigrationLedger,
+        )
+
+        isolated = MigrationLedger()
+        original = mig_mod.MIGRATION_LEDGER
+        mig_mod.MIGRATION_LEDGER = isolated  # type: ignore[misc]
+        try:
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            assert len(isolated) == 1
+            assert (
+                isolated.head_version(MigrationDomain.PACK_MANIFEST) == "v1-explicit-schema_version"
+            )
+        finally:
+            mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
