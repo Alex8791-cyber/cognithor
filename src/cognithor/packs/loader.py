@@ -298,6 +298,7 @@ class PackLoader:
             self._register_tool_risks(manifest, context)
             self._loaded[qid] = instance
             _log.info("pack.loaded", qualified_id=qid, version=manifest.version)
+            self._fingerprint_pack(manifest, entrypoint)
         except Exception as exc:
             _log.warning(
                 "pack.load_failed",
@@ -305,6 +306,42 @@ class PackLoader:
                 error=str(exc),
             )
             raise PackLoadError(f"Failed to load pack {qid!r}: {exc}") from exc
+
+    @staticmethod
+    def _fingerprint_pack(manifest: PackManifest, entrypoint: Path) -> None:
+        """Best-effort PACK-kind fingerprint of the loaded pack's entrypoint.
+
+        TRUST-7 hook (#398). The fingerprint registers the pack's
+        qualified_id as the logical name and the entrypoint's
+        SHA-256 (line-ending normalised) as the content hash. Lets
+        the operational-trust receipt answer "which pack version
+        was active during run X". Failures are silently logged and
+        swallowed — pack loading NEVER fails because of fingerprinting.
+        """
+        from cognithor.security.fingerprint import (
+            FINGERPRINT_LEDGER,
+            BinaryKind,
+            ToolFingerprint,
+            hash_python_source,
+        )
+
+        try:
+            content_hash = hash_python_source(entrypoint)
+            FINGERPRINT_LEDGER.register(
+                ToolFingerprint(
+                    name=manifest.qualified_id,
+                    kind=BinaryKind.PACK,
+                    content_hash=content_hash,
+                    version=manifest.version,
+                    source_path=str(entrypoint),
+                )
+            )
+        except (OSError, ValueError) as exc:
+            _log.debug(
+                "pack.fingerprint_skipped",
+                qualified_id=manifest.qualified_id,
+                error=str(exc),
+            )
 
     @staticmethod
     def _register_tool_risks(manifest: PackManifest, context: PackContext) -> None:

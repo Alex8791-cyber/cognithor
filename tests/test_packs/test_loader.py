@@ -155,3 +155,62 @@ class TestPackLoaderVersionRange:
         _write_pack(packs_dir, pack_id="exact", min_version=">=0.92.0")
         loader = PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
         assert len(loader.discover()) == 1
+
+
+class TestPackLoaderFingerprint:
+    """TRUST-7 hook: every successfully loaded pack registers a
+    PACK-kind fingerprint in the canonical FINGERPRINT_LEDGER so the
+    operational-trust receipt can show which exact pack version was
+    active during a run.
+    """
+
+    def test_load_registers_pack_fingerprint(self, packs_dir: Path) -> None:
+        import cognithor.security.fingerprint as fp_mod
+        from cognithor.security.fingerprint import BinaryKind, FingerprintLedger
+
+        body = (
+            "from cognithor.packs.interface import AgentPack\n\n"
+            "class Pack(AgentPack):\n"
+            "    def register(self, ctx): pass\n"
+        )
+        _write_pack(packs_dir, pack_id="fp-probe", pack_py_body=body)
+
+        isolated = FingerprintLedger()
+        original = fp_mod.FINGERPRINT_LEDGER
+        fp_mod.FINGERPRINT_LEDGER = isolated  # type: ignore[misc]
+        try:
+            loader = PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            loader.load_all(PackContext())
+            history = isolated.history("cognithor-official/fp-probe")
+            assert len(history) == 1
+            fp = history[0]
+            assert fp.kind == BinaryKind.PACK
+            assert fp.version == "1.0.0"  # default in _write_pack
+            assert len(fp.content_hash) == 64
+            assert fp.source_path.endswith("pack.py")
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    def test_failed_pack_does_not_register_fingerprint(self, packs_dir: Path) -> None:
+        # A pack whose register() blows up must not leave a stale
+        # fingerprint behind — the load failed, so the ledger should
+        # not pretend the pack is "in scope".
+        import cognithor.security.fingerprint as fp_mod
+        from cognithor.security.fingerprint import FingerprintLedger
+
+        body_broken = (
+            "from cognithor.packs.interface import AgentPack\n\n"
+            "class Pack(AgentPack):\n"
+            "    def register(self, ctx): raise RuntimeError('boom')\n"
+        )
+        _write_pack(packs_dir, pack_id="exploding", pack_py_body=body_broken)
+
+        isolated = FingerprintLedger()
+        original = fp_mod.FINGERPRINT_LEDGER
+        fp_mod.FINGERPRINT_LEDGER = isolated  # type: ignore[misc]
+        try:
+            loader = PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            loader.load_all(PackContext())  # exception is swallowed
+            assert isolated.history("cognithor-official/exploding") == ()
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
