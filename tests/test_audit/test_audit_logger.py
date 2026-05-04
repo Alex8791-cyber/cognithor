@@ -801,3 +801,55 @@ class TestRunReceiptIncludeTrust:
         assert isinstance(trust, dict)
         trust["run_id"] = "tampered"
         assert AuditLogger.verify_receipt_signature(receipt, "hunter2") is False
+
+
+class TestAuditLoggerMigrationBackfill:
+    """TRUST-10 backfill: AuditLogger construction records the
+    SEC-HIGH-5 v0→v1 schema move into the canonical MIGRATION_LEDGER.
+    """
+
+    def test_construction_records_migration_step(self) -> None:
+        import cognithor.security.migration_ledger as mig_mod
+        from cognithor.security.migration_ledger import (
+            MigrationDomain,
+            MigrationLedger,
+            MigrationStatus,
+        )
+
+        isolated = MigrationLedger()
+        original = mig_mod.MIGRATION_LEDGER
+        mig_mod.MIGRATION_LEDGER = isolated  # type: ignore[misc]
+        try:
+            AuditLogger()
+            head = isolated.head_version(MigrationDomain.AUDIT_LOG)
+            assert head == "v1-hashchain-jsonl"
+            step = isolated.get("audit_log:v0-flat-jsonl:v1-hashchain-jsonl")
+            assert step is not None
+            assert step.status == MigrationStatus.APPLIED
+            assert step.applied_by == "system"
+            assert step.domain == MigrationDomain.AUDIT_LOG
+            assert "SEC-HIGH-5" in step.notes
+        finally:
+            mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
+
+    def test_multiple_constructions_are_idempotent(self) -> None:
+        # Second AuditLogger() in the same process MUST NOT raise
+        # because of duplicate migration_id; the chain stays at v1.
+        import cognithor.security.migration_ledger as mig_mod
+        from cognithor.security.migration_ledger import (
+            MigrationDomain,
+            MigrationLedger,
+        )
+
+        isolated = MigrationLedger()
+        original = mig_mod.MIGRATION_LEDGER
+        mig_mod.MIGRATION_LEDGER = isolated  # type: ignore[misc]
+        try:
+            AuditLogger()
+            AuditLogger()
+            AuditLogger()
+            # Exactly one entry — duplicate migration_id is rejected.
+            assert len(isolated) == 1
+            assert isolated.head_version(MigrationDomain.AUDIT_LOG) == "v1-hashchain-jsonl"
+        finally:
+            mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
