@@ -262,6 +262,54 @@ def parse_args() -> argparse.Namespace:
         help="Run the Crew defined in the current scaffolded project directory",
     )
 
+    # `cognithor receipt …` — dump + verify TRUST-1 receipts (with optional
+    # TRUST-5..10 trust bundle and HMAC signature).
+    receipt_parser = sub.add_parser(
+        "receipt",
+        help="Dump and verify TRUST-1 audit run-receipts",
+    )
+    receipt_sub = receipt_parser.add_subparsers(dest="receipt_action")
+    show_p = receipt_sub.add_parser(
+        "show",
+        help="Print the receipt for a given session_id",
+    )
+    show_p.add_argument("session_id", help="TRUST-1 session / run id to aggregate")
+    show_p.add_argument(
+        "--log-dir",
+        dest="receipt_log_dir",
+        default=None,
+        help="Audit-log directory (default: in-memory only)",
+    )
+    show_p.add_argument(
+        "--include-trust",
+        dest="receipt_include_trust",
+        action="store_true",
+        help="Fold the TRUST-5..10 ledger bundle into the receipt",
+    )
+    show_p.add_argument(
+        "--key",
+        dest="receipt_signing_key",
+        default=None,
+        help="HMAC-SHA-256 signing key (omitted ⇒ unsigned)",
+    )
+    show_p.add_argument(
+        "--out",
+        dest="receipt_out",
+        default=None,
+        help="Write the JSON to this path (default: stdout)",
+    )
+    verify_p = receipt_sub.add_parser(
+        "verify",
+        help="Verify the HMAC signature on a persisted receipt",
+    )
+    verify_p.add_argument("bundle", help="Path to the receipt JSON file")
+    verify_p.add_argument(
+        "--key",
+        dest="verify_signing_key",
+        required=True,
+        help="HMAC-SHA-256 signing key the bundle was signed with",
+    )
+
     return parser.parse_args()
 
 
@@ -511,6 +559,32 @@ def main() -> None:
         from cognithor.crew.cli.run_cmd import run_project_crew
 
         sys.exit(run_project_crew())
+
+    if getattr(args, "command", None) == "receipt":
+        from cognithor.cli import receipt_cmd
+
+        action = getattr(args, "receipt_action", None)
+        if action == "show":
+            log_dir_arg = getattr(args, "receipt_log_dir", None)
+            sys.exit(
+                receipt_cmd.cmd_show(
+                    session_id=args.session_id,
+                    log_dir=Path(log_dir_arg) if log_dir_arg else None,
+                    include_trust=getattr(args, "receipt_include_trust", False),
+                    signing_key=getattr(args, "receipt_signing_key", None),
+                    out=Path(args.receipt_out) if getattr(args, "receipt_out", None) else None,
+                )
+            )
+        elif action == "verify":
+            sys.exit(
+                receipt_cmd.cmd_verify(
+                    bundle_path=Path(args.bundle),
+                    signing_key=args.verify_signing_key,
+                )
+            )
+        else:
+            print("Usage: cognithor receipt <show|verify>", file=sys.stderr)
+            sys.exit(2)
 
     # 0a. Auto-migrate data from ~/.jarvis/ to ~/.cognithor/ (one-time, on upgrade)
     _migrate_jarvis_home()

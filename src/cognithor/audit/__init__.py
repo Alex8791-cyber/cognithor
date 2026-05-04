@@ -1027,6 +1027,17 @@ class AuditLogger:
                 from cognithor.security.trust_bundle import build_trust_bundle
 
                 bundle["trust"] = build_trust_bundle(session_id)
+            if signing_key:
+                canonical = json.dumps(
+                    {k: v for k, v in bundle.items() if k != "signature"},
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+                bundle["signature"] = hmac.new(
+                    signing_key.encode("utf-8"),
+                    canonical.encode("utf-8"),
+                    hashlib.sha256,
+                ).hexdigest()
             return bundle
 
         # 4. Aggregate.
