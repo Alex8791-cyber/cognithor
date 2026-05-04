@@ -5,6 +5,17 @@ aus ``data/procedures/``. Wird beim ersten Start oder bei leerem
 Marketplace automatisch ausgefuehrt.
 
 Architecture reference: SS14 (Skills & Ecosystem)
+
+.. note::
+
+    **NOT WIRED INTO PRODUCTION** (operational-trust audit, A-8,
+    2026-05-04). The Community Skill Marketplace is on the v1.0
+    roadmap (see ``project_strategic_backlog`` memory); this module
+    is scaffolding for it. ``seed_marketplace`` is exercised by
+    ``tests/test_skills/test_seed_data_ext.py`` but no production
+    boot path imports it. Either wire it from ``gateway.boot`` when
+    the marketplace ships, or delete with the rest of the
+    governance/remote_registry/performance_tracker quartet.
 """
 
 from __future__ import annotations

@@ -9,6 +9,15 @@ Strengeres Bewertungs-/Reputationssystem fuer das Skill-Ecosystem:
   - ReviewQueue:         Warteschlange fuer manuelle Reviews
 
 Architektur-Bibel: §7.4 (Marketplace-Security), §14.2 (Supply-Chain)
+
+.. note::
+
+    **NOT WIRED INTO PRODUCTION** (operational-trust audit, A-8,
+    2026-05-04). Tested via ``tests/test_skills/test_governance.py``
+    but no production boot path imports any of these classes. Lives
+    in the codebase as the security spec for the Q4 2026 Community
+    Marketplace; wire ``ReputationEngine`` + ``SkillRecallManager``
+    into the skill installer pipeline when the marketplace ships.
 """
 
 from __future__ import annotations

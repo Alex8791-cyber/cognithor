@@ -5,6 +5,15 @@ disables skills that exceed failure thresholds.  Skills are re-enabled
 after a configurable cooldown period so they get a second chance.
 
 Persistence is stored in ``~/.cognithor/data/skill_performance.json``.
+
+.. note::
+
+    **NOT WIRED INTO PRODUCTION** (operational-trust audit, A-8,
+    2026-05-04). Tested via
+    ``tests/test_skills/test_performance_tracker.py`` but no
+    production boot path imports the tracker. The marketplace
+    feature that depends on this (auto-disable degraded skills) is
+    on the v1.0 roadmap.
 """
 
 from __future__ import annotations

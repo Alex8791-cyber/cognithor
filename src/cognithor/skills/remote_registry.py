@@ -5,6 +5,17 @@ Handles manifest verification, signature checking, version resolution,
 dependency tracking, and local caching.
 
 Architecture: §12.4 (Plugin Marketplace Remote Registry)
+
+.. note::
+
+    **NOT WIRED INTO PRODUCTION** (operational-trust audit, A-8,
+    2026-05-04). Tested via
+    ``tests/test_skills/test_remote_registry.py`` and the F017
+    install-history safety contract, but no production boot path
+    imports ``RemoteRegistry``. The Agent Pack system
+    (``cognithor.packs``) currently fills this role for paid
+    add-ons; remote_registry will become the community-skill
+    distribution path when the Q4 2026 marketplace ships.
 """
 
 from __future__ import annotations
