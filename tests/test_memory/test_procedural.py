@@ -223,3 +223,81 @@ class TestFindByQuery:
         """Unbekannte Query findet nichts."""
         results = proc_with_data.find_by_query("Wetter in Nürnberg morgen")
         assert results == []
+
+
+class TestProceduralMemoryProvenance:
+    """TRUST-9 wiring: passing ``provenance_source_type`` +
+    ``provenance_source_id`` to ``save_procedure`` writes a tag to
+    the canonical PROVENANCE_LEDGER keyed by
+    ``procedure:<safe_name>``.
+    """
+
+    def test_save_without_provenance_does_not_tag(self, proc: ProceduralMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            proc.save_procedure("Probe", "body")
+            assert "procedure:probe" not in isolated
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_save_with_provenance_tags_ledger(self, proc: ProceduralMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            proc.save_procedure(
+                "Wetter Abfrage",
+                "body",
+                provenance_source_type="agent_inference",
+                provenance_source_id="run-77",
+                provenance_notes="learned from successful run",
+            )
+            tag = isolated.current("procedure:wetter-abfrage")
+            assert tag is not None
+            assert tag.source_type == SourceType.AGENT_INFERENCE
+            assert tag.source_id == "run-77"
+            assert tag.notes == "learned from successful run"
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_unknown_source_type_falls_back_to_unknown(self, proc: ProceduralMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            proc.save_procedure(
+                "weird",
+                "body",
+                provenance_source_type="not_real",
+                provenance_source_id="x",
+            )
+            tag = isolated.current("procedure:weird")
+            assert tag is not None
+            assert tag.source_type == SourceType.UNKNOWN
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_partial_provenance_args_skip_tag(self, proc: ProceduralMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            proc.save_procedure("OnlyType", "b", provenance_source_type="agent_inference")
+            proc.save_procedure("OnlyId", "b", provenance_source_id="run-77")
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]

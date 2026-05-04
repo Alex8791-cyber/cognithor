@@ -72,6 +72,10 @@ class ProceduralMemory:
         name: str,
         body: str,
         metadata: ProcedureMetadata | None = None,
+        *,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
     ) -> Path:
         """Save a procedure as a Markdown file.
 
@@ -79,6 +83,16 @@ class ProceduralMemory:
             name: Prozedur-Name (wird als Dateiname verwendet).
             body: Markdown-Body (ohne Frontmatter).
             metadata: Prozedur-Metadaten.
+            provenance_source_type: Optional TRUST-9 ``SourceType`` value
+                (``"agent_inference"``, ``"user_directive"``, etc.). When
+                set with ``provenance_source_id``, a tag is written to
+                the canonical ``PROVENANCE_LEDGER`` keyed by
+                ``procedure:<safe_name>``.
+            provenance_source_id: Stable upstream id (audit-log entry id,
+                message id, …). Required when ``provenance_source_type``
+                is set.
+            provenance_notes: Short audit-log breadcrumb. MUST NOT
+                contain prompt / response content.
 
         Returns:
             Pfad zur erstellten Datei.
@@ -101,7 +115,51 @@ class ProceduralMemory:
         else:
             file_path.write_text(content, encoding="utf-8")
         logger.info("Prozedur gespeichert: %s → %s", name, file_path)
+        if provenance_source_type and provenance_source_id:
+            self._tag_provenance(
+                item_id=f"procedure:{safe_name}",
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                notes=provenance_notes,
+            )
         return file_path
+
+    @staticmethod
+    def _tag_provenance(
+        *,
+        item_id: str,
+        source_type_value: str,
+        source_id: str,
+        notes: str,
+    ) -> None:
+        """Best-effort TRUST-9 provenance tag for a saved procedure.
+
+        Failures are silently swallowed — saving a procedure MUST
+        NEVER fail because of provenance tagging. Unknown
+        ``source_type_value`` is coerced to
+        :data:`SourceType.UNKNOWN`.
+        """
+        from cognithor.memory.provenance import (
+            PROVENANCE_LEDGER,
+            ProvenanceTag,
+            SourceType,
+        )
+
+        try:
+            try:
+                source_type = SourceType(source_type_value)
+            except ValueError:
+                source_type = SourceType.UNKNOWN
+            PROVENANCE_LEDGER.tag(
+                item_id,
+                ProvenanceTag(
+                    source_type=source_type,
+                    source_id=source_id,
+                    notes=notes,
+                ),
+            )
+        except ValueError:
+            pass
 
     def load_procedure(self, name: str) -> tuple[ProcedureMetadata, str] | None:
         """Laedt eine Prozedur.
