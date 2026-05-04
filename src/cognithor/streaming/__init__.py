@@ -45,7 +45,8 @@ from cognithor.streaming.events import (
     StreamEvent,
     ToolResult,
 )
-from cognithor.streaming.sinks.base import Sink
+from cognithor.streaming.sinks.base import Sink, SinkBufferConfig
+from cognithor.streaming.sinks.jsonl_sink import JsonlSink
 
 __all__ = [
     "SCHEMA_PATH",
@@ -53,12 +54,14 @@ __all__ = [
     "DecisionExplanation",
     "EventEmitter",
     "GateDecision",
+    "JsonlSink",
     "PlanStep",
     "RunCancelled",
     "RunComplete",
     "RunError",
     "RunStarted",
     "Sink",
+    "SinkBufferConfig",
     "SinkDropped",
     "StreamEvent",
     "ToolResult",

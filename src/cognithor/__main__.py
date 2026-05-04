@@ -361,6 +361,37 @@ def parse_args() -> argparse.Namespace:
         help="HMAC-SHA-256 signing key (omitted ⇒ unsigned)",
     )
 
+    # `cognithor agent run --plan FILE.json --stream` — Sprint-27
+    # PR-B headless runner that streams JSONL events to stdout for
+    # the VS-Code extension and other external orchestrators.
+    agent_parser = sub.add_parser(
+        "agent",
+        help="Headless agent runner (Sprint-27 streaming surface)",
+    )
+    agent_sub = agent_parser.add_subparsers(dest="agent_action")
+    agent_run_p = agent_sub.add_parser(
+        "run",
+        help="Execute an ActionPlan JSON file and stream events",
+    )
+    agent_run_p.add_argument(
+        "--plan",
+        dest="agent_run_plan",
+        required=True,
+        help="Path to the ActionPlan JSON file",
+    )
+    agent_run_p.add_argument(
+        "--stream",
+        dest="agent_run_stream",
+        action="store_true",
+        help="Emit one JSON event per line (currently required)",
+    )
+    agent_run_p.add_argument(
+        "--out",
+        dest="agent_run_out",
+        default=None,
+        help="Output file (omitted ⇒ stdout)",
+    )
+
     return parser.parse_args()
 
 
@@ -610,6 +641,27 @@ def main() -> None:
         from cognithor.crew.cli.run_cmd import run_project_crew
 
         sys.exit(run_project_crew())
+
+    if getattr(args, "command", None) == "agent":
+        from cognithor.cli import agent_cmd
+
+        action = getattr(args, "agent_action", None)
+        if action == "run":
+            sys.exit(
+                agent_cmd.cmd_run(
+                    plan_path=Path(args.agent_run_plan),
+                    stream=getattr(args, "agent_run_stream", False),
+                    out=Path(args.agent_run_out)
+                    if getattr(args, "agent_run_out", None)
+                    else None,
+                ),
+            )
+        else:
+            print(
+                "Usage: cognithor agent run --plan FILE.json --stream [--out FILE]",
+                file=sys.stderr,
+            )
+            sys.exit(2)
 
     if getattr(args, "command", None) == "receipt":
         from cognithor.cli import receipt_cmd

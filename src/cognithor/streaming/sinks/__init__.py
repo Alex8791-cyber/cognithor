@@ -8,5 +8,6 @@ bypass machinery. Concrete sinks (:mod:`jsonl_sink`,
 from __future__ import annotations
 
 from cognithor.streaming.sinks.base import Sink, SinkBufferConfig
+from cognithor.streaming.sinks.jsonl_sink import JsonlSink
 
-__all__ = ["Sink", "SinkBufferConfig"]
+__all__ = ["JsonlSink", "Sink", "SinkBufferConfig"]

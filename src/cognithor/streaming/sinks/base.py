@@ -6,28 +6,27 @@ or any future sink that lands in Sprint-28+) inherits from
 transport). Backpressure semantics are enforced by the base
 class so concrete sinks cannot drift away from them:
 
-* Each sink owns a bounded ``asyncio.Queue`` of capacity
-  ``SinkBufferConfig.normal_capacity`` (default 1000) plus a
-  reserved-slot pool of ``SinkBufferConfig.critical_reserve``
-  events (default 16). The reserve is for terminal events
-  (:data:`CRITICAL_EVENT_TYPES`).
-* :meth:`Sink.offer` is the producer-side entry point. Returns
-  ``True`` if the event was queued, ``False`` if the sink is full
-  AND the event is non-critical — in which case the sink emits a
-  :class:`SinkDropped` notice into its OWN stream the next time
+* Each sink owns a single bounded ``asyncio.Queue`` of capacity
+  ``normal_capacity + critical_reserve`` (defaults 1000 + 16).
+  Events are accepted in **strict insertion order**; the dual
+  capacity is enforced via two counters tracked at offer-time.
+* Non-critical events use ``normal_capacity`` slots. When full,
+  ``offer()`` returns ``False`` and the sink emits a
+  :class:`SinkDropped` notice into the same stream the next time
   it has slack.
-* Critical events bypass the normal-capacity gate by drawing from
-  the reserve pool. Reserve exhaustion is treated as a process-
-  level failure (the sink raises) rather than silently losing a
-  terminal event.
-* :meth:`Sink.run` is the consumer-side coroutine — pulls events
-  off the queue and calls :meth:`_write`. Concrete sinks override
-  ``_write`` only.
+* Critical events (terminal lifecycle + ``sink_dropped``) draw
+  from the ``critical_reserve`` pool; reserve exhaustion logs at
+  ERROR and ``offer()`` returns ``False``. Reserve exhaustion is
+  treated by the caller as a fatal fanout error.
+* Insertion order is preserved on the wire — critical events
+  emitted *after* a backlog of normal events still appear after
+  them in the output stream. This is what the JSONL extension
+  consumer needs (it switches on the LAST event to render the
+  terminal banner).
 
-All method-level errors in ``_write`` are caught and logged to
-``cognithor.streaming.sinks.base``'s logger; sinks self-quarantine
-(``self._faulted = True``) on the first exception so a runaway
-``_write`` failure cannot block the producer.
+All method-level errors in ``_write`` are caught and logged;
+sinks self-quarantine (``self._faulted = True``) on the first
+exception so a runaway transport can't block the producer.
 """
 
 from __future__ import annotations
@@ -83,15 +82,13 @@ class Sink(ABC):
 
     def __init__(self, *, buffer: SinkBufferConfig | None = None) -> None:
         self._buffer = buffer or SinkBufferConfig()
-        # Two queues: normal events use ``_queue``, critical events
-        # bypass into ``_critical_queue``. The consumer drains
-        # ``_critical_queue`` first on every iteration.
-        self._queue: asyncio.Queue[StreamEvent] = asyncio.Queue(
-            maxsize=self._buffer.normal_capacity,
-        )
-        self._critical_queue: asyncio.Queue[StreamEvent] = asyncio.Queue(
-            maxsize=self._buffer.critical_reserve,
-        )
+        # Single FIFO queue preserves insertion order. Capacity is
+        # ``normal_capacity + critical_reserve`` so a terminal event
+        # can still slot in when the normal pool is saturated.
+        max_size = self._buffer.normal_capacity + self._buffer.critical_reserve
+        self._queue: asyncio.Queue[StreamEvent] = asyncio.Queue(maxsize=max_size)
+        self._normal_occupancy = 0
+        self._critical_occupancy = 0
         self._dropped_count = 0
         self._faulted = False
         self._stop = asyncio.Event()
@@ -115,23 +112,31 @@ class Sink(ABC):
 
         is_critical = event.EVENT_TYPE in CRITICAL_EVENT_TYPES
         if is_critical:
-            try:
-                self._critical_queue.put_nowait(event)
-                return True
-            except asyncio.QueueFull:
+            if self._critical_occupancy >= self._buffer.critical_reserve:
                 log.error(
                     "sink %s: critical-event reserve exhausted, dropping %s",
                     self.name,
                     event.EVENT_TYPE,
                 )
                 return False
-
-        try:
-            self._queue.put_nowait(event)
+            try:
+                self._queue.put_nowait(event)
+            except asyncio.QueueFull:  # pragma: no cover — should not happen
+                log.error("sink %s: queue full when putting critical event", self.name)
+                return False
+            self._critical_occupancy += 1
             return True
-        except asyncio.QueueFull:
+
+        if self._normal_occupancy >= self._buffer.normal_capacity:
             self._dropped_count += 1
             return False
+        try:
+            self._queue.put_nowait(event)
+        except asyncio.QueueFull:  # pragma: no cover — should not happen
+            self._dropped_count += 1
+            return False
+        self._normal_occupancy += 1
+        return True
 
     # ------------------------------------------------------------------
     # Consumer-side surface
@@ -168,32 +173,40 @@ class Sink(ABC):
         await self._close()
 
     async def _run(self) -> None:
-        """Drain loop: critical queue first, then normal queue.
+        """Drain loop in strict insertion order.
 
-        On stop signal: drain whatever is already in both queues,
-        then exit. Does not block waiting for new events once the
-        stop signal is set.
+        On stop signal: drain whatever is already queued, then
+        exit. Does not block waiting for new events once the stop
+        signal is set.
         """
 
         while True:
             stopping = self._stop.is_set()
 
+            event: StreamEvent
             if stopping:
-                event = self._drain_one_nowait()
-                if event is None:
-                    return  # both queues empty + stop signalled → exit
+                if self._queue.empty():
+                    return
+                event = self._queue.get_nowait()
             else:
                 try:
-                    event = await self._next_event()
+                    next_event = await self._next_event()
                 except asyncio.CancelledError:
                     raise
                 except Exception:
                     log.exception("sink %s: drain loop error", self.name)
                     self._faulted = True
                     return
-                if event is None:
+                if next_event is None:
                     # _next_event woke us up because stop got set.
                     continue
+                event = next_event
+
+            # Decrement the occupancy counter that this event used.
+            if event.EVENT_TYPE in CRITICAL_EVENT_TYPES:
+                self._critical_occupancy = max(0, self._critical_occupancy - 1)
+            else:
+                self._normal_occupancy = max(0, self._normal_occupancy - 1)
 
             try:
                 await self._write(event)
@@ -209,8 +222,8 @@ class Sink(ABC):
                 return
 
             # Surface backpressure drops to the consumer next time
-            # the queues are quiet enough to accept the notice.
-            if self._dropped_count > 0 and self._queue.qsize() == 0:
+            # the queue is quiet enough to accept the notice.
+            if self._dropped_count > 0 and self._queue.empty():
                 dropped = self._dropped_count
                 self._dropped_count = 0
                 notice = SinkDropped(
@@ -218,34 +231,17 @@ class Sink(ABC):
                     sink=self.name,
                     dropped_count=dropped,
                 )
-                try:
-                    self._critical_queue.put_nowait(notice)
-                except asyncio.QueueFull:
-                    # Reserve is full; restore counter for next cycle.
+                if not self.offer(notice):
+                    # Reserve full; restore counter for next cycle.
                     self._dropped_count += dropped
 
-    def _drain_one_nowait(self) -> StreamEvent | None:
-        """Pull the next queued event without awaiting. ``None`` if both empty."""
-
-        if not self._critical_queue.empty():
-            return self._critical_queue.get_nowait()
-        if not self._queue.empty():
-            return self._queue.get_nowait()
-        return None
-
     async def _next_event(self) -> StreamEvent | None:
-        """Pull the next event, prioritising the critical queue.
+        """Pull the next event, racing the stop signal.
 
-        Returns ``None`` only on stop-signal-during-wait (so the
-        caller loops back to the ``self._stop.is_set()`` check).
+        Returns ``None`` if the stop signal fired before an event
+        arrived (caller loops back to the ``stopping`` branch).
         """
 
-        # Fast path: critical queue has work.
-        if not self._critical_queue.empty():
-            return await self._critical_queue.get()
-
-        # Race the normal queue against the stop signal so a quiet
-        # sink doesn't block forever on shutdown.
         get_task = asyncio.create_task(self._queue.get())
         stop_task = asyncio.create_task(self._stop.wait())
         try:
