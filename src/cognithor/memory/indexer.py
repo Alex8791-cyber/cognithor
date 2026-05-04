@@ -186,14 +186,73 @@ class MemoryIndex:
 
     # ── Chunk Operations ─────────────────────────────────────────
 
-    def upsert_chunk(self, chunk: Chunk) -> None:
+    def upsert_chunk(
+        self,
+        chunk: Chunk,
+        *,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
+    ) -> None:
         """Fuegt einen Chunk ein oder aktualisiert ihn und committet.
 
         Thread-safe: Geschuetzt ueber Write-Lock.
+
+        Optional TRUST-9 provenance: when both
+        ``provenance_source_type`` and ``provenance_source_id`` are
+        passed, a tag is written to the canonical
+        ``PROVENANCE_LEDGER`` keyed by ``chunk:<chunk.id>``. Lets
+        the operational-trust receipt answer "where did the
+        knowledge in this chunk come from?" — owner-uploaded PDF,
+        agent-fetched URL, scheduled cron import — for every chunk
+        that opted into provenance at indexing time.
         """
         with self._write_lock:
             self._upsert_chunk_impl(chunk)
             self.conn.commit()
+        if provenance_source_type and provenance_source_id:
+            self._tag_provenance(
+                item_id=f"chunk:{chunk.id}",
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                notes=provenance_notes,
+            )
+
+    @staticmethod
+    def _tag_provenance(
+        *,
+        item_id: str,
+        source_type_value: str,
+        source_id: str,
+        notes: str,
+    ) -> None:
+        """Best-effort TRUST-9 provenance tag — failures swallowed.
+
+        Unknown ``source_type_value`` is coerced to
+        :data:`SourceType.UNKNOWN`. Indexing NEVER fails because of
+        provenance tagging.
+        """
+        from cognithor.memory.provenance import (
+            PROVENANCE_LEDGER,
+            ProvenanceTag,
+            SourceType,
+        )
+
+        try:
+            try:
+                source_type = SourceType(source_type_value)
+            except ValueError:
+                source_type = SourceType.UNKNOWN
+            PROVENANCE_LEDGER.tag(
+                item_id,
+                ProvenanceTag(
+                    source_type=source_type,
+                    source_id=source_id,
+                    notes=notes,
+                ),
+            )
+        except ValueError:
+            pass
 
     def _upsert_chunk_impl(self, chunk: Chunk) -> None:
         """Internal: insert/update ohne Lock und ohne Commit (fuer Batch-Nutzung)."""
