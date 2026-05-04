@@ -34,7 +34,8 @@
   "icon": "media/icon.png",
   "main": "./dist/extension.js",
   "activationEvents": [
-    "onCommand:cognithor.runPlan"
+    "onCommand:cognithor.runPlan",
+    "onStartupFinished"
   ],
   "contributes": {
     "commands": [
