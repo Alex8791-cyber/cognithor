@@ -1,0 +1,17 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint"],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "warn",
+    "no-console": "off",
+    "semi": ["error", "always"],
+    "quotes": ["error", "double", { "avoidEscape": true }]
+  },
+  "ignorePatterns": ["dist/**", "out/**", "node_modules/**", "src/types/events.ts"]
+}

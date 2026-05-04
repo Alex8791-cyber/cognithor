@@ -1,0 +1,46 @@
+name: VS Code Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/vscode/**"
+      - ".github/workflows/extensions-vscode.yml"
+  pull_request:
+    paths:
+      - "extensions/vscode/**"
+      - ".github/workflows/extensions-vscode.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Typecheck + Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extensions/vscode
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: extensions/vscode/package-lock.json
+
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build (esbuild production)
+        run: npm run package
