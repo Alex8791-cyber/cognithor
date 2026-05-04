@@ -107,3 +107,39 @@ class TestCliList:
         out = capsys.readouterr().out
         assert "cli-test" in out
         assert "1.0.0" in out
+
+
+class TestCliUpdate:
+    """``cognithor pack update`` is not yet automated.
+
+    Until it is, the stub must (a) require a qualified_id and (b) exit
+    with a non-zero code so wrapping scripts and CI pipelines do not
+    treat the printed message as a successful update (WF-6).
+    """
+
+    def test_update_requires_qualified_id(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        import pytest as _pytest
+
+        monkeypatch.setenv("COGNITHOR_PACKS_DIR", str(tmp_path / "packs"))
+        with _pytest.raises(SystemExit) as exc_info:
+            pack_main(["update"])
+        assert exc_info.value.code == 2
+
+    def test_update_stub_exits_2(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.setenv("COGNITHOR_PACKS_DIR", str(tmp_path / "packs"))
+        rc = pack_main(["update", "cognithor-official/some-pack"])
+        assert rc == 2
+        captured = capsys.readouterr()
+        assert "not yet automated" in captured.err
+        assert "cognithor-official/some-pack" in captured.err
+        assert "rollback" in captured.err
