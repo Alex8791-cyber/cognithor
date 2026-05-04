@@ -2454,11 +2454,29 @@ def main() -> None:
             if getattr(config.channels, "imessage_enabled", False):
                 from cognithor.channels.imessage import IMessageChannel
 
-                # iMessage hat keine Token; weitere Parameter (BlueBubbles-URL,
-                # Passwort, allowed_handles) werden via Config/Env abgegriffen
-                # sobald wir sie wieder benötigen — die Defaults reichen für die
-                # native macOS-Anbindung (mode="auto").
-                gateway.register_channel(IMessageChannel())
+                imessage_bb_url = os.environ.get("COGNITHOR_IMESSAGE_BB_URL", "")
+                imessage_bb_password = os.environ.get("COGNITHOR_IMESSAGE_BB_PASSWORD", "")
+                imessage_allowed_raw = os.environ.get("COGNITHOR_IMESSAGE_ALLOWED_HANDLES", "")
+                imessage_allowed = [h.strip() for h in imessage_allowed_raw.split(",") if h.strip()]
+
+                # On non-macOS the channel auto-selects BlueBubbles mode and
+                # needs a self-hosted server URL. Without it the channel
+                # registered but never started — silent failure. Skip the
+                # registration with a clear warning instead.
+                if sys.platform != "darwin" and not imessage_bb_url:
+                    log.warning(
+                        "imessage_enabled_but_no_bb_url",
+                        platform=sys.platform,
+                        hint=("Set COGNITHOR_IMESSAGE_BB_URL and COGNITHOR_IMESSAGE_BB_PASSWORD"),
+                    )
+                else:
+                    gateway.register_channel(
+                        IMessageChannel(
+                            bb_url=imessage_bb_url,
+                            bb_password=imessage_bb_password,
+                            allowed_handles=imessage_allowed,
+                        )
+                    )
 
             # IRC channel (config-flag based, server is the gating field)
             if getattr(config.channels, "irc_enabled", False):
