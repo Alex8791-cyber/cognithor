@@ -284,4 +284,153 @@ def cmd_list(
     return 0
 
 
-__all__ = ["cmd_export_all", "cmd_list", "cmd_show", "cmd_verify"]
+def cmd_diff(*, a_path: Path, b_path: Path) -> int:
+    """Diff two TRUST-1 receipt bundles.
+
+    Surfaces the operationally-meaningful differences between two
+    receipts: per-section entry-count delta, total-cost delta,
+    escalation-count delta, fingerprint-divergence, new permission
+    scopes, and migration-chain head movement. Designed for "we ran
+    the same workflow twice — what changed?" post-mortems.
+
+    Output is human-readable, not JSON: one section per kind of
+    delta, blank when no changes. Returns:
+
+    * 0 — receipts loaded successfully (regardless of whether they
+      differ; an unchanged-pair still returns 0).
+    * 2 — bad arguments / unreadable / non-JSON / non-object bundle.
+    """
+    bundles: list[dict[str, Any]] = []
+    for label, path in (("a", a_path), ("b", b_path)):
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except (OSError, FileNotFoundError) as exc:
+            print(f"error: cannot read {label}={path}: {exc}", file=sys.stderr)
+            return 2
+        try:
+            bundle = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            print(f"error: invalid JSON in {label}={path}: {exc}", file=sys.stderr)
+            return 2
+        if not isinstance(bundle, dict):
+            print(
+                f"error: bundle at {label}={path} is not a JSON object",
+                file=sys.stderr,
+            )
+            return 2
+        bundles.append(bundle)
+    a_bundle, b_bundle = bundles[0], bundles[1]
+
+    a_sid = a_bundle.get("session_id", "?")
+    b_sid = b_bundle.get("session_id", "?")
+    print(f"diff: a={a_sid!r} → b={b_sid!r}")
+
+    # ── Audit-aggregate deltas ─────────────────────────────────────
+    a_count = int(a_bundle.get("entry_count", 0))
+    b_count = int(b_bundle.get("entry_count", 0))
+    if a_count != b_count:
+        print(f"  entry_count: {a_count} → {b_count}  (delta {b_count - a_count:+d})")
+
+    a_agg = _safe_dict(a_bundle.get("aggregate"))
+    b_agg = _safe_dict(b_bundle.get("aggregate"))
+    for key in ("success_count", "failure_count", "pii_count"):
+        av = int(a_agg.get(key, 0))
+        bv = int(b_agg.get(key, 0))
+        if av != bv:
+            print(f"  aggregate.{key}: {av} → {bv}  (delta {bv - av:+d})")
+
+    # ── Trust-bundle deltas (only if BOTH receipts have one) ───────
+    a_has_trust = "trust" in a_bundle
+    b_has_trust = "trust" in b_bundle
+    if not a_has_trust and not b_has_trust:
+        return 0
+    if a_has_trust != b_has_trust:
+        print(
+            f"  trust block: {'present' if a_has_trust else 'absent'} → "
+            f"{'present' if b_has_trust else 'absent'}"
+        )
+        return 0
+    a_trust = _safe_dict(a_bundle.get("trust"))
+    b_trust = _safe_dict(b_bundle.get("trust"))
+
+    # Cost delta (USD micro on the summary).
+    a_cost = _safe_dict(_safe_dict(a_trust.get("cost")).get("summary"))
+    b_cost = _safe_dict(_safe_dict(b_trust.get("cost")).get("summary"))
+    a_micro = int(a_cost.get("total_cost_usd_micro", 0))
+    b_micro = int(b_cost.get("total_cost_usd_micro", 0))
+    if a_micro != b_micro:
+        delta = b_micro - a_micro
+        print(
+            f"  trust.cost: {a_micro / 1_000_000:.6f} → {b_micro / 1_000_000:.6f} USD "
+            f"(delta {delta / 1_000_000:+.6f})"
+        )
+
+    # Escalation event-count delta.
+    a_esc = _safe_dict(_safe_dict(a_trust.get("escalations")).get("summary"))
+    b_esc = _safe_dict(_safe_dict(b_trust.get("escalations")).get("summary"))
+    a_ev = int(a_esc.get("event_count", 0))
+    b_ev = int(b_esc.get("event_count", 0))
+    if a_ev != b_ev:
+        print(f"  trust.escalations.event_count: {a_ev} → {b_ev}  (delta {b_ev - a_ev:+d})")
+
+    # Fingerprint divergence.
+    a_fps = _safe_list(_safe_dict(a_trust.get("fingerprints")).get("all"))
+    b_fps = _safe_list(_safe_dict(b_trust.get("fingerprints")).get("all"))
+    a_hashes = {str(fp.get("content_hash", "")) for fp in a_fps if isinstance(fp, dict)}
+    b_hashes = {str(fp.get("content_hash", "")) for fp in b_fps if isinstance(fp, dict)}
+    new_in_b = sorted(b_hashes - a_hashes)
+    gone_from_a = sorted(a_hashes - b_hashes)
+    if new_in_b or gone_from_a:
+        print(f"  trust.fingerprints: +{len(new_in_b)} -{len(gone_from_a)}")
+        for h in new_in_b[:3]:
+            print(f"    + {h[:12]}…")
+        for h in gone_from_a[:3]:
+            print(f"    - {h[:12]}…")
+
+    # Permission-scope diff.
+    a_scopes = {
+        f"{s.get('axis')}:{s.get('identity')}"
+        for s in _safe_list(a_trust.get("permission_scopes"))
+        if isinstance(s, dict)
+    }
+    b_scopes = {
+        f"{s.get('axis')}:{s.get('identity')}"
+        for s in _safe_list(b_trust.get("permission_scopes"))
+        if isinstance(s, dict)
+    }
+    if a_scopes != b_scopes:
+        added = sorted(b_scopes - a_scopes)
+        removed = sorted(a_scopes - b_scopes)
+        print(f"  trust.permission_scopes: +{len(added)} -{len(removed)}")
+        for s in added:
+            print(f"    + {s}")
+        for s in removed:
+            print(f"    - {s}")
+
+    # Migration-head movement per domain.
+    a_heads = _safe_dict(_safe_dict(a_trust.get("migrations")).get("head_version"))
+    b_heads = _safe_dict(_safe_dict(b_trust.get("migrations")).get("head_version"))
+    domains = sorted(set(a_heads) | set(b_heads))
+    for domain in domains:
+        a_head = a_heads.get(domain)
+        b_head = b_heads.get(domain)
+        if a_head != b_head:
+            print(f"  trust.migrations.{domain}: {a_head!r} → {b_head!r}")
+    return 0
+
+
+def _safe_dict(obj: object) -> dict[str, Any]:
+    return obj if isinstance(obj, dict) else {}
+
+
+def _safe_list(obj: object) -> list[Any]:
+    return obj if isinstance(obj, list) else []
+
+
+__all__ = [
+    "cmd_diff",
+    "cmd_export_all",
+    "cmd_list",
+    "cmd_show",
+    "cmd_verify",
+]

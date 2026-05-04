@@ -8,7 +8,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from cognithor.audit import AuditLogger
-from cognithor.cli.receipt_cmd import cmd_export_all, cmd_list, cmd_show, cmd_verify
+from cognithor.cli.receipt_cmd import (
+    cmd_diff,
+    cmd_export_all,
+    cmd_list,
+    cmd_show,
+    cmd_verify,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -379,3 +385,203 @@ class TestCmdExportAll:
         manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
         assert manifest["count"] == 0
         assert manifest["sessions"] == []
+
+
+def _write_receipt(path: Path, bundle: dict[str, object]) -> None:
+    path.write_text(json.dumps(bundle, indent=2), encoding="utf-8")
+
+
+class TestCmdDiff:
+    def test_missing_file_returns_2(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        b = tmp_path / "b.json"
+        b.write_text("{}", encoding="utf-8")
+        rc = cmd_diff(a_path=tmp_path / "no_such.json", b_path=b)
+        assert rc == 2
+        assert "cannot read" in capsys.readouterr().err
+
+    def test_invalid_json_returns_2(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        a.write_text("not json {", encoding="utf-8")
+        b.write_text("{}", encoding="utf-8")
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 2
+        assert "invalid JSON" in capsys.readouterr().err
+
+    def test_non_object_returns_2(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        a.write_text("[1, 2, 3]", encoding="utf-8")
+        b.write_text("{}", encoding="utf-8")
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 2
+        assert "not a JSON object" in capsys.readouterr().err
+
+    def test_identical_receipts_only_print_header(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        bundle = {"session_id": "run-A", "entry_count": 3}
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        _write_receipt(a, bundle)
+        _write_receipt(b, bundle)
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 0
+        out = capsys.readouterr().out
+        # Only the diff header line, no delta lines.
+        assert "diff: a='run-A' → b='run-A'" in out
+        assert "delta" not in out
+
+    def test_entry_count_delta_surfaced(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        _write_receipt(a, {"session_id": "x", "entry_count": 3})
+        _write_receipt(b, {"session_id": "x", "entry_count": 7})
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "entry_count: 3 → 7" in out
+        assert "delta +4" in out
+
+    def test_failure_count_delta_surfaced(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        _write_receipt(
+            a,
+            {
+                "session_id": "x",
+                "entry_count": 5,
+                "aggregate": {"success_count": 5, "failure_count": 0},
+            },
+        )
+        _write_receipt(
+            b,
+            {
+                "session_id": "x",
+                "entry_count": 5,
+                "aggregate": {"success_count": 3, "failure_count": 2},
+            },
+        )
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "aggregate.success_count: 5 → 3" in out
+        assert "aggregate.failure_count: 0 → 2" in out
+
+    def test_trust_cost_delta_surfaced(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        _write_receipt(
+            a,
+            {
+                "session_id": "x",
+                "entry_count": 1,
+                "trust": {
+                    "cost": {"summary": {"total_cost_usd_micro": 10_000}},
+                },
+            },
+        )
+        _write_receipt(
+            b,
+            {
+                "session_id": "x",
+                "entry_count": 1,
+                "trust": {
+                    "cost": {"summary": {"total_cost_usd_micro": 35_000}},
+                },
+            },
+        )
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "trust.cost: 0.010000 → 0.035000 USD" in out
+        assert "+0.025000" in out
+
+    def test_trust_fingerprint_diff_surfaced(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        _write_receipt(
+            a,
+            {
+                "session_id": "x",
+                "entry_count": 1,
+                "trust": {
+                    "fingerprints": {
+                        "all": [{"content_hash": "a" * 64}],
+                    },
+                },
+            },
+        )
+        _write_receipt(
+            b,
+            {
+                "session_id": "x",
+                "entry_count": 1,
+                "trust": {
+                    "fingerprints": {
+                        "all": [{"content_hash": "b" * 64}, {"content_hash": "c" * 64}],
+                    },
+                },
+            },
+        )
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "trust.fingerprints: +2 -1" in out
+
+    def test_trust_migration_head_movement(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        _write_receipt(
+            a,
+            {
+                "session_id": "x",
+                "entry_count": 1,
+                "trust": {
+                    "migrations": {"head_version": {"audit_log": "v1"}},
+                },
+            },
+        )
+        _write_receipt(
+            b,
+            {
+                "session_id": "x",
+                "entry_count": 1,
+                "trust": {
+                    "migrations": {
+                        "head_version": {"audit_log": "v1", "pack_manifest": "v2"},
+                    },
+                },
+            },
+        )
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "trust.migrations.pack_manifest: None → 'v2'" in out
+
+    def test_trust_block_presence_delta(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # One side has a trust block, the other doesn't.
+        a = tmp_path / "a.json"
+        b = tmp_path / "b.json"
+        _write_receipt(a, {"session_id": "x", "entry_count": 1})
+        _write_receipt(b, {"session_id": "x", "entry_count": 1, "trust": {}})
+        rc = cmd_diff(a_path=a, b_path=b)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "trust block: absent → present" in out
