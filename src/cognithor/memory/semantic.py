@@ -51,6 +51,9 @@ class SemanticMemory:
         attributes: dict[str, Any] | None = None,
         source_file: str = "",
         confidence: float = 1.0,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
     ) -> Entity:
         """Erstellt eine neue Entitaet.
 
@@ -60,6 +63,16 @@ class SemanticMemory:
             attributes: Zusaetzliche Attribute.
             source_file: Quelldatei.
             confidence: Vertrauenswert 0-1.
+            provenance_source_type: Optional TRUST-9 ``SourceType`` value
+                (e.g. ``"chat_utterance"``, ``"tool_output"``,
+                ``"agent_inference"``). When provided together with
+                ``provenance_source_id``, a tag is written to the
+                canonical ``PROVENANCE_LEDGER`` keyed by ``entity.id``.
+            provenance_source_id: Stable id of the upstream source
+                (audit-log entry id, message id, config path, etc).
+                Required when ``provenance_source_type`` is set.
+            provenance_notes: Short free-text breadcrumb for the audit
+                log. MUST NOT contain prompt or response content.
 
         Returns:
             Die erstellte Entity.
@@ -73,7 +86,55 @@ class SemanticMemory:
         )
         self._index.upsert_entity(entity)
         logger.info("Entity erstellt: %s (%s) [%s]", name, entity_type, entity.id[:8])
+        if provenance_source_type and provenance_source_id:
+            self._tag_provenance(
+                item_id=entity.id,
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                confidence=confidence,
+                notes=provenance_notes,
+            )
         return entity
+
+    @staticmethod
+    def _tag_provenance(
+        *,
+        item_id: str,
+        source_type_value: str,
+        source_id: str,
+        confidence: float,
+        notes: str,
+    ) -> None:
+        """Best-effort TRUST-9 provenance tag.
+
+        Failures are logged and swallowed — provenance recording must
+        never break entity creation. Unknown ``source_type_value`` is
+        coerced to :data:`SourceType.UNKNOWN`.
+        """
+        from cognithor.memory.provenance import (
+            PROVENANCE_LEDGER,
+            ProvenanceTag,
+            SourceType,
+        )
+
+        try:
+            try:
+                source_type = SourceType(source_type_value)
+            except ValueError:
+                source_type = SourceType.UNKNOWN
+            tag = ProvenanceTag(
+                source_type=source_type,
+                source_id=source_id,
+                confidence=confidence,
+                notes=notes,
+            )
+            PROVENANCE_LEDGER.tag(item_id, tag)
+        except ValueError as exc:
+            logger.debug(
+                "semantic_memory_provenance_skipped item_id=%s error=%s",
+                item_id,
+                exc,
+            )
 
     def update_entity(
         self,
