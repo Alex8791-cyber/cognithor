@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from cognithor.audit import AuditLogger
-from cognithor.cli.receipt_cmd import cmd_show, cmd_verify
+from cognithor.cli.receipt_cmd import cmd_list, cmd_show, cmd_verify
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -173,3 +173,114 @@ class TestCmdVerify:
         out.write_text(json.dumps(bundle), encoding="utf-8")
         rc = cmd_verify(bundle_path=out, signing_key="hunter2")
         assert rc == 1
+
+
+def _write_audit_jsonl(
+    log_dir: Path,
+    *,
+    name: str = "audit_2026-05-04.jsonl",
+    rows: list[dict[str, str]],
+) -> None:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    (log_dir / name).write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n",
+        encoding="utf-8",
+    )
+
+
+class TestCmdList:
+    def test_invalid_limit_rejected(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        rc = cmd_list(log_dir=tmp_path, limit=0)
+        assert rc == 2
+        assert "limit" in capsys.readouterr().err
+
+    def test_no_log_dir_prints_no_entries(self, capsys: pytest.CaptureFixture[str]) -> None:
+        rc = cmd_list(log_dir=None)
+        assert rc == 0
+        assert "no audit entries found" in capsys.readouterr().out
+
+    def test_missing_log_dir_prints_no_entries(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        rc = cmd_list(log_dir=tmp_path / "nope")
+        assert rc == 0
+        assert "no audit entries found" in capsys.readouterr().out
+
+    def test_lists_sessions_with_counts_and_last_seen(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        log_dir = tmp_path / "audit"
+        _write_audit_jsonl(
+            log_dir,
+            rows=[
+                {"session_id": "run-A", "timestamp": "2026-05-04T10:00:00Z"},
+                {"session_id": "run-A", "timestamp": "2026-05-04T10:00:05Z"},
+                {"session_id": "run-B", "timestamp": "2026-05-04T11:00:00Z"},
+            ],
+        )
+        rc = cmd_list(log_dir=log_dir)
+        assert rc == 0
+        out = capsys.readouterr().out
+        # Newest-first ordering: run-B before run-A.
+        idx_b = out.index("run-B")
+        idx_a = out.index("run-A")
+        assert idx_b < idx_a
+        assert "2026-05-04T11:00:00Z" in out
+        # Run-A has 2 entries.
+        assert " 2  " in out or "      2  " in out
+
+    def test_unscoped_entries_bucket_under_label(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        log_dir = tmp_path / "audit"
+        _write_audit_jsonl(
+            log_dir,
+            rows=[
+                {"timestamp": "2026-05-04T10:00:00Z"},
+                {"session_id": "", "timestamp": "2026-05-04T10:01:00Z"},
+                {"session_id": "run-A", "timestamp": "2026-05-04T11:00:00Z"},
+            ],
+        )
+        rc = cmd_list(log_dir=log_dir)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "(unscoped)" in out
+        assert "run-A" in out
+
+    def test_limit_truncates_to_newest(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        log_dir = tmp_path / "audit"
+        _write_audit_jsonl(
+            log_dir,
+            rows=[
+                {"session_id": "run-A", "timestamp": "2026-05-04T10:00:00Z"},
+                {"session_id": "run-B", "timestamp": "2026-05-04T11:00:00Z"},
+                {"session_id": "run-C", "timestamp": "2026-05-04T12:00:00Z"},
+            ],
+        )
+        rc = cmd_list(log_dir=log_dir, limit=2)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "run-C" in out
+        assert "run-B" in out
+        assert "run-A" not in out  # truncated
+
+    def test_corrupt_lines_skipped(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        log_dir = tmp_path / "audit"
+        log_dir.mkdir()
+        (log_dir / "audit_2026-05-04.jsonl").write_text(
+            '{"session_id":"run-A","timestamp":"2026-05-04T10:00:00Z"}\n'
+            "this is not json\n"
+            '{"session_id":"run-B","timestamp":"2026-05-04T11:00:00Z"}\n',
+            encoding="utf-8",
+        )
+        rc = cmd_list(log_dir=log_dir)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "run-A" in out
+        assert "run-B" in out

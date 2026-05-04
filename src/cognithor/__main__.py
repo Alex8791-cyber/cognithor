@@ -309,6 +309,23 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="HMAC-SHA-256 signing key the bundle was signed with",
     )
+    list_p = receipt_sub.add_parser(
+        "list",
+        help="List session_ids present in the audit log",
+    )
+    list_p.add_argument(
+        "--log-dir",
+        dest="receipt_list_log_dir",
+        default=None,
+        help="Audit-log directory (default: in-memory only, returns empty)",
+    )
+    list_p.add_argument(
+        "--limit",
+        dest="receipt_list_limit",
+        type=int,
+        default=50,
+        help="Max sessions to print, newest-first (default: 50)",
+    )
 
     return parser.parse_args()
 
@@ -582,8 +599,16 @@ def main() -> None:
                     signing_key=args.verify_signing_key,
                 )
             )
+        elif action == "list":
+            list_log_dir = getattr(args, "receipt_list_log_dir", None)
+            sys.exit(
+                receipt_cmd.cmd_list(
+                    log_dir=Path(list_log_dir) if list_log_dir else None,
+                    limit=int(getattr(args, "receipt_list_limit", 50)),
+                )
+            )
         else:
-            print("Usage: cognithor receipt <show|verify>", file=sys.stderr)
+            print("Usage: cognithor receipt <show|verify|list>", file=sys.stderr)
             sys.exit(2)
 
     # 0a. Auto-migrate data from ~/.jarvis/ to ~/.cognithor/ (one-time, on upgrade)
