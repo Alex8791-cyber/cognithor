@@ -1,0 +1,93 @@
+{
+  "name": "cognithor-vscode",
+  "displayName": "Cognithor",
+  "description": "Run Cognithor Agent OS plans from VS Code with TRUST-1 receipt sidebar, Decision-Explanation hovers, and live cost tracking.",
+  "version": "0.97.0",
+  "publisher": "cognithor",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=20"
+  },
+  "homepage": "https://cognithor.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alex8791-cyber/cognithor.git",
+    "directory": "extensions/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/Alex8791-cyber/cognithor/issues"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "cognithor",
+    "trust",
+    "receipt",
+    "audit",
+    "local-first"
+  ],
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "icon": "media/icon.png",
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:cognithor.runPlan"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "cognithor.runPlan",
+        "title": "Cognithor: Run Plan",
+        "category": "Cognithor"
+      }
+    ],
+    "configuration": {
+      "title": "Cognithor",
+      "properties": {
+        "cognithor.cliPath": {
+          "type": "string",
+          "default": "cognithor",
+          "description": "Path to the cognithor executable. Defaults to 'cognithor' on PATH."
+        },
+        "cognithor.wsPort": {
+          "type": "number",
+          "default": 8742,
+          "description": "Port the cognithor agent ws server listens on."
+        },
+        "cognithor.wsBind": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Bind address for the cognithor agent ws server. Keep this as 127.0.0.1 unless you know what you are doing."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "tsc -noEmit && node esbuild.config.mjs",
+    "package": "tsc -noEmit && node esbuild.config.mjs --production",
+    "watch": "node esbuild.config.mjs --watch",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -noEmit",
+    "codegen:events": "json-schema-to-typescript ../../src/cognithor/streaming/schemas/v1/events.json -o src/types/events.ts --bannerComment '/* eslint-disable */ /* AUTO-GENERATED from src/cognithor/streaming/schemas/v1/events.json — do NOT edit by hand. Re-run via npm run codegen:events. */'",
+    "build:vsix": "vsce package --out cognithor-vscode-${npm_package_version}.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.57.0",
+    "json-schema-to-typescript": "^15.0.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "extensionDependencies": []
+}
