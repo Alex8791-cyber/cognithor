@@ -446,3 +446,132 @@ class TestHashChain:
 
         ok, errors = second.validate_chain(log_file)
         assert ok, f"chain broken after restart: {errors}"
+
+
+# ============================================================================
+# TRUST-3 — Failure-mode classification (operational-trust audit, 2026-05-04)
+# ============================================================================
+
+
+class TestFailureModeClassification:
+    """``AuditLogger.classify_failure(entry)`` maps a failed entry to a
+    structured ``FailureMode``. ``failures_by_mode`` aggregates counts
+    over a time window. Reviewer asked: "what *kind* of thing went
+    wrong?" — this is the structured answer.
+    """
+
+    def test_successful_entry_returns_none(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_tool_call("ok_tool", success=True)
+        assert AuditLogger.classify_failure(entry) is None
+
+    def test_gatekeeper_block_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_gatekeeper("BLOCK", "Command refused", tool_name="exec")
+        assert AuditLogger.classify_failure(entry) == FailureMode.GATEKEEPER_BLOCK
+
+    def test_gatekeeper_approval_denied_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_gatekeeper(
+            "BLOCK", "User denied approval request", tool_name="email_send"
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.GATEKEEPER_APPROVAL_DENIED
+
+    def test_tool_timeout_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        # log_tool_call sets description="Tool 'X' called" — too generic
+        # for inference. Use _log directly with a specific description.
+        entry_timeout = logger._log(
+            category=AuditCategory.TOOL_CALL,
+            severity=AuditSeverity.ERROR,
+            action="tool:slow_tool",
+            tool_name="slow_tool",
+            description="Tool slow_tool exceeded 30s timeout",
+            success=False,
+        )
+        assert AuditLogger.classify_failure(entry_timeout) == FailureMode.TOOL_TIMEOUT
+
+    def test_sandbox_refused_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_security("Sandbox refused execution", blocked=True)
+        assert AuditLogger.classify_failure(entry) == FailureMode.SANDBOX_REFUSED
+
+    def test_network_error_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_network("https://api.example.com", "GET", success=False)
+        assert AuditLogger.classify_failure(entry) == FailureMode.NETWORK_ERROR
+
+    def test_explicit_failure_mode_wins_over_inference(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger._log(
+            category=AuditCategory.TOOL_CALL,
+            severity=AuditSeverity.ERROR,
+            action="tool:x",
+            description="Tool x failed",
+            success=False,
+            failure_mode=FailureMode.LLM_HALLUCINATION,
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.LLM_HALLUCINATION
+
+    def test_unknown_failure_falls_through_to_unknown(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger._log(
+            category=AuditCategory.SYSTEM,
+            severity=AuditSeverity.ERROR,
+            action="system:weird_thing",
+            description="Something bizarre happened",
+            success=False,
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.UNKNOWN
+
+    def test_failures_by_mode_counts_and_sorts(self) -> None:
+        logger = AuditLogger()
+        for _ in range(3):
+            logger.log_gatekeeper("BLOCK", "denied", tool_name="x")
+        logger.log_network("https://api.x", "GET", success=False)
+        logger.log_tool_call("ok", success=True)  # success — must not count
+
+        counts = logger.failures_by_mode(hours=24)
+        assert counts == {"gatekeeper_block": 3, "network_error": 1}
+        assert list(counts.keys()) == ["gatekeeper_block", "network_error"]
+
+    def test_failures_by_mode_respects_time_window(self) -> None:
+        logger = AuditLogger()
+        logger.log_gatekeeper("BLOCK", "no", tool_name="x")
+        counts_24h = logger.failures_by_mode(hours=24)
+        assert counts_24h.get("gatekeeper_block", 0) >= 1
+
+    def test_failure_mode_in_to_dict(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger._log(
+            category=AuditCategory.TOOL_CALL,
+            severity=AuditSeverity.ERROR,
+            action="tool:x",
+            description="quota exceeded",
+            success=False,
+            failure_mode=FailureMode.QUOTA_EXCEEDED,
+        )
+        d = entry.to_dict()
+        assert d["failure_mode"] == "quota_exceeded"
+
+    def test_failure_mode_none_serialises_as_none(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_tool_call("ok", success=True)
+        d = entry.to_dict()
+        assert d["failure_mode"] is None
