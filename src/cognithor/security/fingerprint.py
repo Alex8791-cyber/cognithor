@@ -343,3 +343,43 @@ def fingerprint_python_tool(
 # follow-up PR; the ledger stays empty in production until that
 # wiring lands. Tests construct their own :class:`FingerprintLedger`.
 FINGERPRINT_LEDGER: FingerprintLedger = FingerprintLedger()
+
+
+def _record_fingerprint_ledger_migration() -> None:
+    """TRUST-10 self-audit: announce the fingerprint-ledger schema.
+
+    Idempotent via the canonical ``MigrationLedger``'s duplicate-id
+    check. Wrapped in ``suppress`` so import-time side effects NEVER
+    raise. Test isolation is unaffected — tests that monkey-patch
+    the canonical migration ledger see this step as a no-op since
+    it already landed at first import.
+    """
+    from contextlib import suppress
+
+    from cognithor.security.migration_ledger import (
+        MIGRATION_LEDGER,
+        MigrationChainError,
+        MigrationDomain,
+        MigrationStatus,
+        MigrationStep,
+    )
+
+    with suppress(MigrationChainError, ValueError):
+        MIGRATION_LEDGER.record(
+            MigrationStep(
+                domain=MigrationDomain.FINGERPRINT_LEDGER,
+                source_version="v0-no-ledger",
+                target_version="v1-dual-index-ledger",
+                status=MigrationStatus.APPLIED,
+                applied_by="system",
+                item_count=-1,
+                migration_id="fingerprint_ledger:v0-no-ledger:v1-dual-index-ledger",
+                notes=(
+                    "TRUST-7 FingerprintLedger schema active "
+                    "(by-hash + by-name dual index, BinaryKind enum)"
+                ),
+            )
+        )
+
+
+_record_fingerprint_ledger_migration()

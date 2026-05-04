@@ -398,3 +398,43 @@ def make_ttl_tag(
 # ledger stays empty in production until that wiring lands. Tests
 # construct their own :class:`ProvenanceLedger` for isolation.
 PROVENANCE_LEDGER: ProvenanceLedger = ProvenanceLedger()
+
+
+def _record_provenance_ledger_migration() -> None:
+    """TRUST-10 self-audit: announce the provenance-ledger schema.
+
+    Idempotent via the canonical ``MigrationLedger``'s
+    ``MigrationChainError`` on duplicate ``migration_id``. Wrapped
+    in ``suppress`` so import-time side effects NEVER raise. Tests
+    that monkey-patch the canonical ledger for isolation see this
+    step as a no-op (the original singleton already has it).
+    """
+    from contextlib import suppress
+
+    from cognithor.security.migration_ledger import (
+        MIGRATION_LEDGER,
+        MigrationChainError,
+        MigrationDomain,
+        MigrationStatus,
+        MigrationStep,
+    )
+
+    with suppress(MigrationChainError, ValueError):
+        MIGRATION_LEDGER.record(
+            MigrationStep(
+                domain=MigrationDomain.PROVENANCE_LEDGER,
+                source_version="v0-no-ledger",
+                target_version="v1-append-only-ledger",
+                status=MigrationStatus.APPLIED,
+                applied_by="system",
+                item_count=-1,
+                migration_id="provenance_ledger:v0-no-ledger:v1-append-only-ledger",
+                notes=(
+                    "TRUST-9 ProvenanceLedger schema active "
+                    "(append-only chain per item_id, ExpiryPolicy enum)"
+                ),
+            )
+        )
+
+
+_record_provenance_ledger_migration()
