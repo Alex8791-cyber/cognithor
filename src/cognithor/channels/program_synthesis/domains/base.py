@@ -17,10 +17,6 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
-    from cognithor.channels.program_synthesis.dsl.registry import (
-        PrimitiveRegistry,
-    )
-
 
 class DomainCapability(StrEnum):
     """Capability bits a domain may declare on registration.
@@ -110,8 +106,17 @@ class Domain(Protocol):
     def metadata(self) -> DomainMetadata:
         """Return the immutable metadata for this domain."""
 
-    def primitives(self) -> PrimitiveRegistry:
-        """Return the primitive registry scoped to this domain."""
+    def primitives(self) -> Any:
+        """Return the primitive catalog scoped to this domain.
+
+        Return type intentionally ``Any`` — different domains use
+        different catalog representations (legacy ``PrimitiveRegistry``
+        for grid-DSL, ``SqlCatalog`` for SQL, ``JsonCatalog`` for JSON,
+        …). The pipeline only requires ``names()`` + ``get(name)`` +
+        ``__contains__`` which every catalog provides; tying the
+        protocol to one concrete type would force premature
+        unification.
+        """
 
     def verify(
         self,
