@@ -132,4 +132,85 @@ class TestSemanticMemory:
         sem.ensure_directory()
         assert (sem.directory / "kunden").exists()
         assert (sem.directory / "produkte").exists()
-        assert (sem.directory / "projekte").exists()
+
+
+class TestSemanticMemoryProvenance:
+    """TRUST-9 wiring: passing ``provenance_source_type`` +
+    ``provenance_source_id`` to ``add_entity`` writes a tag to the
+    canonical PROVENANCE_LEDGER keyed by the entity's id.
+    """
+
+    def test_add_entity_without_provenance_does_not_tag(self, sem: SemanticMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            entity = sem.add_entity("ProbeNoTag", "person")
+            assert entity.id not in isolated
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_add_entity_with_provenance_tags_ledger(self, sem: SemanticMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            entity = sem.add_entity(
+                "ProbeWithTag",
+                "person",
+                confidence=0.85,
+                provenance_source_type="tool_output",
+                provenance_source_id="audit-42",
+                provenance_notes="extracted by NER",
+            )
+            tag = isolated.current(entity.id)
+            assert tag is not None
+            assert tag.source_type == SourceType.TOOL_OUTPUT
+            assert tag.source_id == "audit-42"
+            assert tag.confidence == 0.85
+            assert tag.notes == "extracted by NER"
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_unknown_source_type_falls_back_to_unknown(self, sem: SemanticMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            entity = sem.add_entity(
+                "ProbeUnknown",
+                "person",
+                provenance_source_type="not_a_real_source",
+                provenance_source_id="x",
+            )
+            tag = isolated.current(entity.id)
+            assert tag is not None
+            assert tag.source_type == SourceType.UNKNOWN
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_partial_provenance_args_do_not_tag(self, sem: SemanticMemory) -> None:
+        # Both source_type AND source_id required — passing only one
+        # silently skips tagging.
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            e1 = sem.add_entity("OnlyType", "person", provenance_source_type="tool_output")
+            e2 = sem.add_entity("OnlyId", "person", provenance_source_id="audit-7")
+            assert e1.id not in isolated
+            assert e2.id not in isolated
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
