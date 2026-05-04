@@ -1,12 +1,68 @@
 {
-  "generated_at": "2026-04-29T07:36:40.758513+00:00",
-  "tool_count": 116,
+  "generated_at": "2026-05-04T08:34:03.675150+00:00",
+  "tool_count": 136,
   "tools": [
     {
       "name": "file_write",
       "module": "cognithor.mcp.filesystem",
       "category": "filesystem",
       "description": "Alias für write_file. Erstellt oder überschreibt eine Datei.",
+      "dach_specific": false
+    },
+    {
+      "name": "Available Tools",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Liste aller verfügbaren MCP-Tools",
+      "dach_specific": false
+    },
+    {
+      "name": "Capabilities",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Fähigkeiten und Konfiguration dieser Jarvis-Instanz",
+      "dach_specific": false
+    },
+    {
+      "name": "Core Memory",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Langfristige Kern-Erinnerungen und Persönlichkeit von Jarvis",
+      "dach_specific": false
+    },
+    {
+      "name": "Memory Entity",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Eine einzelne Entität aus dem Wissens-Graphen",
+      "dach_specific": false
+    },
+    {
+      "name": "Memory Statistics",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Gesamtstatistiken des 6-Tier Memory-Systems",
+      "dach_specific": false
+    },
+    {
+      "name": "Recent Episodes",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Die letzten episodischen Einträge (Tageslog)",
+      "dach_specific": false
+    },
+    {
+      "name": "System Status",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Aktueller Systemstatus von Jarvis",
+      "dach_specific": false
+    },
+    {
+      "name": "Workspace Files",
+      "module": "cognithor.mcp.resources",
+      "category": "misc",
+      "description": "Verzeichnisbaum des Jarvis-Workspace",
       "dach_specific": false
     },
     {
@@ -28,6 +84,13 @@
       "module": "cognithor.mcp.code_tools",
       "category": "misc",
       "description": "Analysiert Python-Code auf Code-Smells und Sicherheitsprobleme. Kombiniert AST-basierte Qualitätsanalyse mit Security-Pattern-Scanning. Read-only, kein Risiko. Akzeptiert Code als String oder Dateipfa",
+      "dach_specific": false
+    },
+    {
+      "name": "analyze_document",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Analysiert ein Dokument mit konfigurierbarem Fokus",
       "dach_specific": false
     },
     {
@@ -91,6 +154,13 @@
       "module": "cognithor.mcp.atl_tools",
       "category": "misc",
       "description": "Show ATL status: config, cycle count, active goals.",
+      "dach_specific": false
+    },
+    {
+      "name": "brainstorm",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Strukturiertes Brainstorming mit verschiedenen Methoden",
       "dach_specific": false
     },
     {
@@ -161,6 +231,13 @@
       "module": "cognithor.mcp.background_tasks",
       "category": "misc",
       "description": "Check status and recent output of a background job.",
+      "dach_specific": false
+    },
+    {
+      "name": "code_review",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Führt ein umfassendes Code-Review mit Sicherheitsfokus durch",
       "dach_specific": false
     },
     {
@@ -238,6 +315,13 @@
       "module": "cognithor.mcp.chart_tools",
       "category": "misc",
       "description": "Rendert Daten als formatierte Tabelle in einem Bild (PNG). Optionales Highlighting der Maximalwerte. Dark-Theme.",
+      "dach_specific": false
+    },
+    {
+      "name": "daily_briefing",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Erstellt ein tägliches Briefing aus Memory-Daten und Kontext",
       "dach_specific": false
     },
     {
@@ -360,6 +444,13 @@
       "dach_specific": false
     },
     {
+      "name": "explain_concept",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Erklärt ein Konzept für verschiedene Zielgruppen",
+      "dach_specific": false
+    },
+    {
       "name": "find_and_replace",
       "module": "cognithor.mcp.search_tools",
       "category": "misc",
@@ -444,6 +535,13 @@
       "dach_specific": false
     },
     {
+      "name": "insurance_advisor",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Versicherungsberatung für BU, bAV, Risikoleben und weitere Produkte",
+      "dach_specific": false
+    },
+    {
       "name": "kanban_create_task",
       "module": "cognithor.mcp.kanban_tools",
       "category": "misc",
@@ -511,6 +609,34 @@
       "module": "cognithor.mcp.memory_server",
       "category": "misc",
       "description": "Zeigt Statistiken des Memory-Systems (Chunks, Entitäten, Prozeduren etc.).",
+      "dach_specific": false
+    },
+    {
+      "name": "pse_is_synthesizable",
+      "module": "cognithor.mcp.pse_tools",
+      "category": "misc",
+      "description": "Classifier: returns 'yes' / 'no' for whether the given examples are routable to the Cognithor Program Synthesis Engine. Cheap — no engine boot. Use before pse_synthesize.",
+      "dach_specific": false
+    },
+    {
+      "name": "pse_status",
+      "module": "cognithor.mcp.pse_tools",
+      "category": "misc",
+      "description": "Return PSE engine version + primitive count.",
+      "dach_specific": false
+    },
+    {
+      "name": "pse_synthesize",
+      "module": "cognithor.mcp.pse_tools",
+      "category": "misc",
+      "description": "Synthesize a deterministic program from input/output examples using the Cognithor PSE (enumerative search over a typed DSL with NumPy fast-path + cache). Replayable, no LLM hallucination. Anti-overfit",
+      "dach_specific": false
+    },
+    {
+      "name": "pse_synthesize_refined",
+      "module": "cognithor.mcp.pse_tools",
+      "category": "misc",
+      "description": "Sprint-25: Hybrid-Pipeline (LLM → Synthese → LLM-Refinement). Synthesises a program from input/output examples (same engine as pse_synthesize), then runs ONE LLM-refinement pass over the result and re",
       "dach_specific": false
     },
     {
@@ -672,6 +798,20 @@
       "module": "cognithor.mcp.background_tasks",
       "category": "misc",
       "description": "Stop a running background job. Use force=true for immediate SIGKILL.",
+      "dach_specific": false
+    },
+    {
+      "name": "summarize",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Erstellt eine strukturierte Zusammenfassung",
+      "dach_specific": false
+    },
+    {
+      "name": "translate",
+      "module": "cognithor.mcp.prompts",
+      "category": "misc",
+      "description": "Kontextsensitive Übersetzung mit Fachbegriff-Bewahrung",
       "dach_specific": false
     },
     {
