@@ -426,6 +426,20 @@ class Gatekeeper:
                 original_action=action,
                 masked_params=masked_params,
                 policy_name="credential_masking",
+                # TRUST-2: structured explanation for the receipt + UI.
+                # The matched_pattern names which param key was masked
+                # (NOT the secret value) so post-mortem reconstruction
+                # can trace which input slot leaked credentials without
+                # exposing the credential itself.
+                explanation=DecisionExplanation(
+                    rule_id="credential_scan",
+                    rule_source="cognithor.core.gatekeeper:_scan_credentials",
+                    matched_pattern=",".join(
+                        sorted(
+                            k for k in action.params if action.params.get(k) != masked_params.get(k)
+                        )
+                    )[:200],
+                ),
             )
             self._write_audit(action, decision, context)
             return decision

@@ -621,3 +621,27 @@ class TestDecisionExplanation:
             }
             assert decision.explanation.matched_pattern
             assert ":" in decision.explanation.rule_source
+
+    def test_credential_mask_emits_explanation(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """A tool call with credentials in params must MASK and emit a
+        structured TRUST-2 explanation naming which keys were masked.
+        Privacy invariant: ``matched_pattern`` carries KEY names only,
+        never values.
+        """
+        action = PlannedAction(
+            tool="web_fetch",
+            params={
+                "url": "https://api.example.com",
+                "api_key": "sk-secret-abcd1234",
+            },
+        )
+        decision = gatekeeper.evaluate(action, session)
+        if decision.policy_name == "credential_masking":
+            assert decision.explanation is not None
+            assert decision.explanation.rule_id == "credential_scan"
+            assert "_scan_credentials" in decision.explanation.rule_source
+            # Key name appears in the pattern; value MUST NOT.
+            assert "api_key" in decision.explanation.matched_pattern
+            assert "sk-secret-abcd1234" not in decision.explanation.matched_pattern
