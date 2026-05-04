@@ -928,6 +928,7 @@ class AuditLogger:
         session_id: str,
         *,
         signing_key: str | None = None,
+        include_trust: bool = False,
     ) -> dict[str, Any]:
         """Aggregate every audit entry tagged with *session_id* into a
         single receipt bundle, suitable for post-mortem reconstruction
@@ -953,6 +954,14 @@ class AuditLogger:
           the JSONL chain)
         * ``signature`` — HMAC-SHA-256 of the canonical bundle (without
           the signature field). Empty when *signing_key* is None.
+
+        Pass ``include_trust=True`` to fold the TRUST-5..10 ledger
+        bundle (permission scopes, cost, fingerprints, escalations,
+        provenance, migrations) into a top-level ``"trust"`` key.
+        Default is False so existing consumers see no shape change.
+        The signature, when requested, covers the merged bundle —
+        operators get tamper-detection across the audit entries AND
+        the trust state at run time.
 
         The receipt is purely an aggregation over already-persisted
         data — no side effects, no mutation. Safe to call on a live
@@ -1014,6 +1023,10 @@ class AuditLogger:
                 "hash_chain_tail": "",
                 "signature": "",
             }
+            if include_trust:
+                from cognithor.security.trust_bundle import build_trust_bundle
+
+                bundle["trust"] = build_trust_bundle(session_id)
             return bundle
 
         # 4. Aggregate.
@@ -1073,6 +1086,11 @@ class AuditLogger:
             "hash_chain_tail": ordered[-1].get("prev_hash", ""),
             "signature": "",
         }
+
+        if include_trust:
+            from cognithor.security.trust_bundle import build_trust_bundle
+
+            bundle["trust"] = build_trust_bundle(session_id)
 
         # 5. Optional HMAC-SHA-256 over the canonical (signature-less)
         # form. Lets the operator verify the bundle wasn't tampered

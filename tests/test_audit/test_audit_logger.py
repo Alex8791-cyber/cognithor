@@ -742,3 +742,62 @@ class TestRunReceipt:
         logger.log_tool_call("legacy_call")  # no session_id
         receipt = logger.run_receipt("")
         assert receipt["entry_count"] == 1
+
+
+class TestRunReceiptIncludeTrust:
+    """``run_receipt(include_trust=True)`` folds the TRUST-5..10
+    ledger snapshots into the receipt under a top-level ``"trust"``
+    key. Default is False so existing consumers see no shape change.
+    """
+
+    def test_include_trust_default_false(self) -> None:
+        # Existing consumers MUST NOT see a "trust" key unless they ask.
+        logger = AuditLogger()
+        logger.log_tool_call("read_file", session_id="run_42")
+        receipt = logger.run_receipt("run_42")
+        assert "trust" not in receipt
+
+    def test_include_trust_adds_top_level_key(self) -> None:
+        logger = AuditLogger()
+        logger.log_tool_call("read_file", session_id="run_42")
+        receipt = logger.run_receipt("run_42", include_trust=True)
+        assert "trust" in receipt
+        trust = receipt["trust"]
+        assert isinstance(trust, dict)
+        # All six ledger sections must be present.
+        for key in (
+            "schema_version",
+            "run_id",
+            "permission_scopes",
+            "cost",
+            "fingerprints",
+            "escalations",
+            "provenance",
+            "migrations",
+        ):
+            assert key in trust
+        assert trust["run_id"] == "run_42"
+
+    def test_include_trust_for_unknown_session(self) -> None:
+        # Empty receipt path — ghost session — also honours include_trust.
+        logger = AuditLogger()
+        receipt = logger.run_receipt("ghost", include_trust=True)
+        assert "trust" in receipt
+        trust = receipt["trust"]
+        assert isinstance(trust, dict)
+        assert trust["run_id"] == "ghost"
+
+    def test_include_trust_with_signing_key_covers_trust(self) -> None:
+        # The HMAC must cover the merged bundle, not just the
+        # original audit fields. Tampering with the trust block
+        # invalidates the signature.
+        logger = AuditLogger()
+        logger.log_tool_call("read_file", session_id="run_42")
+        receipt = logger.run_receipt("run_42", signing_key="hunter2", include_trust=True)
+        assert receipt["signature"]
+        assert AuditLogger.verify_receipt_signature(receipt, "hunter2") is True
+        # Mutate the trust block — signature should no longer verify.
+        trust = receipt["trust"]
+        assert isinstance(trust, dict)
+        trust["run_id"] = "tampered"
+        assert AuditLogger.verify_receipt_signature(receipt, "hunter2") is False
