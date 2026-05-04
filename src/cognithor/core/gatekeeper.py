@@ -30,6 +30,7 @@ from cognithor.i18n import t
 from cognithor.models import (
     AuditEntry,
     DecisionExplanation,
+    FailureMode,
     GateDecision,
     GateStatus,
     OperationMode,
@@ -1409,6 +1410,7 @@ class Gatekeeper:
                 decision.status.value,
                 decision.reason,
                 tool_name=action.tool,
+                failure_mode=self._derive_failure_mode(decision),
             )
 
         # Auch ins structlog
@@ -1421,6 +1423,39 @@ class Gatekeeper:
             policy=decision.policy_name,
             session=context.session_id[:8],
         )
+
+    @staticmethod
+    def _derive_failure_mode(decision: GateDecision) -> FailureMode | None:
+        """Map a :class:`GateDecision` to an explicit :class:`FailureMode`.
+
+        TRUST-3 enrichment: the gatekeeper knows exactly which rule
+        fired (it set ``decision.policy_name``), so the receipt no
+        longer has to infer the failure mode from the free-text
+        reason. Returns ``None`` for non-block decisions and for
+        block paths where the existing classifier-by-description
+        path is already accurate enough.
+        """
+        if not decision.is_blocked:
+            return None
+        policy = (decision.policy_name or "").lower()
+        if policy.startswith("permission_scope:"):
+            return FailureMode.PERMISSION_SCOPE_DENIED
+        if policy == "operation_mode_offline":
+            # Offline-mode block is a network-error in the failure-mode
+            # taxonomy (the request would have left the machine).
+            return FailureMode.NETWORK_ERROR
+        if policy in {
+            "blocked_command",
+            "blocked_command_ast",
+            "blocked_python_code",
+            "blocked_python_ast",
+        }:
+            return FailureMode.GATEKEEPER_BLOCK
+        if policy == "path_validation":
+            return FailureMode.GATEKEEPER_BLOCK
+        if policy == "credential_masking":
+            return FailureMode.AUTH_ERROR
+        return None
 
     def _flush_audit_buffer(self) -> None:
         """Schreibt den Audit-Buffer gesammelt auf Disk (batch I/O).

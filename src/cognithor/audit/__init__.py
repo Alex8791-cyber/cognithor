@@ -406,8 +406,16 @@ class AuditLogger:
         tool_name: str = "",
         agent_name: str = "",
         session_id: str = "",
+        failure_mode: FailureMode | None = None,
     ) -> AuditEntry:
-        """Logs a gatekeeper decision."""
+        """Logs a gatekeeper decision.
+
+        ``failure_mode``: optional TRUST-3 explicit classification. The
+        gatekeeper passes a structured value (e.g.
+        ``FailureMode.PERMISSION_SCOPE_DENIED``) so the receipt
+        aggregator no longer has to infer from the free-text reason.
+        Ignored for non-block decisions (success path).
+        """
         is_block = decision.upper() in ("BLOCK", "DENY")
         return self._log(
             category=AuditCategory.GATEKEEPER,
@@ -419,6 +427,7 @@ class AuditLogger:
             parameters={"decision": decision, "reason": reason},
             success=not is_block,
             session_id=session_id,
+            failure_mode=failure_mode if is_block else None,
         )
 
     def log_memory_op(
