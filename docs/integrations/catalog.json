@@ -1,12 +1,19 @@
 {
-  "generated_at": "2026-05-04T08:34:03.675150+00:00",
-  "tool_count": 136,
+  "generated_at": "2026-05-04T21:13:19.760020+00:00",
+  "tool_count": 138,
   "tools": [
     {
       "name": "file_write",
       "module": "cognithor.mcp.filesystem",
       "category": "filesystem",
       "description": "Alias für write_file. Erstellt oder überschreibt eine Datei.",
+      "dach_specific": false
+    },
+    {
+      "name": "video_compose",
+      "module": "cognithor.mcp.video_tools",
+      "category": "filesystem",
+      "description": "Build a self-contained HTML composition from a structured spec. GREEN risk level — pure function, no subprocess, no filesystem write.",
       "dach_specific": false
     },
     {
@@ -938,6 +945,13 @@
       "module": "cognithor.mcp.web",
       "category": "web",
       "description": "Kombinierte Websuche + Fetch: Sucht im Web und liest die Top-Ergebnisse. Ideal für tiefere Recherche. Mit cross_check=true werden Quellen verglichen.",
+      "dach_specific": false
+    },
+    {
+      "name": "video_render",
+      "module": "cognithor.mcp.video_tools",
+      "category": "web",
+      "description": "Render a composition HTML to MP4 / MOV / WebM via the configured renderer (default: HyperFrames). Writes under ~/.cognithor/render/<run_id>/. ORANGE risk level — requires user approval. Raw user-suppl",
       "dach_specific": false
     },
     {
