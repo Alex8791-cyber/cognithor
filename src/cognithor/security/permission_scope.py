@@ -155,6 +155,100 @@ class ScopeRegistry:
         self._scopes: dict[tuple[str, str], PermissionScope] = {}
 
     # ------------------------------------------------------------------
+    # Config loading
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def from_config(cls, config_data: object) -> ScopeRegistry:
+        """Build a registry from a serialised scope list.
+
+        ``config_data`` is the deserialised value of the
+        ``security.scopes`` config key. Accepted shapes:
+
+        * ``None`` / empty → empty registry (production fallback)
+        * ``list[dict]`` — each dict has ``axis``, ``identity``,
+          optional ``tool_allowlist``, ``tool_denylist``, ``max_risk``
+        * ``dict`` containing a ``scopes`` key with the same list
+
+        Malformed entries log a warning and are skipped — a single
+        bad row in YAML must not take down the whole gateway boot.
+        """
+        from cognithor.utils.logging import get_logger
+
+        logger = get_logger(__name__)
+
+        if config_data is None:
+            return cls()
+
+        raw_list: object
+        if isinstance(config_data, dict):
+            raw_list = config_data.get("scopes", [])
+        else:
+            raw_list = config_data
+        if not isinstance(raw_list, list):
+            logger.warning(
+                "scope_config_invalid_shape",
+                got=type(raw_list).__name__,
+            )
+            return cls()
+
+        registry = cls()
+        for index, raw in enumerate(raw_list):
+            if not isinstance(raw, dict):
+                logger.warning(
+                    "scope_config_skip_non_dict",
+                    index=index,
+                    type=type(raw).__name__,
+                )
+                continue
+            try:
+                scope = cls._scope_from_dict(raw)
+            except (ValueError, KeyError, TypeError) as exc:
+                logger.warning(
+                    "scope_config_skip_malformed",
+                    index=index,
+                    error=str(exc),
+                )
+                continue
+            registry.register(scope)
+        return registry
+
+    @staticmethod
+    def _scope_from_dict(raw: dict[str, object]) -> PermissionScope:
+        from cognithor.models import RiskLevel as _RiskLevel
+
+        axis_raw = raw.get("axis")
+        if not isinstance(axis_raw, str):
+            msg = "axis must be a string"
+            raise ValueError(msg)
+        axis = ScopeAxis(axis_raw)
+
+        identity = raw.get("identity")
+        if not isinstance(identity, str) or not identity:
+            msg = "identity must be a non-empty string"
+            raise ValueError(msg)
+
+        allowlist_raw = raw.get("tool_allowlist", [])
+        denylist_raw = raw.get("tool_denylist", [])
+        if not isinstance(allowlist_raw, list) or not isinstance(denylist_raw, list):
+            msg = "tool_allowlist / tool_denylist must be lists"
+            raise ValueError(msg)
+
+        max_risk_raw = raw.get("max_risk", "red")
+        if not isinstance(max_risk_raw, str):
+            msg = "max_risk must be a string"
+            raise ValueError(msg)
+        max_risk = _RiskLevel(max_risk_raw.lower())
+
+        return PermissionScope(
+            axis=axis,
+            identity=identity,
+            tool_allowlist=frozenset(str(t) for t in allowlist_raw),
+            tool_denylist=frozenset(str(t) for t in denylist_raw),
+            max_risk=max_risk,
+        )
+
+    # ------------------------------------------------------------------
     # Mutation
     # ------------------------------------------------------------------
 

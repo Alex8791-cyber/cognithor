@@ -41,6 +41,11 @@ from cognithor.models import (
     SessionContext,
     ToolCapability,
 )
+from cognithor.security.permission_scope import (
+    SCOPE_REGISTRY,
+    ScopeAxis,
+    ScopeRegistry,
+)
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -175,6 +180,12 @@ class Gatekeeper:
         # Tool registry reference for per-tool risk annotations (V6)
         self._tool_registry: dict[str, Any] | None = None
 
+        # TRUST-5 (operational-trust audit, 2026-05-04): per-call
+        # permission scopes evaluated before risk classification.
+        # Defaults to the canonical SCOPE_REGISTRY so tests can swap
+        # in a clean instance via :meth:`set_scope_registry`.
+        self._scope_registry: ScopeRegistry = SCOPE_REGISTRY
+
     def _build_disabled_tools(self) -> frozenset[str]:
         """Build set of tools disabled by config.tools flags."""
         disabled: set[str] = set()
@@ -194,6 +205,36 @@ class Gatekeeper:
     def reload_disabled_tools(self) -> None:
         """Re-read config.tools flags (called after runtime config change)."""
         self._disabled_tools = self._build_disabled_tools()
+
+    def set_scope_registry(self, registry: ScopeRegistry) -> None:
+        """Inject a non-default :class:`ScopeRegistry` (TRUST-5).
+
+        The gateway boot path calls this with the registry built from
+        ``config.security.scopes`` so production runs see the
+        configured scopes; tests pass a fresh registry to keep state
+        isolated.
+        """
+        self._scope_registry = registry
+
+    @staticmethod
+    def _scope_keys_from_context(context: SessionContext) -> list[tuple[ScopeAxis, str]]:
+        """Build the scope key list for a SessionContext.
+
+        Always includes the channel + user axes. The workflow axis is
+        threaded through SessionContext.fork_reason when the active
+        leaf is a workflow run; pack axis comes from the action's
+        provenance and is added by the workflow engine when relevant.
+        Empty / "default" identities are skipped — those signal the
+        un-scoped fallback path that should hit the global gatekeeper.
+        """
+        keys: list[tuple[ScopeAxis, str]] = []
+        channel = (context.channel or "").strip()
+        if channel and channel != "cli":
+            keys.append((ScopeAxis.CHANNEL, channel))
+        user = (context.user_id or "").strip()
+        if user and user != "default":
+            keys.append((ScopeAxis.USER, user))
+        return keys
 
     def set_tool_registry(self, registry: dict[str, Any]) -> None:
         """Set the tool registry for per-tool risk level lookups.
@@ -331,6 +372,49 @@ class Gatekeeper:
                     )
                     self._write_audit(action, decision, context)
                     return decision
+
+        # --- Step 0.5: PermissionScope evaluation (TRUST-5) ---
+        # Per-channel / per-user / per-workflow / per-pack scopes
+        # evaluated before the global risk classifier. If no scope
+        # matches the call, evaluate() returns allowed=True and we
+        # fall through to the existing gates.
+        scope_keys = self._scope_keys_from_context(context)
+        if scope_keys and len(self._scope_registry) > 0:
+            tool_risk = self._classify_risk(action)
+            verdict = self._scope_registry.evaluate(scope_keys, action.tool, tool_risk)
+            if verdict.denied:
+                first_reason = verdict.reasons[0] if verdict.reasons else "scope denied"
+                # Reason header: "<axis>=<identity>: <body>"
+                axis_part, _, rest = first_reason.partition("=")
+                ident_part, _, reason_body = rest.partition(": ")
+                identity = ident_part.strip("'\"")
+                axis = axis_part or "scope"
+                explanation = DecisionExplanation(
+                    rule_id=f"scope:{axis}:{identity}",
+                    rule_source=("cognithor.security.permission_scope:ScopeRegistry.evaluate"),
+                    matched_pattern=action.tool,
+                    policy_version="trust-5",
+                )
+                decision = GateDecision(
+                    status=GateStatus.BLOCK,
+                    reason=(
+                        f"Scope {axis}={identity!r} blocks "
+                        f"{action.tool!r}: {reason_body or first_reason}"
+                    ),
+                    risk_level=RiskLevel.RED,
+                    original_action=action,
+                    policy_name=f"permission_scope:{axis}",
+                    explanation=explanation,
+                )
+                self._write_audit(action, decision, context)
+                log.info(
+                    "gatekeeper_scope_denied",
+                    axis=axis,
+                    identity=identity,
+                    tool=action.tool,
+                    reasons=list(verdict.reasons),
+                )
+                return decision
 
         # --- Step 1: Credential scan ---
         masked_params, has_credentials = self._scan_credentials(action.params)
