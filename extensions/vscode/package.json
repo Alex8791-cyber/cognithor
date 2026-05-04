@@ -37,6 +37,8 @@
     "onCommand:cognithor.runPlan",
     "onCommand:cognithor.viewReceipt",
     "onView:cognithor.receipts",
+    "onLanguage:json",
+    "onLanguage:jsonc",
     "onStartupFinished"
   ],
   "contributes": {

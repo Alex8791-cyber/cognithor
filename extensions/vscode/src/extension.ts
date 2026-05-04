@@ -16,6 +16,7 @@
  */
 
 import * as vscode from "vscode";
+import { registerDecisionHover } from "./decision_hover";
 import { McpBridge, readBridgeConfig } from "./mcp_bridge";
 import { ReceiptTreeProvider, ReceiptViewer } from "./receipt_view";
 import { WsClient } from "./ws_client";
@@ -170,6 +171,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
   );
+
+  // --------------------------------------------------------------------
+  // Decision-Explanation hover provider (PR-H)
+  // --------------------------------------------------------------------
+  registerDecisionHover(context);
 }
 
 async function pickPlanFile(): Promise<vscode.Uri | undefined> {
