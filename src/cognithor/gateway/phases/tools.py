@@ -199,6 +199,35 @@ async def init_tools(
     except Exception:
         log.debug("pse_tools_not_available", exc_info=True)
 
+    # Sprint-26: register the seven Domain-Expansion catalogs (sql,
+    # json, datetime, ast, bytes, float, image_v2) into the canonical
+    # DOMAIN_REGISTRY. The synthesis pipeline reads from this
+    # registry; without this call the registry stays empty and every
+    # cross-domain query falls back to the free-form path. Defensive
+    # wrapper because re-running the gateway in a single Python
+    # process (test fixtures, hot-reload) hits the
+    # DomainAlreadyRegisteredError guard — that's not fatal here.
+    try:
+        from cognithor.channels.program_synthesis.domains import (
+            DOMAIN_REGISTRY,
+            SPRINT26_DOMAIN_NAMES,
+            register_all_sprint26_domains,
+        )
+
+        if len(DOMAIN_REGISTRY) == 0:
+            register_all_sprint26_domains(DOMAIN_REGISTRY)
+            log.info(
+                "pse_sprint26_domains_registered",
+                domains=list(SPRINT26_DOMAIN_NAMES),
+            )
+        else:
+            log.debug(
+                "pse_sprint26_domains_already_registered",
+                count=len(DOMAIN_REGISTRY),
+            )
+    except Exception:
+        log.debug("pse_sprint26_domains_not_available", exc_info=True)
+
     # Browser-Use v17: Autonomous browser automation (optional)
     browser_agent = None
     try:
