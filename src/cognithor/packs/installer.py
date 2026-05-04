@@ -164,6 +164,139 @@ class PackInstaller:
         loader = PackLoader(packs_dir=self._root, cognithor_version=_LIST_VERSION)
         return loader.discover()
 
+    # ── Rollback (TRUST-4) ───────────────────────────────────────────
+
+    def _backups_root(self) -> Path:
+        """Return ``<packs_root>/.backups``. Hidden from ``PackLoader``
+        thanks to its dot-prefix skip in ``discover()``.
+        """
+        return self._root / ".backups"
+
+    def list_backups(self, qualified_id: str) -> list[str]:
+        """Return the list of versions available for rollback for
+        *qualified_id*, sorted oldest → newest.
+
+        Each version corresponds to a snapshot taken just before that
+        version was overwritten by a newer install. The currently
+        installed version is NOT included.
+
+        TRUST-4 (operational-trust audit, 2026-05-04).
+        """
+        namespace, pack_id = self._split_qid(qualified_id)
+        backup_dir = self._backups_root() / namespace / pack_id
+        if not backup_dir.exists():
+            return []
+        versions = [p.name for p in backup_dir.iterdir() if p.is_dir()]
+
+        # Best-effort version sort: split on dots, parse ints. Unknown
+        # forms fall back to lexical via a synthetic ``(-1, ...)`` key
+        # that always sorts before semver tuples.
+        def _vkey(v: str) -> tuple[int, ...]:
+            try:
+                parts = v.split("-", 1)[0].split(".")
+                return tuple(int(p) for p in parts)
+            except (ValueError, AttributeError):
+                # Sentinel: lexical hash collapsed into a leading
+                # negative slot so non-semver versions sort first.
+                return (-1, hash(v) & 0xFFFF)
+
+        return sorted(versions, key=_vkey)
+
+    def rollback(
+        self,
+        qualified_id: str,
+        *,
+        to_version: str | None = None,
+    ) -> PackManifest:
+        """Roll an installed pack back to a previously-snapshotted version.
+
+        TRUST-4 (operational-trust audit, 2026-05-04). Reviewer asked
+        for "rollback for plugin/pack updates" — until now ``cognithor
+        pack update`` was a stub with no downgrade path.
+
+        Parameters
+        ----------
+        qualified_id:
+            ``namespace/pack_id`` of the installed pack.
+        to_version:
+            Specific version to restore. Defaults to the most-recent
+            snapshot (latest version EXCLUDING the currently installed
+            one). ``ValueError`` if no snapshot is available.
+
+        Returns
+        -------
+        PackManifest
+            The manifest of the now-restored pack.
+
+        Raises
+        ------
+        PackInstallError
+            If the pack is not installed, no backups exist, or the
+            requested ``to_version`` is unavailable.
+
+        Side effect
+        -----------
+        Before restoring, the *current* version is itself snapshotted
+        (so ``rollback`` is reversible — calling it twice with no
+        arguments alternates between the two latest versions).
+        """
+        namespace, pack_id = self._split_qid(qualified_id)
+        target_dir = self._root / namespace / pack_id
+        if not target_dir.exists():
+            raise PackInstallError(
+                f"Pack {qualified_id!r} is not installed — nothing to roll back."
+            )
+
+        backups = self.list_backups(qualified_id)
+        if not backups:
+            raise PackInstallError(
+                f"No backups available for {qualified_id!r}. Backups are taken on "
+                "every upgrade — first install creates no snapshot."
+            )
+
+        if to_version is None:
+            chosen = backups[-1]  # most-recent backup
+        elif to_version not in backups:
+            raise PackInstallError(
+                f"Version {to_version!r} not available for {qualified_id!r}. Available: {backups}"
+            )
+        else:
+            chosen = to_version
+
+        backup_dir = self._backups_root() / namespace / pack_id / chosen
+        if not backup_dir.exists():
+            # Race / concurrent removal. Defensive.
+            raise PackInstallError(f"Backup directory disappeared: {backup_dir}")
+
+        # Snapshot the CURRENT install before swapping, so rollback is
+        # itself reversible.
+        try:
+            current = self._read_manifest(target_dir)
+            if current.version != chosen:
+                pre_swap = self._backups_root() / namespace / pack_id / current.version
+                if pre_swap.exists():
+                    shutil.rmtree(pre_swap)
+                pre_swap.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(target_dir, pre_swap)
+        except Exception as exc:
+            _log.warning(
+                "pack.rollback_pre_swap_backup_failed",
+                qualified_id=qualified_id,
+                error=str(exc)[:200],
+            )
+
+        # Swap.
+        shutil.rmtree(target_dir)
+        shutil.copytree(backup_dir, target_dir)
+        manifest = self._read_manifest(target_dir)
+
+        _log.info(
+            "pack.rolled_back",
+            qualified_id=qualified_id,
+            to_version=manifest.version,
+        )
+        return manifest
+
     def accept_eula(self, qualified_id: str) -> None:
         """Re-prompt and (re-)write ``.eula_accepted`` for an installed pack.
 
@@ -258,6 +391,44 @@ class PackInstaller:
                 raise PackInstallError(
                     f"EULA declined — pack {manifest.qualified_id!r} was not installed."
                 )
+
+            # --- Backup current install before overwrite (TRUST-4) ---
+            # Operational-trust audit (2026-05-04) — reviewer asked for
+            # "rollback for plugin/pack updates". Snapshot the existing
+            # install into ``<root>/.backups/<ns>/<id>/<old_version>/``
+            # so ``rollback()`` can restore it later. Skipped on first
+            # install (target_dir doesn't exist).
+            if target_dir.exists():
+                try:
+                    existing = self._read_manifest(target_dir)
+                    backup_dir = (
+                        self._backups_root()
+                        / manifest.namespace
+                        / manifest.pack_id
+                        / existing.version
+                    )
+                    if backup_dir.exists():
+                        # Same-version backup already exists (re-install
+                        # of an older version after rollback). Replace
+                        # the snapshot so the most recent state of that
+                        # version wins.
+                        shutil.rmtree(backup_dir)
+                    backup_dir.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copytree(target_dir, backup_dir)
+                    _log.info(
+                        "pack.backed_up",
+                        qualified_id=manifest.qualified_id,
+                        version=existing.version,
+                        backup_path=str(backup_dir),
+                    )
+                except Exception as exc:
+                    # Backup failure must not block the install — log
+                    # and continue. Rollback is a best-effort feature.
+                    _log.warning(
+                        "pack.backup_failed",
+                        qualified_id=manifest.qualified_id,
+                        error=str(exc)[:200],
+                    )
 
             # --- Place files ---
             if target_dir.exists():

@@ -183,3 +183,134 @@ class TestList:
         installed = installer.list_installed()
         ids = {m.pack_id for m in installed}
         assert ids == {"a", "b"}
+
+
+# ============================================================================
+# TRUST-4 — Rollback (operational-trust audit, 2026-05-04)
+# ============================================================================
+
+
+class TestRollback:
+    """``PackInstaller.rollback(qualified_id, to_version=...)`` restores
+    a previously-snapshotted version. Snapshots are taken automatically
+    on every upgrade (to ``<root>/.backups/<ns>/<id>/<old_version>/``).
+    """
+
+    def test_first_install_creates_no_backup(
+        self, tmp_path: Path, packs_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        z = _build_pack_zip(tmp_path, version="1.0.0")
+        installer = PackInstaller(packs_root=packs_root)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
+        installer.install_from_path(z)
+
+        assert installer.list_backups("cognithor-official/installed-test") == []
+
+    def test_upgrade_creates_backup_of_previous_version(
+        self, tmp_path: Path, packs_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        z1 = _build_pack_zip(tmp_path, version="1.0.0")
+        z2_dir = tmp_path / "v2"
+        z2_dir.mkdir()
+        z2 = _build_pack_zip(z2_dir, version="2.0.0")
+
+        installer = PackInstaller(packs_root=packs_root)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
+        installer.install_from_path(z1)
+        installer.install_from_path(z2)
+
+        backups = installer.list_backups("cognithor-official/installed-test")
+        assert backups == ["1.0.0"]
+
+    def test_rollback_restores_previous_version(
+        self, tmp_path: Path, packs_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        z1 = _build_pack_zip(tmp_path, version="1.0.0")
+        z2_dir = tmp_path / "v2"
+        z2_dir.mkdir()
+        z2 = _build_pack_zip(z2_dir, version="2.0.0")
+
+        installer = PackInstaller(packs_root=packs_root)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
+        installer.install_from_path(z1)
+        installer.install_from_path(z2)
+        installed = installer.list_installed()
+        assert next(m.version for m in installed if m.pack_id == "installed-test") == "2.0.0"
+
+        manifest = installer.rollback("cognithor-official/installed-test")
+        assert manifest.version == "1.0.0"
+        installed_after = installer.list_installed()
+        assert next(m.version for m in installed_after if m.pack_id == "installed-test") == "1.0.0"
+
+    def test_rollback_is_reversible(
+        self, tmp_path: Path, packs_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Calling rollback twice flips back to the newer version —
+        the swap snapshots the current install before restoring.
+        """
+        z1 = _build_pack_zip(tmp_path, version="1.0.0")
+        z2_dir = tmp_path / "v2"
+        z2_dir.mkdir()
+        z2 = _build_pack_zip(z2_dir, version="2.0.0")
+
+        installer = PackInstaller(packs_root=packs_root)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
+        installer.install_from_path(z1)
+        installer.install_from_path(z2)
+
+        installer.rollback("cognithor-official/installed-test")  # 2.0.0 → 1.0.0
+        manifest_back = installer.rollback("cognithor-official/installed-test", to_version="2.0.0")
+        assert manifest_back.version == "2.0.0"
+
+    def test_rollback_to_version_not_in_backups_raises(
+        self, tmp_path: Path, packs_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        z1 = _build_pack_zip(tmp_path, version="1.0.0")
+        z2_dir = tmp_path / "v2"
+        z2_dir.mkdir()
+        z2 = _build_pack_zip(z2_dir, version="2.0.0")
+
+        installer = PackInstaller(packs_root=packs_root)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
+        installer.install_from_path(z1)
+        installer.install_from_path(z2)
+
+        with pytest.raises(PackInstallError, match="not available"):
+            installer.rollback("cognithor-official/installed-test", to_version="9.9.9")
+
+    def test_rollback_with_no_backups_raises(
+        self, tmp_path: Path, packs_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        z = _build_pack_zip(tmp_path, version="1.0.0")
+        installer = PackInstaller(packs_root=packs_root)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
+        installer.install_from_path(z)
+
+        with pytest.raises(PackInstallError, match="No backups"):
+            installer.rollback("cognithor-official/installed-test")
+
+    def test_rollback_uninstalled_pack_raises(self, packs_root: Path) -> None:
+        installer = PackInstaller(packs_root=packs_root)
+        with pytest.raises(PackInstallError, match="not installed"):
+            installer.rollback("cognithor-official/never-installed")
+
+    def test_backup_directory_hidden_from_loader(
+        self, tmp_path: Path, packs_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``.backups/`` must NOT show up in ``list_installed`` —
+        otherwise old versions would leak into runtime registration.
+        """
+        z1 = _build_pack_zip(tmp_path, version="1.0.0")
+        z2_dir = tmp_path / "v2"
+        z2_dir.mkdir()
+        z2 = _build_pack_zip(z2_dir, version="2.0.0")
+
+        installer = PackInstaller(packs_root=packs_root)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
+        installer.install_from_path(z1)
+        installer.install_from_path(z2)
+
+        assert (packs_root / ".backups").is_dir()
+        installed = installer.list_installed()
+        assert len(installed) == 1
+        assert installed[0].version == "2.0.0"

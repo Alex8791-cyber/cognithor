@@ -123,8 +123,14 @@ class PackLoader:
         for namespace_dir in sorted(self._root.iterdir()):
             if not namespace_dir.is_dir():
                 continue
+            # Skip dot-prefixed directories (TRUST-4: ``.backups/`` etc.
+            # are PackInstaller bookkeeping, not user-visible packs).
+            if namespace_dir.name.startswith("."):
+                continue
             for pack_dir in sorted(namespace_dir.iterdir()):
                 if not pack_dir.is_dir():
+                    continue
+                if pack_dir.name.startswith("."):
                     continue
                 manifest = self._validate_pack(pack_dir)
                 if manifest is not None:
