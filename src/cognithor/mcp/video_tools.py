@@ -38,6 +38,11 @@ from cognithor.video import (
     RenderRequest,
     renderer_registry,
 )
+from cognithor.video.skills import (
+    caption_overlay,
+    compose_explainer,
+    compose_social_cut,
+)
 
 if TYPE_CHECKING:
     from cognithor.mcp.server import JarvisMCPServer
@@ -325,6 +330,103 @@ async def _video_render_handler(
 
 
 # ---------------------------------------------------------------------------
+# Skill-layer handlers (HF-5) — pure-function presets
+# ---------------------------------------------------------------------------
+
+
+def _compose_spec_to_html(spec: dict[str, Any]) -> dict[str, Any]:
+    """Shared tail for all HF-5 skills: HTML-emit + size-cap check."""
+
+    html = compose_html(spec)
+    if len(html.encode("utf-8")) > _MAX_HTML_TEXT_BYTES:
+        return {
+            "ok": False,
+            "error": (
+                f"composed HTML exceeds {_MAX_HTML_TEXT_BYTES // 1024} KB cap "
+                "— split into multiple scenes or pre-render assets"
+            ),
+        }
+    return {
+        "ok": True,
+        "html": html,
+        "byte_size": len(html.encode("utf-8")),
+        "spec": spec,
+    }
+
+
+async def _video_compose_explainer_handler(
+    title: str,
+    sections: list[Any] | None = None,
+    cta: str | None = None,
+    width: int = 1920,
+    height: int = 1080,
+    composition_id: str = "explainer",
+    run_id: str | None = None,
+) -> dict[str, Any]:
+    """``video_compose_explainer`` — title + body sections + optional CTA."""
+
+    if not isinstance(title, str) or not title.strip():
+        return {"ok": False, "error": "title is required"}
+    spec = compose_explainer(
+        title=title,
+        sections=sections,
+        cta=cta,
+        width=int(width),
+        height=int(height),
+        composition_id=composition_id,
+    )
+    out = _compose_spec_to_html(spec)
+    if run_id is not None:
+        out["run_id"] = run_id
+    return out
+
+
+async def _video_compose_social_cut_handler(
+    hook: str,
+    beats: list[Any] | None = None,
+    outro: str | None = None,
+    width: int = 1080,
+    height: int = 1920,
+    composition_id: str = "social-cut",
+    run_id: str | None = None,
+) -> dict[str, Any]:
+    """``video_compose_social_cut`` — vertical 9:16 short with fast cuts."""
+
+    if not isinstance(hook, str) or not hook.strip():
+        return {"ok": False, "error": "hook is required"}
+    spec = compose_social_cut(
+        hook=hook,
+        beats=beats,
+        outro=outro,
+        width=int(width),
+        height=int(height),
+        composition_id=composition_id,
+    )
+    out = _compose_spec_to_html(spec)
+    if run_id is not None:
+        out["run_id"] = run_id
+    return out
+
+
+async def _video_caption_overlay_handler(
+    base_spec: dict[str, Any],
+    captions: list[Any],
+    run_id: str | None = None,
+) -> dict[str, Any]:
+    """``video_caption_overlay`` — glue captions onto an existing spec."""
+
+    if not isinstance(base_spec, dict):
+        return {"ok": False, "error": "base_spec must be a JSON object"}
+    if not isinstance(captions, list):
+        return {"ok": False, "error": "captions must be a list of strings"}
+    spec = caption_overlay(base_spec=base_spec, captions=captions)
+    out = _compose_spec_to_html(spec)
+    if run_id is not None:
+        out["run_id"] = run_id
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Registration — called by the MCP server bootstrapping
 # ---------------------------------------------------------------------------
 
@@ -405,8 +507,107 @@ _VIDEO_RENDER_INPUT_SCHEMA: dict[str, Any] = {
 }
 
 
+_VIDEO_COMPOSE_EXPLAINER_INPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "title": {
+            "type": "string",
+            "description": "Headline rendered on the title card (scene 0).",
+        },
+        "sections": {
+            "type": "array",
+            "description": (
+                "List of body sections. Each item may be a string "
+                "(used as caption) or an object with keys "
+                "'caption' and/or 'image_url' (local-asset path)."
+            ),
+            "items": {
+                "anyOf": [
+                    {"type": "string"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "caption": {"type": "string"},
+                            "image_url": {"type": "string"},
+                        },
+                    },
+                ],
+            },
+        },
+        "cta": {
+            "type": "string",
+            "description": "Optional call-to-action shown as the final scene.",
+        },
+        "width": {"type": "integer", "minimum": 16, "maximum": 7680, "default": 1920},
+        "height": {"type": "integer", "minimum": 16, "maximum": 4320, "default": 1080},
+        "composition_id": {"type": "string", "default": "explainer"},
+        "run_id": {"type": "string"},
+    },
+    "required": ["title"],
+}
+
+_VIDEO_COMPOSE_SOCIAL_CUT_INPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "hook": {
+            "type": "string",
+            "description": "Opening hook line (1-2 seconds, big caption).",
+        },
+        "beats": {
+            "type": "array",
+            "description": (
+                "List of fast-cut beats. Each item may be a string "
+                "(caption) or an object with keys 'caption' and/or "
+                "'image_url'. Capped at 8 beats for short-form pacing."
+            ),
+            "items": {
+                "anyOf": [
+                    {"type": "string"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "caption": {"type": "string"},
+                            "image_url": {"type": "string"},
+                        },
+                    },
+                ],
+            },
+        },
+        "outro": {
+            "type": "string",
+            "description": "Optional closing line (CTA / sign-off).",
+        },
+        "width": {"type": "integer", "minimum": 16, "maximum": 7680, "default": 1080},
+        "height": {"type": "integer", "minimum": 16, "maximum": 4320, "default": 1920},
+        "composition_id": {"type": "string", "default": "social-cut"},
+        "run_id": {"type": "string"},
+    },
+    "required": ["hook"],
+}
+
+_VIDEO_CAPTION_OVERLAY_INPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "base_spec": {
+            "type": "object",
+            "description": ("Base composition spec (same shape as video_compose's spec)."),
+        },
+        "captions": {
+            "type": "array",
+            "description": (
+                "Parallel caption track — captions[i] applies to scene i. "
+                "Empty / non-string entries leave the existing caption untouched."
+            ),
+            "items": {"type": "string"},
+        },
+        "run_id": {"type": "string"},
+    },
+    "required": ["base_spec", "captions"],
+}
+
+
 def register_video_tools(server: JarvisMCPServer) -> None:
-    """Register ``video_compose`` + ``video_render`` on a running MCP server."""
+    """Register video composition + render MCP tools on a running server."""
 
     from cognithor.mcp.server import MCPToolDef  # local import to avoid cycles
 
@@ -445,4 +646,61 @@ def register_video_tools(server: JarvisMCPServer) -> None:
             },
         ),
     )
-    log.info("video_tools_registered", tools=["video_compose", "video_render"])
+    server.register_tool(
+        MCPToolDef(
+            name="video_compose_explainer",
+            description=(
+                "Title card + body sections + optional CTA in 16:9. "
+                "GREEN risk level — pure-function preset over video_compose."
+            ),
+            input_schema=_VIDEO_COMPOSE_EXPLAINER_INPUT_SCHEMA,
+            handler=_video_compose_explainer_handler,
+            annotations={
+                "risk_level": "green",
+                "category": "video",
+                "supports_streaming": False,
+            },
+        ),
+    )
+    server.register_tool(
+        MCPToolDef(
+            name="video_compose_social_cut",
+            description=(
+                "Vertical 9:16 short with hook + fast-cut beats + outro. "
+                "GREEN risk level — pure-function preset over video_compose."
+            ),
+            input_schema=_VIDEO_COMPOSE_SOCIAL_CUT_INPUT_SCHEMA,
+            handler=_video_compose_social_cut_handler,
+            annotations={
+                "risk_level": "green",
+                "category": "video",
+                "supports_streaming": False,
+            },
+        ),
+    )
+    server.register_tool(
+        MCPToolDef(
+            name="video_caption_overlay",
+            description=(
+                "Glue a parallel caption track onto an existing composition spec. "
+                "GREEN risk level — pure-function transform; emits new HTML."
+            ),
+            input_schema=_VIDEO_CAPTION_OVERLAY_INPUT_SCHEMA,
+            handler=_video_caption_overlay_handler,
+            annotations={
+                "risk_level": "green",
+                "category": "video",
+                "supports_streaming": False,
+            },
+        ),
+    )
+    log.info(
+        "video_tools_registered",
+        tools=[
+            "video_compose",
+            "video_render",
+            "video_compose_explainer",
+            "video_compose_social_cut",
+            "video_caption_overlay",
+        ],
+    )
