@@ -33,6 +33,8 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from cognithor.models import FailureMode
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -108,6 +110,11 @@ class AuditEntry:
     # Empty for entries logged outside a run scope (boot-time, scheduler,
     # GC). ``AuditLogger.run_receipt(session_id)`` aggregates by this.
     session_id: str = ""
+    # TRUST-3: structured failure-mode classification (operational-trust
+    # audit, 2026-05-04). ``None`` for successful entries; a
+    # ``FailureMode`` enum value otherwise. Aggregated by
+    # ``AuditLogger.failures_by_mode``.
+    failure_mode: FailureMode | None = None
     # SEC-HIGH-5: SHA-256 of the previous entry's canonical JSON.
     # Empty for the first entry written to a freshly-rotated log file.
     prev_hash: str = ""
@@ -128,6 +135,7 @@ class AuditEntry:
             "duration_ms": self.duration_ms,
             "contains_pii": self.contains_pii,
             "session_id": self.session_id,
+            "failure_mode": self.failure_mode.value if self.failure_mode else None,
             "prev_hash": self.prev_hash,
         }
 
@@ -821,6 +829,93 @@ class AuditLogger:
             return False, errors
 
         return len(errors) == 0, errors
+
+    # ── Failure-Mode classification + aggregator (TRUST-3) ─────────
+
+    @staticmethod
+    def classify_failure(entry: AuditEntry) -> FailureMode | None:
+        """Map an audit entry to a structured ``FailureMode``.
+
+        TRUST-3 (operational-trust audit, 2026-05-04). Reviewer asked
+        for "failure-mode classification" so an operator can answer
+        *what kind of thing went wrong* without parsing free-text.
+
+        Returns ``None`` for successful entries. For failures, walks
+        a deterministic decision-tree over the existing fields
+        (``category``, ``action``, ``description``) and falls back to
+        ``FailureMode.UNKNOWN`` when nothing matches — that's the
+        signal that a new enum value is needed.
+
+        Pure function. Callers can pre-set ``entry.failure_mode``
+        explicitly (more reliable); when None this classifier infers.
+        """
+        if entry.success:
+            return None
+        if entry.failure_mode is not None:
+            return entry.failure_mode
+
+        action = entry.action or ""
+        description = (entry.description or "").lower()
+
+        # Category-driven routing first — most reliable signal.
+        if entry.category == AuditCategory.GATEKEEPER:
+            if "approve" in description or "approval" in description:
+                return FailureMode.GATEKEEPER_APPROVAL_DENIED
+            return FailureMode.GATEKEEPER_BLOCK
+
+        if entry.category == AuditCategory.SECURITY:
+            if "sandbox" in description:
+                return FailureMode.SANDBOX_REFUSED
+            if "auth" in description or "credential" in description:
+                return FailureMode.AUTH_ERROR
+            return FailureMode.GATEKEEPER_BLOCK
+
+        if entry.category == AuditCategory.NETWORK:
+            return FailureMode.NETWORK_ERROR
+
+        if entry.category == AuditCategory.TOOL_CALL:
+            if "timeout" in description or action.endswith("timeout"):
+                return FailureMode.TOOL_TIMEOUT
+            if "not found" in description or "no such tool" in description:
+                return FailureMode.TOOL_NOT_FOUND
+            if "invalid" in description and ("param" in description or "argument" in description):
+                return FailureMode.TOOL_INVALID_PARAMS
+            if "sandbox" in description or "refused" in description:
+                return FailureMode.SANDBOX_REFUSED
+            if "quota" in description or "rate limit" in description:
+                return FailureMode.QUOTA_EXCEEDED
+            return FailureMode.TOOL_INTERNAL_ERROR
+
+        return FailureMode.UNKNOWN
+
+    def failures_by_mode(
+        self,
+        *,
+        hours: int = 24,
+    ) -> dict[str, int]:
+        """Aggregate failure counts by ``FailureMode`` for the last
+        *hours* hours.
+
+        Returns a dict keyed by the FailureMode enum value (string),
+        sorted descending by count for stable display order. Empty
+        dict means "no failures in the window" — the operator can
+        treat this as a success signal.
+        """
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
+        counts: dict[str, int] = {}
+        for entry in self._entries:
+            try:
+                ts = datetime.fromisoformat(entry.timestamp)
+            except (ValueError, TypeError):
+                continue
+            if ts < cutoff:
+                continue
+            mode = self.classify_failure(entry)
+            if mode is None:
+                continue
+            key = mode.value
+            counts[key] = counts.get(key, 0) + 1
+        return dict(sorted(counts.items(), key=lambda kv: kv[1], reverse=True))
 
     # ── Run-Receipt (TRUST-1) ───────────────────────────────────────
 

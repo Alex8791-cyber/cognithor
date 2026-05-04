@@ -118,6 +118,50 @@ class SandboxLevel(StrEnum):
     JOBOBJECT = "jobobject"  # Windows Job Objects
 
 
+class FailureMode(StrEnum):
+    """Operational failure-mode classification (TRUST-3, 2026-05-04).
+
+    Reddit reviewer asked for a structured failure-mode enum so an
+    operator can answer "what *kind* of thing went wrong?" without
+    parsing free-text error messages. Every distinct failure path
+    surfaced by the system maps to one of these classes; the audit
+    aggregator counts by mode for trend analysis per pack / channel /
+    tool.
+
+    Stable string values — bumping requires a schema-version bump on
+    receipts that include this field.
+    """
+
+    # Planning-layer failures (Planner → ActionPlan)
+    PLAN_PARSE_FAILED = "plan_parse_failed"
+    PLAN_LLM_ERROR = "plan_llm_error"
+    PLAN_TIMEOUT = "plan_timeout"
+
+    # Gatekeeper-layer failures
+    GATEKEEPER_BLOCK = "gatekeeper_block"
+    GATEKEEPER_APPROVAL_DENIED = "gatekeeper_approval_denied"
+
+    # Tool / Executor failures
+    TOOL_TIMEOUT = "tool_timeout"
+    TOOL_NOT_FOUND = "tool_not_found"
+    TOOL_INVALID_PARAMS = "tool_invalid_params"
+    TOOL_INTERNAL_ERROR = "tool_internal_error"
+    SANDBOX_REFUSED = "sandbox_refused"
+
+    # External / environmental
+    NETWORK_ERROR = "network_error"
+    AUTH_ERROR = "auth_error"
+    QUOTA_EXCEEDED = "quota_exceeded"
+
+    # Higher-order failures (require LLM-level reasoning)
+    LLM_HALLUCINATION = "llm_hallucination"
+    LLM_REFUSAL = "llm_refusal"
+
+    # Catch-all — only when none of the above fits. Aggregator should
+    # surface any non-trivial counts here as "needs new enum value".
+    UNKNOWN = "unknown"
+
+
 # ============================================================================
 # Nachrichten (E3: Alles ist eine Message)
 # ============================================================================
