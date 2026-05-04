@@ -51,7 +51,24 @@ class _CapturingClient:
         self._captured = captured
         self.is_closed = False
 
-    async def post(self, url: str, json: dict[str, Any]) -> Any:
+    async def post(self, url: str, json: dict[str, Any], **kwargs: Any) -> Any:
+        # Skip the TRUST-7 /api/show fingerprint probe so the chat()
+        # call's own POST is the one captured. The probe passes
+        # ``timeout=`` which ``_CapturingClient`` previously rejected.
+        if url == "/api/show":
+
+            class _ShowResp:
+                status_code = 200
+                text = ""
+
+                def raise_for_status(self) -> None:
+                    return None
+
+                def json(self) -> dict[str, Any]:
+                    return {}
+
+            return _ShowResp()
+
         self._captured["url"] = url
         self._captured["payload"] = json
 
@@ -90,7 +107,7 @@ class _CapturingClient:
 
         return _Resp()
 
-    def stream(self, _method: str, url: str, json: dict[str, Any]) -> Any:
+    def stream(self, _method: str, url: str, json: dict[str, Any], **kwargs: Any) -> Any:
         captured = self._captured
         captured["payload"] = json
         # Decide line shape from the URL: Ollama uses /api/chat
