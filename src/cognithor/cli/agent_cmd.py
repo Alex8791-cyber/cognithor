@@ -82,3 +82,30 @@ async def _run(plan: object, emitter: EventEmitter) -> int:
         return await run_plan(plan, emitter)  # type: ignore[arg-type]
     finally:
         await emitter.stop()
+
+
+def cmd_ws(*, bind: str, port: int) -> int:
+    """Run ``cognithor agent ws`` until SIGINT.
+
+    Reads the bearer token (creating it if missing), starts the
+    WebSocket server, and runs forever. Exit codes:
+
+    * ``0`` — clean shutdown via SIGINT/Ctrl-C
+    * ``1`` — server-level startup failure
+    * ``2`` — bad command-line arguments
+    """
+
+    if port < 1 or port > 65535:
+        print(f"cognithor agent ws: invalid port {port}", file=sys.stderr)
+        return 2
+
+    from cognithor.streaming.server import serve
+
+    try:
+        asyncio.run(serve(bind=bind, port=port))
+    except KeyboardInterrupt:
+        return 0
+    except OSError as exc:
+        print(f"cognithor agent ws: bind failed: {exc}", file=sys.stderr)
+        return 1
+    return 0
