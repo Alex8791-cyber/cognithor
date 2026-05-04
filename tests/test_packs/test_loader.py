@@ -264,3 +264,43 @@ class TestPackLoaderMigrationBackfill:
             )
         finally:
             mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
+
+
+class TestPackManifestSchemaFingerprint:
+    """TRUST-7 SCHEMA-kind capture: PackLoader construction registers
+    a SCHEMA fingerprint of PackManifest.model_json_schema().
+    """
+
+    def test_construction_registers_schema_fingerprint(self, packs_dir: Path) -> None:
+        import cognithor.security.fingerprint as fp_mod
+        from cognithor.security.fingerprint import BinaryKind, FingerprintLedger
+
+        isolated = FingerprintLedger()
+        original = fp_mod.FINGERPRINT_LEDGER
+        fp_mod.FINGERPRINT_LEDGER = isolated  # type: ignore[misc]
+        try:
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            history = isolated.history("pack_manifest_schema")
+            assert len(history) == 1
+            fp = history[0]
+            assert fp.kind == BinaryKind.SCHEMA
+            assert fp.version == "v1"
+            assert len(fp.content_hash) == 64
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    def test_multiple_constructions_share_one_fingerprint(self, packs_dir: Path) -> None:
+        import cognithor.security.fingerprint as fp_mod
+        from cognithor.security.fingerprint import FingerprintLedger
+
+        isolated = FingerprintLedger()
+        original = fp_mod.FINGERPRINT_LEDGER
+        fp_mod.FINGERPRINT_LEDGER = isolated  # type: ignore[misc]
+        try:
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            PackLoader(packs_dir=packs_dir, cognithor_version="0.92.0")
+            # Same content_hash → ledger de-dups, exactly one entry.
+            assert len(isolated.history("pack_manifest_schema")) == 1
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
