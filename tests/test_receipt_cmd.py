@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from cognithor.audit import AuditLogger
-from cognithor.cli.receipt_cmd import cmd_list, cmd_show, cmd_verify
+from cognithor.cli.receipt_cmd import cmd_export_all, cmd_list, cmd_show, cmd_verify
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -284,3 +284,98 @@ class TestCmdList:
         out = capsys.readouterr().out
         assert "run-A" in out
         assert "run-B" in out
+
+
+class TestCmdExportAll:
+    def test_missing_log_dir_returns_2(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        rc = cmd_export_all(
+            log_dir=tmp_path / "no_such_dir",
+            out_dir=tmp_path / "out",
+        )
+        assert rc == 2
+        assert "log-dir" in capsys.readouterr().err
+
+    def test_exports_one_file_per_session(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        log_dir = tmp_path / "audit"
+        out_dir = tmp_path / "out"
+        _write_audit_jsonl(
+            log_dir,
+            rows=[
+                {"session_id": "run-A", "timestamp": "2026-05-04T10:00:00Z"},
+                {"session_id": "run-B", "timestamp": "2026-05-04T11:00:00Z"},
+                {"session_id": "run-A", "timestamp": "2026-05-04T10:00:05Z"},
+            ],
+        )
+        rc = cmd_export_all(log_dir=log_dir, out_dir=out_dir)
+        assert rc == 0
+        # One JSON per session_id + manifest.json.
+        files = sorted(p.name for p in out_dir.iterdir())
+        assert "run-A.json" in files
+        assert "run-B.json" in files
+        assert "manifest.json" in files
+        # Manifest lists both sessions.
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["count"] == 2
+        sids = {entry["session_id"] for entry in manifest["sessions"]}
+        assert sids == {"run-A", "run-B"}
+        assert "exported 2 session" in capsys.readouterr().out
+
+    def test_unscoped_bucketed_under_filename(self, tmp_path: Path) -> None:
+        log_dir = tmp_path / "audit"
+        out_dir = tmp_path / "out"
+        _write_audit_jsonl(
+            log_dir,
+            rows=[
+                {"timestamp": "2026-05-04T10:00:00Z"},
+                {"session_id": "run-A", "timestamp": "2026-05-04T11:00:00Z"},
+            ],
+        )
+        rc = cmd_export_all(log_dir=log_dir, out_dir=out_dir)
+        assert rc == 0
+        assert (out_dir / "_unscoped.json").exists()
+        assert (out_dir / "run-A.json").exists()
+
+    def test_signing_key_signs_every_receipt(self, tmp_path: Path) -> None:
+        log_dir = tmp_path / "audit"
+        out_dir = tmp_path / "out"
+        _write_audit_jsonl(
+            log_dir,
+            rows=[
+                {"session_id": "run-A", "timestamp": "2026-05-04T10:00:00Z"},
+                {"session_id": "run-B", "timestamp": "2026-05-04T11:00:00Z"},
+            ],
+        )
+        rc = cmd_export_all(log_dir=log_dir, out_dir=out_dir, signing_key="hunter2")
+        assert rc == 0
+        for sid in ("run-A", "run-B"):
+            bundle = json.loads((out_dir / f"{sid}.json").read_text(encoding="utf-8"))
+            assert bundle["signature"]
+            assert AuditLogger.verify_receipt_signature(bundle, "hunter2") is True
+
+    def test_include_trust_folds_bundle(self, tmp_path: Path) -> None:
+        log_dir = tmp_path / "audit"
+        out_dir = tmp_path / "out"
+        _write_audit_jsonl(
+            log_dir,
+            rows=[
+                {"session_id": "run-A", "timestamp": "2026-05-04T10:00:00Z"},
+            ],
+        )
+        rc = cmd_export_all(log_dir=log_dir, out_dir=out_dir, include_trust=True)
+        assert rc == 0
+        bundle = json.loads((out_dir / "run-A.json").read_text(encoding="utf-8"))
+        assert "trust" in bundle
+
+    def test_empty_audit_log_writes_zero_session_manifest(self, tmp_path: Path) -> None:
+        log_dir = tmp_path / "audit"
+        log_dir.mkdir()
+        out_dir = tmp_path / "out"
+        rc = cmd_export_all(log_dir=log_dir, out_dir=out_dir)
+        assert rc == 0
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["count"] == 0
+        assert manifest["sessions"] == []

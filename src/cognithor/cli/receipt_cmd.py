@@ -115,6 +115,97 @@ def cmd_verify(*, bundle_path: Path, signing_key: str) -> int:
     return 1
 
 
+def cmd_export_all(
+    *,
+    log_dir: Path,
+    out_dir: Path,
+    include_trust: bool = False,
+    signing_key: str | None = None,
+) -> int:
+    """Export one signed receipt JSON per session_id under ``out_dir``.
+
+    Walks the same audit_*.jsonl files :func:`cmd_list` enumerates,
+    then emits one ``<session_id>.json`` per session. Sessions
+    without an explicit ``session_id`` bucket under ``_unscoped.json``.
+    Files are written with deterministic JSON formatting so a later
+    diff can spot post-export tampering.
+
+    Parameters
+    ----------
+    log_dir:
+        Directory holding ``audit_*.jsonl``. Required.
+    out_dir:
+        Target directory for receipt files. Created if missing.
+        Existing files in the directory are overwritten without
+        prompt — this is a bulk-export, not an incremental sync.
+    include_trust:
+        Fold the TRUST-5..10 ledger bundle into each receipt.
+    signing_key:
+        Optional HMAC-SHA-256 signing key applied to every emitted
+        receipt.
+
+    Returns
+    -------
+    0 on success, 2 on bad arguments. Empty audit log writes a
+    ``manifest.json`` listing zero sessions and returns 0.
+    """
+    if not log_dir or not log_dir.exists():
+        print("error: --log-dir must point to an existing directory", file=sys.stderr)
+        return 2
+
+    sessions: set[str] = set()
+    for jsonl in sorted(log_dir.glob("audit_*.jsonl")):
+        try:
+            for raw in jsonl.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(data, dict):
+                    sessions.add(str(data.get("session_id", "")))
+        except OSError:
+            continue
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    logger = AuditLogger(log_dir=log_dir)
+    manifest: list[dict[str, Any]] = []
+    for sid in sorted(sessions):
+        bundle = logger.run_receipt(
+            sid,
+            signing_key=signing_key,
+            include_trust=include_trust,
+        )
+        filename = (sid or "_unscoped").replace("/", "_").replace("\\", "_")
+        out_path = out_dir / f"{filename}.json"
+        payload = json.dumps(bundle, indent=2, ensure_ascii=False, sort_keys=True)
+        out_path.write_text(payload, encoding="utf-8")
+        manifest.append(
+            {
+                "session_id": sid,
+                "file": out_path.name,
+                "entry_count": int(bundle.get("entry_count", 0)),
+                "signed": bool(bundle.get("signature")),
+                "include_trust": include_trust,
+            }
+        )
+
+    manifest_path = out_dir / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {"sessions": manifest, "count": len(manifest)},
+            indent=2,
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    print(f"exported {len(manifest)} session(s) to {out_dir}")
+    return 0
+
+
 def cmd_list(
     *,
     log_dir: Path | None = None,
@@ -193,4 +284,4 @@ def cmd_list(
     return 0
 
 
-__all__ = ["cmd_list", "cmd_show", "cmd_verify"]
+__all__ = ["cmd_export_all", "cmd_list", "cmd_show", "cmd_verify"]
