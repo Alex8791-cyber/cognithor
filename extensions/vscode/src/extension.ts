@@ -16,6 +16,7 @@
  */
 
 import * as vscode from "vscode";
+import { registerCostGutter } from "./cost_gutter";
 import { registerDecisionHover } from "./decision_hover";
 import { McpBridge, readBridgeConfig } from "./mcp_bridge";
 import { ReceiptTreeProvider, ReceiptViewer } from "./receipt_view";
@@ -176,6 +177,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Decision-Explanation hover provider (PR-H)
   // --------------------------------------------------------------------
   registerDecisionHover(context);
+
+  // --------------------------------------------------------------------
+  // Cost-budget gutter decoration (PR-I)
+  // --------------------------------------------------------------------
+  registerCostGutter(context);
 }
 
 async function pickPlanFile(): Promise<vscode.Uri | undefined> {
