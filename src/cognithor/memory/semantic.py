@@ -191,6 +191,9 @@ class SemanticMemory:
         attributes: dict[str, Any] | None = None,
         source_file: str = "",
         confidence: float = 1.0,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
     ) -> Relation | None:
         """Erstellt eine neue Relation zwischen zwei Entitaeten.
 
@@ -198,6 +201,19 @@ class SemanticMemory:
             source_id: Quell-Entity ID.
             relation_type: Beziehungstyp (z.B. "hat_police", "arbeitet_bei").
             target_id: Ziel-Entity ID.
+            attributes: Optional attribute payload.
+            source_file: Source file the relation was extracted from.
+            confidence: 0..1 confidence score.
+            provenance_source_type: Optional TRUST-9 ``SourceType``
+                value. When set together with
+                ``provenance_source_id``, a tag is written to the
+                canonical ``PROVENANCE_LEDGER`` keyed by the new
+                relation's id.
+            provenance_source_id: Stable upstream id (audit-log
+                entry id, message id, …). Required when
+                ``provenance_source_type`` is set.
+            provenance_notes: Short audit-log breadcrumb. MUST NOT
+                contain prompt or response content.
 
         Returns:
             Die erstellte Relation oder None wenn Entitaeten nicht existieren.
@@ -225,6 +241,14 @@ class SemanticMemory:
             relation_type,
             target_id[:8],
         )
+        if provenance_source_type and provenance_source_id:
+            self._tag_provenance(
+                item_id=relation.id,
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                confidence=confidence,
+                notes=provenance_notes,
+            )
         return relation
 
     def get_relations(

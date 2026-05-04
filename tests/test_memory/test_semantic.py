@@ -214,3 +214,129 @@ class TestSemanticMemoryProvenance:
             assert e2.id not in isolated
         finally:
             prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+
+class TestSemanticRelationProvenance:
+    """TRUST-9 wiring: ``add_relation`` accepts ``provenance_source_type``
+    + ``provenance_source_id`` and tags the canonical PROVENANCE_LEDGER
+    keyed by the new relation's id.
+    """
+
+    def test_add_relation_without_provenance_does_not_tag(self, sem: SemanticMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        e1 = sem.add_entity("A", "person")
+        e2 = sem.add_entity("B", "person")
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            rel = sem.add_relation(e1.id, "kennt", e2.id)
+            assert rel is not None
+            assert rel.id not in isolated
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_add_relation_with_provenance_tags_ledger(self, sem: SemanticMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        e1 = sem.add_entity("A", "person")
+        e2 = sem.add_entity("B", "person")
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            rel = sem.add_relation(
+                e1.id,
+                "arbeitet_bei",
+                e2.id,
+                confidence=0.9,
+                provenance_source_type="agent_inference",
+                provenance_source_id="run-77",
+                provenance_notes="extracted by NER chain",
+            )
+            assert rel is not None
+            tag = isolated.current(rel.id)
+            assert tag is not None
+            assert tag.source_type == SourceType.AGENT_INFERENCE
+            assert tag.source_id == "run-77"
+            assert tag.confidence == 0.9
+            assert tag.notes == "extracted by NER chain"
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_add_relation_unknown_source_type_falls_back(self, sem: SemanticMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        e1 = sem.add_entity("A", "person")
+        e2 = sem.add_entity("B", "person")
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            rel = sem.add_relation(
+                e1.id,
+                "kennt",
+                e2.id,
+                provenance_source_type="not_a_real_source",
+                provenance_source_id="x",
+            )
+            assert rel is not None
+            tag = isolated.current(rel.id)
+            assert tag is not None
+            assert tag.source_type == SourceType.UNKNOWN
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_add_relation_returns_none_when_entity_missing_skips_tag(
+        self, sem: SemanticMemory
+    ) -> None:
+        # If add_relation returns None (because an entity is missing),
+        # nothing should land in the ledger — the tag belongs to a
+        # relation that was never created.
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        e1 = sem.add_entity("A", "person")
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            rel = sem.add_relation(
+                e1.id,
+                "kennt",
+                "missing-id",
+                provenance_source_type="agent_inference",
+                provenance_source_id="run-77",
+            )
+            assert rel is None
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_partial_relation_provenance_args_skip_tag(self, sem: SemanticMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        e1 = sem.add_entity("A", "person")
+        e2 = sem.add_entity("B", "person")
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            r1 = sem.add_relation(e1.id, "kennt", e2.id, provenance_source_type="agent_inference")
+            r2 = sem.add_relation(e1.id, "kennt", e2.id, provenance_source_id="run-77")
+            assert r1 is not None
+            assert r2 is not None
+            assert r1.id not in isolated
+            assert r2.id not in isolated
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
