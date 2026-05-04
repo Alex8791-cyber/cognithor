@@ -576,6 +576,70 @@ class TestFailureModeClassification:
         d = entry.to_dict()
         assert d["failure_mode"] is None
 
+    # ── TRUST-5..10 failure-mode taxonomy ─────────────────────────
+
+    def test_permission_scope_denied_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_gatekeeper(
+            "BLOCK",
+            "Scope channel='telegram' blocks 'shell': permission_scope denylist",
+            tool_name="shell",
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.PERMISSION_SCOPE_DENIED
+
+    def test_budget_exceeded_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_gatekeeper(
+            "BLOCK",
+            "budget_exceeded: cost limit 0.50 USD reached",
+            tool_name="anthropic:claude",
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.BUDGET_EXCEEDED
+
+    def test_fingerprint_drift_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_security(
+            "fingerprint drift detected: web_fetch has 2 distinct SHA-256 values",
+            blocked=True,
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.FINGERPRINT_DRIFT
+
+    def test_cloud_escalation_rejected_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_security(
+            "cloud escalation rejected: owner consent required for cross-region call",
+            blocked=True,
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.CLOUD_ESCALATION_REJECTED
+
+    def test_provenance_expired_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_security(
+            "provenance expired: TTL tag past valid_until on item-7",
+            blocked=True,
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.PROVENANCE_EXPIRED
+
+    def test_migration_chain_error_classified(self) -> None:
+        from cognithor.models import FailureMode
+
+        logger = AuditLogger()
+        entry = logger.log_security(
+            "migration chain mismatch on audit_log: head v2 vs source v1",
+            blocked=True,
+        )
+        assert AuditLogger.classify_failure(entry) == FailureMode.MIGRATION_CHAIN_ERROR
+
 
 # ============================================================================
 # TRUST-1 — Run-Receipts (operational-trust audit, 2026-05-04)

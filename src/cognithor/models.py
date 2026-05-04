@@ -157,6 +157,14 @@ class FailureMode(StrEnum):
     LLM_HALLUCINATION = "llm_hallucination"
     LLM_REFUSAL = "llm_refusal"
 
+    # Operational-trust failures (TRUST-5..10, added 2026-05-04)
+    PERMISSION_SCOPE_DENIED = "permission_scope_denied"  # TRUST-5
+    BUDGET_EXCEEDED = "budget_exceeded"  # TRUST-6
+    FINGERPRINT_DRIFT = "fingerprint_drift"  # TRUST-7 — same name, different SHA
+    CLOUD_ESCALATION_REJECTED = "cloud_escalation_rejected"  # TRUST-8
+    PROVENANCE_EXPIRED = "provenance_expired"  # TRUST-9 — TTL-tagged item past valid_until
+    MIGRATION_CHAIN_ERROR = "migration_chain_error"  # TRUST-10 — head/source mismatch
+
     # Catch-all — only when none of the above fits. Aggregator should
     # surface any non-trivial counts here as "needs new enum value".
     UNKNOWN = "unknown"

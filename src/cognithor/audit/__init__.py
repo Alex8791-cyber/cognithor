@@ -902,11 +902,38 @@ class AuditLogger:
 
         # Category-driven routing first — most reliable signal.
         if entry.category == AuditCategory.GATEKEEPER:
+            # TRUST-5..6 hooks: distinguish scope / budget blocks
+            # from generic gatekeeper blocks before falling through.
+            if (
+                "permission_scope" in description
+                or "scope=" in description
+                or "scope " in description
+            ):
+                return FailureMode.PERMISSION_SCOPE_DENIED
+            if (
+                "budget" in description
+                or "cost limit" in description
+                or "budget_exceeded" in description
+            ):
+                return FailureMode.BUDGET_EXCEEDED
             if "approve" in description or "approval" in description:
                 return FailureMode.GATEKEEPER_APPROVAL_DENIED
             return FailureMode.GATEKEEPER_BLOCK
 
         if entry.category == AuditCategory.SECURITY:
+            # TRUST-7..10 surfaces — match before the catch-all so a
+            # SECURITY-categorised entry with the right keyword gets
+            # the structured failure mode.
+            if "fingerprint" in description and (
+                "drift" in description or "diverg" in description or "mismatch" in description
+            ):
+                return FailureMode.FINGERPRINT_DRIFT
+            if "escalation" in description and ("reject" in description or "denied" in description):
+                return FailureMode.CLOUD_ESCALATION_REJECTED
+            if "provenance" in description and ("expired" in description or "stale" in description):
+                return FailureMode.PROVENANCE_EXPIRED
+            if "migration" in description and ("chain" in description or "mismatch" in description):
+                return FailureMode.MIGRATION_CHAIN_ERROR
             if "sandbox" in description:
                 return FailureMode.SANDBOX_REFUSED
             if "auth" in description or "credential" in description:
