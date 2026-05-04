@@ -287,6 +287,11 @@ class OllamaBackend(LLMBackend):
         num_ctx: int | None = None,
     ) -> ChatResponse:
         client = await self._ensure_client()
+        # TRUST-7: lazy fingerprint capture on first use of each
+        # model. Idempotent + cached on the backend instance, so
+        # subsequent chat() calls don't pay the /api/show cost.
+        # Best-effort: fingerprint failures NEVER block chat().
+        await self.fingerprint_model(model)
 
         options: dict[str, Any] = {"temperature": temperature, "top_p": top_p}
         if num_ctx is not None:
@@ -345,6 +350,8 @@ class OllamaBackend(LLMBackend):
         num_ctx: int | None = None,
     ) -> AsyncIterator[str]:
         client = await self._ensure_client()
+        # TRUST-7: lazy fingerprint, idempotent + cached.
+        await self.fingerprint_model(model)
         options: dict[str, Any] = {"temperature": temperature, "top_p": top_p}
         if num_ctx is not None:
             options["num_ctx"] = int(num_ctx)

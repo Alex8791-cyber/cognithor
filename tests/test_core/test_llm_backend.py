@@ -1111,3 +1111,78 @@ class TestOllamaBackendFingerprintModel:
             assert len(fp_mod.FINGERPRINT_LEDGER) == 0  # type: ignore[arg-type]
         finally:
             fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_chat_triggers_fingerprint_capture(self) -> None:
+        # Lazy auto-wire: chat() calls fingerprint_model(model) at the
+        # top so a real run instruments models without an explicit
+        # boot hook.
+        from cognithor.security.fingerprint import BinaryKind
+
+        fp_mod, original = self._isolate_ledger()
+        try:
+            digest = "f" * 64
+            # Both endpoints (/api/show + /api/chat) use the same
+            # mock — the chat path doesn't actually look at digest,
+            # and the fingerprint path will accept the digest field.
+            shared_resp = MagicMock()
+            shared_resp.status_code = 200
+            shared_resp.json.return_value = {
+                "digest": digest,
+                "details": {"parameter_size": "8B"},
+                "message": {"content": "ok", "role": "assistant"},
+                "prompt_eval_count": 1,
+                "eval_count": 1,
+            }
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(return_value=shared_resp)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            await b.chat("qwen3:auto", [{"role": "user", "content": "hi"}])
+            history = fp_mod.FINGERPRINT_LEDGER.history("qwen3:auto")  # type: ignore[attr-defined]
+            assert len(history) == 1
+            assert history[0].kind == BinaryKind.MODEL
+            assert history[0].content_hash == digest
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_chat_proceeds_when_fingerprint_fails(self) -> None:
+        # Critical invariant: chat() MUST succeed even if the
+        # fingerprint probe fails. Use side_effect to make the
+        # /api/show call raise, but the /api/chat call return.
+        fp_mod, original = self._isolate_ledger()
+        try:
+            chat_resp = MagicMock()
+            chat_resp.status_code = 200
+            chat_resp.json.return_value = {
+                "message": {"content": "ok", "role": "assistant"},
+                "prompt_eval_count": 1,
+                "eval_count": 1,
+            }
+            call_count = {"n": 0}
+
+            async def fake_post(*_: object, **__: object) -> object:
+                call_count["n"] += 1
+                if call_count["n"] == 1:
+                    # First call is fingerprint /api/show — fail it.
+                    raise httpx.ConnectError("down")
+                return chat_resp
+
+            mock_client = AsyncMock()
+            mock_client.is_closed = False
+            mock_client.post = AsyncMock(side_effect=fake_post)
+
+            b = OllamaBackend("http://localhost:11434")
+            b._client = mock_client
+
+            result = await b.chat("qwen3:flaky", [{"role": "user", "content": "hi"}])
+            # Chat completed despite fingerprint failure.
+            assert result.content == "ok"
+            # Model still cached as fingerprinted (won't retry).
+            assert "qwen3:flaky" in b._fingerprinted_models
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
