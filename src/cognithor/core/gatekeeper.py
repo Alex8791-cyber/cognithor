@@ -29,6 +29,7 @@ import yaml
 from cognithor.i18n import t
 from cognithor.models import (
     AuditEntry,
+    DecisionExplanation,
     GateDecision,
     GateStatus,
     OperationMode,
@@ -355,6 +356,12 @@ class Gatekeeper:
                     risk_level=risk,
                     original_action=action,
                     policy_name=rule.name,
+                    # TRUST-2: structured explanation for the receipt + UI
+                    explanation=DecisionExplanation(
+                        rule_id=f"policy:{rule.name}",
+                        rule_source=f"policy:{rule.name}",
+                        matched_pattern=action.tool,
+                    ),
                 )
                 self._write_audit(action, decision, context)
                 log.debug(
@@ -1088,6 +1095,12 @@ class Gatekeeper:
                     risk_level=RiskLevel.RED,
                     original_action=action,
                     policy_name="blocked_command_ast",
+                    # TRUST-2: structured explanation for the receipt + UI
+                    explanation=DecisionExplanation(
+                        rule_id="dest_cmd_ast",
+                        rule_source="cognithor.security.shell_ast_guard:analyse_shell",
+                        matched_pattern=details[:200],
+                    ),
                 )
         except Exception:
             log.debug("shell_ast_guard_failed", exc_info=True)
@@ -1101,6 +1114,12 @@ class Gatekeeper:
                     risk_level=RiskLevel.RED,
                     original_action=action,
                     policy_name="blocked_command",
+                    # TRUST-2: structured explanation for the receipt + UI
+                    explanation=DecisionExplanation(
+                        rule_id="dest_cmd_regex",
+                        rule_source="cognithor.core.gatekeeper:_blocked_command_patterns",
+                        matched_pattern=pattern.pattern,
+                    ),
                 )
 
         return None
