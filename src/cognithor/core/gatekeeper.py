@@ -1031,6 +1031,12 @@ class Gatekeeper:
                 risk_level=RiskLevel.RED,
                 original_action=action,
                 policy_name="path_validation",
+                # TRUST-2: structured explanation for the receipt + UI.
+                explanation=DecisionExplanation(
+                    rule_id="path_unparseable",
+                    rule_source="cognithor.core.gatekeeper:_check_path",
+                    matched_pattern=path_str[:200],
+                ),
             )
 
         # Check whether path is in an allowed directory
@@ -1048,6 +1054,12 @@ class Gatekeeper:
             risk_level=RiskLevel.RED,
             original_action=action,
             policy_name="path_validation",
+            # TRUST-2: structured explanation for the receipt + UI.
+            explanation=DecisionExplanation(
+                rule_id="path_outside_allowed",
+                rule_source="cognithor.core.gatekeeper:_check_path",
+                matched_pattern=path_str[:200],
+            ),
         )
 
     # Compiled patterns for dangerous Python code (class-level, compiled once)
@@ -1134,6 +1146,12 @@ class Gatekeeper:
                     risk_level=RiskLevel.RED,
                     original_action=action,
                     policy_name="blocked_python_ast",
+                    # TRUST-2: structured explanation for the receipt + UI.
+                    explanation=DecisionExplanation(
+                        rule_id="dangerous_python_ast",
+                        rule_source="cognithor.security.python_ast_guard:analyse_python",
+                        matched_pattern=details[:200],
+                    ),
                 )
         except SyntaxError:
             pass  # Unparseable code falls through to regex check
@@ -1149,6 +1167,12 @@ class Gatekeeper:
                     risk_level=RiskLevel.RED,
                     original_action=action,
                     policy_name="blocked_python_code",
+                    # TRUST-2: structured explanation for the receipt + UI.
+                    explanation=DecisionExplanation(
+                        rule_id="dangerous_python_regex",
+                        rule_source="cognithor.core.gatekeeper:_DANGEROUS_PYTHON_PATTERNS",
+                        matched_pattern=pattern.pattern[:200],
+                    ),
                 )
 
         return None
