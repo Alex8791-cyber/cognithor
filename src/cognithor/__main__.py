@@ -392,6 +392,24 @@ def parse_args() -> argparse.Namespace:
         help="Output file (omitted ⇒ stdout)",
     )
 
+    agent_ws_p = agent_sub.add_parser(
+        "ws",
+        help="WebSocket variant of the streaming protocol",
+    )
+    agent_ws_p.add_argument(
+        "--port",
+        dest="agent_ws_port",
+        type=int,
+        default=8742,
+        help="TCP port to listen on (default 8742)",
+    )
+    agent_ws_p.add_argument(
+        "--bind",
+        dest="agent_ws_bind",
+        default="127.0.0.1",
+        help="Bind address (default 127.0.0.1; 0.0.0.0 still requires the token)",
+    )
+
     return parser.parse_args()
 
 
@@ -656,9 +674,16 @@ def main() -> None:
                     else None,
                 ),
             )
+        elif action == "ws":
+            sys.exit(
+                agent_cmd.cmd_ws(
+                    bind=getattr(args, "agent_ws_bind", "127.0.0.1"),
+                    port=int(getattr(args, "agent_ws_port", 8742)),
+                ),
+            )
         else:
             print(
-                "Usage: cognithor agent run --plan FILE.json --stream [--out FILE]",
+                "Usage: cognithor agent <run|ws> ...",
                 file=sys.stderr,
             )
             sys.exit(2)

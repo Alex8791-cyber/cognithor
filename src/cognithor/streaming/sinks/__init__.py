@@ -9,5 +9,12 @@ from __future__ import annotations
 
 from cognithor.streaming.sinks.base import Sink, SinkBufferConfig
 from cognithor.streaming.sinks.jsonl_sink import JsonlSink
+from cognithor.streaming.sinks.ws_sink import WebSocketSink, encode_event_frame
 
-__all__ = ["JsonlSink", "Sink", "SinkBufferConfig"]
+__all__ = [
+    "JsonlSink",
+    "Sink",
+    "SinkBufferConfig",
+    "WebSocketSink",
+    "encode_event_frame",
+]
