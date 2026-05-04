@@ -300,3 +300,41 @@ def get_trace_stats(trace_id: str, _user: str = Depends(_require_owner_dep)) -> 
             detail={"error": "trace_not_found", "trace_id": trace_id},
         )
     return derive_trace_stats(grouped[trace_id])
+
+
+@router.get("/trace/{trace_id}/receipt")
+def get_trace_receipt(
+    trace_id: str,
+    include_trust: bool = Query(
+        default=False,
+        description="Fold the TRUST-5..10 ledger bundle into the receipt",
+    ),
+    _user: str = Depends(_require_owner_dep),
+) -> dict[str, Any]:
+    """Return the TRUST-1 audit run-receipt for ``trace_id``.
+
+    Optionally folds the TRUST-5..10 trust bundle (permission scopes,
+    cost, fingerprints, escalations, provenance, migrations) under a
+    top-level ``"trust"`` key when ``include_trust=true``.
+
+    No HMAC signing here — the operator who needs a signed receipt
+    uses the ``cognithor receipt show ... --key`` CLI offline. The
+    REST endpoint stays simple and read-only; the on-disk audit
+    hash-chain is the primary integrity gate.
+
+    404 when ``trace_id`` is not in the audit log.
+    """
+    from cognithor.audit import AuditLogger
+
+    events, _skipped = read_audit_lines(_audit_path())
+    grouped = group_by_trace(events)
+    if trace_id not in grouped:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "trace_not_found", "trace_id": trace_id},
+        )
+    return AuditLogger.build_receipt_from_entries(
+        trace_id,
+        grouped[trace_id],
+        include_trust=include_trust,
+    )

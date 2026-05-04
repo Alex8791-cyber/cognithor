@@ -968,9 +968,6 @@ class AuditLogger:
         logger or post-mortem on disk-only entries via a logger
         instantiated against the persisted ``log_dir``.
         """
-        import hashlib
-        import hmac
-
         # 1. Pull matching entries from the in-memory ring buffer.
         entries = [e for e in self._entries if e.session_id == session_id]
 
@@ -999,12 +996,45 @@ class AuditLogger:
         else:
             entry_dicts = from_disk
 
+        # 4. Aggregate (delegate to the static builder so the REST
+        # endpoint and other callers can produce the same receipt
+        # shape from already-loaded dicts without going through the
+        # in-memory ring buffer).
+        return self.build_receipt_from_entries(
+            session_id,
+            entry_dicts,
+            signing_key=signing_key,
+            include_trust=include_trust,
+        )
+
+    @classmethod
+    def build_receipt_from_entries(
+        cls,
+        session_id: str,
+        entry_dicts: list[dict[str, Any]],
+        *,
+        signing_key: str | None = None,
+        include_trust: bool = False,
+    ) -> dict[str, Any]:
+        """Build a TRUST-1 receipt from already-loaded entry dicts.
+
+        Lets non-AuditLogger callers (REST endpoints, post-mortem
+        tools) produce the same receipt shape without going through
+        the in-memory ring buffer or the ``audit_<date>.jsonl`` glob.
+        ``entry_dicts`` is the list of ``AuditEntry.to_dict()`` (or
+        equivalent JSONL-parsed) dicts already filtered by
+        ``session_id``.
+
+        Same return shape and signing semantics as
+        :meth:`run_receipt`. ``include_trust=True`` folds the
+        TRUST-5..10 bundle under ``"trust"``.
+        """
+        import hashlib
+        import hmac
+
         if not entry_dicts:
-            # Empty receipt is still valid — return a structured "no
-            # match" rather than raising, so callers can distinguish
-            # "this run never happened" from "exception".
             bundle: dict[str, Any] = {
-                "schema_version": self.RECEIPT_SCHEMA_VERSION,
+                "schema_version": cls.RECEIPT_SCHEMA_VERSION,
                 "session_id": session_id,
                 "period_start": "",
                 "period_end": "",
@@ -1023,102 +1053,78 @@ class AuditLogger:
                 "hash_chain_tail": "",
                 "signature": "",
             }
-            if include_trust:
-                from cognithor.security.trust_bundle import build_trust_bundle
-
-                bundle["trust"] = build_trust_bundle(session_id)
-            if signing_key:
-                canonical = json.dumps(
-                    {k: v for k, v in bundle.items() if k != "signature"},
-                    sort_keys=True,
-                    ensure_ascii=False,
+        else:
+            by_category: dict[str, int] = {}
+            by_severity: dict[str, int] = {}
+            by_tool: dict[str, int] = {}
+            total_duration = 0.0
+            success_count = 0
+            failure_count = 0
+            pii_count = 0
+            for d in entry_dicts:
+                by_category[d.get("category", "unknown")] = (
+                    by_category.get(d.get("category", "unknown"), 0) + 1
                 )
-                bundle["signature"] = hmac.new(
-                    signing_key.encode("utf-8"),
-                    canonical.encode("utf-8"),
-                    hashlib.sha256,
-                ).hexdigest()
-            return bundle
+                by_severity[d.get("severity", "unknown")] = (
+                    by_severity.get(d.get("severity", "unknown"), 0) + 1
+                )
+                tool = d.get("tool_name", "")
+                if tool:
+                    by_tool[tool] = by_tool.get(tool, 0) + 1
+                total_duration += float(d.get("duration_ms", 0.0))
+                if d.get("success", True):
+                    success_count += 1
+                else:
+                    failure_count += 1
+                if d.get("contains_pii", False):
+                    pii_count += 1
 
-        # 4. Aggregate.
-        by_category: dict[str, int] = {}
-        by_severity: dict[str, int] = {}
-        by_tool: dict[str, int] = {}
-        total_duration = 0.0
-        success_count = 0
-        failure_count = 0
-        pii_count = 0
-        for d in entry_dicts:
-            by_category[d.get("category", "unknown")] = (
-                by_category.get(d.get("category", "unknown"), 0) + 1
-            )
-            by_severity[d.get("severity", "unknown")] = (
-                by_severity.get(d.get("severity", "unknown"), 0) + 1
-            )
-            tool = d.get("tool_name", "")
-            if tool:
-                by_tool[tool] = by_tool.get(tool, 0) + 1
-            total_duration += float(d.get("duration_ms", 0.0))
-            if d.get("success", True):
-                success_count += 1
-            else:
-                failure_count += 1
-            if d.get("contains_pii", False):
-                pii_count += 1
+            def _entry_sort_key(d: dict[str, Any]) -> tuple[int, str]:
+                eid = str(d.get("entry_id", ""))
+                try:
+                    return (int(eid.rsplit("_", 1)[-1]), eid)
+                except (ValueError, IndexError):
+                    return (0, eid)
 
-        # Sort entries by entry_id for deterministic ordering. entry_id
-        # has the form ``audit_<n>`` so a numeric tail-sort is stable.
-        def _entry_sort_key(d: dict[str, Any]) -> tuple[int, str]:
-            eid = str(d.get("entry_id", ""))
-            try:
-                return (int(eid.rsplit("_", 1)[-1]), eid)
-            except (ValueError, IndexError):
-                return (0, eid)
+            ordered = sorted(entry_dicts, key=_entry_sort_key)
 
-        ordered = sorted(entry_dicts, key=_entry_sort_key)
-
-        bundle = {
-            "schema_version": self.RECEIPT_SCHEMA_VERSION,
-            "session_id": session_id,
-            "period_start": ordered[0].get("timestamp", ""),
-            "period_end": ordered[-1].get("timestamp", ""),
-            "entry_count": len(ordered),
-            "aggregate": {
-                "by_category": by_category,
-                "by_severity": by_severity,
-                "by_tool": by_tool,
-                "total_duration_ms": round(total_duration, 2),
-                "success_count": success_count,
-                "failure_count": failure_count,
-                "pii_count": pii_count,
-            },
-            "entries": ordered,
-            "hash_chain_head": ordered[0].get("prev_hash", ""),
-            "hash_chain_tail": ordered[-1].get("prev_hash", ""),
-            "signature": "",
-        }
+            bundle = {
+                "schema_version": cls.RECEIPT_SCHEMA_VERSION,
+                "session_id": session_id,
+                "period_start": ordered[0].get("timestamp", ""),
+                "period_end": ordered[-1].get("timestamp", ""),
+                "entry_count": len(ordered),
+                "aggregate": {
+                    "by_category": by_category,
+                    "by_severity": by_severity,
+                    "by_tool": by_tool,
+                    "total_duration_ms": round(total_duration, 2),
+                    "success_count": success_count,
+                    "failure_count": failure_count,
+                    "pii_count": pii_count,
+                },
+                "entries": ordered,
+                "hash_chain_head": ordered[0].get("prev_hash", ""),
+                "hash_chain_tail": ordered[-1].get("prev_hash", ""),
+                "signature": "",
+            }
 
         if include_trust:
             from cognithor.security.trust_bundle import build_trust_bundle
 
             bundle["trust"] = build_trust_bundle(session_id)
 
-        # 5. Optional HMAC-SHA-256 over the canonical (signature-less)
-        # form. Lets the operator verify the bundle wasn't tampered
-        # with after extraction. Without a key, leave empty — the
-        # underlying hash chain on disk is the primary integrity gate.
         if signing_key:
             canonical = json.dumps(
                 {k: v for k, v in bundle.items() if k != "signature"},
                 sort_keys=True,
                 ensure_ascii=False,
             )
-            sig = hmac.new(
+            bundle["signature"] = hmac.new(
                 signing_key.encode("utf-8"),
                 canonical.encode("utf-8"),
                 hashlib.sha256,
             ).hexdigest()
-            bundle["signature"] = sig
 
         return bundle
 
