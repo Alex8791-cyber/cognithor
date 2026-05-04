@@ -198,6 +198,75 @@ class TestRegistration:
 
 
 # ============================================================================
+# TRUST-7: register_tool fingerprints the handler source
+# ============================================================================
+
+
+class TestRegisterToolFingerprint:
+    """``register_tool`` calls ``FINGERPRINT_LEDGER.register`` on a
+    best-effort basis, so the TRUST-7 ledger captures every tool's
+    handler source for post-mortem reconstruction.
+    """
+
+    def test_register_tool_fingerprints_handler(self, server: JarvisMCPServer) -> None:
+        # The hook imports FINGERPRINT_LEDGER lazily inside
+        # _fingerprint_tool_handler, so monkey-patching the source
+        # module is the right isolation point.
+        import cognithor.security.fingerprint as fp_mod
+        from cognithor.security.fingerprint import FingerprintLedger
+
+        isolated = FingerprintLedger()
+        original = fp_mod.FINGERPRINT_LEDGER
+        fp_mod.FINGERPRINT_LEDGER = isolated  # type: ignore[misc]
+        try:
+
+            def _my_handler() -> str:
+                return "ok"
+
+            tool = MCPToolDef(
+                name="probe_tool",
+                description="d",
+                input_schema={},
+                handler=_my_handler,
+            )
+            server.register_tool(tool)
+            history = isolated.history("probe_tool")
+            assert len(history) == 1
+            fp = history[0]
+            assert fp.name == "probe_tool"
+            assert fp.kind.value == "tool"
+            # source_path should point at this test file (where the handler is defined).
+            assert fp.source_path.endswith("test_server_coverage.py")
+            assert len(fp.content_hash) == 64
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+    def test_register_tool_skips_unsourceable_handler(self, server: JarvisMCPServer) -> None:
+        # Builtins have no resolvable source file → the fingerprint
+        # branch silently no-ops, but registration still succeeds.
+        import cognithor.security.fingerprint as fp_mod
+        from cognithor.security.fingerprint import FingerprintLedger
+
+        isolated = FingerprintLedger()
+        original = fp_mod.FINGERPRINT_LEDGER
+        fp_mod.FINGERPRINT_LEDGER = isolated  # type: ignore[misc]
+        try:
+            tool = MCPToolDef(
+                name="builtin_probe",
+                description="d",
+                input_schema={},
+                handler=print,  # builtin
+            )
+            # Must not raise.
+            server.register_tool(tool)
+            assert "builtin_probe" in server._tools
+            # No fingerprint registered for the builtin.
+            assert isolated.history("builtin_probe") == ()
+        finally:
+            fp_mod.FINGERPRINT_LEDGER = original  # type: ignore[misc]
+
+
+# ============================================================================
 # handle_initialize
 # ============================================================================
 

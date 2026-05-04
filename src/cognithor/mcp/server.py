@@ -271,9 +271,45 @@ class JarvisMCPServer:
     # ── Registration API ─────────────────────────────────────────
 
     def register_tool(self, tool: MCPToolDef) -> None:
-        """Registriert ein Tool beim MCP-Server."""
+        """Registriert ein Tool beim MCP-Server.
+
+        Side effect (TRUST-7): the tool's handler source file is
+        fingerprinted into the canonical ``FINGERPRINT_LEDGER`` so
+        the operational-trust receipt can answer "which exact
+        implementation handled tool X during run Y?". Best-effort —
+        handlers without a resolvable source file (lambdas, C
+        extensions) are silently skipped. Registration NEVER fails
+        because of fingerprinting.
+        """
         self._tools[tool.name] = tool
         log.debug("mcp_server_tool_registered", tool=tool.name)
+        self._fingerprint_tool_handler(tool)
+
+    @staticmethod
+    def _fingerprint_tool_handler(tool: MCPToolDef) -> None:
+        """Best-effort fingerprint of ``tool.handler`` into the canonical ledger."""
+        import inspect
+
+        from cognithor.security.fingerprint import (
+            FINGERPRINT_LEDGER,
+            fingerprint_python_tool,
+        )
+
+        try:
+            source_path = inspect.getsourcefile(tool.handler)
+            if source_path is None:
+                return
+            fingerprint = fingerprint_python_tool(
+                name=tool.name,
+                path=source_path,
+            )
+            FINGERPRINT_LEDGER.register(fingerprint)
+        except (OSError, TypeError, ValueError) as exc:
+            log.debug(
+                "mcp_server_fingerprint_skipped",
+                tool=tool.name,
+                error=str(exc),
+            )
 
     def register_resource(self, resource: MCPResource) -> None:
         """Registriert eine Resource beim MCP-Server."""
