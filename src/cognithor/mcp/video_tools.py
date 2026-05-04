@@ -26,6 +26,8 @@ Apache-2.0 — no insurance / domain coupling, per Sprint-27 D4
 
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -41,6 +43,7 @@ from cognithor.video import (
 
 if TYPE_CHECKING:
     from cognithor.mcp.server import JarvisMCPServer
+    from cognithor.video.renderer_base import RenderResult
 
 log = get_logger(__name__)
 
@@ -321,7 +324,93 @@ async def _video_render_handler(
             "run_id": exc.run_id,
             "stderr_excerpt": exc.stderr_excerpt,
         }
+
+    # HF-4: TRUST wiring. Best-effort emission to canonical
+    # ledgers — never raise into the caller. Each tier is wrapped
+    # in suppress() per the established TRUST-stack pattern.
+    _emit_trust_entries(request=request, result=result, html_text=html_text)
+
     return {"ok": True, **result.to_dict()}
+
+
+def _hash_html_source(html_text: str | None, html_path: str | None) -> str:
+    """Stable identifier for the rendered composition.
+
+    Used as the ``ProvenanceTag.source_id`` for the rendered MP4
+    so downstream tools can correlate the binary with the exact
+    HTML that produced it.
+    """
+
+    if html_text is not None:
+        digest = hashlib.sha256(html_text.encode("utf-8")).hexdigest()
+        return f"html-text:{digest[:16]}"
+    if html_path is not None:
+        return f"html-path:{html_path}"
+    return "html:unknown"
+
+
+def _emit_trust_entries(
+    *,
+    request: RenderRequest,
+    result: RenderResult,
+    html_text: str | None,
+) -> None:
+    """HF-4 — emit ProvenanceTag + CostEntry for a successful video render.
+
+    All three sub-emissions are individually wrapped in
+    :func:`contextlib.suppress` so a TRUST-tier fault cannot
+    surface into the MCP-tool caller. The pattern matches the
+    Sprint-26 TRUST-stack rollout: best-effort capture, never
+    block the calling tier.
+    """
+
+    html_path_str = str(request.html_path) if request.html_path is not None else None
+    source_id = _hash_html_source(html_text, html_path_str)
+    output_path_str = str(result.output_path)
+
+    # TRUST-9 ProvenanceTag for the rendered MP4 file.
+    with contextlib.suppress(Exception):
+        from cognithor.memory.provenance import (
+            PROVENANCE_LEDGER,
+            ExpiryPolicy,
+            ProvenanceTag,
+            SourceType,
+        )
+
+        PROVENANCE_LEDGER.tag(
+            output_path_str,
+            ProvenanceTag(
+                source_type=SourceType.TOOL_OUTPUT,
+                source_id=source_id,
+                expiry_policy=ExpiryPolicy.PERMANENT,
+                notes=(
+                    f"video_render run_id={request.run_id} "
+                    f"format={result.output_format.value} "
+                    f"{result.width}x{result.height}@{result.fps}fps"
+                ),
+            ),
+        )
+
+    # TRUST-9 CostEntry. Local renders carry zero monetary cost
+    # but the entry exists so the operator's per-run accounting
+    # surfaces "this run rendered N MP4s" in the cost-summary
+    # tile alongside text-token costs. cost_usd_micro=0 — the
+    # subprocess runtime in milliseconds rides ``unit_count`` so
+    # the Trace-UI can render a duration histogram.
+    with contextlib.suppress(Exception):
+        from cognithor.security.cost_ledger import COST_LEDGER, CostEntry, CostKind
+
+        COST_LEDGER.record(
+            CostEntry(
+                kind=CostKind.OTHER,
+                tool="video_render",
+                cost_usd_micro=0,
+                backend=(request.allowed_adapters and "hyperframes") or "",
+                run_id=request.run_id,
+                unit_count=result.duration_ms,
+                notes=(f"render={result.output_format.value} bytes={result.bytes_written}"),
+            ),
+        )
 
 
 # ---------------------------------------------------------------------------
