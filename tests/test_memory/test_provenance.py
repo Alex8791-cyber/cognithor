@@ -509,3 +509,39 @@ class TestMakeTtlTag:
 class TestProcessLocalLedger:
     def test_default_ledger_is_a_provenance_ledger(self) -> None:
         assert isinstance(PROVENANCE_LEDGER, ProvenanceLedger)
+
+
+class TestProvenanceLedgerSelfAuditMigration:
+    """TRUST-10 self-audit: importing the provenance module records
+    a v0→v1 migration step into the canonical MIGRATION_LEDGER.
+    """
+
+    def test_migration_step_landed(self) -> None:
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationDomain,
+            MigrationStatus,
+        )
+
+        # The module-level _record_provenance_ledger_migration() ran
+        # at import time. Look the step up by its stable id.
+        step = MIGRATION_LEDGER.get("provenance_ledger:v0-no-ledger:v1-append-only-ledger")
+        assert step is not None
+        assert step.status == MigrationStatus.APPLIED
+        assert step.domain == MigrationDomain.PROVENANCE_LEDGER
+        assert step.applied_by == "system"
+        assert (
+            MIGRATION_LEDGER.head_version(MigrationDomain.PROVENANCE_LEDGER)
+            == "v1-append-only-ledger"
+        )
+
+    def test_repeated_calls_idempotent(self) -> None:
+        # Re-running the recorder must NOT raise — duplicate
+        # migration_id is suppressed.
+        from cognithor.memory.provenance import (
+            _record_provenance_ledger_migration,
+        )
+
+        _record_provenance_ledger_migration()
+        _record_provenance_ledger_migration()
+        _record_provenance_ledger_migration()

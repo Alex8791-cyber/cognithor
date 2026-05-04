@@ -358,3 +358,35 @@ class TestHashHelpers:
 class TestProcessLocalLedger:
     def test_default_ledger_is_a_fingerprint_ledger(self) -> None:
         assert isinstance(FINGERPRINT_LEDGER, FingerprintLedger)
+
+
+class TestFingerprintLedgerSelfAuditMigration:
+    """TRUST-10 self-audit: importing the fingerprint module records
+    a v0→v1 migration step into the canonical MIGRATION_LEDGER.
+    """
+
+    def test_migration_step_landed(self) -> None:
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationDomain,
+            MigrationStatus,
+        )
+
+        step = MIGRATION_LEDGER.get("fingerprint_ledger:v0-no-ledger:v1-dual-index-ledger")
+        assert step is not None
+        assert step.status == MigrationStatus.APPLIED
+        assert step.domain == MigrationDomain.FINGERPRINT_LEDGER
+        assert step.applied_by == "system"
+        assert (
+            MIGRATION_LEDGER.head_version(MigrationDomain.FINGERPRINT_LEDGER)
+            == "v1-dual-index-ledger"
+        )
+
+    def test_repeated_calls_idempotent(self) -> None:
+        from cognithor.security.fingerprint import (
+            _record_fingerprint_ledger_migration,
+        )
+
+        _record_fingerprint_ledger_migration()
+        _record_fingerprint_ledger_migration()
+        _record_fingerprint_ledger_migration()
