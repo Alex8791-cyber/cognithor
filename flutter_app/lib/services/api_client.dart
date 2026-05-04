@@ -80,6 +80,28 @@ class ApiClient {
     return _request('GET', path);
   }
 
+  /// GET request whose backend returns a JSON array (e.g. ``/kanban/tasks``).
+  ///
+  /// ``get`` always casts the response to ``Map<String, dynamic>``, which
+  /// crashes when the endpoint returns a bare list. Use this helper for
+  /// list-shaped endpoints. Returns an empty list on any error.
+  Future<List<dynamic>> getList(String path) async {
+    if (_token == null) await bootstrap();
+    var res = await _doRequest('GET', path);
+    if (res.statusCode == 401) {
+      invalidateToken();
+      await bootstrap();
+      res = await _doRequest('GET', path);
+    }
+    if (res.statusCode >= 200 && res.statusCode < 300 && res.body.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(res.body);
+        if (decoded is List) return decoded;
+      } catch (_) {}
+    }
+    return <dynamic>[];
+  }
+
   Future<Map<String, dynamic>> post(
     String path, [
     Map<String, dynamic>? body,

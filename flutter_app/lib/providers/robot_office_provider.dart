@@ -106,8 +106,11 @@ class RobotOfficeProvider extends ChangeNotifier {
 
   Future<void> _pollKanban() async {
     try {
-      final res = await _api!.get('tasks');
-      final tasks = res['tasks'] as List<dynamic>? ?? [];
+      // The kanban router lives at /api/v1/kanban/tasks (was 'tasks' →
+      // /api/v1/tasks → 404), and returns a bare JSON list (not a
+      // {"tasks": [...]} dict — locked by test_kanban_api.py contract).
+      // WF-3 fix (autonomous workflow audit, 2026-05-04).
+      final tasks = await _api!.getList('kanban/tasks');
       final counts = <String, int>{};
       final titles = <String, List<String>>{};
       for (final t in tasks) {
