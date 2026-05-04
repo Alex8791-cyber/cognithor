@@ -363,12 +363,30 @@ class Gatekeeper:
                     ToolCapability.NETWORK_HTTP in tool_caps.capabilities
                     or ToolCapability.NETWORK_WS in tool_caps.capabilities
                 ):
+                    # Surface which capability triggered the block —
+                    # NETWORK_HTTP, NETWORK_WS, or both.
+                    matched_caps = sorted(
+                        c.value
+                        for c in (
+                            ToolCapability.NETWORK_HTTP,
+                            ToolCapability.NETWORK_WS,
+                        )
+                        if c in tool_caps.capabilities
+                    )
                     decision = GateDecision(
                         status=GateStatus.BLOCK,
                         reason=t("gatekeeper.offline_network_blocked", tool=action.tool),
                         risk_level=RiskLevel.RED,
                         original_action=action,
                         policy_name="operation_mode_offline",
+                        # TRUST-2: structured explanation for the receipt + UI.
+                        explanation=DecisionExplanation(
+                            rule_id="operation_mode_offline_network",
+                            rule_source=(
+                                "cognithor.core.gatekeeper:_OFFLINE_ALLOWED_NETWORK_TOOLS"
+                            ),
+                            matched_pattern=",".join([action.tool, *matched_caps])[:200],
+                        ),
                     )
                     self._write_audit(action, decision, context)
                     return decision
