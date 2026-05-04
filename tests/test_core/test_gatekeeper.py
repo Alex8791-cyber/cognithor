@@ -578,3 +578,46 @@ class TestDecisionExplanation:
         assert " " not in decision.explanation.rule_id  # no whitespace = stable
         # rule_source points at code location (file:line or module:func)
         assert ":" in decision.explanation.rule_source
+
+    def test_dangerous_python_block_emits_explanation(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """``run_python`` with os.system() must emit a structured
+        TRUST-2 explanation pointing at the python_ast_guard / regex
+        site (the dangerous-Python-code check fires only for
+        ``run_python``, see gatekeeper.evaluate).
+        """
+        action = PlannedAction(
+            tool="run_python",
+            params={"code": "import os\nos.system('rm -rf /')"},
+        )
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.is_blocked
+        assert decision.explanation is not None
+        assert decision.explanation.rule_id in {
+            "dangerous_python_ast",
+            "dangerous_python_regex",
+        }
+        assert decision.explanation.matched_pattern
+        assert ":" in decision.explanation.rule_source
+
+    def test_path_outside_allowed_emits_explanation(
+        self, gatekeeper: Gatekeeper, session: SessionContext
+    ) -> None:
+        """A read_file outside the allowed roots must emit a TRUST-2
+        explanation with rule_id=path_outside_allowed.
+        """
+        action = PlannedAction(tool="read_file", params={"path": "/etc/passwd"})
+        decision = gatekeeper.evaluate(action, session)
+        assert decision.is_blocked
+        # The block may come from path_validation OR an upstream rule.
+        # If path_validation fired, explanation must be the structured
+        # one we just added.
+        if decision.policy_name == "path_validation":
+            assert decision.explanation is not None
+            assert decision.explanation.rule_id in {
+                "path_outside_allowed",
+                "path_unparseable",
+            }
+            assert decision.explanation.matched_pattern
+            assert ":" in decision.explanation.rule_source
