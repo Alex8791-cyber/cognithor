@@ -622,6 +622,25 @@ class TestDecisionExplanation:
             assert decision.explanation.matched_pattern
             assert ":" in decision.explanation.rule_source
 
+    def test_disabled_tool_emits_explanation(
+        self, gk_config: CognithorConfig, session: SessionContext
+    ) -> None:
+        """Tool disabled by ``config.tools`` toggle must emit a TRUST-2
+        explanation pointing at the disabled-tools set.
+        """
+        # Build a gatekeeper with computer_use disabled — that group's
+        # tools land in self._disabled_tools.
+        gk_config.tools.computer_use_enabled = False
+        gk = Gatekeeper(gk_config)
+        gk.initialize()
+        action = PlannedAction(tool="computer_screenshot", params={})
+        decision = gk.evaluate(action, session)
+        assert decision.policy_name == "tool_disabled_by_config"
+        assert decision.explanation is not None
+        assert decision.explanation.rule_id == "tool_disabled_by_config"
+        assert "_disabled_tools" in decision.explanation.rule_source
+        assert decision.explanation.matched_pattern == "computer_screenshot"
+
     def test_credential_mask_emits_explanation(
         self, gatekeeper: Gatekeeper, session: SessionContext
     ) -> None:

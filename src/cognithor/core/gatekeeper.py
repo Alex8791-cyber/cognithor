@@ -603,13 +603,31 @@ class Gatekeeper:
             except Exception:
                 log.debug("confidence_check_failed", exc_info=True)
 
+        # TRUST-2: when the default-classification path lands on a
+        # disabled tool (config.tools toggle off → forced RED), surface
+        # a structured explanation so the receipt can show "this was
+        # blocked because the tool group is disabled in config" without
+        # parsing free text.
+        disabled_explanation: DecisionExplanation | None = None
+        if action.tool.lower() in self._disabled_tools:
+            disabled_explanation = DecisionExplanation(
+                rule_id="tool_disabled_by_config",
+                rule_source="cognithor.core.gatekeeper:_disabled_tools",
+                matched_pattern=action.tool[:200],
+            )
+
         decision = GateDecision(
             status=status,
             reason=t("gatekeeper.default_classification", risk=risk.name),
             risk_level=risk,
             original_action=action,
-            policy_name="default_classification",
+            policy_name=(
+                "tool_disabled_by_config"
+                if disabled_explanation is not None
+                else "default_classification"
+            ),
             confidence_score=confidence_score,
+            explanation=disabled_explanation,
         )
         self._write_audit(action, decision, context)
         return decision
