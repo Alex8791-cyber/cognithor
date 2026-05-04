@@ -24,6 +24,10 @@ Tests build fresh registries via ``DomainRegistry()``.
 
 from __future__ import annotations
 
+from cognithor.channels.program_synthesis.domains._register_all import (
+    SPRINT26_DOMAIN_NAMES,
+    register_all_sprint26_domains,
+)
 from cognithor.channels.program_synthesis.domains.base import (
     Domain,
     DomainCapability,
@@ -53,6 +57,7 @@ from cognithor.channels.program_synthesis.domains.scorecard import (
 
 __all__ = [
     "DOMAIN_REGISTRY",
+    "SPRINT26_DOMAIN_NAMES",
     "Domain",
     "DomainAwareLLMPrior",
     "DomainCapability",
@@ -66,4 +71,5 @@ __all__ = [
     "PropertyVerifier",
     "Scorecard",
     "ScorecardEntry",
+    "register_all_sprint26_domains",
 ]
