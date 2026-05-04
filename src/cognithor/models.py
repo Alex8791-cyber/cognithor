@@ -218,6 +218,35 @@ class ActionPlan(BaseModel, frozen=True):
         return len(self.steps) > 0
 
 
+class DecisionExplanation(BaseModel, frozen=True):
+    """Structured "why did the Gatekeeper allow/deny this?" record.
+
+    TRUST-2 (operational-trust audit, 2026-05-04). Reviewer asked for
+    operator-readable explanations beyond a free-text ``reason``. This
+    record makes the decision path inspectable in UI + receipts:
+
+      * ``rule_id``: stable short identifier ("dest_cmd_ast",
+        "dest_cmd_regex", "red_tool", "orange_default", "approval",
+        "credential_mask", "capability_violation", "pack_risk_green")
+      * ``rule_source``: code location of the rule. ``"file:line"`` for
+        rules that live in source (gatekeeper.py:383); ``"policy:<name>"``
+        for YAML-loaded policies; ``"pack:<qid>"`` for pack-injected risks.
+      * ``matched_pattern``: the actual literal that triggered (e.g.
+        ``"rm -rf"`` for regex, the AST node descriptor for AST hits,
+        the tool-name for green/red list hits). Empty when N/A.
+      * ``policy_version``: optional version string when the rule comes
+        from a versioned policy bundle.
+
+    Backward-compat: every field has a default — old callers that only
+    set ``reason`` keep working; the explanation field is ``None``.
+    """
+
+    rule_id: str = ""
+    rule_source: str = ""
+    matched_pattern: str = ""
+    policy_version: str = ""
+
+
 class GateDecision(BaseModel, frozen=True):
     """Entscheidung des Gatekeepers fuer eine einzelne Aktion. [B§3.2]
 
@@ -228,6 +257,7 @@ class GateDecision(BaseModel, frozen=True):
     risk_level: RiskLevel = RiskLevel.GREEN
     reason: str = ""
     policy_name: str = ""  # Name der auslösenden Policy-Regel
+    explanation: DecisionExplanation | None = None  # TRUST-2 structured "why"
     original_action: PlannedAction | None = None  # Referenz auf geprüfte Aktion
     masked_params: dict[str, Any] | None = None  # Params nach Credential-Maskierung
     confidence_score: float | None = None  # Pre-execution confidence (0.0-1.0)
