@@ -308,3 +308,72 @@ class TestMaintenance:
         idx2 = MemoryIndex(db_path)
         assert idx2.count_chunks() == 1
         idx2.close()
+
+
+class TestMemoryIndexProvenance:
+    """TRUST-9 wiring: ``MemoryIndex.upsert_chunk(provenance_source_type=...,
+    provenance_source_id=...)`` writes a tag to the canonical
+    PROVENANCE_LEDGER keyed by ``chunk:<chunk.id>``.
+    """
+
+    def test_upsert_without_provenance_does_not_tag(
+        self, index: MemoryIndex, sample_chunk: Chunk
+    ) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            index.upsert_chunk(sample_chunk)
+            assert f"chunk:{sample_chunk.id}" not in isolated
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_upsert_with_provenance_tags_ledger(
+        self, index: MemoryIndex, sample_chunk: Chunk
+    ) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            index.upsert_chunk(
+                sample_chunk,
+                provenance_source_type="tool_output",
+                provenance_source_id="audit-77",
+                provenance_notes="indexed from web_fetch result",
+            )
+            tag = isolated.current(f"chunk:{sample_chunk.id}")
+            assert tag is not None
+            assert tag.source_type == SourceType.TOOL_OUTPUT
+            assert tag.source_id == "audit-77"
+            assert tag.notes == "indexed from web_fetch result"
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_partial_provenance_args_skip_tag(
+        self, index: MemoryIndex, sample_chunk: Chunk
+    ) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            index.upsert_chunk(
+                sample_chunk,
+                provenance_source_type="tool_output",
+            )
+            # Second upsert (overwrite) with only id — also skipped.
+            index.upsert_chunk(
+                sample_chunk,
+                provenance_source_id="audit-77",
+            )
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
