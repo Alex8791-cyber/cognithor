@@ -342,3 +342,107 @@ class TestAuditPersistence:
         logger = AuditLogger()
         stats = logger.stats()
         assert stats["has_persistence"] is False
+
+
+# ============================================================================
+# SEC-HIGH-5 — hash chain (autonomous security audit, 2026-05-04)
+# ============================================================================
+
+
+class TestHashChain:
+    """``AuditLogger`` writes a per-file SHA-256 hash chain (``prev_hash``
+    on every entry). ``validate_chain`` detects post-hoc tampering.
+    """
+
+    def _write_three_entries(self, audit_dir: Path) -> Path:
+        logger = AuditLogger(log_dir=audit_dir)
+        for i in range(3):
+            logger.log_tool_call(f"tool_{i}", {"k": str(i)}, agent_name="test_agent", success=True)
+        # Find the JSONL just produced (single date file).
+        files = list(audit_dir.glob("audit_*.jsonl"))
+        assert len(files) == 1, f"expected 1 audit file, got {files}"
+        return files[0]
+
+    def test_first_entry_has_empty_prev_hash(self, tmp_path: Path) -> None:
+        log_file = self._write_three_entries(tmp_path / "audit")
+        lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+        first = json.loads(lines[0])
+        assert "prev_hash" in first
+        assert first["prev_hash"] == ""
+
+    def test_subsequent_entries_link_to_previous(self, tmp_path: Path) -> None:
+        import hashlib
+
+        log_file = self._write_three_entries(tmp_path / "audit")
+        lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+        for i in range(1, len(lines)):
+            prev_data = json.loads(lines[i - 1])
+            curr_data = json.loads(lines[i])
+            canon_prev = json.dumps(prev_data, sort_keys=True, ensure_ascii=False)
+            expected = hashlib.sha256(canon_prev.encode("utf-8")).hexdigest()
+            assert curr_data["prev_hash"] == expected, (
+                f"line {i + 1} prev_hash {curr_data['prev_hash'][:12]} "
+                f"!= sha256(line {i}) {expected[:12]}"
+            )
+
+    def test_validate_chain_passes_clean_log(self, tmp_path: Path) -> None:
+        audit_dir = tmp_path / "audit"
+        log_file = self._write_three_entries(audit_dir)
+        logger = AuditLogger(log_dir=audit_dir)
+        ok, errors = logger.validate_chain(log_file)
+        assert ok, f"clean chain should validate; errors: {errors}"
+        assert errors == []
+
+    def test_validate_chain_detects_mutation(self, tmp_path: Path) -> None:
+        audit_dir = tmp_path / "audit"
+        log_file = self._write_three_entries(audit_dir)
+        # Tamper: rewrite the SECOND entry's parameters in place.
+        lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+        tampered = json.loads(lines[1])
+        tampered["parameters"] = {"k": "PWNED"}
+        lines[1] = json.dumps(tampered, ensure_ascii=False)
+        log_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        logger = AuditLogger(log_dir=audit_dir)
+        ok, errors = logger.validate_chain(log_file)
+        # The 3rd line's prev_hash was computed from the ORIGINAL 2nd
+        # line; after mutation it no longer matches.
+        assert not ok
+        assert any("prev_hash mismatch" in e for e in errors), errors
+
+    def test_validate_chain_detects_deletion(self, tmp_path: Path) -> None:
+        audit_dir = tmp_path / "audit"
+        log_file = self._write_three_entries(audit_dir)
+        lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+        del lines[1]
+        log_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        logger = AuditLogger(log_dir=audit_dir)
+        ok, errors = logger.validate_chain(log_file)
+        assert not ok
+        assert any("prev_hash mismatch" in e for e in errors), errors
+
+    def test_validate_chain_handles_missing_file(self, tmp_path: Path) -> None:
+        logger = AuditLogger(log_dir=tmp_path / "audit")
+        ok, errors = logger.validate_chain(tmp_path / "audit" / "ghost.jsonl")
+        assert ok
+        assert errors == []
+
+    def test_chain_survives_logger_restart(self, tmp_path: Path) -> None:
+        """A fresh ``AuditLogger`` pointing at an existing log file
+        must reload the prior tail's hash so its first new write
+        chains correctly. Otherwise process restarts would silently
+        break the chain.
+        """
+        audit_dir = tmp_path / "audit"
+        first = AuditLogger(log_dir=audit_dir)
+        for i in range(2):
+            first.log_tool_call(f"a{i}", {}, agent_name="agent", success=True)
+
+        log_file = next(iter(audit_dir.glob("audit_*.jsonl")))
+
+        second = AuditLogger(log_dir=audit_dir)
+        second.log_tool_call("a2", {}, agent_name="agent", success=True)
+
+        ok, errors = second.validate_chain(log_file)
+        assert ok, f"chain broken after restart: {errors}"
