@@ -86,3 +86,74 @@ class TestCoreMemory:
 
     def test_path_property(self, core: CoreMemory, core_file: Path):
         assert core.path == core_file
+
+
+class TestCoreMemoryProvenance:
+    """TRUST-9 wiring: ``CoreMemory.save(provenance_source_type=...,
+    provenance_source_id=...)`` writes a tag to the canonical
+    PROVENANCE_LEDGER keyed by ``core_memory:<filename>``.
+    """
+
+    def test_save_without_provenance_does_not_tag(self, core: CoreMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            core.save("# Identität\nfoo\n")
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_save_with_provenance_tags_ledger(self, core: CoreMemory, core_file: Path) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            core.save(
+                "# Identität\nupdated\n",
+                provenance_source_type="user_directive",
+                provenance_source_id="owner-msg-3",
+                provenance_notes="owner edited",
+            )
+            tag = isolated.current(f"core_memory:{core_file.name}")
+            assert tag is not None
+            assert tag.source_type == SourceType.USER_DIRECTIVE
+            assert tag.source_id == "owner-msg-3"
+            assert tag.notes == "owner edited"
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_partial_provenance_args_skip_tag(self, core: CoreMemory) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            core.save("foo", provenance_source_type="user_directive")
+            core.save("bar", provenance_source_id="owner-msg-3")
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    def test_unknown_source_type_falls_back(self, core: CoreMemory, core_file: Path) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            core.save("x", provenance_source_type="not_real", provenance_source_id="x")
+            tag = isolated.current(f"core_memory:{core_file.name}")
+            assert tag is not None
+            assert tag.source_type == SourceType.UNKNOWN
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
