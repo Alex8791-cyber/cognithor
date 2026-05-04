@@ -307,3 +307,36 @@ class EscalationLedger:
 # ledger stays empty in production until that wiring lands. Tests
 # construct their own :class:`EscalationLedger` for isolation.
 ESCALATION_LEDGER: EscalationLedger = EscalationLedger()
+
+
+def _record_escalation_ledger_migration() -> None:
+    """TRUST-10 self-audit: announce the escalation-ledger schema."""
+    from contextlib import suppress
+
+    from cognithor.security.migration_ledger import (
+        MIGRATION_LEDGER,
+        MigrationChainError,
+        MigrationDomain,
+        MigrationStatus,
+        MigrationStep,
+    )
+
+    with suppress(MigrationChainError, ValueError):
+        MIGRATION_LEDGER.record(
+            MigrationStep(
+                domain=MigrationDomain.ESCALATION_LEDGER,
+                source_version="v0-no-ledger",
+                target_version="v1-metadata-only-ledger",
+                status=MigrationStatus.APPLIED,
+                applied_by="system",
+                item_count=-1,
+                migration_id="escalation_ledger:v0-no-ledger:v1-metadata-only-ledger",
+                notes=(
+                    "TRUST-8 EscalationLedger schema active "
+                    "(metadata-only privacy contract, EscalationReason enum)"
+                ),
+            )
+        )
+
+
+_record_escalation_ledger_migration()

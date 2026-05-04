@@ -376,3 +376,33 @@ class TestEscalationLedgerSnapshot:
 class TestProcessLocalLedger:
     def test_default_ledger_is_an_escalation_ledger(self) -> None:
         assert isinstance(ESCALATION_LEDGER, EscalationLedger)
+
+
+class TestEscalationLedgerSelfAuditMigration:
+    """TRUST-10 self-audit: cloud_escalation module-import records
+    a v0→v1 step in the canonical MIGRATION_LEDGER.
+    """
+
+    def test_migration_step_landed(self) -> None:
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationDomain,
+            MigrationStatus,
+        )
+
+        step = MIGRATION_LEDGER.get("escalation_ledger:v0-no-ledger:v1-metadata-only-ledger")
+        assert step is not None
+        assert step.status == MigrationStatus.APPLIED
+        assert step.domain == MigrationDomain.ESCALATION_LEDGER
+        assert (
+            MIGRATION_LEDGER.head_version(MigrationDomain.ESCALATION_LEDGER)
+            == "v1-metadata-only-ledger"
+        )
+
+    def test_repeated_calls_idempotent(self) -> None:
+        from cognithor.security.cloud_escalation import (
+            _record_escalation_ledger_migration,
+        )
+
+        _record_escalation_ledger_migration()
+        _record_escalation_ledger_migration()

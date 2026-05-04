@@ -399,3 +399,37 @@ class CostLedger:
 # Production-wiring lands in a follow-up PR (PSE cost tracker,
 # TRUST-8 escalation, every billed tool). Tests use fresh ledgers.
 COST_LEDGER: CostLedger = CostLedger()
+
+
+def _record_cost_ledger_migration() -> None:
+    """TRUST-10 self-audit: announce the cost-ledger schema."""
+    from contextlib import suppress
+
+    from cognithor.security.migration_ledger import (
+        MIGRATION_LEDGER,
+        MigrationChainError,
+        MigrationDomain,
+        MigrationStatus,
+        MigrationStep,
+    )
+
+    with suppress(MigrationChainError, ValueError):
+        MIGRATION_LEDGER.record(
+            MigrationStep(
+                domain=MigrationDomain.COST_LEDGER,
+                source_version="v0-no-ledger",
+                target_version="v1-micro-usd-ledger",
+                status=MigrationStatus.APPLIED,
+                applied_by="system",
+                item_count=-1,
+                migration_id="cost_ledger:v0-no-ledger:v1-micro-usd-ledger",
+                notes=(
+                    "TRUST-6 CostLedger schema active "
+                    "(integer micro-USD cost unit, CostKind enum, "
+                    "BudgetReport status taxonomy)"
+                ),
+            )
+        )
+
+
+_record_cost_ledger_migration()

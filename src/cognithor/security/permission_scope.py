@@ -370,3 +370,36 @@ class ScopeRegistry:
 # it from config / DB; tests construct fresh registries to keep state
 # out of globals.
 SCOPE_REGISTRY: ScopeRegistry = ScopeRegistry()
+
+
+def _record_scope_registry_migration() -> None:
+    """TRUST-10 self-audit: announce the scope-registry schema."""
+    from contextlib import suppress
+
+    from cognithor.security.migration_ledger import (
+        MIGRATION_LEDGER,
+        MigrationChainError,
+        MigrationDomain,
+        MigrationStatus,
+        MigrationStep,
+    )
+
+    with suppress(MigrationChainError, ValueError):
+        MIGRATION_LEDGER.record(
+            MigrationStep(
+                domain=MigrationDomain.SCOPE_REGISTRY,
+                source_version="v0-no-registry",
+                target_version="v1-axis-identity-registry",
+                status=MigrationStatus.APPLIED,
+                applied_by="system",
+                item_count=-1,
+                migration_id="scope_registry:v0-no-registry:v1-axis-identity-registry",
+                notes=(
+                    "TRUST-5 ScopeRegistry schema active "
+                    "(ScopeAxis enum, allow/deny/max_risk evaluation)"
+                ),
+            )
+        )
+
+
+_record_scope_registry_migration()
