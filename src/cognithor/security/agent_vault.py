@@ -29,6 +29,50 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+
+def _tag_vault_provenance(
+    *,
+    item_id: str,
+    source_type_value: str,
+    source_id: str,
+    notes: str,
+) -> None:
+    """Best-effort TRUST-9 provenance tag for a vault secret.
+
+    Failures are silently swallowed — vault operations MUST NEVER
+    fail because of provenance tagging. Unknown ``source_type_value``
+    is coerced to :data:`SourceType.UNKNOWN` so a typo at the call
+    site doesn't break secret storage.
+
+    Privacy contract: the caller is responsible for ensuring
+    ``notes`` does not contain the secret's value. This helper does
+    not introspect or sanitise the input.
+    """
+    from cognithor.memory.provenance import (
+        PROVENANCE_LEDGER,
+        ProvenanceTag,
+        SourceType,
+    )
+
+    try:
+        try:
+            source_type = SourceType(source_type_value)
+        except ValueError:
+            source_type = SourceType.UNKNOWN
+        PROVENANCE_LEDGER.tag(
+            item_id,
+            ProvenanceTag(
+                source_type=source_type,
+                source_id=source_id,
+                notes=notes,
+            ),
+        )
+    except ValueError:
+        # ProvenanceTag construction may reject empty source_id.
+        # Silently skip; logging vault writes MUST NEVER fail.
+        pass
+
+
 # ============================================================================
 # Agent Secret
 # ============================================================================
@@ -139,8 +183,24 @@ class AgentVault:
         secret_type: SecretType = SecretType.API_KEY,
         *,
         ttl_hours: int = 0,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
     ) -> AgentSecret:
-        """Stores a new secret in the vault."""
+        """Stores a new secret in the vault.
+
+        Optional TRUST-9 provenance: when both
+        ``provenance_source_type`` and ``provenance_source_id`` are
+        passed, a tag is written to the canonical
+        ``PROVENANCE_LEDGER`` keyed by the new ``secret_id``. Lets
+        the operational-trust receipt answer "where did this stored
+        secret come from?" — owner-pasted? config-import? rotation
+        broker?
+
+        Privacy invariant: the secret's *value* never enters the
+        provenance ledger. Only metadata (source_type / source_id /
+        notes) flows through.
+        """
         self._counter += 1
         now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         expires = ""
@@ -159,6 +219,13 @@ class AgentVault:
         )
         self._secrets[secret.secret_id] = secret
         self._log("store", secret.secret_id)
+        if provenance_source_type and provenance_source_id:
+            _tag_vault_provenance(
+                item_id=secret.secret_id,
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                notes=provenance_notes,
+            )
         return secret
 
     def retrieve(self, secret_id: str) -> str | None:
