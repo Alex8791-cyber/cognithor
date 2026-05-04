@@ -474,9 +474,30 @@ class IsolatedSessionStore:
         self._counter = 0
 
     def create_session(
-        self, agent_id: str, tenant_id: str = "", data: dict[str, Any] | None = None
+        self,
+        agent_id: str,
+        tenant_id: str = "",
+        data: dict[str, Any] | None = None,
+        *,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
     ) -> AgentSession:
-        """Creates a new session for an agent."""
+        """Creates a new session for an agent.
+
+        Optional TRUST-9 provenance: when both
+        ``provenance_source_type`` and ``provenance_source_id`` are
+        passed, a tag is written to the canonical
+        ``PROVENANCE_LEDGER`` keyed by the new ``session_id``. Lets
+        the operational-trust receipt answer "where did this session
+        come from?" — channel onboarding, IDE plugin handshake,
+        cron-spawned worker, etc.
+
+        Privacy contract carried over from :meth:`AgentVault.store`:
+        only metadata flows. The session's ``data`` payload is NOT
+        introspected; the caller must avoid putting credentials into
+        ``provenance_notes``.
+        """
         self._counter += 1
         session = AgentSession(
             session_id=f"SESS-{agent_id[:6]}-{self._counter:04d}",
@@ -489,6 +510,13 @@ class IsolatedSessionStore:
         if agent_id not in self._stores:
             self._stores[agent_id] = {}
         self._stores[agent_id][session.session_id] = session
+        if provenance_source_type and provenance_source_id:
+            _tag_vault_provenance(
+                item_id=session.session_id,
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                notes=provenance_notes,
+            )
         return session
 
     def get_session(self, agent_id: str, session_id: str) -> AgentSession | None:
