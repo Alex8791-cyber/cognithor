@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:cognithor_ui/providers/connection_provider.dart';
+import 'package:cognithor_ui/providers/packs_provider.dart';
 import 'package:cognithor_ui/providers/research_provider.dart';
 import 'package:cognithor_ui/widgets/research/hop_progress_indicator.dart';
 import 'package:cognithor_ui/widgets/research/research_history_list.dart';
 import 'package:cognithor_ui/widgets/research/research_report_view.dart';
+
+const String _kDeepResearchPackId = 'cognithor-official/deep-research-analyst';
 
 class ResearchScreen extends StatefulWidget {
   const ResearchScreen({super.key});
@@ -25,7 +28,11 @@ class _ResearchScreenState extends State<ResearchScreen> {
     if (!_initialized) {
       _initialized = true;
       final conn = context.read<ConnectionProvider>();
-      if (conn.state == CognithorConnectionState.connected) {
+      final packs = context.read<PacksProvider>();
+      // Deep Research V2 lives in a private pack — skip endpoint calls when
+      // the pack isn't loaded so we don't fire 6 endpoints that 404.
+      if (conn.state == CognithorConnectionState.connected &&
+          packs.hasPackLoaded(_kDeepResearchPackId)) {
         final provider = context.read<ResearchProvider>();
         provider.setApi(conn.api);
         provider.loadHistory();
