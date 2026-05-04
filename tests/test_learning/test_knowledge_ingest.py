@@ -350,3 +350,92 @@ class TestYoutubeFrames:
         with patch("shutil.which", side_effect=_which):
             result = svc._extract_youtube_frames("dQw4w9WgXcQ")
             assert result == []
+
+
+class TestKnowledgeIngestProvenance:
+    """TRUST-9 wiring: ``ingest_file(provenance_source_type=...,
+    provenance_source_id=...)`` writes a tag to the canonical
+    PROVENANCE_LEDGER keyed by ``ingest:<result.id>``.
+    """
+
+    @pytest.mark.asyncio
+    async def test_ingest_without_provenance_does_not_tag(self) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            memory = MagicMock()
+            memory.index_text = MagicMock(return_value=1)
+            svc = KnowledgeIngestService(memory=memory)
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(svc, "_extract_text", AsyncMock(return_value="content"))
+                mp.setattr(svc, "_ensure_worker", MagicMock())
+                result = await svc.ingest_file("a.txt", b"c", priority=Priority.LOW)
+            assert f"ingest:{result.id}" not in isolated
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_ingest_with_provenance_tags_ledger(self) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger, SourceType
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            memory = MagicMock()
+            memory.index_text = MagicMock(return_value=1)
+            svc = KnowledgeIngestService(memory=memory)
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(svc, "_extract_text", AsyncMock(return_value="content"))
+                mp.setattr(svc, "_ensure_worker", MagicMock())
+                result = await svc.ingest_file(
+                    "a.pdf",
+                    b"content",
+                    priority=Priority.NORMAL,
+                    provenance_source_type="user_directive",
+                    provenance_source_id="upload-7",
+                    provenance_notes="owner-uploaded PDF",
+                )
+            tag = isolated.current(f"ingest:{result.id}")
+            assert tag is not None
+            assert tag.source_type == SourceType.USER_DIRECTIVE
+            assert tag.source_id == "upload-7"
+            assert tag.notes == "owner-uploaded PDF"
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]
+
+    @pytest.mark.asyncio
+    async def test_partial_provenance_args_skip_tag(self) -> None:
+        import cognithor.memory.provenance as prov_mod
+        from cognithor.memory.provenance import ProvenanceLedger
+
+        isolated = ProvenanceLedger()
+        original = prov_mod.PROVENANCE_LEDGER
+        prov_mod.PROVENANCE_LEDGER = isolated  # type: ignore[misc]
+        try:
+            memory = MagicMock()
+            memory.index_text = MagicMock(return_value=1)
+            svc = KnowledgeIngestService(memory=memory)
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(svc, "_extract_text", AsyncMock(return_value="c"))
+                mp.setattr(svc, "_ensure_worker", MagicMock())
+                await svc.ingest_file(
+                    "a.txt",
+                    b"c",
+                    priority=Priority.LOW,
+                    provenance_source_type="user_directive",
+                )
+                await svc.ingest_file(
+                    "b.txt",
+                    b"c",
+                    priority=Priority.LOW,
+                    provenance_source_id="upload-7",
+                )
+            assert len(isolated) == 0
+        finally:
+            prov_mod.PROVENANCE_LEDGER = original  # type: ignore[misc]

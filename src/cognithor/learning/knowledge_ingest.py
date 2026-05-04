@@ -134,8 +134,20 @@ class KnowledgeIngestService:
         filename: str,
         content: bytes,
         priority: Priority = Priority.NORMAL,
+        *,
+        provenance_source_type: str | None = None,
+        provenance_source_id: str | None = None,
+        provenance_notes: str = "",
     ) -> IngestResult:
-        """Ingest a file (PDF, DOCX, TXT, MD, images)."""
+        """Ingest a file (PDF, DOCX, TXT, MD, images).
+
+        Optional TRUST-9 provenance: when both
+        ``provenance_source_type`` and ``provenance_source_id`` are
+        passed, a tag is written to the canonical
+        ``PROVENANCE_LEDGER`` keyed by ``ingest:<result.id>``. Lets
+        the operational-trust receipt answer "which upload produced
+        this knowledge chunk?" without parsing the source URL.
+        """
         result = IngestResult(
             id=str(uuid4()),
             source_type="file",
@@ -183,8 +195,52 @@ class KnowledgeIngestService:
             result.error = str(exc)
             log.warning("ingest_file_failed", file=filename, error=str(exc))
 
+        if provenance_source_type and provenance_source_id:
+            self._tag_provenance(
+                item_id=f"ingest:{result.id}",
+                source_type_value=provenance_source_type,
+                source_id=provenance_source_id,
+                notes=provenance_notes,
+            )
+
         self._results.append(result)
         return result
+
+    @staticmethod
+    def _tag_provenance(
+        *,
+        item_id: str,
+        source_type_value: str,
+        source_id: str,
+        notes: str,
+    ) -> None:
+        """Best-effort TRUST-9 provenance tag — failures are swallowed.
+
+        Unknown ``source_type_value`` is coerced to
+        :data:`SourceType.UNKNOWN`. Ingest NEVER fails because of
+        provenance tagging.
+        """
+        from cognithor.memory.provenance import (
+            PROVENANCE_LEDGER,
+            ProvenanceTag,
+            SourceType,
+        )
+
+        try:
+            try:
+                source_type = SourceType(source_type_value)
+            except ValueError:
+                source_type = SourceType.UNKNOWN
+            PROVENANCE_LEDGER.tag(
+                item_id,
+                ProvenanceTag(
+                    source_type=source_type,
+                    source_id=source_id,
+                    notes=notes,
+                ),
+            )
+        except ValueError:
+            pass
 
     async def ingest_url(
         self,
