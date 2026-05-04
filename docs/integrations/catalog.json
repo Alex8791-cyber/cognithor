@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-04T21:13:19.760020+00:00",
-  "tool_count": 138,
+  "generated_at": "2026-05-04T22:44:55.668974+00:00",
+  "tool_count": 141,
   "tools": [
     {
       "name": "file_write",
@@ -868,6 +868,27 @@
       "module": "cognithor.mcp.vault",
       "category": "misc",
       "description": "Aktualisiert eine bestehende Notiz im Vault. Kann Text anhängen und/oder Tags ergänzen.",
+      "dach_specific": false
+    },
+    {
+      "name": "video_caption_overlay",
+      "module": "cognithor.mcp.video_tools",
+      "category": "misc",
+      "description": "Glue a parallel caption track onto an existing composition spec. GREEN risk level — pure-function transform; emits new HTML.",
+      "dach_specific": false
+    },
+    {
+      "name": "video_compose_explainer",
+      "module": "cognithor.mcp.video_tools",
+      "category": "misc",
+      "description": "Title card + body sections + optional CTA in 16:9. GREEN risk level — pure-function preset over video_compose.",
+      "dach_specific": false
+    },
+    {
+      "name": "video_compose_social_cut",
+      "module": "cognithor.mcp.video_tools",
+      "category": "misc",
+      "description": "Vertical 9:16 short with hook + fast-cut beats + outro. GREEN risk level — pure-function preset over video_compose.",
       "dach_specific": false
     },
     {
