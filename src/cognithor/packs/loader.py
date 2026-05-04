@@ -151,6 +151,50 @@ class PackLoader:
                 )
             )
 
+        # TRUST-7: register a SCHEMA-kind fingerprint for the
+        # PackManifest pydantic schema itself. The content_hash is
+        # SHA-256 of PackManifest.model_json_schema() so any future
+        # change to the schema (added field, type tightening, etc.)
+        # produces a new fingerprint and divergent_names() can spot it.
+        PackLoader._fingerprint_pack_manifest_schema()
+
+    @staticmethod
+    def _fingerprint_pack_manifest_schema() -> None:
+        """Best-effort SCHEMA-kind fingerprint of ``PackManifest``.
+
+        Idempotent via the ledger's content-hash de-dup: same schema
+        bytes → same registration → no-op. Failures are silently
+        logged and swallowed; pack discovery NEVER fails because of
+        fingerprinting.
+        """
+        import hashlib
+        import json as _json
+
+        from cognithor.security.fingerprint import (
+            FINGERPRINT_LEDGER,
+            BinaryKind,
+            ToolFingerprint,
+        )
+
+        try:
+            schema = PackManifest.model_json_schema()
+            canonical = _json.dumps(schema, sort_keys=True, ensure_ascii=False)
+            digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            FINGERPRINT_LEDGER.register(
+                ToolFingerprint(
+                    name="pack_manifest_schema",
+                    kind=BinaryKind.SCHEMA,
+                    content_hash=digest,
+                    version="v1",
+                    notes="PackManifest pydantic schema",
+                )
+            )
+        except (ValueError, TypeError, _json.JSONDecodeError) as exc:
+            _log.debug(
+                "pack.schema_fingerprint_skipped",
+                error=str(exc),
+            )
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
