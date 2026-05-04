@@ -110,12 +110,22 @@ def _cmd_remove(args: argparse.Namespace) -> int:
 
 
 def _cmd_update(args: argparse.Namespace) -> int:
+    """``cognithor pack update <namespace/id>`` — not yet automated.
+
+    Returns exit code 2 (EX_USAGE) so scripts and CI pipelines can detect
+    that no update was performed instead of mistakenly treating the stub
+    output as success.
+    """
+    target = args.qualified_id or "<namespace/pack-id>"
     print(
-        "Update is not yet automated.\n"
+        f"Update is not yet automated for {target}.\n"
         "To update a pack, re-install it with the URL from your purchase email:\n"
-        "  cognithor pack install https://example.com/updated-pack.zip"
+        "  cognithor pack install https://example.com/updated-pack.zip\n"
+        "If you upgrade a pack and want to revert, use:\n"
+        f"  cognithor pack rollback {target}",
+        file=sys.stderr,
     )
-    return 0
+    return 2
 
 
 def _cmd_accept_eula(args: argparse.Namespace) -> int:
@@ -198,12 +208,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_remove.set_defaults(func=_cmd_remove)
 
     # update
-    p_update = sub.add_parser("update", help="Update an installed pack (MVP stub).")
+    p_update = sub.add_parser(
+        "update",
+        help="Update an installed pack (not yet automated — exits 2).",
+    )
     p_update.add_argument(
         "qualified_id",
         metavar="NAMESPACE/PACK_ID",
-        nargs="?",
-        help="Qualified pack identifier (optional for stub).",
+        help="Qualified pack identifier, e.g. cognithor-official/my-pack.",
     )
     p_update.set_defaults(func=_cmd_update)
 
