@@ -380,7 +380,14 @@ class Gatekeeper:
                 return code_check
 
         # --- Step 4b: Destructive shell commands ---
-        if action.tool in ("exec_command", "shell_exec", "shell"):
+        # ``start_background`` runs ``subprocess.Popen(command, shell=True)``
+        # via ``BackgroundTaskManager.start`` — same threat surface as a
+        # synchronous ``exec_command`` call, just detached. SEC-CRIT-1
+        # (autonomous security audit, 2026-05-04) — without this entry
+        # the destructive-command regex never fires for it, so a
+        # jailbroken Planner could spawn ``rm -rf $HOME`` as a
+        # background job that the Gatekeeper auto-allows under YELLOW.
+        if action.tool in ("exec_command", "shell_exec", "shell", "start_background"):
             cmd = str(action.params.get("command", ""))
             cmd_check = self._check_command(cmd, action)
             if cmd_check is not None:
