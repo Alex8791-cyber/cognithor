@@ -326,6 +326,34 @@ def parse_args() -> argparse.Namespace:
         default=50,
         help="Max sessions to print, newest-first (default: 50)",
     )
+    export_p = receipt_sub.add_parser(
+        "export-all",
+        help="Bulk-export one receipt JSON per session_id",
+    )
+    export_p.add_argument(
+        "--log-dir",
+        dest="receipt_export_log_dir",
+        required=True,
+        help="Audit-log directory to scan",
+    )
+    export_p.add_argument(
+        "--out",
+        dest="receipt_export_out_dir",
+        required=True,
+        help="Target directory for receipt files",
+    )
+    export_p.add_argument(
+        "--include-trust",
+        dest="receipt_export_include_trust",
+        action="store_true",
+        help="Fold the TRUST-5..10 ledger bundle into each receipt",
+    )
+    export_p.add_argument(
+        "--key",
+        dest="receipt_export_signing_key",
+        default=None,
+        help="HMAC-SHA-256 signing key (omitted ⇒ unsigned)",
+    )
 
     return parser.parse_args()
 
@@ -607,8 +635,20 @@ def main() -> None:
                     limit=int(getattr(args, "receipt_list_limit", 50)),
                 )
             )
+        elif action == "export-all":
+            sys.exit(
+                receipt_cmd.cmd_export_all(
+                    log_dir=Path(args.receipt_export_log_dir),
+                    out_dir=Path(args.receipt_export_out_dir),
+                    include_trust=getattr(args, "receipt_export_include_trust", False),
+                    signing_key=getattr(args, "receipt_export_signing_key", None),
+                )
+            )
         else:
-            print("Usage: cognithor receipt <show|verify|list>", file=sys.stderr)
+            print(
+                "Usage: cognithor receipt <show|verify|list|export-all>",
+                file=sys.stderr,
+            )
             sys.exit(2)
 
     # 0a. Auto-migrate data from ~/.jarvis/ to ~/.cognithor/ (one-time, on upgrade)
