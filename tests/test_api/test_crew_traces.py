@@ -285,3 +285,103 @@ def test_app_smoke_includes_crew_traces_router() -> None:
     paths = {r.path for r in app.routes if hasattr(r, "path")}
     assert "/api/crew/traces" in paths
     assert "/api/crew/trace/{trace_id}" in paths
+
+
+def test_get_trace_receipt_endpoint_returns_receipt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``GET /api/crew/trace/{trace_id}/receipt`` returns the TRUST-1 receipt."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get(
+        "/api/crew/trace/trace-aaa/receipt",
+        headers={"X-Cognithor-User": "test-owner"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["session_id"] == "trace-aaa"
+    assert body["entry_count"] == 4
+    # Default — include_trust=False — no top-level trust key.
+    assert "trust" not in body
+    assert "aggregate" in body
+    assert "entries" in body
+
+
+def test_get_trace_receipt_endpoint_supports_include_trust(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get(
+        "/api/crew/trace/trace-aaa/receipt?include_trust=true",
+        headers={"X-Cognithor-User": "test-owner"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "trust" in body
+    trust = body["trust"]
+    assert trust["run_id"] == "trace-aaa"
+    for key in (
+        "permission_scopes",
+        "cost",
+        "fingerprints",
+        "escalations",
+        "provenance",
+        "migrations",
+    ):
+        assert key in trust
+
+
+def test_get_trace_receipt_endpoint_returns_404_for_unknown_trace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get(
+        "/api/crew/trace/does-not-exist/receipt",
+        headers={"X-Cognithor-User": "test-owner"},
+    )
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body["detail"]["error"] == "trace_not_found"
+    assert body["detail"]["trace_id"] == "does-not-exist"
+
+
+def test_get_trace_receipt_endpoint_requires_owner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from cognithor.api.crew_traces import router
+
+    monkeypatch.setattr("cognithor.api.crew_traces._audit_path", lambda: FIXTURE)
+    monkeypatch.setenv("COGNITHOR_OWNER_USER_ID", "test-owner")
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    # Missing header — owner gate denies.
+    resp = client.get("/api/crew/trace/trace-aaa/receipt")
+    assert resp.status_code == 403
