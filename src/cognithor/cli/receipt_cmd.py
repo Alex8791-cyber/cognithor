@@ -115,4 +115,82 @@ def cmd_verify(*, bundle_path: Path, signing_key: str) -> int:
     return 1
 
 
-__all__ = ["cmd_show", "cmd_verify"]
+def cmd_list(
+    *,
+    log_dir: Path | None = None,
+    limit: int = 50,
+) -> int:
+    """List every distinct ``session_id`` present in the audit log.
+
+    Walks ``audit_*.jsonl`` files under ``log_dir`` and emits one line
+    per session: ``<session_id> <entry_count> <first_seen>``. Sorted
+    most-recent-first by the first-seen timestamp.
+
+    Sessions without an explicit ``session_id`` (boot-time, scheduler,
+    GC) are bucketed under ``""`` and surface as ``(unscoped)`` so the
+    operator can spot un-tagged activity.
+
+    Parameters
+    ----------
+    log_dir:
+        Directory holding ``audit_*.jsonl`` files. ``None`` → no file
+        scan (returns just the in-memory ring buffer of a freshly
+        constructed AuditLogger, which is empty in CLI invocations).
+    limit:
+        Max number of sessions to print. Newest-first; older sessions
+        get truncated. Must be >= 1.
+
+    Returns
+    -------
+    0 on success, 2 on bad arguments.
+    """
+    if limit < 1:
+        print("error: --limit must be >= 1", file=sys.stderr)
+        return 2
+
+    sessions: dict[str, dict[str, Any]] = {}
+    if log_dir is not None and log_dir.exists():
+        for jsonl in sorted(log_dir.glob("audit_*.jsonl")):
+            try:
+                for raw in jsonl.read_text(encoding="utf-8").splitlines():
+                    line = raw.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(data, dict):
+                        continue
+                    sid = str(data.get("session_id", ""))
+                    timestamp = str(data.get("timestamp", ""))
+                    bucket = sessions.setdefault(
+                        sid,
+                        {"count": 0, "first_seen": timestamp, "last_seen": timestamp},
+                    )
+                    bucket["count"] = int(bucket.get("count", 0)) + 1
+                    if timestamp and (not bucket["first_seen"] or timestamp < bucket["first_seen"]):
+                        bucket["first_seen"] = timestamp
+                    if timestamp and (not bucket["last_seen"] or timestamp > bucket["last_seen"]):
+                        bucket["last_seen"] = timestamp
+            except OSError:
+                continue
+
+    if not sessions:
+        print("(no audit entries found)")
+        return 0
+
+    ordered = sorted(
+        sessions.items(),
+        key=lambda kv: str(kv[1].get("last_seen", "")),
+        reverse=True,
+    )[:limit]
+
+    print(f"{'session_id':<40} {'count':>7}  last_seen")
+    for sid, meta in ordered:
+        display = sid or "(unscoped)"
+        print(f"{display:<40} {int(meta.get('count', 0)):>7}  {meta.get('last_seen', '')}")
+    return 0
+
+
+__all__ = ["cmd_list", "cmd_show", "cmd_verify"]
