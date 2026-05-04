@@ -55,6 +55,7 @@ class CostKind(StrEnum):
 
     LLM_INFERENCE = "llm_inference"  # tokens billed by an LLM provider
     EMBEDDING = "embedding"  # vector embedding API
+    VISION_TOKENS = "vision_tokens"  # image + video frame tokens (Sprint-27 VLM)
     TOOL_API = "tool_api"  # external tool API (search, scraping, …)
     STORAGE = "storage"  # persisted bytes-per-month
     NETWORK = "network"  # bandwidth / egress
