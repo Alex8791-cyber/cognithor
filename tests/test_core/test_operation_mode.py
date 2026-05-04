@@ -167,6 +167,12 @@ class TestGatekeeperOfflineEnforcement:
         assert decision.status == GateStatus.BLOCK
         assert "OFFLINE" in decision.reason
         assert decision.policy_name == "operation_mode_offline"
+        # TRUST-2: structured explanation with the matched capability.
+        assert decision.explanation is not None
+        assert decision.explanation.rule_id == "operation_mode_offline_network"
+        assert "_OFFLINE_ALLOWED_NETWORK_TOOLS" in decision.explanation.rule_source
+        assert "cloud_api_call" in decision.explanation.matched_pattern
+        assert "network_http" in decision.explanation.matched_pattern
 
     def test_offline_blocks_websocket_tool(
         self,
