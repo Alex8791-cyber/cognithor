@@ -250,6 +250,11 @@ class OllamaBackend(LLMBackend):
         self._timeout = timeout
         self._keep_alive = keep_alive
         self._client: httpx.AsyncClient | None = None
+        # Per-process cache of fingerprinted model names so the
+        # /api/show probe fires at most once per model. The set
+        # holds the model name string regardless of whether the
+        # probe succeeded — failures don't retry on the hot path.
+        self._fingerprinted_models: set[str] = set()
 
     @property
     def backend_type(self) -> LLMBackendType:
@@ -398,6 +403,79 @@ class OllamaBackend(LLMBackend):
             return [m["name"] for m in resp.json().get("models", [])]
         except Exception:
             return []
+
+    async def fingerprint_model(self, model: str) -> str | None:
+        """TRUST-7: register a MODEL-kind fingerprint for ``model``.
+
+        Calls Ollama's ``/api/show`` once per process per model name
+        to fetch the manifest digest (a 64-hex SHA-256 string), then
+        registers a :class:`ToolFingerprint` of kind
+        :data:`BinaryKind.MODEL` into the canonical
+        ``FINGERPRINT_LEDGER``. Returns the digest on success,
+        ``None`` when the probe failed or the response shape was
+        unexpected.
+
+        Best-effort: Ollama unreachability, missing digest field,
+        and registry validation errors are silently logged + return
+        ``None``. Subsequent calls for the same model name are a
+        no-op (cached in :attr:`_fingerprinted_models`). Caller
+        decides when to invoke — gateway boot, lazy-on-first-chat,
+        manual operator command.
+        """
+        if not model or model in self._fingerprinted_models:
+            return None
+        # Mark as fingerprinted up-front so a flaky probe doesn't
+        # retry on every chat() call.
+        self._fingerprinted_models.add(model)
+
+        from cognithor.security.fingerprint import (
+            FINGERPRINT_LEDGER,
+            BinaryKind,
+            ToolFingerprint,
+        )
+
+        try:
+            client = await self._ensure_client()
+            resp = await client.post(
+                "/api/show",
+                json={"name": model},
+                timeout=10.0,
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+        except (httpx.ConnectError, httpx.TimeoutException, OSError, ValueError):
+            return None
+
+        # Ollama exposes the digest under several key paths depending
+        # on version: top-level ``digest``, ``details.digest``, or
+        # the model_info block. Probe in priority order.
+        digest_raw = data.get("digest") or (data.get("details") or {}).get("digest") or ""
+        digest = str(digest_raw).strip().lower()
+        # Strip leading "sha256:" prefix if Ollama added one.
+        if digest.startswith("sha256:"):
+            digest = digest.removeprefix("sha256:")
+        if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+            return None
+
+        version = ""
+        details = data.get("details") or {}
+        if isinstance(details, dict):
+            version = str(details.get("parameter_size") or details.get("family") or "")
+
+        try:
+            FINGERPRINT_LEDGER.register(
+                ToolFingerprint(
+                    name=model,
+                    kind=BinaryKind.MODEL,
+                    content_hash=digest,
+                    version=version,
+                    upstream_url="ollama:" + model,
+                )
+            )
+        except ValueError:
+            return None
+        return digest
 
     async def close(self) -> None:
         if self._client and not self._client.is_closed:
