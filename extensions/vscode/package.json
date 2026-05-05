@@ -137,6 +137,21 @@
           "type": "boolean",
           "default": true,
           "description": "Fold the TRUST-5..10 ledger bundle into receipts when fetching."
+        },
+        "cognithor.costThresholdGreenMicro": {
+          "type": "number",
+          "default": 1000,
+          "description": "Per-entry cost (micro-USD) below which the gutter shows a green tier (negligible)."
+        },
+        "cognithor.costThresholdYellowMicro": {
+          "type": "number",
+          "default": 10000,
+          "description": "Per-entry cost (micro-USD) below which the gutter shows yellow (cheap)."
+        },
+        "cognithor.costThresholdOrangeMicro": {
+          "type": "number",
+          "default": 100000,
+          "description": "Per-entry cost (micro-USD) below which the gutter shows orange (medium); above this is red."
         }
       }
     }
