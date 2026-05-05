@@ -44,9 +44,18 @@ class FeishuChannel(Channel):
         self,
         app_id: str = "",
         app_secret: str = "",
+        encrypt_key: str = "",
     ) -> None:
         self._app_id = app_id
         self._app_secret = app_secret
+        # Audit-PR9 (audit-HIGH-3): the encrypt_key is required for
+        # event-signature verification on the public Feishu webhook.
+        # Previously it was only a parameter on `verify_event`, never
+        # threaded from the channel construction site, so every webhook
+        # passed verification unconditionally. Now stored on the
+        # instance and used by `verify_event` when no explicit key is
+        # supplied; callers that pass a key keep their old behaviour.
+        self._encrypt_key = encrypt_key
         self._handler: MessageHandler | None = None
         self._running = False
         self._http_client: Any | None = None
@@ -132,21 +141,34 @@ class FeishuChannel(Channel):
     def verify_event(self, body: dict[str, Any], encrypt_key: str = "") -> bool:
         """Verifiziert ein eingehendes Event (Challenge/Signature).
 
+        Audit-PR9 (audit-HIGH-3): the channel now carries its own
+        ``_encrypt_key``. When ``encrypt_key`` is omitted by the
+        caller (the normal webhook path), we use the instance's
+        configured key. If neither is set, we still log + skip
+        verification — but the warning carries an explicit
+        ``app_id`` + reason so the operator can find it in the
+        log instead of silently allowing unauthenticated events.
+
         Args:
             body: Das JSON-Payload.
-            encrypt_key: Optionaler Encryption Key.
+            encrypt_key: Override-Key (default = instance config).
 
         Returns:
             True wenn valide.
         """
-        # URL-Verification (Challenge)
+        # URL-Verification (Challenge) — Feishu sends an unsigned
+        # initial probe to confirm the webhook URL works.
         if "challenge" in body:
             return True
 
-        if not encrypt_key:
+        effective_key = encrypt_key or self._encrypt_key
+        if not effective_key:
             logger.warning(
-                "Feishu: No encrypt_key configured -- event signature "
-                "verification SKIPPED. Set encrypt_key for production use."
+                "Feishu: No encrypt_key configured (channel app_id=%r) -- "
+                "event signature verification SKIPPED. Set the encrypt_key "
+                "constructor argument or the COGNITHOR_FEISHU_ENCRYPT_KEY "
+                "env var to enable verification.",
+                self._app_id or "<unset>",
             )
             return True
 
@@ -156,7 +178,9 @@ class FeishuChannel(Channel):
         signature = body.get("header", {}).get("signature", "")
         body_str = json.dumps(body, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
 
-        expected = hashlib.sha256(f"{timestamp}{nonce}{encrypt_key}{body_str}".encode()).hexdigest()
+        expected = hashlib.sha256(
+            f"{timestamp}{nonce}{effective_key}{body_str}".encode(),
+        ).hexdigest()
         return hmac.compare_digest(signature, expected)
 
     async def handle_event(self, payload: dict[str, Any]) -> dict[str, Any] | None:

@@ -2786,13 +2786,25 @@ def main() -> None:
             feishu_app_secret = config.channels.feishu_app_secret or os.environ.get(
                 "COGNITHOR_FEISHU_APP_SECRET", ""
             )
+            # Audit-PR9 (audit-HIGH-3): wire the encryption key into the
+            # channel construction so webhook events can have their
+            # signatures verified. Without this, the FeishuChannel
+            # accepted any incoming POST as a valid event.
+            feishu_encrypt_key = os.environ.get("COGNITHOR_FEISHU_ENCRYPT_KEY", "")
             if feishu_app_id and feishu_app_secret:
                 from cognithor.channels.feishu import FeishuChannel
 
                 gateway.register_channel(
-                    FeishuChannel(app_id=feishu_app_id, app_secret=feishu_app_secret)
+                    FeishuChannel(
+                        app_id=feishu_app_id,
+                        app_secret=feishu_app_secret,
+                        encrypt_key=feishu_encrypt_key,
+                    )
                 )
-                log.info("feishu_channel_registered")
+                log.info(
+                    "feishu_channel_registered",
+                    has_encrypt_key=bool(feishu_encrypt_key),
+                )
             elif feishu_app_id or feishu_app_secret:
                 log.warning(
                     "feishu_partial_config",

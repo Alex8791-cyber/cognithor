@@ -27,6 +27,46 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 
+
+# Audit-PR9 (audit-HIGH-4): ReDoS guard for user-supplied regex.
+# Python's `re` has no per-call timeout — the only realistic
+# protection is to reject patterns that look catastrophic before
+# we hand them to `re.compile`. The heuristic catches the
+# canonical "nested quantifier" shape — ``(a+)+`` style — by
+# looking for ``<quantifier><close-paren><optional-ws><quantifier>``
+# anywhere in the source, plus consecutive quantifiers like
+# ``a++`` or ``a*?+``. Pattern length is also capped (no
+# legitimate workspace search needs more than 256 chars).
+_REDOS_NESTED_QUANT_RE = re.compile(
+    r"""
+    [+*?]\s*[+*?]              # consecutive quantifiers e.g. ``++`` ``*?+``
+    |
+    [+*?]\)\s*[+*?]            # ``+)+`` style — quantifier, close-paren, quantifier
+    |
+    [+*?]\}\s*[+*?]            # same with explicit ``{n,m}`` close-brace
+    """,
+    re.VERBOSE,
+)
+_REDOS_PATTERN_MAX_LEN = 256
+
+
+def _validate_user_regex(pattern: str) -> str | None:
+    """Return an error message when ``pattern`` is unsafe, else ``None``."""
+
+    if len(pattern) > _REDOS_PATTERN_MAX_LEN:
+        return (
+            f"regex pattern exceeds {_REDOS_PATTERN_MAX_LEN} chars — "
+            "split into a smaller search or use a literal query"
+        )
+    if _REDOS_NESTED_QUANT_RE.search(pattern):
+        return (
+            "regex pattern looks catastrophic (nested quantifiers like "
+            "(a+)+ can take exponential time on adversarial input). "
+            "Refactor to a non-nested form."
+        )
+    return None
+
+
 # Ausgeschlossene Verzeichnisse
 EXCLUDED_DIRS: frozenset[str] = frozenset(
     {
@@ -272,6 +312,13 @@ class SearchTools:
         if not root.exists():
             return t("tools.search_dir_not_found", root=root)
 
+        # Audit-PR9: ReDoS guard. Reject user-supplied regex with
+        # catastrophic shape BEFORE compile so we don't spend time
+        # in `re.search` on adversarial input.
+        if regex:
+            redos_err = _validate_user_regex(query)
+            if redos_err is not None:
+                return f"Error: {redos_err}"
         # Regex kompilieren oder escaped Pattern erstellen
         try:
             search_pattern = re.compile(query) if regex else re.compile(re.escape(query))
@@ -389,6 +436,12 @@ class SearchTools:
         if not root.exists():
             return t("tools.search_dir_not_found", root=root)
 
+        # Audit-PR9: ReDoS guard (same as find_in_files). Reject
+        # catastrophic-shape user regex before compile.
+        if regex:
+            redos_err = _validate_user_regex(query)
+            if redos_err is not None:
+                return f"Error: {redos_err}"
         # Pattern kompilieren
         try:
             search_pattern = re.compile(query) if regex else re.compile(re.escape(query))
