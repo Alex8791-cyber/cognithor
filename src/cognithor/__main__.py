@@ -1119,6 +1119,13 @@ def main() -> None:
                     "/api/v1/prompts",
                 )
                 _rate_hits: dict[str, list[float]] = _defaultdict(list)
+                # PASS-4 SEC-HIGH: cap distinct client-IP keys so a port-
+                # scanner spraying many source IPs at port 8741 cannot
+                # grow this dict forever. When the cap is hit we drop
+                # entries whose newest timestamp is already older than
+                # the rate window (idle clients) and only fall back to
+                # arbitrary eviction if that's not enough.
+                _rate_hits_max = 10_000
 
                 # Pure ASGI middleware — does NOT buffer responses (unlike
                 # BaseHTTPMiddleware which causes "buffer too large" crashes
@@ -1137,8 +1144,18 @@ def main() -> None:
                             return
                         client = (scope.get("client") or ("unknown",))[0]
                         now = _time.monotonic()
-                        hits = _rate_hits[client]
                         cutoff = now - _rate_window
+                        # Evict idle clients before adding the new entry
+                        # so the dict never exceeds the cap for long.
+                        if len(_rate_hits) > _rate_hits_max:
+                            stale = [k for k, v in _rate_hits.items() if not v or v[-1] < cutoff]
+                            for k in stale[: len(stale) // 2 or 1]:
+                                _rate_hits.pop(k, None)
+                            # If still over cap, drop oldest-by-iteration
+                            # (deterministic, bounded).
+                            while len(_rate_hits) > _rate_hits_max:
+                                _rate_hits.pop(next(iter(_rate_hits)))
+                        hits = _rate_hits[client]
                         _rate_hits[client] = hits = [t for t in hits if t > cutoff]
                         if len(hits) >= _rate_limit:
                             await send(

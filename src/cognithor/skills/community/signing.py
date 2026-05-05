@@ -396,12 +396,19 @@ class RegistryVerifier:
         with self._lock:
             now = now or datetime.now(UTC)
             pubkey = self._pinned_root_pubkey()
+            # Bind the signature search to the pinned Root keyid so an
+            # attacker cannot prepend a leading attacker-keyid signature
+            # entry that gets selected before the legitimate one (would
+            # fail crypto check today, but corrupts the audit-log keyid
+            # field and is a foot-gun if the pinned-key path ever moves).
+            expected_root_keyid = _keyid_from_pubkey_b64(str(_pinned_keys.ROOT_PUBLIC_KEY_B64))
             payload = verify_signed_payload(
                 body,
                 expected_type="root",
                 public_key=pubkey,
                 last_seen_version=self._last_seen_version("root"),
                 now=now,
+                expected_keyid=expected_root_keyid,
                 running_version=self._running_version,
             )
             targets = payload.body.get("targets")

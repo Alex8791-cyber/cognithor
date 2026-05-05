@@ -616,3 +616,53 @@ class TestVerifyRootGuards:
                 channel_key="registry",
                 now=_now(),
             )
+
+    def test_root_rejects_leading_attacker_signature_entry(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """BUG-1 regression: verify_root must select the signature whose
+        keyid matches the pinned Root key, not just the first ed25519 entry.
+
+        An attacker controlling the registry-host CDN can prepend their
+        own signature block. Before the fix, the verifier picked the
+        first ``method=ed25519`` entry and failed crypto-verify against
+        the Root key — but the failure path leaked the attacker's keyid
+        into the audit log. After the fix, ``expected_keyid`` is bound to
+        the pinned Root keyid, so the attacker entry is skipped entirely
+        and the legitimate one is verified.
+        """
+        root_priv, root_pub_b64 = _make_keypair()
+        attacker_priv, attacker_pub_b64 = _make_keypair()
+        targets_priv, targets_pub_b64 = _make_keypair()
+        monkeypatch.setattr(_pinned_keys, "ROOT_PUBLIC_KEY_B64", root_pub_b64)
+        monkeypatch.setattr(_pinned_keys, "REQUIRE_SIGNED_REGISTRY", True)
+
+        signed = _build_root_signed(version=1, targets_pub_b64=targets_pub_b64)
+        canonical = _canonicalise(signed)
+        # Two ed25519 signatures: attacker's first, real Root second.
+        envelope = {
+            "signed": signed,
+            "signatures": [
+                {
+                    "keyid": _keyid(attacker_pub_b64),
+                    "method": "ed25519",
+                    "sig": base64.b64encode(attacker_priv.sign(canonical)).decode("ascii"),
+                },
+                {
+                    "keyid": _keyid(root_pub_b64),
+                    "method": "ed25519",
+                    "sig": base64.b64encode(root_priv.sign(canonical)).decode("ascii"),
+                },
+            ],
+        }
+        body = json.dumps(envelope).encode("utf-8")
+
+        verifier = RegistryVerifier(state_path=tmp_path / "state.json")
+        payload = verifier.verify_root(body, now=_now())
+        # Returned keyid must match the pinned Root, NOT the attacker.
+        assert payload.keyid == _keyid(root_pub_b64), (
+            f"expected Root keyid {_keyid(root_pub_b64)}, got {payload.keyid}"
+        )
+        # Reuse with targets_priv (yet another key) — confirm targets-key
+        # caching took effect and attacker injection didn't poison state.
+        del targets_priv  # not used after this

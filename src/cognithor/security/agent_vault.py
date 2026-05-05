@@ -159,9 +159,19 @@ class AgentVault:
         self._access_log: list[dict[str, Any]] = []
         # Deterministic key derivation: agent_id + master_secret.
         # The master_secret is managed by AgentVaultManager (generated
-        # once, persisted to ~/.cognithor/vault_master.key).  Without
-        # master_secret the key depends only on agent_id (legacy compat).
-        self._salt = hashlib.sha256(f"vault-salt:{agent_id}".encode()).digest()[:16]
+        # once, persisted to ~/.cognithor/vault_master.key).
+        # PASS-3 SEC-HIGH: Mix master_secret into the salt as well as
+        # the IKM. The previous design derived the salt purely from
+        # agent_id (a publicly enumerable string), which let an attacker
+        # who knew agent_ids precompute the PBKDF2 salt offline,
+        # eliminating the salt's entropy contribution. Mixing the random
+        # master_secret into the salt input means an attacker without
+        # master_secret cannot precompute. AgentSecret values are
+        # in-memory only (no disk persistence), so changing the derived
+        # key is a no-op for existing data.
+        self._salt = hashlib.sha256(
+            b"vault-salt:" + agent_id.encode("utf-8") + b":" + master_secret
+        ).digest()[:16]
         raw_key_material = f"vault:{agent_id}".encode() + master_secret
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),

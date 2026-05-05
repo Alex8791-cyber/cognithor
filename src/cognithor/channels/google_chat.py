@@ -42,9 +42,18 @@ class GoogleChatChannel(Channel):
         self,
         credentials_path: str = "",
         allowed_spaces: list[str] | None = None,
+        expected_audience: str = "",
     ) -> None:
         self._credentials_path = credentials_path
         self._allowed_spaces: set[str] = set(allowed_spaces or [])
+        # PASS-4 SEC-CRIT: Google Chat signs every webhook payload with a
+        # JWT keyed against the configured project / bot service account.
+        # When ``expected_audience`` is non-empty, ``handle_webhook``
+        # refuses any payload whose Authorization header does not carry
+        # a JWT signed by the Chat-system service account and addressed
+        # to this audience. Empty string keeps the unauthenticated path
+        # for tests / local dev — operators must set it in production.
+        self._expected_audience = expected_audience
         self._handler: MessageHandler | None = None
         self._running = False
         self._http_client: Any | None = None
@@ -126,15 +135,71 @@ class GoogleChatChannel(Channel):
             logger.error("Google Chat Token-Refresh fehlgeschlagen: %s", exc)
             return {}
 
-    async def handle_webhook(self, payload: dict[str, Any]) -> dict[str, Any] | None:
+    def _verify_chat_jwt(self, auth_header: str | None) -> bool:
+        """Verify a Google-Chat-issued JWT against the configured audience.
+
+        Google Chat sends ``Authorization: Bearer <jwt>`` on every
+        webhook call. The JWT is signed by the Chat system service
+        account ``chat@system.gserviceaccount.com`` and the ``aud``
+        claim equals the bot's project number / endpoint URL (whatever
+        the operator registered in the Chat publishing console).
+        Returns ``True`` if the token is valid for the configured
+        audience, ``False`` otherwise.
+        """
+        if not self._expected_audience:
+            return True  # Audience unconfigured -- caller policy.
+        if not auth_header or not auth_header.lower().startswith("bearer "):
+            return False
+        token = auth_header[7:].strip()
+        if not token:
+            return False
+        try:
+            from google.auth.transport import requests as ga_requests
+            from google.oauth2 import id_token as ga_id_token
+        except ImportError:
+            logger.error(
+                "Google Chat JWT verification requires google-auth + "
+                "google-api-core. Install via: pip install google-auth"
+            )
+            return False
+        try:
+            claims = ga_id_token.verify_token(  # type: ignore[no-untyped-call, unused-ignore]
+                token,
+                ga_requests.Request(),  # type: ignore[no-untyped-call, unused-ignore]
+                audience=self._expected_audience,
+            )
+        except Exception as exc:
+            logger.warning("Google Chat JWT signature verification failed: %s", exc)
+            return False
+        issuer = claims.get("iss", "")
+        # The Chat service account is the only legitimate issuer.
+        if issuer not in (
+            "chat@system.gserviceaccount.com",
+            "https://chat.google.com",
+        ):
+            logger.warning("Google Chat JWT issuer not allowlisted: %s", issuer)
+            return False
+        return True
+
+    async def handle_webhook(
+        self,
+        payload: dict[str, Any],
+        auth_header: str | None = None,
+    ) -> dict[str, Any] | None:
         """Verarbeitet eingehende Webhook-Events von Google Chat.
 
         Args:
             payload: Das JSON-Payload vom Webhook.
+            auth_header: Der ``Authorization``-Header aus dem
+                FastAPI-Request. Wird gegen das configured
+                ``expected_audience`` per JWT verifiziert wenn gesetzt.
 
         Returns:
             Optional: Synchrone Antwort fuer den Webhook.
         """
+        if not self._verify_chat_jwt(auth_header):
+            logger.warning("Google Chat: Webhook rejected - JWT verification failed")
+            return None
         event_type = payload.get("type", "")
 
         if event_type == "MESSAGE":

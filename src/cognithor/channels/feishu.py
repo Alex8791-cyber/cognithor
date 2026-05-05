@@ -157,8 +157,13 @@ class FeishuChannel(Channel):
             True wenn valide.
         """
         # URL-Verification (Challenge) — Feishu sends an unsigned
-        # initial probe to confirm the webhook URL works.
-        if "challenge" in body:
+        # initial probe to confirm the webhook URL works. PASS-3 SEC-HIGH:
+        # accept the unsigned bypass ONLY for the actual url_verification
+        # event type (Feishu's protocol marker). Without the type check
+        # any forged event payload that includes a ``"challenge"`` key
+        # bypassed the entire signature verification path — a trivial
+        # auth bypass for inbound message events.
+        if body.get("type") == "url_verification" and "challenge" in body:
             return True
 
         effective_key = encrypt_key or self._encrypt_key
@@ -192,8 +197,11 @@ class FeishuChannel(Channel):
         Returns:
             Optional: Challenge-Antwort oder None.
         """
-        # URL Verification (Challenge-Response)
-        if "challenge" in payload:
+        # URL Verification (Challenge-Response). Same gate as verify_event:
+        # only echo the challenge back when the payload's ``type`` field
+        # explicitly says url_verification. Otherwise the handler refuses
+        # to engage with an unsigned event.
+        if payload.get("type") == "url_verification" and "challenge" in payload:
             return {"challenge": payload["challenge"]}
 
         header = payload.get("header", {})

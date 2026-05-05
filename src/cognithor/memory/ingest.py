@@ -264,6 +264,14 @@ class IngestPipeline:
         self._memory = memory_manager
         self._extractor = TextExtractor()
         self._processed_hashes: set[str] = set()
+        # PASS-3: protect the dedup-set check-then-add against parallel
+        # ingest_file() calls (the gateway can call this concurrently
+        # while the watch loop is also polling). Without the lock, two
+        # callers with the same content_hash both pass the membership
+        # test, both index the file, and the second shutil.move on the
+        # same file raises FileNotFoundError that the bare except
+        # silently swallows.
+        self._hash_lock = asyncio.Lock()
         self._running = False
 
         # Verzeichnisse sicherstellen
@@ -339,15 +347,23 @@ class IngestPipeline:
                 error=f"Datei zu groß: {file_size / 1024 / 1024:.1f} MB",
             )
 
-        # Duplikat-Erkennung
+        # Duplikat-Erkennung — protected by ``_hash_lock`` for the full
+        # check-then-claim pattern. Reserve the hash atomically so a
+        # concurrent caller racing on the same file gets the dedup hit.
+        # On failure paths below we discard the reservation.
         content_hash = self._file_hash(file_path)
-        if content_hash in self._processed_hashes:
-            return IngestResult(
-                file_path=str(file_path),
-                file_name=file_name,
-                error="Bereits verarbeitet (Hash bekannt)",
-                content_hash=content_hash,
-            )
+        async with self._hash_lock:
+            if content_hash in self._processed_hashes:
+                return IngestResult(
+                    file_path=str(file_path),
+                    file_name=file_name,
+                    error="Bereits verarbeitet (Hash bekannt)",
+                    content_hash=content_hash,
+                )
+            # Reserve the hash up-front. If the indexing pipeline below
+            # fails we discard the reservation so the caller can retry.
+            self._processed_hashes.add(content_hash)
+        _hash_reserved = True
 
         try:
             # Text extrahieren
@@ -378,9 +394,9 @@ class IngestPipeline:
                 # Chunks schaetzen (1 Chunk pro ~512 Tokens ≈ ~2000 Zeichen)
                 chunks_created = max(1, len(text) // 2000)
 
-            # Erfolgreich → nach processed/ verschieben
+            # Erfolgreich → nach processed/ verschieben.
+            # Reservation already done up-front (PASS-3 race fix).
             self._move_to_processed(file_path, content_hash)
-            self._processed_hashes.add(content_hash)
 
             duration = time.monotonic() - start
 
@@ -405,7 +421,11 @@ class IngestPipeline:
             return result
 
         except Exception as exc:
-            # Fehler → nach failed/ verschieben
+            # Fehler → nach failed/ verschieben + Reservation freigeben,
+            # damit der Aufrufer retry-en kann (sonst Geister-Hash blockt).
+            if _hash_reserved:
+                async with self._hash_lock:
+                    self._processed_hashes.discard(content_hash)
             self._move_to_failed(file_path)
             duration = time.monotonic() - start
 

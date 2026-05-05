@@ -236,9 +236,13 @@ class TestScreenshotDesktop:
             assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_screenshot_custom_path(self, desktop_tools, tmp_path: Path):
+    async def test_screenshot_custom_path(self, desktop_tools, workspace: Path):
+        # Pass-3 SEC-HIGH (47ac24e0): screenshot save_path must live inside
+        # the workspace boundary; paths outside fall back to the default
+        # screenshots dir. The previous version of this test passed a
+        # tmp_path-sibling, which is now correctly refused.
         fake_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
-        custom = tmp_path / "custom" / "shot.png"
+        custom = workspace / "custom" / "shot.png"
 
         with patch(
             "cognithor.mcp.desktop_tools._try_mss_screenshot",
@@ -247,6 +251,23 @@ class TestScreenshotDesktop:
             result = await desktop_tools.screenshot_desktop(save_path=str(custom))
             assert result["path"] == str(custom)
             assert custom.exists()
+
+    async def test_screenshot_save_path_outside_workspace_falls_back(
+        self, desktop_tools, tmp_path: Path
+    ):
+        # Lock the new contract: a path traversal attempt is silently
+        # routed to the default screenshots dir (with a logged warning).
+        fake_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+        outside = tmp_path / "evil" / "shot.png"
+
+        with patch(
+            "cognithor.mcp.desktop_tools._try_mss_screenshot",
+            return_value=(fake_png, 1920, 1080),
+        ):
+            result = await desktop_tools.screenshot_desktop(save_path=str(outside))
+            assert result["path"] != str(outside)
+            assert not outside.exists()
+            assert Path(result["path"]).exists()
 
 
 # ---------------------------------------------------------------------------

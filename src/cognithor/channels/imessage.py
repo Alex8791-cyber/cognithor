@@ -88,8 +88,15 @@ class IMessageChannel(Channel):
         # Session-Mapping: handle (phone/email) -> session_id
         self._sessions: dict[str, str] = {}
 
-        # Approval-Workflow
+        # Approval-Workflow.
+        # PASS-3 SEC-HIGH: bind every pending approval to the handle
+        # that triggered it. Without binding, any iMessage sender whose
+        # handle happens to map to a session with a pending approval can
+        # send "ja" / "nein" and resolve it. The handle map below is
+        # consulted in :meth:`_process_native_message` /
+        # :meth:`_process_bb_message` BEFORE :meth:`_resolve_approval`.
         self._pending_approvals: dict[str, asyncio.Future[bool]] = {}
+        self._approval_handles: dict[str, str] = {}
         self._approval_lock = asyncio.Lock()
 
         # Streaming-Buffer
@@ -298,9 +305,13 @@ class IMessageChannel(Channel):
             logger.warning("iMessage: Nachricht von nicht-erlaubtem Handle %s", handle)
             return
 
-        # Approval-Antwort pruefen
+        # Approval-Antwort pruefen — only the handle that triggered the
+        # approval is allowed to resolve it (PASS-3 SEC-HIGH).
         session_for_handle = self._sessions.get(handle, "")
-        if session_for_handle in self._pending_approvals:
+        if (
+            session_for_handle in self._pending_approvals
+            and self._approval_handles.get(session_for_handle) == handle
+        ):
             normalized = text.strip().lower()
             if normalized in ("ja", "yes", "ok", "genehmigen", "approve"):
                 await self._resolve_approval(session_for_handle, approved=True, handle=handle)
@@ -374,7 +385,12 @@ class IMessageChannel(Channel):
         text = msg.get("text", "") or ""
         date_created = msg.get("dateCreated", 0)
         handle_data = msg.get("handle", {})
-        handle = handle_data.get("address", "") if isinstance(handle_data, dict) else ""
+        handle_raw = handle_data.get("address", "") if isinstance(handle_data, dict) else ""
+        # Coerce explicitly to str so mypy --strict can narrow downstream
+        # uses (passing handle to dict[str, str] subscripts, _resolve_approval,
+        # _send_bb, etc.). Empty/non-str handles fall through to the early
+        # return below.
+        handle: str = handle_raw if isinstance(handle_raw, str) else ""
 
         # Timestamp aktualisieren
         if date_created > self._last_bb_timestamp:
@@ -387,9 +403,13 @@ class IMessageChannel(Channel):
         if self._allowed_handles and handle not in self._allowed_handles:
             return
 
-        # Approval-Antwort pruefen
+        # Approval-Antwort pruefen — only the handle that triggered the
+        # approval is allowed to resolve it (PASS-3 SEC-HIGH).
         session_for_handle = self._sessions.get(handle, "")
-        if session_for_handle in self._pending_approvals:
+        if (
+            session_for_handle in self._pending_approvals
+            and self._approval_handles.get(session_for_handle) == handle
+        ):
             normalized = text.strip().lower()
             if normalized in ("ja", "yes", "ok", "genehmigen", "approve"):
                 await self._resolve_approval(session_for_handle, approved=True, handle=handle)
@@ -526,6 +546,7 @@ class IMessageChannel(Channel):
         future: asyncio.Future[bool] = loop.create_future()
         async with self._approval_lock:
             self._pending_approvals[session_id] = future
+            self._approval_handles[session_id] = handle
 
         if self._mode == "native":
             await self._send_native(handle, text)
@@ -542,6 +563,7 @@ class IMessageChannel(Channel):
         finally:
             async with self._approval_lock:
                 self._pending_approvals.pop(session_id, None)
+                self._approval_handles.pop(session_id, None)
 
     async def _resolve_approval(
         self,

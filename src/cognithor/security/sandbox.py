@@ -523,11 +523,39 @@ class Sandbox:
         if not network:
             bwrap_args.append("--unshare-net")
 
-        # Add allowed paths
+        # Add allowed paths.
+        # PASS-4 SEC-MED: ``allowed_paths`` is operator config, but it may
+        # come from a templated/auto-built config or a misread runbook
+        # ("/home/user/safe/../../etc"). bwrap follows whatever literal
+        # path you hand it, so resolve symlinks + ``..`` to the canonical
+        # form *first*, refuse the entry when it lands on a known-dangerous
+        # system root, and bind the resolved path on both sides so the
+        # sandbox sees what the operator actually meant.
+        _bwrap_dangerous_roots = {
+            "/",
+            "/etc",
+            "/root",
+            "/proc",
+            "/sys",
+            "/dev",
+            "/boot",
+            "/var",
+            "/var/log",
+            "/var/lib",
+        }
         for allowed in self._config.allowed_paths:
             expanded = os.path.expanduser(allowed)
-            if os.path.exists(expanded):
-                bwrap_args.extend(["--bind", expanded, expanded])
+            if not os.path.exists(expanded):
+                continue
+            real = os.path.realpath(expanded)
+            if real in _bwrap_dangerous_roots:
+                log.warning(
+                    "bwrap_refusing_dangerous_allowed_path",
+                    path=allowed,
+                    resolved=real,
+                )
+                continue
+            bwrap_args.extend(["--bind", real, real])
 
         bwrap_args.extend(["--", "sh", "-c", command])
 
@@ -703,6 +731,13 @@ class Sandbox:
         job_handle = None
         proc_handle = None
         merged_env = self._build_env(env)
+        # PASS-3: pre-initialise so the ``finally`` block can reference
+        # them even if the ``try`` raises before they're assigned (e.g.
+        # ``shlex.split`` raises ValueError on an unbalanced quote).
+        # Without these inits we'd get NameError in the cleanup path,
+        # masking the original exception and leaking the work_dir.
+        _created_job_tmp = False
+        work_dir = working_dir or ""
 
         try:
             # 1. Job Object erstellen

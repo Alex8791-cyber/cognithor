@@ -48,6 +48,102 @@ except ModuleNotFoundError:
 
 
 # ============================================================================
+# Secret-Redaction (PASS-4 XC-3)
+# ============================================================================
+
+# Substrings (case-insensitive) that mark a key as sensitive. Anything that
+# matches gets the value replaced with ``"***REDACTED***"`` before the log
+# line ever leaves the process. Keys not in this set are kept verbatim.
+_REDACT_KEY_SUBSTRINGS: tuple[str, ...] = (
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "api_key",
+    "apikey",
+    "private_key",
+    "privatekey",
+    "bearer",
+    "authorization",
+    "cookie",
+    "credential",
+    "auth_header",
+    "client_secret",
+    "refresh_token",
+    "access_token",
+    "session_token",
+)
+
+# Value-level patterns that get redacted regardless of key name. Caught
+# here so that an accidental ``log.info("got header", value="Bearer X")``
+# also goes out scrubbed. Compiled lazily because ``re`` import cost is
+# non-trivial on cold start of small CLIs.
+import re as _re
+
+_VALUE_REDACT_PATTERNS: tuple[_re.Pattern[str], ...] = (
+    _re.compile(r"(?i)(bearer\s+)[A-Za-z0-9\-._~+/]{8,}=*"),
+    _re.compile(r"(?i)(oauth:)[A-Za-z0-9\-._~+/]{8,}"),
+    _re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+"),
+    _re.compile(r"\bghp_[A-Za-z0-9]{16,}\b"),
+    _re.compile(r"\bgho_[A-Za-z0-9]{16,}\b"),
+    _re.compile(r"\bsk-(?:ant|proj|live|test)?-?[A-Za-z0-9_\-]{20,}\b"),
+    _re.compile(r"\bxoxb-[A-Za-z0-9\-]{10,}\b"),
+    _re.compile(r"\bxoxp-[A-Za-z0-9\-]{10,}\b"),
+)
+
+_REDACTED = "***REDACTED***"
+
+
+def _key_is_sensitive(key: str) -> bool:
+    lo = key.lower()
+    return any(needle in lo for needle in _REDACT_KEY_SUBSTRINGS)
+
+
+def _redact_value(value: Any) -> Any:
+    """Apply value-level regex scrubbers when *value* is a string."""
+    if not isinstance(value, str):
+        return value
+    out = value
+    for pat in _VALUE_REDACT_PATTERNS:
+        out = pat.sub(lambda m: m.group(1) + _REDACTED if m.groups() else _REDACTED, out)
+    return out
+
+
+def _scrub_event_dict(event_dict: dict[str, Any]) -> dict[str, Any]:
+    """Recursively redact sensitive keys/values in a structlog event dict.
+
+    Mutates and returns the dict so downstream processors see the
+    scrubbed payload. Nested dicts/lists are walked; scalars are
+    matched against ``_VALUE_REDACT_PATTERNS``. Top-level ``event``
+    field gets value-pattern scrubbing too.
+    """
+    for k, v in list(event_dict.items()):
+        if _key_is_sensitive(k):
+            event_dict[k] = _REDACTED
+            continue
+        if isinstance(v, dict):
+            event_dict[k] = _scrub_event_dict(v)
+        elif isinstance(v, list | tuple):
+            scrubbed: list[Any] = []
+            for item in v:
+                if isinstance(item, dict):
+                    scrubbed.append(_scrub_event_dict(dict(item)))
+                else:
+                    scrubbed.append(_redact_value(item))
+            event_dict[k] = type(v)(scrubbed) if isinstance(v, tuple) else scrubbed
+        else:
+            event_dict[k] = _redact_value(v)
+    return event_dict
+
+
+def _structlog_redact_processor(
+    _logger: Any, _method_name: str, event_dict: dict[str, Any]
+) -> dict[str, Any]:
+    """structlog processor — scrubs sensitive keys/values from every log."""
+    return _scrub_event_dict(event_dict)
+
+
+# ============================================================================
 # Lightweight structlog-compatible Wrapper
 # ============================================================================
 
@@ -68,13 +164,15 @@ class _StructlogCompatLogger:
             msg = str(event)
         except Exception:
             msg = repr(event)
+        msg = _redact_value(msg)
         if args:
             try:
                 msg = msg % args
             except Exception:
                 msg = f"{msg} {' '.join(repr(a) for a in args)}"
         if kwargs:
-            extras = " ".join(f"{k}={v!r}" for k, v in kwargs.items())
+            scrubbed = _scrub_event_dict(dict(kwargs))
+            extras = " ".join(f"{k}={v!r}" for k, v in scrubbed.items())
             msg = f"{msg} {extras}"
         getattr(self._logger, method)(msg)
 
@@ -95,8 +193,10 @@ class _StructlogCompatLogger:
             msg = str(event)
         except Exception:
             msg = repr(event)
+        msg = _redact_value(msg)
         if kwargs:
-            extras = " ".join(f"{k}={v!r}" for k, v in kwargs.items())
+            scrubbed = _scrub_event_dict(dict(kwargs))
+            extras = " ".join(f"{k}={v!r}" for k, v in scrubbed.items())
             msg = f"{msg} {extras}"
         self._logger.exception(msg)
 
@@ -207,7 +307,11 @@ def setup_logging(
     if structlog is None:
         return
 
-    # Shared processors -- werden in jeder Log-Nachricht durchlaufen
+    # Shared processors -- werden in jeder Log-Nachricht durchlaufen.
+    # ``_structlog_redact_processor`` scrubs sensitive keys/values from
+    # every event_dict before any renderer or formatter sees it
+    # (PASS-4 XC-3 — defence-in-depth, even if a caller logs a token
+    # by accident).
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
@@ -216,6 +320,7 @@ def setup_logging(
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
+        _structlog_redact_processor,
     ]
 
     # Choose renderer based on json_logs flag. For JSON logs we omit

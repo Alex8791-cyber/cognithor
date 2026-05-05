@@ -17,6 +17,7 @@ public-facing routes when the source is `"hardcoded_fallback"`.
 
 from __future__ import annotations
 
+import hmac
 import os
 import tomllib
 from enum import Enum
@@ -105,10 +106,23 @@ def check_owner_security_posture() -> tuple[OwnerSource, str]:
 
 
 def is_owner_token(token_user_id: str | None) -> bool:
-    """Return True if `token_user_id` matches the configured owner."""
+    """Return True if `token_user_id` matches the configured owner.
+
+    PASS-3 SEC-CRIT: owner identity is checked via constant-time
+    comparison so an attacker who can repeatedly call any
+    ``require_owner``-gated endpoint cannot use response-timing to
+    distinguish a wrong-prefix guess from a correct-prefix guess. The
+    user_id field is short and not a cryptographic secret, but Trace-UI
+    + community endpoints are the privilege boundary, so the timing
+    leak still matters over many samples.
+    """
     if not token_user_id:
         return False
-    return token_user_id == _expected_owner()
+    expected = _expected_owner()
+    # ``hmac.compare_digest`` requires both inputs to be the same type;
+    # they are already ``str`` here, but encode-to-bytes is documented
+    # as the preferred form when the values may differ in length.
+    return hmac.compare_digest(token_user_id.encode("utf-8"), expected.encode("utf-8"))
 
 
 def require_owner(token_user_id: str | None) -> None:

@@ -57,8 +57,18 @@ class TestFeishuVerifyEvent:
 class TestFeishuHandleEvent:
     @pytest.mark.asyncio
     async def test_challenge_response(self, ch: FeishuChannel) -> None:
-        result = await ch.handle_event({"challenge": "abc123"})
+        # Pass-3 (audit-HIGH-3) tightened challenge echo: only when the
+        # payload's ``type`` field is explicitly ``url_verification``.
+        # Otherwise the handler refuses, closing an auth-bypass where
+        # any forged event with a ``challenge`` key would round-trip.
+        result = await ch.handle_event({"type": "url_verification", "challenge": "abc123"})
         assert result == {"challenge": "abc123"}
+
+    @pytest.mark.asyncio
+    async def test_challenge_without_type_refused(self, ch: FeishuChannel) -> None:
+        # The legacy "echo any challenge" path is gone.
+        result = await ch.handle_event({"challenge": "abc123"})
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_message_event(self, ch: FeishuChannel) -> None:

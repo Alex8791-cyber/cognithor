@@ -151,7 +151,9 @@ class SkillRegistry:
     def __init__(self) -> None:
         import threading
 
-        self._lock = threading.Lock()
+        # PASS-4: ``RLock`` because ``enable``/``disable`` hold the lock
+        # while calling ``_rebuild_index``, which acquires it again.
+        self._lock = threading.RLock()
         self._skills: dict[str, Skill] = {}  # slug → Skill
         self._keyword_index: dict[str, list[str]] = {}  # keyword_lower → [slug, ...]
         self._categories: dict[str, list[str]] = {}  # category → [slug, ...]
@@ -507,7 +509,14 @@ class SkillRegistry:
         query_words = set(re.findall(r"\w+", query_lower))
         matches: dict[str, SkillMatch] = {}
 
-        for slug, skill in self._skills.items():
+        # PASS-4 SEC-HIGH: snapshot _skills under the lock before iteration.
+        # Without this snapshot, a concurrent register_skill() (which holds
+        # _lock) can mutate _skills during this loop and trigger
+        # ``RuntimeError: dictionary changed size during iteration``.
+        with self._lock:
+            skills_snapshot = list(self._skills.items())
+
+        for slug, skill in skills_snapshot:
             if not skill.enabled:
                 continue
 
@@ -605,38 +614,45 @@ class SkillRegistry:
 
     def list_all(self) -> list[Skill]:
         """All registered skills (including disabled)."""
-        return list(self._skills.values())
+        # PASS-4 SEC-HIGH: snapshot under the lock — see ``match()``.
+        with self._lock:
+            return list(self._skills.values())
 
     def list_enabled(self) -> list[Skill]:
         """Only active skills."""
-        return [s for s in self._skills.values() if s.enabled]
+        with self._lock:
+            return [s for s in self._skills.values() if s.enabled]
 
     def list_by_category(self, category: str) -> list[Skill]:
         """Skills in a category."""
-        slugs = self._categories.get(category, [])
-        return [self._skills[s] for s in slugs if s in self._skills]
+        with self._lock:
+            slugs = list(self._categories.get(category, []))
+            return [self._skills[s] for s in slugs if s in self._skills]
 
     def list_by_agent(self, agent_name: str) -> list[Skill]:
         """Skills assigned to a specific agent."""
-        return [s for s in self._skills.values() if s.agent == agent_name and s.enabled]
+        with self._lock:
+            return [s for s in self._skills.values() if s.agent == agent_name and s.enabled]
 
     def enable(self, slug: str) -> bool:
         """Enable a skill."""
-        skill = self._skills.get(slug)
-        if skill:
-            skill.enabled = True
-            self._rebuild_index()
-            return True
-        return False
+        with self._lock:
+            skill = self._skills.get(slug)
+            if skill:
+                skill.enabled = True
+                self._rebuild_index()
+                return True
+            return False
 
     def disable(self, slug: str) -> bool:
         """Disable a skill."""
-        skill = self._skills.get(slug)
-        if skill:
-            skill.enabled = False
-            self._rebuild_index()
-            return True
-        return False
+        with self._lock:
+            skill = self._skills.get(slug)
+            if skill:
+                skill.enabled = False
+                self._rebuild_index()
+                return True
+            return False
 
     def record_usage(self, slug: str, success: bool, score: float = 0.0) -> None:
         """Track usage of a skill."""

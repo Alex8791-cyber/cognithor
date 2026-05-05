@@ -36,9 +36,21 @@ class TestFeishuChannel:
     @pytest.mark.asyncio
     async def test_handle_event_challenge(self) -> None:
         ch = FeishuChannel()
-        payload = {"challenge": "test_challenge_token"}
+        # PASS-3 SEC-HIGH: challenge bypass requires explicit
+        # ``type=url_verification``. Without the type marker, an arbitrary
+        # event payload that includes a ``challenge`` key is now refused
+        # (returns None instead of echoing).
+        payload = {"type": "url_verification", "challenge": "test_challenge_token"}
         result = await ch.handle_event(payload)
         assert result == {"challenge": "test_challenge_token"}
+
+    @pytest.mark.asyncio
+    async def test_handle_event_unsigned_event_rejected(self) -> None:
+        """Forged event without url_verification type must NOT echo back."""
+        ch = FeishuChannel()
+        payload = {"challenge": "attacker_value", "header": {}}
+        result = await ch.handle_event(payload)
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_handle_event_message(self) -> None:
@@ -129,7 +141,16 @@ class TestFeishuChannel:
 
     def test_verify_event_challenge(self) -> None:
         ch = FeishuChannel()
-        assert ch.verify_event({"challenge": "token"}) is True
+        # PASS-3 SEC-HIGH: requires explicit url_verification type.
+        assert ch.verify_event({"type": "url_verification", "challenge": "token"}) is True
+
+    def test_verify_event_unsigned_event_with_challenge_key_rejected(self) -> None:
+        """A forged event containing 'challenge' but missing the type marker
+        must NOT be silently trusted as a URL-verification probe."""
+        ch = FeishuChannel(encrypt_key="real-secret")
+        # No url_verification type AND no valid signature → must reject.
+        forged = {"challenge": "attacker_value", "header": {"event_time": "0"}}
+        assert ch.verify_event(forged) is False
 
     def test_verify_event_no_key(self) -> None:
         ch = FeishuChannel()

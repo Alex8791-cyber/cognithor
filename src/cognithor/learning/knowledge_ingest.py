@@ -585,6 +585,15 @@ class KnowledgeIngestService:
             )
             try:
                 await self._deep_learn(item)
+            except asyncio.CancelledError:
+                # PASS-3: gateway shutdown can cancel mid-await on
+                # ``self._deep_learn``. Without this branch the in-memory
+                # ``IngestResult`` stays at deep_learn_status="queued"
+                # forever — callers polling status see a stale state.
+                # Mark the item as failed-on-cancel and re-raise so
+                # the asyncio task cleanup runs normally.
+                self._update_result(item.result_id, "failed", error="cancelled")
+                raise
             except Exception as exc:
                 log.warning("deep_learn_failed", source=item.source, error=str(exc))
                 self._update_result(item.result_id, "failed", error=str(exc))

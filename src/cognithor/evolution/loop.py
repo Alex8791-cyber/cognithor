@@ -159,8 +159,31 @@ class EvolutionLoop:
         self._atl_cycle_count = 0
         self._atl_knowledge_builders: dict[str, Any] = {}  # goal_id -> KnowledgeBuilder
         self._atl_persisted_queries: set[str] = set()
+        # PASS-3: cap the dedup set so a long-running ATL loop does not
+        # accumulate thousands of query strings forever. When we hit the
+        # ceiling we drop the oldest half — a small false-recompute risk
+        # is preferred to unbounded memory growth.
+        self._atl_persisted_queries_max = 5000
+        # PASS-4: cap the per-goal KnowledgeBuilder cache. Each goal_id
+        # gets its own builder; in long-running loops with high goal
+        # turnover (e.g. user_upload-N for many uploads) this dict was
+        # unbounded. LRU-evict the oldest entry when we exceed the cap.
+        self._atl_knowledge_builders_max = 256
         self._last_thinking_time = time.monotonic()
         self._user_material_queue: list[tuple[str, str, str]] = []  # (text, source, goal_slug)
+
+    def _cache_knowledge_builder(self, goal_id: str, builder: Any) -> None:
+        """Insert a KnowledgeBuilder into the per-goal cache with LRU-eviction.
+
+        PASS-4: when ``_atl_knowledge_builders`` would grow past the cap
+        (``_atl_knowledge_builders_max``), drop the oldest insertion-order
+        entry first. dict iteration order in 3.7+ is insertion-order, so
+        ``next(iter(...))`` is the right key. Reinsertions are not
+        promoted to the tail intentionally — we only evict on overflow.
+        """
+        self._atl_knowledge_builders[goal_id] = builder
+        if len(self._atl_knowledge_builders) > self._atl_knowledge_builders_max:
+            self._atl_knowledge_builders.pop(next(iter(self._atl_knowledge_builders)))
 
     async def inject_user_material(
         self,
@@ -215,7 +238,7 @@ class EvolutionLoop:
                         goal_slug=goal_slug,
                         memory_manager=self._memory,
                     )
-                    self._atl_knowledge_builders[goal_slug] = builder
+                    self._cache_knowledge_builder(goal_slug, builder)
 
                 if builder is None:
                     log.debug("evolution_user_material_no_builder", source=source)
@@ -352,7 +375,7 @@ class EvolutionLoop:
             builder = self._create_builder_for_goal(goal)
             if not builder:
                 return
-            self._atl_knowledge_builders[goal.id] = builder
+            self._cache_knowledge_builder(goal.id, builder)
 
         # Build knowledge from synthesized text
         from cognithor.evolution.research_agent import FetchResult
@@ -374,6 +397,14 @@ class EvolutionLoop:
                 log.debug("atl_persist_build_errors", errors=build_result.errors[:2])
             else:
                 self._atl_persisted_queries.add(query_key)
+                # Bounded growth: drop the oldest half once the cap is
+                # exceeded. Set is unordered so we discard arbitrary
+                # entries — acceptable because the dedup is a soft hint,
+                # not a correctness invariant.
+                if len(self._atl_persisted_queries) > self._atl_persisted_queries_max:
+                    drop = len(self._atl_persisted_queries) // 2
+                    for _ in range(drop):
+                        self._atl_persisted_queries.pop()
                 log.info(
                     "atl_research_persisted",
                     goal=goal.title[:40],

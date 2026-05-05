@@ -568,6 +568,28 @@ class WebUIChannel(Channel):
                 # to avoid log exposure).
                 await websocket.accept()
 
+                # PASS-4 SEC-CRIT: validate the path-supplied session_id
+                # before it ever lands in ``_connections``. A second
+                # connection with the same id silently overwrites the
+                # first — every PGE response then routes to the new
+                # socket (hijack). And any non-ASCII / oversized id
+                # would land verbatim in audit logs and the per-session
+                # map.
+                if (
+                    not session_id
+                    or len(session_id) > 128
+                    or not all(c.isalnum() or c in "-_" for c in session_id)
+                ):
+                    with contextlib.suppress(Exception):
+                        await websocket.send_json(
+                            {
+                                "type": "error",
+                                "error": "Invalid session_id",
+                            }
+                        )
+                    await websocket.close(code=4400, reason="Invalid session_id")
+                    return
+
                 if self._api_token:
                     import hmac as _hmac
 
@@ -592,6 +614,22 @@ class WebUIChannel(Channel):
                             )
                         await websocket.close(code=4001, reason="Unauthorized")
                         return
+
+                # PASS-4 SEC-CRIT: refuse a second concurrent connection
+                # for the same session_id — the existing socket would
+                # otherwise be silently kicked off the routing map and
+                # all subsequent PGE responses would go to the new
+                # caller.
+                if session_id in self._connections:
+                    with contextlib.suppress(Exception):
+                        await websocket.send_json(
+                            {
+                                "type": "error",
+                                "error": "Session already connected",
+                            }
+                        )
+                    await websocket.close(code=4002, reason="Session already connected")
+                    return
                 self._connections[session_id] = websocket
                 log.info("ws_connected", session_id=session_id)
 

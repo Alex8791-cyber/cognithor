@@ -292,6 +292,17 @@ class EmailTools:
         Returns:
             Liste von E-Mail-Dicts.
         """
+        # PASS-3 SEC-MED: restrict ``folder`` to a safe character set
+        # before passing to IMAP SELECT. IMAP folder names allow Unicode
+        # via modified UTF-7 in the protocol, but since we surface the
+        # name to operators in user-facing strings + restrict reads to
+        # the user's own mailbox, a conservative ASCII allowlist is
+        # appropriate.
+        if not re.fullmatch(r"[A-Za-z0-9._/\-\[\] ]+", folder):
+            raise ValueError(
+                f"unsafe IMAP folder name {folder!r}; "
+                "restrict to alphanumerics, dots, slashes, dashes, brackets"
+            )
         conn.select(folder, readonly=True)
         status, data = conn.search(None, search_criteria)
 
@@ -380,14 +391,27 @@ class EmailTools:
         """
         max_results = max(1, min(max_results, 50))
 
+        # PASS-3 SEC-HIGH: IMAP-search-criteria injection. The values
+        # below are interpolated into ``BODY "<value>"`` etc., which is
+        # IMAP literal-string syntax. Without quote/CRLF stripping a
+        # caller can close the literal (``"``) and append arbitrary
+        # SEARCH atoms — or in some IMAP libraries inject CRLF and start
+        # a new IMAP command. We strip every IMAP-literal-relevant
+        # control byte; the remaining string is safe to interpolate.
+        def _imap_safe(value: str, *, max_len: int = 256) -> str:
+            scrubbed = "".join(
+                ch for ch in value if ch >= " " and ch not in {'"', "\r", "\n", "\\"}
+            )
+            return scrubbed[:max_len]
+
         # IMAP SEARCH-Kriterien aufbauen
         criteria_parts: list[str] = []
         if query:
-            criteria_parts.append(f'BODY "{query}"')
+            criteria_parts.append(f'BODY "{_imap_safe(query)}"')
         if from_addr:
-            criteria_parts.append(f'FROM "{from_addr}"')
+            criteria_parts.append(f'FROM "{_imap_safe(from_addr)}"')
         if subject:
-            criteria_parts.append(f'SUBJECT "{subject}"')
+            criteria_parts.append(f'SUBJECT "{_imap_safe(subject)}"')
         if since:
             # ISO-Format (2024-01-15) → IMAP-Format (15-Jan-2024)
             try:
