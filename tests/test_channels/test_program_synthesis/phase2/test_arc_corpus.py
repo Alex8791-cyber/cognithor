@@ -147,6 +147,58 @@ class TestLoadCorpus:
         with pytest.raises(FileNotFoundError, match="No ARC"):
             load_corpus(tmp_path, subset=None)
 
+    def test_manifest_with_traversal_path_refused(self, tmp_path: Path) -> None:
+        """Deep-PR7: tampered manifest with ``..`` escape must be rejected."""
+        (tmp_path / "tasks").mkdir()
+        # Write a legitimate task in a sibling dir to give the traversal a real
+        # target; the corpus-loader must still refuse the escape.
+        outside = tmp_path.parent / "leaked.json"
+        _write_task(outside, examples=[([[1]], [[1]])])
+        try:
+            (tmp_path / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "version": "evil",
+                        "subsets": {
+                            "train": {
+                                "n": 1,
+                                "task_files": ["../leaked.json"],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with pytest.raises(ValueError, match="escapes corpus_root"):
+                load_corpus(tmp_path, subset="train")
+        finally:
+            outside.unlink(missing_ok=True)
+
+    def test_manifest_with_absolute_path_refused(self, tmp_path: Path) -> None:
+        """Absolute paths in task_files must also be refused."""
+        (tmp_path / "tasks").mkdir()
+        outside = tmp_path.parent / "absolute_leak.json"
+        _write_task(outside, examples=[([[1]], [[1]])])
+        try:
+            (tmp_path / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "version": "evil",
+                        "subsets": {
+                            "train": {
+                                "n": 1,
+                                "task_files": [str(outside)],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with pytest.raises(ValueError, match="escapes corpus_root"):
+                load_corpus(tmp_path, subset="train")
+        finally:
+            outside.unlink(missing_ok=True)
+
 
 # ---------------------------------------------------------------------------
 # TaskSpec / BenchmarkTask projection
