@@ -1218,9 +1218,32 @@ class AuditLogger:
             }
 
         if include_trust:
-            from cognithor.security.trust_bundle import build_trust_bundle
+            # Deep-PR2 (DEEP-2): receipt-bundle assembly is purely
+            # advisory aggregation — a fault inside any of the six
+            # ledger snapshots (cost / fingerprint / scope / etc.)
+            # used to propagate as an unhandled exception out of
+            # ``build_receipt_from_entries`` and surfaced as a 500
+            # at the REST endpoint with no partial receipt. The TRUST
+            # convention established in `mcp/video_tools.py` is
+            # best-effort emission. Mirror it: any failure produces
+            # a structured error stub so the rest of the receipt
+            # still ships.
+            try:
+                from cognithor.security.trust_bundle import build_trust_bundle
 
-            bundle["trust"] = build_trust_bundle(session_id)
+                bundle["trust"] = build_trust_bundle(session_id)
+            except Exception as exc:
+                logger.warning(
+                    "trust_bundle_build_failed session_id=%s error=%s type=%s",
+                    session_id,
+                    str(exc),
+                    type(exc).__name__,
+                )
+                bundle["trust"] = {
+                    "error": "trust bundle unavailable",
+                    "reason": str(exc)[:200],
+                    "error_type": type(exc).__name__,
+                }
 
         if signing_key:
             canonical = json.dumps(
