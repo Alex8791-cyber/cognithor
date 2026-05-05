@@ -26,13 +26,17 @@ import 'package:cognithor_ui/providers/admin_provider.dart';
 import 'package:cognithor_ui/providers/config_provider.dart';
 import 'package:cognithor_ui/providers/cron_provider.dart';
 import 'package:cognithor_ui/providers/kanban_provider.dart';
+import 'package:cognithor_ui/providers/llm_backend_provider.dart';
 import 'package:cognithor_ui/providers/memory_provider.dart';
 import 'package:cognithor_ui/providers/reddit_leads_provider.dart';
+import 'package:cognithor_ui/providers/robot_office_provider.dart';
 import 'package:cognithor_ui/providers/security_provider.dart';
+import 'package:cognithor_ui/providers/sessions_provider.dart';
 import 'package:cognithor_ui/providers/skills_provider.dart';
 import 'package:cognithor_ui/providers/sources_provider.dart';
 import 'package:cognithor_ui/providers/workflow_provider.dart';
 import 'package:cognithor_ui/services/api_client.dart';
+import 'package:cognithor_ui/services/websocket_service.dart';
 
 class SilentSkillsProvider extends SkillsProvider {
   @override
@@ -144,4 +148,50 @@ class SilentKanbanProvider extends KanbanProvider {
 class SilentCronProvider extends CronProvider {
   @override
   Future<void> fetchJobs() async {}
+}
+
+/// Silent variant of [RobotOfficeProvider] — overrides [init] to skip
+/// the periodic 10-second poll Timer and the WebSocket listener wiring.
+/// Used by `dashboard_screen_test.dart` and `main_shell_test.dart`,
+/// which mount [DashboardScreen] (it calls `init()` from `_loadData`
+/// when the connection is live).
+class SilentRobotOfficeProvider extends RobotOfficeProvider {
+  @override
+  void init(ApiClient api, WebSocketService? ws) {
+    // intentionally a no-op — no Timer, no WS listeners.
+  }
+}
+
+/// Silent variant of [SessionsProvider] — overrides every load method
+/// fired from `ChatScreen.didChangeDependencies` so no notifyListeners
+/// fires during the first build pass.
+class SilentSessionsProvider extends SessionsProvider {
+  @override
+  Future<void> loadSessions() async {}
+  @override
+  Future<void> loadFolders() async {}
+  @override
+  Future<List<Map<String, dynamic>>?> loadHistory(String sessionId) async =>
+      null;
+  @override
+  Future<void> searchChats(String query) async {}
+}
+
+/// Silent variant of [LlmBackendProvider] — overrides [startPolling]
+/// (its only periodic Timer) to a no-op so smoke tests embedding
+/// `ChatInput` (which reads `LlmBackendProvider.active`) don't leak
+/// a 2-second polling Timer.
+class SilentLlmBackendProvider extends LlmBackendProvider {
+  SilentLlmBackendProvider() : super(apiBaseUrl: 'http://test');
+
+  @override
+  void startPolling() {
+    // intentionally a no-op.
+  }
+
+  @override
+  Future<void> refreshList() async {}
+
+  @override
+  Future<void> refreshVllmStatus() async {}
 }
