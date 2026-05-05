@@ -846,11 +846,44 @@ class Gatekeeper:
             # ATL (read-only)
             "atl_status",
             "atl_journal",
-            "kanban_create_task",
-            "kanban_update_task",
             "kanban_list_tasks",
             "social_scan",
             "social_leads",
+            # Audit-PR4: 14 catalog tools previously fell through to
+            # default ORANGE (every call interrupted the autonomous
+            # loop with a user-approval prompt). Classified per their
+            # actual side-effect profile.
+            #
+            # `file_write` — alias of `write_file` (filesystem.py:430);
+            # the parent is GREEN, the alias must match.
+            "file_write",
+            # `canvas_*` — pure in-memory canvas state on the gateway,
+            # no filesystem / network / subprocess. Read-tier safe.
+            "canvas_eval",
+            "canvas_push",
+            "canvas_reset",
+            "canvas_snapshot",
+            # Pure HTML-emission tools (Sprint-27 HF-3 / HF-5). No
+            # subprocess, no filesystem write — the rendering step
+            # is a separate ORANGE tool (`video_render`). The composer
+            # tools are safe to auto-execute.
+            "video_caption_overlay",
+            "video_compose_explainer",
+            "video_compose_social_cut",
+            # LLM-only generative tools — they consult the configured
+            # LLM but produce no side effects on filesystem / network /
+            # state. Same risk profile as the existing `pse_synthesize`
+            # GREEN entries.
+            "brainstorm",
+            "daily_briefing",
+            "explain_concept",
+            "code_review",
+            "summarize",
+            "translate",
+            # Domain-specific LLM-only tool from
+            # `examples/insurance-agent-pack/` — same profile as the
+            # other LLM-only entries above.
+            "insurance_advisor",
         }
         if tool in green_tools:
             return RiskLevel.GREEN
@@ -907,6 +940,18 @@ class Gatekeeper:
             "arc_play",
             # ATL (goal management)
             "atl_goals",
+            # Audit-PR4 (audit-HIGH-5): Kanban writes were previously
+            # GREEN — they create / mutate persistent encrypted-DB
+            # records, which violates the GREEN convention ("read-only").
+            # Promoted to YELLOW so the Executor emits an INFORM step.
+            # `kanban_list_tasks` stays GREEN (read-only).
+            "kanban_create_task",
+            "kanban_update_task",
+            # Audit-PR4: video_render spawns a subprocess + writes MP4
+            # to disk. Was uncategorised (default ORANGE = approval-prompt
+            # on every call). YELLOW reflects that it is a write op
+            # but no network / shell side effect.
+            "video_render",
         }
         if tool in yellow_tools:
             return RiskLevel.YELLOW
