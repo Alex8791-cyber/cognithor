@@ -61,9 +61,7 @@ class TestFeishuHandleEvent:
         # payload's ``type`` field is explicitly ``url_verification``.
         # Otherwise the handler refuses, closing an auth-bypass where
         # any forged event with a ``challenge`` key would round-trip.
-        result = await ch.handle_event(
-            {"type": "url_verification", "challenge": "abc123"}
-        )
+        result = await ch.handle_event({"type": "url_verification", "challenge": "abc123"})
         assert result == {"challenge": "abc123"}
 
     @pytest.mark.asyncio
