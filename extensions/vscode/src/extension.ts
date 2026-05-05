@@ -90,8 +90,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       client.onEvent((evt) => {
-        const type = typeof evt.type === "string" ? evt.type : "?";
-        log?.appendLine(`[evt] ${type} ${JSON.stringify(evt)}`);
+        // The streaming wire format uses `event` as the discriminator
+        // (per src/cognithor/streaming/schemas/v1/events.json). The
+        // earlier code logged `evt.type` which never exists on the
+        // wire, so every entry showed as `?` in the output channel.
+        const kind = typeof evt.event === "string" ? evt.event : "?";
+        log?.appendLine(`[evt] ${kind} ${JSON.stringify(evt)}`);
       });
       client.onError((err) => {
         log?.appendLine(`[plan] error: ${err.message}`);

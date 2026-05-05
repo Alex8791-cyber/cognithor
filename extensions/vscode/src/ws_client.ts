@@ -155,10 +155,25 @@ export class WsClient {
       };
       const onError = (err: Error): void => {
         cleanup();
+        try {
+          ws.terminate();
+        } catch {
+          // best-effort
+        }
+        this.ws = null;
         reject(err);
       };
       const timer = setTimeout(() => {
         cleanup();
+        // Tear the dangling socket down before rejecting so the
+        // node process doesn't accumulate orphan TCP connections
+        // on every "agent ws not running" attempt.
+        try {
+          ws.terminate();
+        } catch {
+          // best-effort
+        }
+        this.ws = null;
         reject(new Error(`WS open timeout after ${this.connectTimeoutMs} ms — is the agent ws server running on ${url}?`));
       }, this.connectTimeoutMs);
       const cleanup = (): void => {

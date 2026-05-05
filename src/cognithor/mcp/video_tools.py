@@ -28,7 +28,9 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import html
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from cognithor.utils.logging import get_logger
@@ -124,13 +126,20 @@ def _scene_body(scene: dict[str, Any]) -> str:
             f'font-size:2.5vw;margin:0">{_sanitize_text(caption)}</p>',
         )
     image_url = scene.get("image_url")
-    if isinstance(image_url, str) and image_url.startswith(
-        ("file://", "/", "./", "../"),
+    # Local-asset references only (no http(s), no ../ traversal) — the
+    # composition must self-contain its assets per the HF-1 threat
+    # model. html.escape() defends against attribute injection (e.g.
+    # `/x" onload="evil()`) — even though the render runs inside a
+    # sandboxed Puppeteer with strict CSP, defense-in-depth keeps the
+    # composed HTML safe to ship to any other consumer.
+    if (
+        isinstance(image_url, str)
+        and image_url.startswith(("file://", "/", "./"))
+        and ".." not in image_url.split("/")
     ):
-        # Local-asset references only (no http(s)) — composition
-        # must self-contain its assets per HF-1 threat model.
+        safe_url = html.escape(image_url, quote=True)
         parts.append(
-            f'    <img src="{image_url}" '
+            f'    <img src="{safe_url}" '
             'style="position:absolute;inset:0;width:100%;height:100%;'
             'object-fit:cover" />',
         )
@@ -278,6 +287,48 @@ async def _video_compose_handler(
     }
 
 
+def _resolve_safe_html_path(raw: str) -> Path:
+    """Resolve + sandbox-check an agent-supplied html_path string.
+
+    The HyperFrames Puppeteer subprocess opens the file with full
+    filesystem-read permissions. An unvalidated agent-controlled
+    path would let a malicious plan exfiltrate ``/etc/passwd`` or
+    ``~/.ssh/id_rsa`` into the rendered MP4. We restrict reads to
+    three trusted roots:
+
+    * the current working directory (typical project workflow),
+    * ``~/.cognithor/`` (the agent's own home / render cache), and
+    * the OS temp directory (where ``video_compose`` -> file
+      pipelines and tests stash inline HTML).
+
+    Anything outside those roots — including ``..``-laden relative
+    paths that resolve outside cwd — raises ``ValueError`` and is
+    surfaced as a structured ``"path not in trusted roots"`` error.
+    """
+
+    import os
+    import tempfile
+
+    p = Path(raw).expanduser().resolve(strict=False)
+    cwd = Path.cwd().resolve()
+    home_dir = (
+        Path(os.environ.get("COGNITHOR_HOME", Path.home() / ".cognithor")).expanduser().resolve()
+    )
+    tmp_dir = Path(tempfile.gettempdir()).resolve()
+    trusted = (cwd, home_dir, tmp_dir)
+    for root in trusted:
+        try:
+            p.relative_to(root)
+            return p
+        except ValueError:
+            continue
+    msg = (
+        f"html_path {raw!r} not in trusted roots — "
+        f"must be under cwd, ~/.cognithor/, or the OS temp directory"
+    )
+    raise ValueError(msg)
+
+
 async def _video_render_handler(
     run_id: str,
     html_text: str | None = None,
@@ -304,10 +355,17 @@ async def _video_render_handler(
             "available": sorted(renderer_registry),
         }
 
+    safe_html_path: Path | None = None
+    if html_path is not None:
+        try:
+            safe_html_path = _resolve_safe_html_path(html_path)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
     try:
         request = RenderRequest(
             run_id=run_id,
-            html_path=__import__("pathlib").Path(html_path) if html_path else None,
+            html_path=safe_html_path,
             html_text=html_text,
             output_format=_coerce_format(output_format),
             width=int(width),

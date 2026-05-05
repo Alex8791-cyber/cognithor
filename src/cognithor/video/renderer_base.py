@@ -108,6 +108,9 @@ class RenderRequest:
         if self.width < 16 or self.height < 16:
             msg = "RenderRequest width / height must be >= 16"
             raise ValueError(msg)
+        if self.width > 7680 or self.height > 4320:
+            msg = "RenderRequest width <= 7680, height <= 4320"
+            raise ValueError(msg)
         if self.fps < 1 or self.fps > 240:
             msg = "RenderRequest fps must be in [1, 240]"
             raise ValueError(msg)
