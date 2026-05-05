@@ -20,6 +20,7 @@ on the Gateway. Part of the staged `gateway.py` split — see
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from typing import TYPE_CHECKING, Any, cast
 
@@ -495,10 +496,25 @@ async def handle_message(
             )
     finally:
         _cleanup_skill_state()
-
-    # Coding-Override aufraeumen
-    if gw._model_router:
-        gw._model_router.clear_coding_override()
+        # Audit-PR5 (WIRING-1 + WIRING-3): both ContextVar cleanups
+        # moved INTO the finally block. The previous placement (after
+        # the try/finally) only ran on the success path — if
+        # `_run_pge_loop` raised an uncaught exception (e.g. a backend
+        # transport error), the ContextVars leaked for the rest of
+        # the asyncio Task's lifetime, leaving subsequent unrelated
+        # requests pinned to the coding model OR pinned to a
+        # large-context profile (e.g. arc_agi3 num_ctx=131072) that
+        # smaller follow-up requests cannot afford. ContextVar
+        # cleanup must always run.
+        if gw._model_router:
+            gw._model_router.clear_coding_override()
+            # ContextPipeline._maybe_apply_context_profile sets the
+            # profile via a bare ContextVar.set() (no scope token).
+            # Symmetric clear at message-handler exit is the
+            # complementary half — keeps the variable from bleeding
+            # into the next message in this asyncio Task context.
+            with contextlib.suppress(Exception):
+                gw._model_router.clear_context_profile()
 
     # ── Autonomous Task Evaluation ──
     if auto_task is not None:
