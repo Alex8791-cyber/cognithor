@@ -208,6 +208,76 @@ class TestVideoRenderHandler:
         assert result["ok"] is False
         assert "render request" in result["error"]
 
+    @pytest.mark.asyncio
+    async def test_html_path_outside_trusted_roots_rejected(self) -> None:
+        # /etc/passwd is the canonical exfil target; must be rejected
+        # before the renderer is invoked. Audit finding SEC C-2.
+        result = await _video_render_handler(
+            run_id="r1",
+            html_path="/etc/passwd",
+            renderer="hyperframes",
+        )
+        assert result["ok"] is False
+        assert "trusted roots" in result["error"]
+
+
+class TestSceneBodySanitization:
+    """Audit findings SEC H-1 + SEC M-3 — image_url escape + ../ reject."""
+
+    def test_image_url_with_attribute_injection_is_escaped(self) -> None:
+        from cognithor.mcp.video_tools import compose_html
+
+        html_out = compose_html(
+            {
+                "scenes": [
+                    {
+                        "start": 0,
+                        "duration": 1,
+                        "image_url": '/assets/a.png" onload="evil()',
+                    },
+                ],
+            },
+        )
+        # The literal injection payload must NOT appear unescaped.
+        assert '" onload="evil()' not in html_out
+        # The escaped form should be present (html.escape with quote=True
+        # turns the inner `"` into `&quot;`).
+        assert "&quot;" in html_out or "/assets/a.png" not in html_out
+
+    def test_dotdot_traversal_in_image_url_is_dropped(self) -> None:
+        from cognithor.mcp.video_tools import compose_html
+
+        html_out = compose_html(
+            {
+                "scenes": [
+                    {
+                        "start": 0,
+                        "duration": 1,
+                        "image_url": "../../../etc/passwd",
+                    },
+                ],
+            },
+        )
+        # The composed HTML must not contain the traversal path.
+        assert "etc/passwd" not in html_out
+
+    def test_render_request_width_height_upper_bound(self) -> None:
+        # Audit finding HF-3 #5 — direct Python callers must hit the
+        # cap, not just the JSON schema layer.
+        import pytest as _pytest
+
+        from cognithor.video.renderer_base import OutputFormat, RenderRequest
+
+        with _pytest.raises(ValueError, match="<= 7680"):
+            RenderRequest(
+                run_id="r",
+                html_text="<x/>",
+                output_format=OutputFormat.MP4,
+                width=99999,
+                height=4320,
+                fps=30,
+            )
+
 
 # ---------------------------------------------------------------------------
 # register_video_tools — schema + handler wired correctly

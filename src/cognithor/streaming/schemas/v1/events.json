@@ -21,7 +21,17 @@
       "properties": {
         "event": {
           "type": "string",
-          "description": "Discriminator: one of run_started / plan_step / gate_decision / tool_result / run_complete / run_error / run_cancelled / sink_dropped."
+          "enum": [
+            "run_started",
+            "plan_step",
+            "gate_decision",
+            "tool_result",
+            "run_complete",
+            "run_error",
+            "run_cancelled",
+            "sink_dropped"
+          ],
+          "description": "Discriminator. Closed enum so consumer-side switch tables can be machine-generated; per-event $defs each pin a single const that intersects with this enum."
         },
         "schema_version": {
           "type": "integer",
