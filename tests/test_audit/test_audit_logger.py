@@ -410,6 +410,49 @@ class TestHashChain:
         assert not ok
         assert any("prev_hash mismatch" in e for e in errors), errors
 
+    def test_chain_survives_concurrent_appenders(self, tmp_path: Path) -> None:
+        """Audit-PR2 — ``_persist_lock`` keeps the chain consistent
+        when multiple threads append at the same time. Without the
+        lock, two appenders read the same prev_hash and the chain
+        breaks at validation.
+        """
+
+        import threading
+
+        audit_dir = tmp_path / "audit"
+        audit_dir.mkdir()
+        logger = AuditLogger(log_dir=audit_dir)
+
+        def append_batch(start: int) -> None:
+            for i in range(20):
+                logger.log_tool_call(
+                    f"tool_{start}_{i}",
+                    {"k": str(i)},
+                    agent_name=f"thread_{start}",
+                    success=True,
+                )
+
+        # 4 threads × 20 entries = 80 concurrent appenders.
+        workers = [threading.Thread(target=append_batch, args=(t,)) for t in range(4)]
+        for w in workers:
+            w.start()
+        for w in workers:
+            w.join()
+
+        files = list(audit_dir.glob("audit_*.jsonl"))
+        assert len(files) == 1, f"expected 1 file, got {files}"
+        log_file = files[0]
+
+        # All 80 entries written.
+        lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+        assert len(lines) == 80
+
+        # Chain validates — no two entries share a prev_hash, no
+        # entry's prev_hash is stale.
+        fresh_logger = AuditLogger(log_dir=audit_dir)
+        ok, errors = fresh_logger.validate_chain(log_file)
+        assert ok, f"concurrent-append chain should validate; errors: {errors[:3]}"
+
     def test_validate_chain_detects_deletion(self, tmp_path: Path) -> None:
         audit_dir = tmp_path / "audit"
         log_file = self._write_three_entries(audit_dir)

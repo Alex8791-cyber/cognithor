@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -234,6 +235,11 @@ class AuditLogger:
         # link to it via ``prev_hash``. Loaded lazily from disk on
         # first persist to a given file (handles process restarts).
         self._last_hash_per_file: dict[Path, str] = {}
+        # Audit-PR2: serialise read-prev-hash + write + cache update
+        # so concurrent appenders (multi-channel async handlers) cannot
+        # link two entries to the same prev_hash and break the chain.
+        # Mirrors HashlineAuditor's threading.Lock pattern.
+        self._persist_lock = threading.Lock()
 
         if log_dir:
             log_dir.mkdir(parents=True, exist_ok=True)
@@ -822,17 +828,40 @@ class AuditLogger:
         writing, then this entry's own hash is cached for the next
         write. Tampering after-the-fact (insertion / deletion / edit)
         can be surfaced by ``validate_chain``.
+
+        Audit-PR2: the read-prev / write / cache-update sequence is
+        guarded by ``self._persist_lock`` because the gateway feeds
+        the same singleton from multiple async coroutines (each
+        running on a thread pool). Without the lock, two concurrent
+        appenders read the same prev_hash and either link both
+        entries to the same predecessor (chain breaks at validation)
+        or stomp the cache so the *next* entry chains off the wrong
+        head.
+
+        The on-disk JSON is written with ``sort_keys=True`` so the
+        bytes match what ``canonical_hash()`` hashes — the cache hit
+        on the next call and a freshly-recomputed hash from disk
+        (after process restart) yield the same digest regardless of
+        the dataclass's insertion order.
         """
         if self._log_dir is None:
             return
         try:
             date_str = entry.timestamp[:10]  # YYYY-MM-DD
             log_file = self._log_dir / f"audit_{date_str}.jsonl"
-            entry.prev_hash = self._last_hash_for_file(log_file)
-            with log_file.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(entry.to_dict(), ensure_ascii=False) + "\n")
-            # Cache this entry's hash for the next persist.
-            self._last_hash_per_file[log_file] = entry.canonical_hash()
+            with self._persist_lock:
+                entry.prev_hash = self._last_hash_for_file(log_file)
+                with log_file.open("a", encoding="utf-8") as f:
+                    f.write(
+                        json.dumps(
+                            entry.to_dict(),
+                            sort_keys=True,
+                            ensure_ascii=False,
+                        )
+                        + "\n",
+                    )
+                # Cache this entry's hash for the next persist.
+                self._last_hash_per_file[log_file] = entry.canonical_hash()
         except Exception as exc:
             logger.error("Audit persistence failed: %s", exc)
 
