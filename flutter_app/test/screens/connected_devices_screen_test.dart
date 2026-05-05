@@ -19,9 +19,9 @@ void main() {
 
     setUp(() {
       api = _MockApiClient();
-      when(() => api.get(any())).thenAnswer(
-        (_) async => {'devices': <Map<String, dynamic>>[]},
-      );
+      when(
+        () => api.get(any()),
+      ).thenAnswer((_) async => {'devices': <Map<String, dynamic>>[]});
       conn = FakeConnectionProvider(apiClient: api);
     });
 
@@ -50,9 +50,7 @@ void main() {
       verify(() => api.get(any())).called(greaterThanOrEqualTo(1));
     });
 
-    testWidgets('renders device entries when API returns data', (
-      tester,
-    ) async {
+    testWidgets('renders device entries when API returns data', (tester) async {
       when(() => api.get(any())).thenAnswer(
         (_) async => {
           'devices': [

@@ -19,9 +19,9 @@ void main() {
 
     setUp(() {
       api = _MockApiClient();
-      when(() => api.getMemoryGraphEntities()).thenAnswer(
-        (_) async => {'entities': [], 'relations': []},
-      );
+      when(
+        () => api.getMemoryGraphEntities(),
+      ).thenAnswer((_) async => {'entities': [], 'relations': []});
       conn = FakeConnectionProvider(apiClient: api);
     });
 
@@ -76,9 +76,7 @@ void main() {
     });
 
     testWidgets('exception during load is captured cleanly', (tester) async {
-      when(
-        () => api.getMemoryGraphEntities(),
-      ).thenThrow(Exception('refused'));
+      when(() => api.getMemoryGraphEntities()).thenThrow(Exception('refused'));
 
       await tester.pumpWidget(wrap());
       await tester.pump();

@@ -59,9 +59,7 @@ void main() {
     testWidgets('error state renders cloud-off icon + retry/settings buttons', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        wrap(_StateConn(CognithorConnectionState.error)),
-      );
+      await tester.pumpWidget(wrap(_StateConn(CognithorConnectionState.error)));
       expect(find.byIcon(Icons.cloud_off), findsOneWidget);
       expect(find.byIcon(Icons.refresh), findsOneWidget);
       expect(find.byIcon(Icons.settings), findsOneWidget);
