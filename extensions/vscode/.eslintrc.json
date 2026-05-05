@@ -13,5 +13,5 @@
     "semi": ["error", "always"],
     "quotes": ["error", "double", { "avoidEscape": true }]
   },
-  "ignorePatterns": ["dist/**", "out/**", "node_modules/**", "src/types/events.ts"]
+  "ignorePatterns": ["dist/**", "out/**", "node_modules/**", "src/types/events.ts", "test/**"]
 }

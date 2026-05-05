@@ -164,18 +164,29 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -noEmit",
     "codegen:events": "json-schema-to-typescript ../../src/cognithor/streaming/schemas/v1/events.json -o src/types/events.ts --bannerComment '/* eslint-disable */ /* AUTO-GENERATED from src/cognithor/streaming/schemas/v1/events.json — do NOT edit by hand. Re-run via npm run codegen:events. */'",
-    "build:vsix": "vsce package --out cognithor-vscode-${npm_package_version}.vsix"
+    "build:vsix": "vsce package --out cognithor-vscode-${npm_package_version}.vsix",
+    "compile-tests": "tsc -p tsconfig.test.json",
+    "pretest": "npm run compile-tests",
+    "pretest:unit": "npm run compile-tests",
+    "test": "node ./out/test/runTest.js",
+    "test:unit": "mocha"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
+    "@types/sinon": "^21.0.0",
     "@types/vscode": "^1.85.0",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.25.0",
     "eslint": "^8.57.0",
+    "glob": "^11.0.0",
     "json-schema-to-typescript": "^15.0.0",
+    "mocha": "^11.7.5",
+    "sinon": "^21.0.0",
     "typescript": "^5.5.0"
   },
   "dependencies": {

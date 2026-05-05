@@ -42,5 +42,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Unit tests (mocha, no Electron)
+        run: npm run test:unit
+
       - name: Build (esbuild production)
         run: npm run package

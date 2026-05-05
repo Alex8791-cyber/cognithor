@@ -1,0 +1,7 @@
+{
+  "ui": "bdd",
+  "color": true,
+  "timeout": 5000,
+  "require": ["out/test/unit/vscode-mock.js"],
+  "spec": ["out/test/unit/**/*.test.js"]
+}
