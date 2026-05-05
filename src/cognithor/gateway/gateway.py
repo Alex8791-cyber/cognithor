@@ -16,8 +16,15 @@ import asyncio
 import re
 import threading
 import time
+from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, cast
+
+# Deep-PR1 (DEEP-1 HIGH-1): cap on remembered cancelled session_ids.
+# Sized for typical deployments where ~1k cancellations / hour is a
+# generous upper bound; the eviction is FIFO so the oldest entries
+# fall off when the cap is hit.
+_CANCELLED_SESSIONS_MAX: int = 1024
 
 from cognithor.config import CognithorConfig, load_config
 from cognithor.core.agent_router import (
@@ -423,6 +430,11 @@ class Gateway:
         self._session_lock = threading.Lock()
         self._running = False
         self._cancelled_sessions: set[str] = set()
+        # Deep-PR1 (DEEP-1 HIGH-1): FIFO ring tracking the order
+        # session_ids were added to ``_cancelled_sessions`` so the
+        # cap-eviction in ``cancel_session`` can drop the oldest entry
+        # without scanning the whole set.
+        self._cancelled_session_order: deque[str] = deque()
         self._context_pipeline = None
         self._message_queue: DurableMessageQueue | None = None
         self._background_tasks: set[asyncio.Task[Any]] = set()
@@ -1540,10 +1552,25 @@ class Gateway:
         Der PGE-Loop prueft dieses Flag und bricht beim naechsten
         Iterationsschritt sauber ab.
 
-        Returns:
-            True wenn die Session gefunden und als cancelled markiert wurde.
+        Deep-PR1 (DEEP-1 HIGH-1): the set was unbounded — every
+        cancellation added a session_id permanently because the
+        discard call only fired if the PGE loop reached its top-of-
+        iteration cancel-check. Pre-flight cancellations and post-
+        completion cancels never discarded. Long-running deployments
+        accumulated thousands of session_ids. Now we cap the set at
+        ``_CANCELLED_SESSIONS_MAX`` and evict the oldest entry when
+        the cap is hit. The set is GIL-protected for add/discard but
+        we wrap mutations in ``_session_lock`` for cross-thread
+        safety (``cancel_session`` can be called from a signal
+        handler via ``shutdown()``).
         """
-        self._cancelled_sessions.add(session_id)
+
+        with self._session_lock:
+            self._cancelled_sessions.add(session_id)
+            self._cancelled_session_order.append(session_id)
+            while len(self._cancelled_session_order) > _CANCELLED_SESSIONS_MAX:
+                evicted = self._cancelled_session_order.popleft()
+                self._cancelled_sessions.discard(evicted)
         log.info("session_cancelled", session=session_id[:8])
         return True
 
