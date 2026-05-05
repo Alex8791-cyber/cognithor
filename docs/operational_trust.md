@@ -296,3 +296,21 @@ to use the canonical singletons.
 * Reviewer-feedback gap analysis: `memory/project_operational_trust_gap_analysis.md`
 * TRUST-5..10 ship log: `memory/project_2026_05_04_trust_stack_complete.md`
 * PR span: #395 → #435 (41 PRs across two days)
+
+---
+
+## PACK-4 — Community registry signing (addressed)
+
+**Status (2026-05-05):** REAL-CRIT addressed. The community-skill
+registry is now Ed25519-signed under a TUF-Light scheme (offline
+Root key + rotating online Targets key), with monotonic-version
+replay protection and `valid_until` freshness windows.
+
+* Spec: [`docs/superpowers/specs/2026-05-05-pack4-registry-signing.md`](superpowers/specs/2026-05-05-pack4-registry-signing.md)
+* Verifier module: [`cognithor.skills.community.signing`](../src/cognithor/skills/community/signing.py)
+* Operator runbook: [`docs/runbooks/registry_key_rotation.md`](runbooks/registry_key_rotation.md)
+* Trust-model summary: [`SECURITY.md`](../SECURITY.md#registry-trust-model-pack-4)
+
+Deferred (not blockers): full TUF snapshot/timestamp roles,
+Sigstore/cosign keyless signing, multi-operator federation. See
+spec §12 for non-goals.

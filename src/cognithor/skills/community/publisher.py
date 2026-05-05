@@ -155,11 +155,17 @@ class PublisherVerifier:
         *,
         registry_url: str = "",
         marketplace_store: Any | None = None,
+        verifier: Any | None = None,
     ) -> None:
         self._registry_url = registry_url or (
             "https://raw.githubusercontent.com/Alex8791-cyber/skill-registry/main"
         )
         self._marketplace_store = marketplace_store
+        # PACK-4: every publishers/{user}.json is signature-verified
+        # before its reputation_score / verified flag is trusted.
+        from cognithor.skills.community.signing import RegistryVerifier
+
+        self._verifier = verifier or RegistryVerifier()
         self._cache: dict[str, PublisherIdentity] = {}
         self._lock = asyncio.Lock()
 
@@ -238,13 +244,34 @@ class PublisherVerifier:
         self,
         github_username: str,
     ) -> dict[str, Any] | None:
-        """Load a publisher profile from the registry repo."""
-        import json
+        """Load + verify a publisher profile from the registry repo."""
+        # PACK-4: dormant marketplace → no profile fetch attempted.
+        if not self._verifier.is_configured():
+            return None
 
         url = f"{self._registry_url}/publishers/{github_username}.json"
         try:
+            # Bootstrap the cached Targets key once per process.
+            root_raw = await self._fetch_text(f"{self._registry_url}/root.json")
+            self._verifier.verify_root(root_raw.encode("utf-8"))
+
             text = await self._fetch_text(url)
-            return cast("dict[str, Any] | None", json.loads(text))
+            payload = self._verifier.verify_targets_payload(
+                text.encode("utf-8"),
+                expected_type="publisher",
+                channel_key=f"publisher:{github_username}",
+            )
+            # Defense-in-depth: the payload's body must name the same
+            # github_username we asked for. Otherwise a confused-deputy
+            # attack could swap profiles between users.
+            if payload.body.get("github_username") != github_username:
+                log.warning(
+                    "publisher_profile_username_mismatch",
+                    requested=github_username,
+                    payload=payload.body.get("github_username"),
+                )
+                return None
+            return cast("dict[str, Any]", payload.body)
 
         except Exception as exc:
             log.debug("publisher_profile_not_found", user=github_username, error=str(exc))

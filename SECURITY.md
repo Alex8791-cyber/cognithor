@@ -35,6 +35,32 @@ Cognithor implements defense-in-depth with multiple security layers (supporting 
 - **Input Sanitization** — Protection against shell injection, path traversal, and prompt injection attacks.
 - **Path Sandbox** — File operations restricted to explicitly allowed directories.
 - **Red-Teaming** — Automated offensive security test suite (1,425 LOC).
+- **Registry Trust Model** — Community-skill registry payloads (`registry.json`, `recalls/active.json`, `publishers/*.json`) are Ed25519-signed under a TUF-Light scheme: an offline Root key signs `root.json`, which delegates to a rotating online Targets key. See [Registry Trust Model](#registry-trust-model-pack-4) below.
+
+## Registry Trust Model (PACK-4)
+
+Cognithor's community-skill marketplace uses a self-managed TUF-Light signing scheme — no third-party witness, no Sigstore dependency, EU-sovereign by design. Spec: [`docs/superpowers/specs/2026-05-05-pack4-registry-signing.md`](docs/superpowers/specs/2026-05-05-pack4-registry-signing.md).
+
+### Threat coverage
+
+| Attack | Mitigation |
+|---|---|
+| Tampered registry JSON in transit (BGP-MITM, DNS hijack) | Ed25519 signature over canonical-JSON `signed` block. |
+| Compromised CDN / GitHub-Pages serving the registry | Same — signed payloads are verified client-side regardless of origin. |
+| Replay of an old, legit-signed `registry.json` to neutralise a recall | Monotonic `version` field; client persists `last_seen` per channel and refuses anything older. |
+| Stale `recalls/active.json` served indefinitely after key rotation | `valid_until` field (1 day for recalls, 14 days for registry). Hard-fail when expired. |
+| Targets-key compromise | Offline Root key signs a new `root.json` with a fresh Targets pubkey. Clients pick up the rotation transparently on next sync (key change is part of the signed-data version chain). |
+| Root-key compromise | Release-bound rotation: new pinned key in source, new Cognithor release. **By design** — offline-Root is the trust anchor. See [`docs/runbooks/registry_key_rotation.md`](docs/runbooks/registry_key_rotation.md). |
+| Confused-deputy: swap `publishers/alice.json` with `publishers/eve.json` | Verifier requires `payload.body.github_username` to match the requested user. |
+| Downgrade: `--accept-unsigned-registry` flag | Does not exist. `REQUIRE_SIGNED_REGISTRY` is a build-time constant in `_pinned_keys.py`, source-patchable for developers but not togglable from the CLI. |
+
+### Hard-fail behaviour
+
+Every signature/freshness/replay failure raises `RegistrySignatureError` from `cognithor.skills.community.signing`. The surrounding `RegistrySync.sync_once` lets the exception propagate, which marks the sync as `success=False` and prevents recall application. **Soft-fail on a kill-switch mechanism would be a contradiction** — the entire point is that recalls reach clients reliably.
+
+### Dormant marketplace (default)
+
+Until the operator activates the marketplace by minting Root keys offline and embedding the Root pubkey in `_pinned_keys.py`, `RegistryVerifier.is_configured()` returns `False`. `RegistrySync.sync_once` short-circuits cleanly and `PublisherVerifier._fetch_publisher_profile` returns `None`. No network traffic, no errors.
 
 ## Runtime Token Protection (v0.26.0+)
 

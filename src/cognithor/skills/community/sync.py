@@ -19,6 +19,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
+from cognithor.skills.community.signing import (
+    RegistrySignatureError,
+    RegistryVerifier,
+)
 from cognithor.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -62,6 +66,7 @@ class RegistrySync:
         check_interval: int = 3600,
         marketplace_store: Any | None = None,
         skill_registry: Any | None = None,
+        verifier: RegistryVerifier | None = None,
     ) -> None:
         self._registry_url = registry_url or (
             "https://raw.githubusercontent.com/Alex8791-cyber/skill-registry/main"
@@ -70,6 +75,9 @@ class RegistrySync:
         self._check_interval = check_interval
         self._marketplace_store = marketplace_store
         self._skill_registry = skill_registry
+        # PACK-4: every payload goes through Ed25519 verification before
+        # any side effect (recall application). Tests inject a stub.
+        self._verifier = verifier or RegistryVerifier()
 
         self._last_sync: float = 0.0
         self._running = False
@@ -99,18 +107,48 @@ class RegistrySync:
         start = time.monotonic()
         result = SyncResult(success=False)
 
+        # PACK-4: short-circuit cleanly when the marketplace is dormant
+        # (no Root key pinned in this build). This is the default for
+        # v0.97.x until the operator activates the marketplace.
+        if not self._verifier.is_configured():
+            log.info("registry_sync_skipped_marketplace_dormant")
+            result.success = True  # Nothing to sync, but not a failure.
+            result.sync_time = time.monotonic() - start
+            return result
+
         try:
-            # 1. Download registry
+            # 0. Bootstrap the Targets key by verifying root.json. This
+            # is cheap on subsequent calls — the verifier caches the key
+            # in its state file.
+            root_raw = await self._fetch_text(f"{self._registry_url}/root.json")
+            self._verifier.verify_root(root_raw.encode("utf-8"))
+
+            # 1. Download + verify registry.json.
             registry_url = f"{self._registry_url}/registry.json"
-            registry_data = await self._fetch_json(registry_url)
-            skills = registry_data.get("skills", [])
+            registry_raw = await self._fetch_text(registry_url)
+            registry_payload = self._verifier.verify_targets_payload(
+                registry_raw.encode("utf-8"),
+                expected_type="registry",
+                channel_key="registry",
+            )
+            skills = registry_payload.body.get("skills", [])
             result.registry_skills = len(skills)
 
-            # 2. Download recalls
+            # 2. Download + verify recalls.
             recalls_url = f"{self._registry_url}/recalls/active.json"
             try:
-                recalls_data = await self._fetch_json(recalls_url)
-                active_recalls = recalls_data.get("recalls", [])
+                recalls_raw = await self._fetch_text(recalls_url)
+                recalls_payload = self._verifier.verify_targets_payload(
+                    recalls_raw.encode("utf-8"),
+                    expected_type="recalls",
+                    channel_key="recalls",
+                )
+                active_recalls = recalls_payload.body.get("recalls", [])
+            except RegistrySignatureError:
+                # Hard-fail: a recall payload that fails verification must
+                # NOT silently disappear — propagate so the whole sync is
+                # marked unsuccessful and the kill-switch stays armed.
+                raise
             except Exception as _recalls_exc:
                 log.debug("recalls_fetch_failed", url=recalls_url, error=str(_recalls_exc))
                 active_recalls = []
