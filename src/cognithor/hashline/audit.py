@@ -276,7 +276,15 @@ class HashlineAuditor:
                         result["status"] = "broken"
                     if result["broken_at_line"] is None:
                         result["valid_entries"] += 1
-                    prev_hash = stored_hash or recomputed
+                        # Deep-PR2 (DEEP-4 #4): only advance the
+                        # walking anchor while the chain is still
+                        # intact. After a break is detected, freezing
+                        # `prev_hash` at the last genuinely-valid
+                        # entry prevents subsequent entries that were
+                        # appended after tampering from validating
+                        # against the tampered anchor — which used to
+                        # inflate `valid_entries` artificially.
+                        prev_hash = stored_hash or recomputed
         except OSError as exc:
             log.debug("audit_verify_io_error", error=str(exc))
             result["status"] = "broken"
