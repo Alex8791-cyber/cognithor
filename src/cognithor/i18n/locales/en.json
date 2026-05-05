@@ -334,6 +334,7 @@
     "pdf_read_failed": "PDF read failed: {error}",
     "ppt_read_failed": "PPT read failed: {error}",
     "docx_read_failed": "DOCX read failed: {error}",
+    "invalid_audio_format": "Invalid audio output format: {fmt}. Allowed: {allowed}",
     "invalid_sample_rate": "Invalid sample rate: {rate}. Allowed: {allowed}",
     "ffmpeg_error": "ffmpeg error: {error}",
     "audio_converted": "Converted: {path}",

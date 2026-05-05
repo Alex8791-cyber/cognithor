@@ -52,6 +52,22 @@ MAX_LOG_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB per log file
 LOG_CLEANUP_DAYS = 7  # Delete logs of finished jobs older than 7 days
 DEFAULT_TIMEOUT = 3600  # 1 hour
 DEFAULT_CHECK_INTERVAL = 30  # seconds
+# Hard upper bound for caller-supplied timeouts (24 h). Prevents a planner-
+# supplied 999_999_999s value from pinning a worker forever.
+MAX_TIMEOUT_SECONDS = 86_400
+MAX_WAIT_TIMEOUT_SECONDS = 3_600
+# Caller-supplied grep patterns are passed to ``re.compile``. A naive pattern
+# like ``(a+)+$`` against a 10 MB log triggers catastrophic backtracking that
+# stalls the loop. Cap the pattern length so even a deliberately bad pattern
+# fits in a small backtracking budget. Independent from Gatekeeper checks —
+# this is defense-in-depth at the MCP boundary for any direct caller.
+MAX_GREP_PATTERN_LENGTH = 200
+# Substitution metacharacters that have no legitimate single-command use in a
+# background task. Chained operators (;, &, |, &&, ||) are also dangerous but
+# Gatekeeper's shell_ast_guard already rejects them — we duplicate only the
+# substitution checks here so direct programmatic callers (tests, channels)
+# bypassing the Gatekeeper are still protected.
+_MCP_SUBSTITUTION_PATTERN = re.compile(r"\$\(|`|<\(")
 
 
 # ============================================================================
@@ -130,6 +146,13 @@ class BackgroundProcessManager:
         channel: str = "",
     ) -> str:
         """Start a command in the background. Returns job_id."""
+        if _MCP_SUBSTITUTION_PATTERN.search(command):
+            raise ValueError(
+                "background_task: command contains shell-substitution metacharacters "
+                "($(...), backticks, or <(...)). Refusing to spawn — wrap intent in a "
+                "dedicated script and start that instead."
+            )
+        timeout_seconds = max(1, min(int(timeout_seconds), MAX_TIMEOUT_SECONDS))
         job_id = f"bg_{uuid.uuid4().hex[:12]}"
         log_file = self._log_dir / f"{job_id}.log"
         cwd = working_dir or None
@@ -377,7 +400,16 @@ class BackgroundProcessManager:
             return []
 
         if grep:
-            pattern = re.compile(grep, re.IGNORECASE)
+            if len(grep) > MAX_GREP_PATTERN_LENGTH:
+                raise ValueError(
+                    f"background_task: grep pattern too long "
+                    f"({len(grep)} > {MAX_GREP_PATTERN_LENGTH} chars). "
+                    "Use a shorter pattern."
+                )
+            try:
+                pattern = re.compile(grep, re.IGNORECASE)
+            except re.error as exc:
+                raise ValueError(f"background_task: invalid grep pattern: {exc}") from exc
             all_lines = [ln for ln in all_lines if pattern.search(ln)]
 
         if tail > 0:
@@ -744,7 +776,7 @@ def register_background_tools(
         job_id = kwargs.get("job_id", "")
         if not job_id:
             return "Error: 'job_id' is required."
-        timeout = int(kwargs.get("timeout", 300))
+        timeout = max(1, min(int(kwargs.get("timeout", 300)), MAX_WAIT_TIMEOUT_SECONDS))
         job = await manager.wait_job(job_id, timeout=timeout)
         if not job:
             return f"Job '{job_id}' not found."

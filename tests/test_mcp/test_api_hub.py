@@ -25,6 +25,7 @@ from cognithor.mcp.api_hub import (
     APIHub,
     _build_auth_headers,
     _build_auth_params,
+    _is_private_host,
     _load_integrations,
     _mask_credential,
     _RateLimiter,
@@ -416,6 +417,37 @@ class TestApiConnect:
         loaded = _load_integrations(config)
         assert "test" in loaded
         assert loaded["test"]["base_url"] == "https://api.example.com"
+
+
+class TestSSRFGuards:
+    """Deep-PR4: SSRF + redirect-chain hardening."""
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "127.0.0.1",
+            "10.0.0.1",
+            "172.16.5.5",
+            "192.168.1.1",
+            "169.254.169.254",  # AWS/Azure/GCP metadata service
+            "::1",
+            "fc00::1",
+        ],
+    )
+    def test_is_private_host_blocks_internal_ips(self, host: str) -> None:
+        assert _is_private_host(host) is True
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "8.8.8.8",
+            "1.1.1.1",
+            "api.example.com",  # hostname not resolved here
+            "",
+        ],
+    )
+    def test_is_private_host_allows_public_or_hostnames(self, host: str) -> None:
+        assert _is_private_host(host) is False
 
 
 class TestApiCall:

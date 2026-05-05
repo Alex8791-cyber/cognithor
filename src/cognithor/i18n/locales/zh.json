@@ -334,6 +334,7 @@
     "pdf_read_failed": "PDF 读取失败：{error}",
     "ppt_read_failed": "PPT 读取失败：{error}",
     "docx_read_failed": "DOCX 读取失败：{error}",
+    "invalid_audio_format": "无效的音频输出格式：{fmt}。允许：{allowed}",
     "invalid_sample_rate": "无效采样率：{rate}。允许：{allowed}",
     "ffmpeg_error": "ffmpeg 错误：{error}",
     "audio_converted": "已转换：{path}",
