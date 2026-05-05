@@ -159,6 +159,11 @@ class EvolutionLoop:
         self._atl_cycle_count = 0
         self._atl_knowledge_builders: dict[str, Any] = {}  # goal_id -> KnowledgeBuilder
         self._atl_persisted_queries: set[str] = set()
+        # PASS-3: cap the dedup set so a long-running ATL loop does not
+        # accumulate thousands of query strings forever. When we hit the
+        # ceiling we drop the oldest half — a small false-recompute risk
+        # is preferred to unbounded memory growth.
+        self._atl_persisted_queries_max = 5000
         self._last_thinking_time = time.monotonic()
         self._user_material_queue: list[tuple[str, str, str]] = []  # (text, source, goal_slug)
 
@@ -374,6 +379,14 @@ class EvolutionLoop:
                 log.debug("atl_persist_build_errors", errors=build_result.errors[:2])
             else:
                 self._atl_persisted_queries.add(query_key)
+                # Bounded growth: drop the oldest half once the cap is
+                # exceeded. Set is unordered so we discard arbitrary
+                # entries — acceptable because the dedup is a soft hint,
+                # not a correctness invariant.
+                if len(self._atl_persisted_queries) > self._atl_persisted_queries_max:
+                    drop = len(self._atl_persisted_queries) // 2
+                    for _ in range(drop):
+                        self._atl_persisted_queries.pop()
                 log.info(
                     "atl_research_persisted",
                     goal=goal.title[:40],

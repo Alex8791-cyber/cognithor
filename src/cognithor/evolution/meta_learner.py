@@ -146,6 +146,9 @@ class MetaLearner:
 
     def __init__(self) -> None:
         self._history: list[MetaAnalysis] = []
+        # PASS-3: cap history so a long-running evolution loop
+        # (thousands of cycles/day) does not accumulate forever.
+        self._history_max = 200
 
     # ------------------------------------------------------------------
     # Analysis
@@ -225,6 +228,9 @@ class MetaLearner:
             adjustments=adjustments,
         )
         self._history.append(analysis)
+        if len(self._history) > self._history_max:
+            # Keep the tail; older analyses are not consulted.
+            self._history = self._history[-self._history_max :]
 
         log.info(
             "meta_analysis_complete",

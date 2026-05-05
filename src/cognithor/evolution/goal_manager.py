@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -46,6 +47,8 @@ class GoalManager:
     def __init__(self, goals_path: Path) -> None:
         self._path = goals_path
         self._goals: dict[str, Goal] = {}
+        # PASS-3: serialise YAML writes — see _save() docstring.
+        self._save_lock = threading.Lock()
         self._load()
 
     # -- persistence ----------------------------------------------------------
@@ -70,12 +73,32 @@ class GoalManager:
                 pass  # Skip malformed entries
 
     def _save(self) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"goals": [asdict(g) for g in self._goals.values()]}
-        self._path.write_text(
-            yaml.safe_dump(payload, default_flow_style=False, allow_unicode=True),
-            encoding="utf-8",
-        )
+        # PASS-3: ``GoalManager`` is touched by both the EvolutionLoop
+        # background coroutine and FastAPI sync endpoints (which run in
+        # the asyncio thread executor). Two threads racing on the same
+        # ``yaml.safe_dump`` + ``write_text`` produces interleaved bytes.
+        # Hold the instance lock for the full serialise-then-write pair;
+        # cheap because the goal list is tiny.
+        with self._save_lock:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {"goals": [asdict(g) for g in self._goals.values()]}
+            self._path.write_text(
+                yaml.safe_dump(payload, default_flow_style=False, allow_unicode=True),
+                encoding="utf-8",
+            )
+
+    def save(self) -> None:
+        """Public alias for :meth:`_save` — used by REST endpoints.
+
+        ``api.py``'s ``update_goal`` route mutated ``goal.priority`` then
+        called ``goal_manager.save()`` which did not exist on the class
+        (only ``_save``). Every priority-update PATCH raised
+        ``AttributeError`` and returned 500 with no goal change persisted.
+        Adding the public alias keeps the underscore-prefixed internal
+        for direct manager-side calls and gives the REST layer the same
+        thread-safe write path.
+        """
+        self._save()
 
     # -- queries --------------------------------------------------------------
 
