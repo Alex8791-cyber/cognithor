@@ -769,7 +769,19 @@ def main() -> None:
         config.models.coder.name = "qwen2.5-coder:7b"
 
     if getattr(args, "arc", False):
-        config.arc.enabled = True
+        # Audit-PR10 (audit-MED-1): the previous form `config.arc.enabled = True`
+        # raised AttributeError on clean installs where the user's
+        # config.yaml has no `arc:` block (config.arc is None then).
+        # Guarding with a truthiness check keeps the flag a no-op (with
+        # a clear stderr line) instead of silently crashing the boot path.
+        if getattr(config, "arc", None) is not None:
+            config.arc.enabled = True
+        else:
+            print(
+                "[warn] --arc flag ignored: no `arc:` section in config.yaml. "
+                "Add an arc block to enable ARC tools.",
+                file=sys.stderr,
+            )
 
     # 1.9 Auto-migrate plaintext API keys from config.yaml / .env to OS Keyring
     try:

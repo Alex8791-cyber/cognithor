@@ -304,6 +304,13 @@ class FileSystemTools:
         if not validated.is_dir():
             raise FileSystemError(f"Kein Verzeichnis: {path}")
 
+        # Audit-PR10 (audit-LOW-2): clamp depth at 10. The output is
+        # already capped by _max_tree_entries, but the recursion itself
+        # has no upper bound — a deeply-nested directory tree at depth=50
+        # would walk every path branch even though only the first few
+        # thousand entries land in the rendered output. Clamping at 10
+        # keeps the tool's worst-case wall time bounded.
+        depth = max(0, min(depth, 10))
         lines: list[str] = [f"{validated.name}/"]
         self._tree(validated, lines, prefix="", depth=depth, max_depth=depth)
 
