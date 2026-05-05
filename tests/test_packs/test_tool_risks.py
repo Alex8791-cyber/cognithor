@@ -200,6 +200,121 @@ class TestPackLoaderRegistersRisks:
         PackLoader._register_tool_risks(manifest, ctx)
 
 
+class TestUndeclaredToolRiskWarning:
+    """Deep-PR6: undeclared pack-tool risks emit operator-visible WARNING."""
+
+    def _mock_context(self, registry: dict[str, MCPToolInfo]) -> PackContext:
+        class MockMCP:
+            pass
+
+        mcp = MockMCP()
+        mcp._tool_registry = registry  # type: ignore[attr-defined]
+        return PackContext(mcp_client=mcp)
+
+    def _intercept_warnings(self, monkeypatch) -> list[tuple[str, dict]]:
+        """Replace loader._log with a stub that records .warning calls.
+
+        ``capsys`` proved flaky in CI because structlog's renderer writes
+        to stderr/stdout via paths pytest captures inconsistently across
+        runners (Linux py3.13 was the most affected). Intercepting at the
+        logger boundary is deterministic.
+        """
+        from cognithor.packs import loader as loader_mod
+
+        records: list[tuple[str, dict]] = []
+
+        class _RecordingLogger:
+            def warning(self, event: str, **kwargs):
+                records.append((event, kwargs))
+
+            def info(self, *_a, **_kw):
+                pass
+
+            def debug(self, *_a, **_kw):
+                pass
+
+            def error(self, *_a, **_kw):
+                pass
+
+        monkeypatch.setattr(loader_mod, "_log", _RecordingLogger())
+        return records
+
+    def test_warns_when_pack_tool_has_empty_risk_and_no_declaration(self, monkeypatch):
+        """Pack registered a tool without risk_level AND without manifest entry."""
+        records = self._intercept_warnings(monkeypatch)
+        manifest = _make_manifest(tools=["my_tool"])  # no tool_risks
+        registry: dict[str, MCPToolInfo] = {
+            "my_tool": MCPToolInfo(name="my_tool", server="builtin", risk_level=""),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(),
+        )
+        assert any(
+            event == "pack_tool_risk_undeclared" and kw.get("tool") == "my_tool"
+            for event, kw in records
+        ), records
+
+    def test_silent_when_pack_tool_has_explicit_risk(self, monkeypatch):
+        """Tool registered with risk_level= "..." → no warning."""
+        records = self._intercept_warnings(monkeypatch)
+        manifest = _make_manifest(tools=["safe_tool"])
+        registry: dict[str, MCPToolInfo] = {
+            "safe_tool": MCPToolInfo(name="safe_tool", server="builtin", risk_level="green"),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(),
+        )
+        assert not any(event == "pack_tool_risk_undeclared" for event, _ in records)
+
+    def test_silent_when_manifest_declares_risk(self, monkeypatch):
+        """Manifest tool_risks declared → ``_register_tool_risks`` already
+        handled it; no double-warning."""
+        records = self._intercept_warnings(monkeypatch)
+        manifest = _make_manifest(
+            tools=["declared_tool"],
+            tool_risks={"declared_tool": "yellow"},
+        )
+        registry: dict[str, MCPToolInfo] = {
+            "declared_tool": MCPToolInfo(name="declared_tool", server="builtin", risk_level=""),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(),
+        )
+        assert not any(event == "pack_tool_risk_undeclared" for event, _ in records)
+
+    def test_pre_existing_tools_excluded_from_check(self, monkeypatch):
+        """Tools that existed before the pack loaded must not trigger
+        the warning — only this pack's new additions matter."""
+        records = self._intercept_warnings(monkeypatch)
+        manifest = _make_manifest(tools=["new_tool"])
+        registry: dict[str, MCPToolInfo] = {
+            "old_builtin": MCPToolInfo(name="old_builtin", server="builtin", risk_level=""),
+            "new_tool": MCPToolInfo(name="new_tool", server="builtin", risk_level=""),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(["old_builtin"]),
+        )
+        flagged = [kw.get("tool") for event, kw in records if event == "pack_tool_risk_undeclared"]
+        assert "new_tool" in flagged, records
+        assert "old_builtin" not in flagged, records
+
+
 class TestCognithorToolDecorator:
     def test_attaches_metadata(self):
         @cognithor_tool(name="probe", risk_level="green", description="Ping")
