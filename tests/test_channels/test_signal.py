@@ -140,6 +140,57 @@ class TestSignalLifecycle:
         mock_http.aclose.assert_called_once()
         assert signal_ch._http is None
 
+    @pytest.mark.asyncio
+    async def test_setup_webhook_refuses_non_localhost_without_secret(self) -> None:
+        """Non-localhost bind ohne webhook_secret muss fail-closed sein."""
+        ch = SignalChannel(
+            phone_number="+491234567",
+            webhook_host="0.0.0.0",
+            webhook_port=8090,
+            webhook_secret="",
+        )
+        with pytest.raises(RuntimeError, match="webhook_secret"):
+            await ch._setup_webhook()
+
+    @pytest.mark.asyncio
+    async def test_setup_webhook_allows_non_localhost_with_secret(self) -> None:
+        """Non-localhost bind MIT webhook_secret darf starten (no RuntimeError).
+
+        Stubs aiohttp.web so we don't actually bind a TCP server in CI.
+        The assertion is the absence of the fail-closed RuntimeError.
+        """
+        from types import SimpleNamespace
+
+        ch = SignalChannel(
+            phone_number="+491234567",
+            webhook_host="0.0.0.0",
+            webhook_port=18099,
+            webhook_secret="s3cret",
+        )
+
+        fake_runner = AsyncMock()
+        fake_runner.setup = AsyncMock()
+        fake_site = AsyncMock()
+        fake_site.start = AsyncMock()
+
+        fake_web = SimpleNamespace(
+            Application=lambda: SimpleNamespace(
+                router=SimpleNamespace(
+                    add_post=lambda *_a, **_kw: None,
+                    add_get=lambda *_a, **_kw: None,
+                ),
+            ),
+            AppRunner=lambda _app: fake_runner,
+            TCPSite=lambda _r, _h, _p: fake_site,
+        )
+        fake_aiohttp = SimpleNamespace(web=fake_web)
+
+        with patch.dict("sys.modules", {"aiohttp": fake_aiohttp}):
+            await ch._setup_webhook()
+
+        fake_runner.setup.assert_awaited_once()
+        fake_site.start.assert_awaited_once()
+
 
 # ============================================================================
 # Outbound: Send

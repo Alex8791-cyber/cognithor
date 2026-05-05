@@ -467,6 +467,29 @@ class TestDocumentSizeLimit:
         )
 
     @pytest.mark.asyncio
+    async def test_voice_too_large_rejected(self) -> None:
+        """Sprachnachrichten ueber MAX_DOCUMENT_SIZE werden abgelehnt."""
+        ch = TelegramChannel(token="t", allowed_users=[42])
+        ch._handler = AsyncMock()
+
+        update = MagicMock()
+        update.effective_user.id = 42
+        update.effective_chat.id = 100
+        voice = MagicMock()
+        voice.file_size = MAX_DOCUMENT_SIZE + 1
+        voice.file_unique_id = "vid"
+        update.effective_message.voice = voice
+        update.effective_message.audio = None
+        update.effective_message.reply_text = AsyncMock()
+
+        await ch._on_voice_message(update, MagicMock())
+
+        ch._handler.assert_not_called()
+        update.effective_message.reply_text.assert_called_once()
+        msg = update.effective_message.reply_text.call_args[0][0]
+        assert "gross" in msg.lower() or "MB" in msg
+
+    @pytest.mark.asyncio
     async def test_document_within_limit_accepted(self) -> None:
         """Dokumente innerhalb des Limits werden verarbeitet."""
         ch = TelegramChannel(token="t")

@@ -147,7 +147,14 @@ class TestSecretWithInvalidJSON:
 
 
 class TestExposedWebhookWarning:
-    """Prueft die Warnung bei exponiertem Webhook ohne Secret."""
+    """Deep-PR3 update: non-localhost bind without webhook_secret is now
+    a hard ``RuntimeError`` (fail-closed) rather than a passive WARNING.
+
+    Previously the channel logged a warning and proceeded to bind anyway,
+    accepting unauthenticated POSTs from any host. The new contract:
+    refuse to start unless the operator either binds to 127.0.0.1 or sets
+    a HMAC secret.
+    """
 
     @pytest.mark.asyncio
     async def test_warning_on_exposed_without_secret(self) -> None:
@@ -155,26 +162,12 @@ class TestExposedWebhookWarning:
             webhook_host="0.0.0.0",
             webhook_secret="",
         )
-        with patch("cognithor.channels.signal.logger") as mock_logger:
-            try:
-                from aiohttp import web  # noqa: F401
-            except ImportError:
-                pytest.skip("aiohttp nicht installiert")
-            with patch("aiohttp.web.AppRunner") as mock_runner:
-                mock_instance = AsyncMock()
-                mock_runner.return_value = mock_instance
-                with patch("aiohttp.web.TCPSite") as mock_site:
-                    mock_site_instance = AsyncMock()
-                    mock_site.return_value = mock_site_instance
-                    ch._http = AsyncMock()
-                    ch._http.post = AsyncMock()
-                    await ch._setup_webhook()
-            mock_logger.warning.assert_any_call(
-                "Signal: Webhook auf %s ohne webhook_secret exponiert — "
-                "Anfragen koennen nicht authentifiziert werden. "
-                "Setze webhook_secret fuer HMAC-Verifizierung.",
-                "0.0.0.0",
-            )
+        try:
+            from aiohttp import web  # noqa: F401
+        except ImportError:
+            pytest.skip("aiohttp nicht installiert")
+        with pytest.raises(RuntimeError, match="webhook_secret"):
+            await ch._setup_webhook()
 
     @pytest.mark.asyncio
     async def test_no_warning_on_localhost(self) -> None:

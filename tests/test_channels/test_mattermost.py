@@ -82,6 +82,44 @@ class TestMattermostChannel:
         ch._handler.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_on_message_blocks_non_allowlisted_channel(self) -> None:
+        """Mit gesetzter allow-list werden Posts aus anderen Channels ignoriert."""
+        ch = MattermostChannel(allowed_channels=["ch_trusted"])
+        ch._bot_user_id = "bot123"
+        ch._handler = AsyncMock()
+        ch._create_post = AsyncMock()
+
+        post = {
+            "user_id": "user456",
+            "message": "drive the agent",
+            "channel_id": "ch_evil",
+            "id": "msg1",
+            "root_id": "",
+        }
+        await ch._on_message(post)
+        ch._handler.assert_not_called()
+        ch._create_post.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_on_message_allows_allowlisted_channel(self) -> None:
+        """Posts aus dem allow-listeten Channel werden weitergegeben."""
+        ch = MattermostChannel(allowed_channels=["ch_trusted"])
+        ch._bot_user_id = "bot123"
+        response_msg = OutgoingMessage(channel="mattermost", text="ok", session_id="s1")
+        ch._handler = AsyncMock(return_value=response_msg)
+        ch._create_post = AsyncMock(return_value="post_id")
+
+        post = {
+            "user_id": "user456",
+            "message": "hello",
+            "channel_id": "ch_trusted",
+            "id": "msg1",
+            "root_id": "",
+        }
+        await ch._on_message(post)
+        ch._handler.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_on_reaction_approve(self) -> None:
         ch = MattermostChannel()
         loop = asyncio.get_running_loop()

@@ -597,6 +597,14 @@ class TelegramChannel(Channel):
         if voice is None:
             return
 
+        if voice.file_size and voice.file_size > MAX_DOCUMENT_SIZE:
+            await update.effective_message.reply_text(
+                f"Sprachnachricht zu gross "
+                f"({voice.file_size // 1_048_576} MB, "
+                f"max {MAX_DOCUMENT_SIZE // 1_048_576} MB)"
+            )
+            return
+
         # Start typing indicator
         typing_task = self._start_typing(chat_id)
 
