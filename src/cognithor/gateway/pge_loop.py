@@ -272,35 +272,44 @@ async def run_pge_loop(
             if _force_plan is not None:
                 log.info("reddit_hard_route_applied", goal=_force_plan.goal)
 
-        # Planner
-        if _force_plan is not None:
-            plan = _force_plan
-        elif session.iteration_count == 1:
-            plan = await gw._planner.plan(
-                user_message=msg.text,
-                working_memory=wm,
-                tool_schemas=tool_schemas,
-                model_override=_agent_model,
-                temperature_override=_agent_temperature,
-                top_p_override=_agent_top_p,
-            )
-        else:
-            plan = await gw._planner.replan(
-                original_goal=msg.text,
-                results=all_results,
-                working_memory=wm,
-                tool_schemas=tool_schemas,
-                model_override=_agent_model,
-                temperature_override=_agent_temperature,
-                top_p_override=_agent_top_p,
-            )
-
-        # Stop keepalive once planner responds
-        _keepalive_event.set()
-        _keepalive_task.cancel()
-        with contextlib.suppress(BaseException):
-            await _keepalive_task
-        gw._background_tasks.discard(_keepalive_task)
+        # Deep-PR1 (DEEP-1 CRIT-1 + MED-2): wrap the planner call in
+        # try/finally so the keepalive task is ALWAYS cancelled and
+        # discarded from `_background_tasks`, regardless of whether
+        # the planner raises or any later loop iteration `break`s.
+        # Previously, a `httpx.ConnectError` from the planner left
+        # the keepalive coroutine running forever, accumulating one
+        # orphaned task per failed planner call.
+        try:
+            # Planner
+            if _force_plan is not None:
+                plan = _force_plan
+            elif session.iteration_count == 1:
+                plan = await gw._planner.plan(
+                    user_message=msg.text,
+                    working_memory=wm,
+                    tool_schemas=tool_schemas,
+                    model_override=_agent_model,
+                    temperature_override=_agent_temperature,
+                    top_p_override=_agent_top_p,
+                )
+            else:
+                plan = await gw._planner.replan(
+                    original_goal=msg.text,
+                    results=all_results,
+                    working_memory=wm,
+                    tool_schemas=tool_schemas,
+                    model_override=_agent_model,
+                    temperature_override=_agent_temperature,
+                    top_p_override=_agent_top_p,
+                )
+        finally:
+            # Stop keepalive — runs on success, exception, AND any
+            # subsequent `break` further down in the loop body.
+            _keepalive_event.set()
+            _keepalive_task.cancel()
+            with contextlib.suppress(BaseException):
+                await _keepalive_task
+            gw._background_tasks.discard(_keepalive_task)
 
         all_plans.append(plan)
         await _pipeline_cb(

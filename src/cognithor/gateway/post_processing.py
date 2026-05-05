@@ -326,13 +326,21 @@ async def run_post_processing(
     # GEPA: Run evolution cycle if due
     if getattr(gw, "_evolution_orchestrator", None):
         try:
+            import asyncio as _asyncio
             import time as _time
 
             orch = gw._evolution_orchestrator
             gepa_cfg = getattr(gw._config, "gepa", None)
             interval = (gepa_cfg.evolution_interval_hours * 3600) if gepa_cfg else 21600
             if _time.time() - getattr(orch, "_last_cycle_time", 0) > interval:
-                evo_result = orch.run_evolution_cycle()
+                # Deep-PR1 (DEEP-1 CRIT-2): `run_evolution_cycle()` is
+                # a synchronous method that performs trace analysis,
+                # proposal generation, and DB writes. Calling it
+                # directly inside this async background task froze
+                # the asyncio event loop for the full cycle duration —
+                # blocking every concurrent message handler, keepalive
+                # tick, and WebSocket write. Run on a worker thread.
+                evo_result = await _asyncio.to_thread(orch.run_evolution_cycle)
                 log.info(
                     "gepa_evolution_cycle_completed",
                     cycle_id=evo_result.cycle_id,
