@@ -713,6 +713,31 @@ into a single canonical block under `bundle["trust"]`.
 > See [Sprint-27 IDE-Integration plan](docs/superpowers/plans/2026-05-04-sprint27-ide-integration.md)
 > for the consuming-extension roadmap.
 
+### Registry Trust Model (PACK-4)
+
+The community-skill marketplace uses a self-managed Ed25519 + TUF-Light
+signing scheme — **no third-party witness, no Sigstore dependency**, EU-
+sovereign by design.
+
+* Offline **Root** key signs `root.json`, which delegates to a rotating
+  online **Targets** key. `root.json` carries a monotonic `version` and
+  a `valid_until` window so a stale-replay attacker cannot freeze a
+  recall mid-flight.
+* Targets-key rotation is transparent: a fresh Targets pubkey lands in
+  a new `root.json`, signed by the offline Root. Clients pick it up on
+  next sync.
+* Hard-fail on every signature/freshness/replay error — kill-switch
+  must reach clients reliably.
+* No `--accept-unsigned-registry` runtime flag (would be a downgrade
+  vector). `REQUIRE_SIGNED_REGISTRY` is a build-time constant.
+
+| Doc | Purpose |
+|-----|---------|
+| [`docs/superpowers/specs/2026-05-05-pack4-registry-signing.md`](docs/superpowers/specs/2026-05-05-pack4-registry-signing.md) | Full spec |
+| [`SECURITY.md`](SECURITY.md#registry-trust-model-pack-4) | Threat-model summary |
+| [`docs/runbooks/registry_key_rotation.md`](docs/runbooks/registry_key_rotation.md) | Operator runbook |
+| [`scripts/registry_signing/`](scripts/registry_signing/README.md) | CLI tooling |
+
 ## MCP Tools
 
 | Tool Server | Tools | Description |
