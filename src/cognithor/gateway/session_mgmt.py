@@ -14,6 +14,7 @@ Part of the staged `gateway.py` split — see
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from typing import TYPE_CHECKING, cast
 
@@ -185,55 +186,77 @@ def get_or_create_working_memory(gw: Gateway, session: SessionContext) -> Workin
     """Laedt oder erstellt Working Memory fuer eine Session.
 
     Bei existierenden Sessions wird die Chat-History aus SQLite geladen.
+
+    PASS-4 SEC-MED: previously a TOCTOU race between the membership-check
+    and the commit allowed two concurrent first-message arrivals for the
+    same ``session_id`` to both perform the core-memory + chat-history
+    disk loads; the loser's work was discarded. We now serialize the
+    creation through ``gw._wm_creation_locks[session_id]`` so the I/O
+    runs at most once per session_id, while different sessions still
+    create in parallel.
     """
     with gw._session_lock:
-        if session.session_id in gw._working_memories:
-            return gw._working_memories[session.session_id]
+        existing = gw._working_memories.get(session.session_id)
+        if existing is not None:
+            return existing
+        creation_lock = gw._wm_creation_locks.get(session.session_id)
+        if creation_lock is None:
+            creation_lock = threading.Lock()
+            gw._wm_creation_locks[session.session_id] = creation_lock
 
-    # Create outside lock (I/O operations do not block other sessions)
-    wm = WorkingMemory(
-        session_id=session.session_id,
-        max_tokens=gw._config.models.planner.context_window,
-    )
+    with creation_lock:
+        # Re-check inside the per-session lock: another caller may have
+        # finished while we were waiting.
+        with gw._session_lock:
+            existing = gw._working_memories.get(session.session_id)
+            if existing is not None:
+                return existing
 
-    # Core Memory laden (wenn vorhanden)
-    core_path = gw._config.core_memory_path
-    if core_path.exists():
-        try:
-            wm.core_memory_text = core_path.read_text(encoding="utf-8")
-        except Exception as exc:
-            log.warning("core_memory_load_failed", error=str(exc))
+        # Now we are the sole creator for this session_id.
+        wm = WorkingMemory(
+            session_id=session.session_id,
+            max_tokens=gw._config.models.planner.context_window,
+        )
 
-    # CAG prefix injection
-    # CAG prefix is prepared in handle_message() (async context), not here
+        # Core Memory laden (wenn vorhanden)
+        core_path = gw._config.core_memory_path
+        if core_path.exists():
+            try:
+                wm.core_memory_text = core_path.read_text(encoding="utf-8")
+            except Exception as exc:
+                log.warning("core_memory_load_failed", error=str(exc))
 
-    # Chat-History aus SessionStore wiederherstellen
-    if gw._session_store:
-        try:
-            history_limit = getattr(
-                getattr(gw._config, "session", None),
-                "chat_history_limit",
-                100,
-            )
-            history = gw._session_store.load_chat_history(
-                session.session_id,
-                limit=history_limit,
-            )
-            if history:
-                wm.chat_history = history
-                log.info(
-                    "chat_history_restored",
-                    session=session.session_id[:8],
-                    messages=len(history),
+        # CAG prefix injection
+        # CAG prefix is prepared in handle_message() (async context), not here
+
+        # Chat-History aus SessionStore wiederherstellen
+        if gw._session_store:
+            try:
+                history_limit = getattr(
+                    getattr(gw._config, "session", None),
+                    "chat_history_limit",
+                    100,
                 )
-        except Exception as exc:
-            log.warning("chat_history_load_failed", error=str(exc))
+                history = gw._session_store.load_chat_history(
+                    session.session_id,
+                    limit=history_limit,
+                )
+                if history:
+                    wm.chat_history = history
+                    log.info(
+                        "chat_history_restored",
+                        session=session.session_id[:8],
+                        messages=len(history),
+                    )
+            except Exception as exc:
+                log.warning("chat_history_load_failed", error=str(exc))
 
-    with gw._session_lock:
-        # Double-check: another thread may have been faster
-        if session.session_id not in gw._working_memories:
+        with gw._session_lock:
             gw._working_memories[session.session_id] = wm
-        return gw._working_memories[session.session_id]
+            # The creation lock has done its job; drop it so long-running
+            # gateways don't accumulate one Lock per session forever.
+            gw._wm_creation_locks.pop(session.session_id, None)
+            return wm
 
 
 def check_and_compact(gw: Gateway, wm: WorkingMemory, session: SessionContext) -> None:

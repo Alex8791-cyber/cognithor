@@ -44,6 +44,7 @@ def gateway(tmp_path: Path) -> Gateway:
     gw._session_last_accessed = {}
     gw._last_session_cleanup = time.monotonic()
     gw._session_lock = threading.Lock()
+    gw._wm_creation_locks = {}
     gw._session_store = None
     gw._SESSION_TTL_SECONDS = 3600
     gw._CLEANUP_INTERVAL_SECONDS = 300

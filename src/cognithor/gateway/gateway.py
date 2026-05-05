@@ -428,6 +428,16 @@ class Gateway:
         self._session_last_accessed: dict[str, float] = {}
         self._last_session_cleanup: float = time.monotonic()
         self._session_lock = threading.Lock()
+        # PASS-4 SEC-MED: per-session WM-creation locks. Without this
+        # two concurrent first-message arrivals for the same session
+        # both pass the membership check at the top of
+        # ``get_or_create_working_memory``, both perform the
+        # core-memory + chat-history load from disk, and the loser
+        # discards its work. Worse, between the first check and the
+        # commit, ``branch_switch`` could swap the WM and the racing
+        # creator would briefly compete for the slot. With per-session
+        # locks the I/O happens at most once per session_id.
+        self._wm_creation_locks: dict[str, threading.Lock] = {}
         self._running = False
         self._cancelled_sessions: set[str] = set()
         # Deep-PR1 (DEEP-1 HIGH-1): FIFO ring tracking the order
