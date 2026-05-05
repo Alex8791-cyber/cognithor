@@ -73,6 +73,97 @@ class OutputChannel {
   }
 }
 
+class ThemeIcon {
+  constructor(public readonly id: string) {}
+}
+
+const treeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
+const viewColumn = { Active: -1, Beside: -2, One: 1, Two: 2, Three: 3 };
+
+class TreeItem {
+  public tooltip: unknown;
+  public contextValue: unknown;
+  public iconPath: unknown;
+  public command: unknown;
+  constructor(
+    public readonly label: string,
+    public readonly collapsibleState: number = treeItemCollapsibleState.None,
+  ) {}
+}
+
+type EventEmitterListener<T> = (e: T) => void;
+
+class EventEmitter<T> {
+  public listeners: EventEmitterListener<T>[] = [];
+  public disposed = false;
+  readonly event = (listener: EventEmitterListener<T>): { dispose: () => void } => {
+    this.listeners.push(listener);
+    return {
+      dispose: () => {
+        const idx = this.listeners.indexOf(listener);
+        if (idx !== -1) this.listeners.splice(idx, 1);
+      },
+    };
+  };
+  fire(payload: T): void {
+    for (const l of [...this.listeners]) l(payload);
+  }
+  dispose(): void {
+    this.disposed = true;
+    this.listeners = [];
+  }
+}
+
+class FakeWebview {
+  public html = "";
+}
+
+class FakeWebviewPanel {
+  public webview = new FakeWebview();
+  public title: string;
+  public visible = true;
+  public disposed = false;
+  public revealCalls: { column: number; preserveFocus: boolean }[] = [];
+  private disposeCallbacks: Array<() => void> = [];
+  constructor(
+    public readonly viewType: string,
+    title: string,
+    public readonly viewColumn: number,
+    public readonly options: Record<string, unknown>,
+  ) {
+    this.title = title;
+  }
+  reveal(column?: number, preserveFocus?: boolean): void {
+    this.revealCalls.push({ column: column ?? -1, preserveFocus: preserveFocus ?? false });
+    this.visible = true;
+  }
+  onDidDispose(cb: () => void): { dispose: () => void } {
+    this.disposeCallbacks.push(cb);
+    return { dispose: () => undefined };
+  }
+  dispose(): void {
+    this.disposed = true;
+    this.visible = false;
+    for (const cb of this.disposeCallbacks) cb();
+  }
+}
+
+class FakeMemento {
+  public store: Record<string, unknown> = {};
+  get<T>(key: string, defaultValue?: T): T | undefined {
+    if (key in this.store) return this.store[key] as T;
+    return defaultValue;
+  }
+  update(key: string, value: unknown): Promise<void> {
+    if (value === undefined) {
+      delete this.store[key];
+    } else {
+      this.store[key] = value;
+    }
+    return Promise.resolve();
+  }
+}
+
 interface ConfigStore {
   [key: string]: unknown;
 }
@@ -106,6 +197,14 @@ const window = {
   showErrorMessage: sinon.stub().resolves(undefined),
   showInformationMessage: sinon.stub().resolves(undefined),
   onDidChangeActiveTextEditor: sinon.stub().returns({ dispose: () => undefined }),
+  createWebviewPanel: sinon.stub().callsFake(
+    (
+      viewType: string,
+      title: string,
+      column: number,
+      options: Record<string, unknown> = {},
+    ) => new FakeWebviewPanel(viewType, title, column, options),
+  ),
 };
 
 const workspace = {
@@ -125,6 +224,11 @@ const vscodeMock = {
   MarkdownString,
   OverviewRulerLane: overviewRulerLane,
   StatusBarAlignment: statusBarAlignment,
+  ThemeIcon,
+  TreeItem,
+  TreeItemCollapsibleState: treeItemCollapsibleState,
+  ViewColumn: viewColumn,
+  EventEmitter,
   window,
   workspace,
   languages,
@@ -149,7 +253,12 @@ export function resetMockSpies(): void {
   (workspace.onDidChangeConfiguration as sinon.SinonStub).resetHistory();
   (window.onDidChangeActiveTextEditor as sinon.SinonStub).resetHistory();
   (languages.registerHoverProvider as sinon.SinonStub).resetHistory();
+  (window.createWebviewPanel as sinon.SinonStub).resetHistory();
+  (window.showWarningMessage as sinon.SinonStub).resetHistory();
+  (window.showErrorMessage as sinon.SinonStub).resetHistory();
 }
+
+export { FakeMemento, FakeWebviewPanel };
 
 // Node 20 made `Module._resolveFilename` non-writable in some
 // contexts, so instead of swapping the resolver we override the
