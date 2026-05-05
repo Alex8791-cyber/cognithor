@@ -1558,7 +1558,7 @@ def main() -> None:
                                         )
                                         if result.success and result.text and result.text.strip():
                                             text = result.text.strip()
-                                            log.info("ws_audio_transcribed", text=text[:80])
+                                            log.info("ws_audio_transcribed", text_len=len(text))
                                             metadata.pop("audio_base64", None)
                                             metadata.pop("file_base64", None)
                                             metadata["transcribed_from"] = "audio"

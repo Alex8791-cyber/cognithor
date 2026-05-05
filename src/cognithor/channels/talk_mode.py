@@ -90,7 +90,7 @@ class TalkMode:
                     log.debug("talk_mode_no_speech_detected")
                     continue
 
-                log.info("talk_mode_heard", text=text[:100])
+                log.info("talk_mode_heard", text_len=len(text))
 
                 # Phase 4: Verarbeiten (via Voice-Channel Handler)
                 if self._voice._handler:

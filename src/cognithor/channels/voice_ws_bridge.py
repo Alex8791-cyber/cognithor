@@ -112,7 +112,7 @@ class VoiceMessageHandler:
             )
 
             if result.success and result.text.strip():
-                log.info("voice_ws_transcribed", text=result.text[:80])
+                log.info("voice_ws_transcribed", text_len=len(result.text))
                 return cast("str | None", result.text.strip())
 
             log.warning("voice_ws_empty_transcription")

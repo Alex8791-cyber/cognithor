@@ -151,7 +151,7 @@ async def run_pge_loop(
     _is_correction = any(t in _lower_msg for t in _CORRECTION_TRIGGERS)
 
     if _is_correction and session.iteration_count > 0:
-        log.info("live_correction_detected", text=msg.text[:80])
+        log.info("live_correction_detected", text_len=len(msg.text))
         if hasattr(gw, "_correction_memory") and gw._correction_memory:
             gw._correction_memory.store(
                 user_message=getattr(session, "last_user_message", "") or "",
@@ -168,7 +168,7 @@ async def run_pge_loop(
                     if gap not in goals and len(goals) < 20:
                         goals.append(gap)
                         config.evolution.learning_goals = goals
-                        log.info("evolution_gap_from_correction", correction=msg.text[:60])
+                        log.info("evolution_gap_from_correction", correction_len=len(msg.text))
             except Exception:
                 log.debug("evolution_correction_injection_failed", exc_info=True)
         wm.add_message(

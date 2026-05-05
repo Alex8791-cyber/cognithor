@@ -781,7 +781,7 @@ class Planner:
 
         # Retry once if JSON parsing failed (LLM produced malformed JSON)
         if plan.parse_failed:
-            log.warning("planner_json_retry", model=model, goal=user_message[:80])
+            log.warning("planner_json_retry", model=model, goal_len=len(user_message))
             retry_hint = (
                 "\n\nIMPORTANT: Your previous response contained "
                 "malformed JSON that could not be parsed. "
@@ -855,7 +855,7 @@ class Planner:
             and not plan.steps
             and not getattr(plan, "_action_retry_done", False)
         ):
-            log.warning("planner_action_refused_retry", goal=user_message[:80])
+            log.warning("planner_action_refused_retry", goal_len=len(user_message))
             action_hint = (
                 "\n\nKRITISCH: Du hast eine Text-Antwort generiert statt "
                 "einen Tool-Plan. Der Nutzer hat eine AKTION verlangt. "
