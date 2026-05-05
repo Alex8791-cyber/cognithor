@@ -287,10 +287,46 @@ def _register_security_routes(
     # -- GDPR Art. 20: User Data Export (full) ----------------------------
 
     @app.get("/api/v1/user/data", dependencies=deps)
-    async def export_user_data(user_id: str = "", format: str = "json") -> Any:
-        """GDPR Art. 15/20: Export all personal data for a user."""
-        if not user_id:
-            return {"error": "user_id query parameter required"}
+    async def export_user_data(
+        request: Request,
+        user_id: str = "",
+        format: str = "json",
+    ) -> Any:
+        """GDPR Art. 15/20: Export all personal data for a user.
+
+        Audit-PR3 (IDOR fix, audit-HIGH-2): mirrors the DELETE
+        handler's IDOR-prevention pattern. Regular requests cannot
+        export an arbitrary ``user_id`` from the query string —
+        the user_id is taken from the config owner (single-user
+        installs). Cross-user export requires the
+        ``X-Admin-Token`` header matching ``COGNITHOR_ADMIN_TOKEN``;
+        otherwise the foreign user_id is rejected.
+        """
+        import os as _os
+
+        admin_token = _os.environ.get("COGNITHOR_ADMIN_TOKEN", "")
+        auth_header = request.headers.get("X-Admin-Token", "")
+        is_admin = bool(admin_token) and auth_header == admin_token
+
+        owner_id = getattr(getattr(gateway, "_config", None), "owner", "") or ""
+        if is_admin:
+            effective_user_id = user_id or owner_id
+        else:
+            # Non-admins always export their own (config-owner) data;
+            # any caller-supplied user_id that doesn't match the owner
+            # is rejected to close the IDOR vector.
+            if user_id and user_id != owner_id:
+                return {
+                    "error": (
+                        "user_id mismatch — non-admin clients can only "
+                        "export the configured owner's data. Provide "
+                        "X-Admin-Token to export a different user_id."
+                    )
+                }
+            effective_user_id = owner_id
+        if not effective_user_id:
+            return {"error": "user_id could not be determined from session/owner"}
+        user_id = effective_user_id
 
         export: dict[str, Any] = {
             "export_version": "2.0",
@@ -556,6 +592,26 @@ def _register_security_routes(
                     if memory_mgr and hasattr(memory_mgr, "semantic"):
                         name = corr.get("name", "")
                         field = corr.get("field", "name")
+                        # Audit-PR3 (CRIT-1 SQL injection fix): the
+                        # `field` value comes from the request body and
+                        # was previously string-interpolated into the
+                        # UPDATE statement. Whitelist against the
+                        # entity-table's correctable columns; everything
+                        # else is rejected before the SQL runs.
+                        _ALLOWED_ENTITY_FIELDS = {"name", "attributes"}
+                        if field not in _ALLOWED_ENTITY_FIELDS:
+                            results.append(
+                                {
+                                    "type": "entity",
+                                    "name": name,
+                                    "status": "rejected",
+                                    "error": (
+                                        f"field {field!r} not in allowed set "
+                                        f"{sorted(_ALLOWED_ENTITY_FIELDS)}"
+                                    ),
+                                },
+                            )
+                            continue
                         new_value = corr.get("new_value", "")
                         # Update entity in indexer
                         indexer = (
@@ -564,8 +620,11 @@ def _register_security_routes(
                             else None
                         )
                         if indexer and hasattr(indexer, "_conn"):
+                            # `field` is now whitelisted to a fixed set
+                            # of identifier strings — safe to interpolate.
                             indexer._conn.execute(
-                                f"UPDATE entities SET {field} = ? WHERE name = ?", (new_value, name)
+                                f"UPDATE entities SET {field} = ? WHERE name = ?",
+                                (new_value, name),
                             )
                             indexer._conn.commit()
                             results.append({"type": "entity", "name": name, "status": "corrected"})
@@ -573,6 +632,27 @@ def _register_security_routes(
                 elif corr_type == "vault_note":
                     path = corr.get("path", "")
                     new_content = corr.get("new_value", "")
+                    # Audit-PR3 (MED-2 path-traversal fix): the
+                    # caller-supplied `path` previously went directly
+                    # into `vault._backend.update(path, ...)`. We now
+                    # reject any `..` segment and any absolute path
+                    # before passing it on, so a vault note correction
+                    # cannot reach files outside the vault root.
+                    if (
+                        not path
+                        or ".." in path.replace("\\", "/").split("/")
+                        or path.startswith(("/", "\\"))
+                        or (len(path) >= 2 and path[1] == ":")
+                    ):
+                        results.append(
+                            {
+                                "type": "vault_note",
+                                "path": path,
+                                "status": "rejected",
+                                "error": "path traversal / absolute path rejected",
+                            },
+                        )
+                        continue
                     # Use vault backend if available
                     vault = None
                     for attr in dir(gateway):
