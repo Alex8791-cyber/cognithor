@@ -71,7 +71,6 @@ from cognithor.models import (
     AgentResult,
     AuditEntry,
     GateDecision,
-    GateStatus,
     IncomingMessage,
     Message,
     MessageRole,
@@ -1372,189 +1371,16 @@ class Gateway:
             log.debug("core_inventory_sync_failed", exc_info=True)
 
     def _sync_core_inventory(self) -> None:
-        """Aktualisiert den INVENTAR-Abschnitt in CORE.md mit aktuellen Tools/Skills.
+        """Refresh CORE.md INVENTORY section. Delegates to core_inventory module."""
+        from cognithor.gateway.core_inventory import sync_core_inventory
 
-        Verwendet ToolRegistryDB fuer datenbankgestuetzte, lokalisierte und
-        rollenbasierte Tool-Abschnitte. Faellt auf die alte statische Methode
-        zurueck, wenn die DB nicht verfuegbar ist.
-        """
-        if not self._memory_manager or not hasattr(self._memory_manager, "_core"):
-            return
-        core = self._memory_manager._core
-        content = core.content
-        if not content:
-            return
-        language = getattr(self._config, "language", "de")
-
-        # Try DB-backed generation
-        tool_count = 0
-        try:
-            from cognithor.mcp.tool_registry_db import (
-                _SECTION_HEADERS,
-                ToolRegistryDB,
-                _ProcedureEntry,
-                deduplicate_procedures,
-            )
-
-            db_path = self._config.cognithor_home / "tool_registry.db"
-            registry_db = ToolRegistryDB(db_path)
-
-            # Tools aus MCP-Client synchronisieren
-            if self._mcp_client:
-                registry_db.sync_from_mcp(self._mcp_client)
-
-            tool_count = registry_db.tool_count()
-            registry_db.close()
-        except Exception:
-            log.debug("tool_registry_db_failed_falling_back", exc_info=True)
-            # Fallback: legacy method just to validate MCP is alive
-            if self._sync_core_inventory_legacy() is None:
-                return
-            tool_count = 0
-
-        # Compile skill list
-        skill_lines: list[str] = []
-        if hasattr(self, "_skill_registry") and self._skill_registry:
-            try:
-                for slug, skill in self._skill_registry._skills.items():
-                    status = "active" if skill.enabled else "inactive"
-                    skill_lines.append(f"- **{skill.name}** (`{slug}`) -- {status}")
-            except Exception:
-                log.debug("core_inventory_skills_failed", exc_info=True)
-        if not skill_lines:
-            skill_lines = ["- (no skills registered)"]
-
-        # Procedure list with deduplication
-        proc_lines: list[str] = []
-        if self._memory_manager:
-            try:
-                from cognithor.mcp.tool_registry_db import (
-                    _ProcedureEntry,
-                    deduplicate_procedures,
-                )
-
-                procedural = self._memory_manager.procedural
-                raw_procs = [
-                    _ProcedureEntry(
-                        name=meta.name,
-                        total_uses=meta.total_uses,
-                        trigger_keywords=list(meta.trigger_keywords),
-                    )
-                    for meta in procedural.list_procedures()
-                ]
-                proc_lines = deduplicate_procedures(
-                    raw_procs,
-                    language=language,
-                )
-            except Exception:
-                log.debug("core_inventory_procedures_dedup_failed", exc_info=True)
-                # Fallback: simple list
-                try:
-                    procedural = self._memory_manager.procedural
-                    for meta in procedural.list_procedures():
-                        uses = f"{meta.total_uses}x" if meta.total_uses else "0x"
-                        kw = ", ".join(meta.trigger_keywords[:3]) if meta.trigger_keywords else ""
-                        suffix = f" [{kw}]" if kw else ""
-                        proc_lines.append(f"- `{meta.name}` ({uses} used){suffix}")
-                except Exception:
-                    log.debug("core_inventory_procedures_failed", exc_info=True)
-
-        if not proc_lines:
-            proc_lines = ["- (no procedures stored)"]
-
-        # Lokalisierte Header
-        try:
-            from cognithor.mcp.tool_registry_db import _SECTION_HEADERS
-
-            headers = _SECTION_HEADERS.get(language, _SECTION_HEADERS["en"])
-        except Exception:
-            headers = {
-                "inventory_title": "INVENTORY (auto-updated)",
-                "skills_title": "Installed Skills ({count})",
-                "procedures_title": "Learned Procedures ({count})",
-            }
-
-        inv_title = headers["inventory_title"]
-        skills_title = headers["skills_title"].format(count=len(skill_lines))
-        procs_title = headers["procedures_title"].format(count=len(proc_lines))
-
-        # Tool descriptions are injected directly into the Planner prompt
-        # via {tools_section} — no need to duplicate them in CORE.md
-        tool_ref = (
-            f"*{tool_count} Tools registriert (werden direkt in den Planner-Prompt injiziert)*"
-        )
-
-        inventory = (
-            f"## {inv_title}\n\n"
-            + tool_ref
-            + "\n\n"
-            + f"### {skills_title}\n"
-            + "\n".join(skill_lines)
-            + "\n\n"
-            + f"### {procs_title}\n"
-            + "\n".join(proc_lines)
-        )
-
-        # Bestehenden INVENTAR/INVENTORY-Abschnitt ersetzen oder am Ende anhaengen
-        marker_candidates = [
-            "## INVENTAR (auto-aktualisiert)",
-            "## INVENTAR (automatisch aktualisiert)",
-            "## INVENTORY (auto-updated)",
-            f"## {inv_title}",
-        ]
-        marker_start = None
-        for marker in marker_candidates:
-            if marker in content:
-                marker_start = marker
-                break
-
-        if marker_start:
-            pattern = re.escape(marker_start) + r".*?(?=\n## (?!INVENT|清单)|\Z)"
-            content = re.sub(pattern, inventory, content, flags=re.DOTALL)
-        else:
-            content = content.rstrip() + "\n\n---\n\n" + inventory + "\n"
-
-        core.save(content)
-        log.info(
-            "core_inventory_synced",
-            tools=tool_count,
-            skills=len(skill_lines),
-            procedures=len(proc_lines),
-        )
+        sync_core_inventory(self)
 
     def _sync_core_inventory_legacy(self) -> str | None:
-        """Alte statische Tool-Liste als Fallback (ohne DB).
+        """Schema-only fallback. Delegates to core_inventory module."""
+        from cognithor.gateway.core_inventory import sync_core_inventory_legacy
 
-        Returns:
-            Formatierter Tool-Abschnitt oder None bei Fehler.
-        """
-        tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
-        if not tool_schemas:
-            return None
-
-        tool_lines: list[str] = []
-        for name in sorted(tool_schemas):
-            schema = tool_schemas[name]
-            desc = schema.get("description", "")
-            props = schema.get("inputSchema", {}).get("properties", {})
-            required = set(schema.get("inputSchema", {}).get("required", []))
-            if props:
-                parts = []
-                for k, v in props.items():
-                    typ = v.get("type", "?")
-                    req = " *" if k in required else ""
-                    parts.append(f"{k}: {typ}{req}")
-                param_str = ", ".join(parts)
-                tool_lines.append(f"- `{name}({param_str})` -- {desc}")
-            else:
-                tool_lines.append(f"- `{name}()` -- {desc}")
-
-        tool_count = len(tool_schemas)
-        return (
-            f"### Registered Tools ({tool_count})\n"
-            + "Parameters marked with * are required.\n\n"
-            + "\n".join(tool_lines)
-        )
+        return sync_core_inventory_legacy(self)
 
     def cancel_session(self, session_id: str) -> bool:
         """Bricht die aktive Verarbeitung einer Session ab.
@@ -1669,142 +1495,17 @@ class Gateway:
         core_memory: bool = False,
         skills: bool = False,
     ) -> dict[str, Any]:
-        """Reload-Koordinator fuer Live-Updates vom UI."""
-        reloaded = []
-        if prompts and self._planner:
-            self._planner.reload_prompts()
-            reloaded.append("prompts")
-        if policies and self._gatekeeper:
-            self._gatekeeper.reload_policies()
-            reloaded.append("policies")
-        if core_memory:
-            core_path = self._config.core_memory_path
-            if core_path.exists():
-                try:
-                    text = core_path.read_text(encoding="utf-8")
-                    for wm in self._working_memories.values():
-                        wm.core_memory_text = text
-                    reloaded.append("core_memory")
-                except Exception:
-                    log.debug("reload_core_memory_failed", exc_info=True)
-        if skills and self._skill_registry:
-            try:
-                skill_dirs = [
-                    self._config.cognithor_home / "data" / "procedures",
-                    self._config.cognithor_home / self._config.plugins.skills_dir,
-                ]
-                self._skill_registry.load_from_directories(skill_dirs)
-                reloaded.append("skills")
-            except Exception:
-                log.warning("skills_reload_failed", exc_info=True)
-        if config:
-            # Reload config.yaml from disk
-            try:
-                new_config = load_config(self._config.config_file)
-                self._config = new_config
-            except Exception:
-                log.debug("config_file_reload_failed", exc_info=True)
-                new_config = self._config
+        """Live-update coordinator. Delegates to component_reload module."""
+        from cognithor.gateway.component_reload import reload_components
 
-            # Live-update i18n locale from config
-            try:
-                import os
-
-                from cognithor.i18n import set_locale
-
-                _lang = os.environ.get("COGNITHOR_LANGUAGE") or new_config.language
-                set_locale(_lang)
-            except Exception:
-                log.debug("i18n_locale_reload_failed", exc_info=True)
-
-            # Live-update Executor runtime parameters
-            if self._executor and hasattr(self._executor, "reload_config"):
-                try:
-                    self._executor.reload_config(new_config)
-                except Exception:
-                    log.debug("executor_config_reload_failed", exc_info=True)
-
-            # Live-update ModelRouter with new config + schedule model list refresh
-            if self._model_router and hasattr(self._model_router, "_config"):
-                try:
-                    self._model_router._config = new_config
-                    # Schedule async re-initialization to refresh _available_models
-                    import asyncio
-
-                    try:
-                        loop = asyncio.get_running_loop()
-                        _task = loop.create_task(self._model_router.initialize())
-                        self._background_tasks.add(_task)
-                        _task.add_done_callback(self._background_tasks.discard)
-                    except RuntimeError:
-                        pass  # no loop — model list refresh skipped
-                    log.info("model_router_config_reloaded")
-                except Exception:
-                    log.debug("model_router_config_reload_failed", exc_info=True)
-
-            # Recreate UnifiedLLMClient if backend type changed
-            if self._llm is not None:
-                old_backend = getattr(self._llm, "backend_type", "ollama")
-                new_backend = new_config.llm_backend_type
-                if old_backend != new_backend:
-                    try:
-                        from cognithor.core.unified_llm import UnifiedLLMClient
-
-                        old_llm = self._llm
-                        self._llm = UnifiedLLMClient.create(new_config)
-                        # Update references in Planner/Executor
-                        if self._planner and hasattr(self._planner, "_ollama"):
-                            self._planner._ollama = self._llm
-                        if self._executor and hasattr(self._executor, "_ollama"):
-                            self._executor._ollama = self._llm
-                        # Close old client
-                        import asyncio
-
-                        try:
-                            loop = asyncio.get_running_loop()
-                            _task = loop.create_task(old_llm.close())
-                            self._background_tasks.add(_task)
-                            _task.add_done_callback(self._background_tasks.discard)
-                        except RuntimeError:
-                            pass
-                        log.info(
-                            "llm_backend_switched",
-                            old=old_backend,
-                            new=new_backend,
-                        )
-                    except Exception:
-                        log.warning("llm_backend_switch_failed", exc_info=True)
-
-            # Live-update Planner with new config
-            if self._planner and hasattr(self._planner, "_config"):
-                try:
-                    self._planner._config = new_config
-                except Exception:
-                    log.debug("planner_config_reload_failed", exc_info=True)
-
-            # Live-update WebTools runtime parameters
-            web_tools = None
-            if self._mcp_client:
-                handler = self._mcp_client.get_handler("web_search")
-                if handler is not None:
-                    web_tools = getattr(handler, "__self__", None)
-            if web_tools and hasattr(web_tools, "reload_config"):
-                try:
-                    web_tools.reload_config(new_config)
-                except Exception:
-                    log.debug("web_tools_config_reload_failed", exc_info=True)
-
-            # Live-update Gatekeeper tool toggles (disabled_tools list)
-            if self._gatekeeper and hasattr(self._gatekeeper, "reload_disabled_tools"):
-                try:
-                    self._gatekeeper.reload_disabled_tools()
-                    reloaded.append("tool_toggles")
-                except Exception:
-                    log.debug("gatekeeper_tool_toggles_reload_failed", exc_info=True)
-
-            reloaded.append("config")
-        log.info("gateway_components_reloaded", components=reloaded)
-        return {"reloaded": reloaded}
+        return reload_components(
+            self,
+            prompts=prompts,
+            policies=policies,
+            config=config,
+            core_memory=core_memory,
+            skills=skills,
+        )
 
     async def switch_branch(
         self, conversation_id: str, leaf_id: str, session: SessionContext
@@ -2008,189 +1709,17 @@ class Gateway:
         session: SessionContext,
         parent_wm: WorkingMemory,
     ) -> str:
-        """Fuehrt eine echte Agent-zu-Agent-Delegation aus.
+        """Agent-to-agent delegation. Delegates to delegation module."""
+        from cognithor.gateway.delegation import execute_delegation
 
-        Der delegierte Agent bekommt:
-          - Eigenen System-Prompt
-          - Eigenen Workspace (isoliert)
-          - Eigene Sandbox-Config
-          - Eigene Tool-Filterung
-          - Die Aufgabe als User-Nachricht
-
-        Das Ergebnis fliesst als Text zurueck zum aufrufenden Agenten.
-
-        Args:
-            from_agent: Name des delegierenden Agenten.
-            to_agent: Name des Ziel-Agenten.
-            task: Die delegierte Aufgabe.
-            session: Aktuelle Session.
-            parent_wm: Working Memory des Eltern-Agenten.
-
-        Returns:
-            Ergebnis-Text der Delegation.
-        """
-        if not self._agent_router:
-            return f"Agent router unavailable. Delegation to {to_agent} failed."
-
-        # Delegation erstellen und validieren
-        delegation = self._agent_router.create_delegation(from_agent, to_agent, task)
-        if delegation is None:
-            return (
-                f"Delegation from {from_agent} to {to_agent} not allowed. "
-                f"I'll handle the task myself."
-            )
-
-        target = delegation.target_profile
-        if not target:
-            return f"Agent {to_agent} not found."
-
-        log.info(
-            "delegation_executing",
-            from_=from_agent,
-            to=to_agent,
-            task=task[:200],
-            depth=delegation.depth,
+        return await execute_delegation(
+            self,
+            from_agent=from_agent,
+            to_agent=to_agent,
+            task=task,
+            session=session,
+            parent_wm=parent_wm,
         )
-
-        # Broadcast delegation status to frontend
-        try:
-            channel_name = session.channel or "webui"
-            status_cb = self._make_status_callback(channel_name, session.session_id)
-            await status_cb(
-                "working",
-                f"Delegation: {from_agent} -> {to_agent}: {task[:100]}",
-            )
-        except Exception:
-            log.debug("delegation_status_broadcast_failed", exc_info=True)
-
-        # Create forked session for delegated agent (provenance tracking)
-        from cognithor.models import SessionContext as _SC
-
-        sub_session = _SC(
-            user_id=session.user_id,
-            channel=session.channel,
-            agent_name=to_agent,
-            parent_session_id=session.session_id,
-            fork_reason=f"delegated from {from_agent}: {task[:200]}",
-        )
-        if self._session_store:
-            try:
-                self._session_store.save_session(sub_session)
-            except Exception:
-                log.debug("delegation_session_save_skipped", exc_info=True)
-
-        # Separate working memory for delegated agent
-        sub_wm = WorkingMemory(session_id=sub_session.session_id)
-
-        # System-Prompt des Ziel-Agenten injizieren
-        if target.system_prompt:
-            sub_wm.add_message(
-                Message(
-                    role=MessageRole.SYSTEM,
-                    content=target.system_prompt,
-                )
-            )
-
-        # Aufgabe als User-Nachricht
-        sub_wm.add_message(
-            Message(
-                role=MessageRole.USER,
-                content=task,
-            )
-        )
-
-        # Resolve target agent's workspace
-        target_workspace = self._agent_router.resolve_agent_workspace(
-            to_agent,
-            self._config.workspace_dir,
-        )
-
-        # Filter tool schemas for target agent
-        tool_schemas = self._mcp_client.get_tool_schemas() if self._mcp_client else {}
-        if target.has_tool_restrictions:
-            tool_schemas = target.filter_tools(tool_schemas)
-
-        # Planner mit Ziel-Agent-Kontext aufrufen
-        if self._planner is None:
-            raise RuntimeError("Planner nicht initialisiert -- Delegation nicht möglich")
-
-        # Agent-specific LLM overrides for delegation target
-        _del_model = target.preferred_model or None
-        _del_temp = target.temperature
-        _del_top_p = getattr(target, "top_p", None)
-
-        plan = await self._planner.plan(
-            user_message=task,
-            working_memory=sub_wm,
-            tool_schemas=tool_schemas,
-            model_override=_del_model,
-            temperature_override=_del_temp,
-            top_p_override=_del_top_p,
-        )
-
-        # Direkte Antwort?
-        if not plan.has_actions and plan.direct_response:
-            delegation.result = plan.direct_response
-            delegation.success = True
-            return cast("str", plan.direct_response)
-
-        if not plan.has_actions:
-            no_plan_msg = "Kein Plan erstellt."
-            delegation.result = no_plan_msg
-            delegation.success = False
-            return no_plan_msg
-
-        # Check gatekeeper
-        if self._gatekeeper is None:
-            raise RuntimeError("Gatekeeper nicht initialisiert -- Delegation nicht möglich")
-        decisions = self._gatekeeper.evaluate_plan(plan.steps, session)
-
-        # APPROVE/BLOCK-Entscheidungen in Delegationen blockieren (kein HITL moeglich)
-        blocked = [d for d in decisions if d.status in (GateStatus.APPROVE, GateStatus.BLOCK)]
-        if blocked:
-            reasons = "; ".join(d.reason for d in blocked[:3])
-            blocked_msg = f"Delegation blockiert: {reasons}"
-            delegation.result = blocked_msg
-            delegation.success = False
-            return blocked_msg
-
-        # Executor mit Ziel-Agent-Kontext
-        assert self._executor is not None
-        self._executor.set_agent_context(
-            workspace_dir=str(target_workspace),
-            sandbox_overrides=target.get_sandbox_config(),
-            agent_name=target.name,
-            session_id=session.session_id,
-        )
-
-        try:
-            results = await self._executor.execute(plan.steps, decisions)
-        finally:
-            self._executor.clear_agent_context()
-
-        # Formulate result
-        if any(r.success for r in results):
-            _envelope = await self._planner.formulate_response(
-                user_message=task,
-                results=results,
-                working_memory=sub_wm,
-            )
-            response = _envelope.content
-            delegation.result = response
-            delegation.success = True
-        else:
-            delegation.result = "Delegation failed: no successful actions."
-            delegation.success = False
-
-        log.info(
-            "delegation_complete",
-            from_=from_agent,
-            to=to_agent,
-            success=delegation.success,
-            result_len=len(delegation.result or ""),
-        )
-
-        return delegation.result or ""
 
     # =========================================================================
     # Private Methoden
