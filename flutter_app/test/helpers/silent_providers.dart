@@ -194,4 +194,7 @@ class SilentLlmBackendProvider extends LlmBackendProvider {
 
   @override
   Future<void> refreshVllmStatus() async {}
+
+  @override
+  Future<void> fetchAvailableModels() async {}
 }
