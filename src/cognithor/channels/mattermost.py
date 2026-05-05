@@ -41,6 +41,7 @@ class MattermostChannel(Channel):
         url: str = "",
         token: str = "",
         default_channel: str = "",
+        allowed_channels: list[str] | None = None,
     ) -> None:
         self._url = url.rstrip("/")
         self._token_store_ref = get_token_store()
@@ -48,6 +49,12 @@ class MattermostChannel(Channel):
             self._token_store_ref.store("mattermost_token", token)
         self._has_token = bool(token)
         self._default_channel = default_channel
+        # When set, only inbound posts in these channel-IDs reach the
+        # handler. Empty set = log a warning and accept any channel the
+        # bot user is a member of (legacy behaviour). Operators should
+        # set this whenever the bot may be force-invited to channels by
+        # admins outside the trusted set.
+        self._allowed_channels: set[str] = set(allowed_channels or [])
         self._handler: MessageHandler | None = None
         self._running = False
         self._http_client: Any | None = None
@@ -87,6 +94,13 @@ class MattermostChannel(Channel):
         if not self._url or not self._token:
             logger.warning("Mattermost: URL oder Token nicht konfiguriert")
             return
+
+        if not self._allowed_channels:
+            logger.warning(
+                "Mattermost: kein allowed_channels gesetzt — jede Mitgliedschaft "
+                "des Bots kann den Agenten ansteuern. Setze allowed_channels "
+                "auf eine Liste vertrauenswuerdiger Channel-IDs."
+            )
 
         try:
             import httpx
@@ -178,6 +192,12 @@ class MattermostChannel(Channel):
             return
 
         channel_id = post.get("channel_id", "")
+        if self._allowed_channels and channel_id not in self._allowed_channels:
+            logger.debug(
+                "Mattermost: post in non-allowlisted channel %s ignored",
+                channel_id,
+            )
+            return
         post_id = post.get("id", "")
         session_id = f"mm_{user_id}_{channel_id}"
         self._session_users[session_id] = user_id

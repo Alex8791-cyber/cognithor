@@ -140,6 +140,33 @@ class TestSignalLifecycle:
         mock_http.aclose.assert_called_once()
         assert signal_ch._http is None
 
+    @pytest.mark.asyncio
+    async def test_setup_webhook_refuses_non_localhost_without_secret(self) -> None:
+        """Non-localhost bind ohne webhook_secret muss fail-closed sein."""
+        ch = SignalChannel(
+            phone_number="+491234567",
+            webhook_host="0.0.0.0",
+            webhook_port=8090,
+            webhook_secret="",
+        )
+        with pytest.raises(RuntimeError, match="webhook_secret"):
+            await ch._setup_webhook()
+
+    @pytest.mark.asyncio
+    async def test_setup_webhook_allows_non_localhost_with_secret(self) -> None:
+        """Non-localhost bind MIT webhook_secret darf starten."""
+        ch = SignalChannel(
+            phone_number="+491234567",
+            webhook_host="0.0.0.0",
+            webhook_port=18099,
+            webhook_secret="s3cret",
+        )
+        try:
+            await ch._setup_webhook()
+        finally:
+            if ch._webhook_runner is not None:
+                await ch._webhook_runner.cleanup()
+
 
 # ============================================================================
 # Outbound: Send

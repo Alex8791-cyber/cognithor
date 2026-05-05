@@ -268,11 +268,12 @@ class SignalChannel(Channel):
             return
 
         if self._webhook_host != "127.0.0.1" and not self._webhook_secret:
-            logger.warning(
-                "Signal: Webhook auf %s ohne webhook_secret exponiert — "
-                "Anfragen koennen nicht authentifiziert werden. "
-                "Setze webhook_secret fuer HMAC-Verifizierung.",
-                self._webhook_host,
+            raise RuntimeError(
+                f"Signal: Webhook-Host {self._webhook_host!r} ist nicht "
+                "localhost und es ist kein webhook_secret gesetzt. "
+                "Diese Konfiguration wuerde unauthentifizierte Anfragen "
+                "von beliebigen Quellen akzeptieren. Setze webhook_secret "
+                "fuer HMAC-Verifizierung oder binde an 127.0.0.1."
             )
 
         app = web.Application()
