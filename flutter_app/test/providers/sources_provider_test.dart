@@ -57,9 +57,7 @@ void main() {
     });
 
     test('refresh sets error on failure', () async {
-      when(
-        () => api.get('leads/sources'),
-      ).thenThrow(Exception('unreachable'));
+      when(() => api.get('leads/sources')).thenThrow(Exception('unreachable'));
 
       await provider.refresh();
 

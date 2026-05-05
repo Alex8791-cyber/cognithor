@@ -322,6 +322,14 @@ jobs:
         working-directory: flutter_app
         run: dart analyze
 
+      - name: Dart format check
+        # Audit-PR7 (Flutter F9): Dart format drift had no CI gate.
+        # Mirrors the existing Python `ruff format --check` step so a
+        # mis-formatted Dart commit fails on the same kind of check
+        # rather than slipping through to release.
+        working-directory: flutter_app
+        run: dart format --output=none --set-exit-if-changed lib/ test/ integration_test/
+
       - name: Flutter test
         working-directory: flutter_app
         run: flutter test --reporter=compact

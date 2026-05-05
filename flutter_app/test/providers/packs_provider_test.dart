@@ -51,9 +51,7 @@ void main() {
     });
 
     test('refresh swallows errors and leaves packs unchanged', () async {
-      when(
-        () => api.get('packs/loaded'),
-      ).thenThrow(Exception('offline'));
+      when(() => api.get('packs/loaded')).thenThrow(Exception('offline'));
 
       await provider.refresh();
 

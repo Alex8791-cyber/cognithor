@@ -44,8 +44,9 @@ void main() {
       });
 
       test('captures API error response', () async {
-        when(() => api.listSessions())
-            .thenAnswer((_) async => {'error': 'offline'});
+        when(
+          () => api.listSessions(),
+        ).thenAnswer((_) async => {'error': 'offline'});
 
         await provider.loadSessions();
 
@@ -72,10 +73,12 @@ void main() {
 
     group('createNewSession', () {
       test('sets activeSessionId and reloads', () async {
-        when(() => api.createSession())
-            .thenAnswer((_) async => {'session_id': 'new-id'});
-        when(() => api.listSessions())
-            .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+        when(
+          () => api.createSession(),
+        ).thenAnswer((_) async => {'session_id': 'new-id'});
+        when(
+          () => api.listSessions(),
+        ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
 
         final id = await provider.createNewSession();
 
@@ -85,8 +88,9 @@ void main() {
       });
 
       test('captures error from API', () async {
-        when(() => api.createSession())
-            .thenAnswer((_) async => {'error': 'rate-limit'});
+        when(
+          () => api.createSession(),
+        ).thenAnswer((_) async => {'error': 'rate-limit'});
 
         final id = await provider.createNewSession();
 
@@ -103,10 +107,12 @@ void main() {
 
     group('createIncognitoSession', () {
       test('sets activeSessionId and reloads', () async {
-        when(() => api.createIncognitoSession())
-            .thenAnswer((_) async => {'session_id': 'incog-1'});
-        when(() => api.listSessions())
-            .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+        when(
+          () => api.createIncognitoSession(),
+        ).thenAnswer((_) async => {'session_id': 'incog-1'});
+        when(
+          () => api.listSessions(),
+        ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
 
         final id = await provider.createIncognitoSession();
 
@@ -115,8 +121,9 @@ void main() {
       });
 
       test('returns null on API error', () async {
-        when(() => api.createIncognitoSession())
-            .thenAnswer((_) async => {'error': 'denied'});
+        when(
+          () => api.createIncognitoSession(),
+        ).thenAnswer((_) async => {'error': 'denied'});
 
         final id = await provider.createIncognitoSession();
 
@@ -144,8 +151,9 @@ void main() {
       });
 
       test('returns null on error', () async {
-        when(() => api.getSessionHistory('s1'))
-            .thenAnswer((_) async => {'error': 'gone'});
+        when(
+          () => api.getSessionHistory('s1'),
+        ).thenAnswer((_) async => {'error': 'gone'});
 
         final result = await provider.loadHistory('s1');
 
@@ -158,8 +166,9 @@ void main() {
       test('clears activeSessionId when deleting active', () async {
         provider.activeSessionId = 's1';
         when(() => api.deleteSession('s1')).thenAnswer((_) async => {});
-        when(() => api.listSessions())
-            .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+        when(
+          () => api.listSessions(),
+        ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
 
         await provider.deleteSession('s1');
 
@@ -169,8 +178,9 @@ void main() {
       test('keeps activeSessionId when deleting other', () async {
         provider.activeSessionId = 's1';
         when(() => api.deleteSession('s2')).thenAnswer((_) async => {});
-        when(() => api.listSessions())
-            .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+        when(
+          () => api.listSessions(),
+        ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
 
         await provider.deleteSession('s2');
 
@@ -240,10 +250,12 @@ void main() {
     });
 
     test('renameSession reloads list on success', () async {
-      when(() => api.renameSession('s1', 'new-title'))
-          .thenAnswer((_) async => {});
-      when(() => api.listSessions())
-          .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+      when(
+        () => api.renameSession('s1', 'new-title'),
+      ).thenAnswer((_) async => {});
+      when(
+        () => api.listSessions(),
+      ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
 
       await provider.renameSession('s1', 'new-title');
 
@@ -251,12 +263,17 @@ void main() {
     });
 
     test('moveToFolder reloads sessions and folders', () async {
-      when(() => api.moveSessionToFolder('s1', 'Personal'))
-          .thenAnswer((_) async => {});
-      when(() => api.listSessions())
-          .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
-      when(() => api.listFolders())
-          .thenAnswer((_) async => {'folders': <String>['Personal']});
+      when(
+        () => api.moveSessionToFolder('s1', 'Personal'),
+      ).thenAnswer((_) async => {});
+      when(
+        () => api.listSessions(),
+      ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+      when(() => api.listFolders()).thenAnswer(
+        (_) async => {
+          'folders': <String>['Personal'],
+        },
+      );
 
       await provider.moveToFolder('s1', 'Personal');
 
@@ -266,42 +283,52 @@ void main() {
     });
 
     test('autoSessionOnStartup creates new when shouldNew=true', () async {
-      when(() => api.shouldNewSession(timeoutMinutes: 30))
-          .thenAnswer((_) async => true);
-      when(() => api.createSession())
-          .thenAnswer((_) async => {'session_id': 'fresh'});
-      when(() => api.listSessions())
-          .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+      when(
+        () => api.shouldNewSession(timeoutMinutes: 30),
+      ).thenAnswer((_) async => true);
+      when(
+        () => api.createSession(),
+      ).thenAnswer((_) async => {'session_id': 'fresh'});
+      when(
+        () => api.listSessions(),
+      ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
 
       final id = await provider.autoSessionOnStartup();
 
       expect(id, 'fresh');
     });
 
-    test('autoSessionOnStartup resumes most recent when shouldNew=false', () async {
-      when(() => api.shouldNewSession(timeoutMinutes: 30))
-          .thenAnswer((_) async => false);
-      when(() => api.listSessions()).thenAnswer(
-        (_) async => {
-          'sessions': <Map<String, dynamic>>[
-            {'id': 'recent'},
-          ],
-        },
-      );
+    test(
+      'autoSessionOnStartup resumes most recent when shouldNew=false',
+      () async {
+        when(
+          () => api.shouldNewSession(timeoutMinutes: 30),
+        ).thenAnswer((_) async => false);
+        when(() => api.listSessions()).thenAnswer(
+          (_) async => {
+            'sessions': <Map<String, dynamic>>[
+              {'id': 'recent'},
+            ],
+          },
+        );
 
-      final id = await provider.autoSessionOnStartup();
+        final id = await provider.autoSessionOnStartup();
 
-      expect(id, 'recent');
-      expect(provider.activeSessionId, 'recent');
-    });
+        expect(id, 'recent');
+        expect(provider.activeSessionId, 'recent');
+      },
+    );
 
     test('autoSessionOnStartup creates new when no sessions exist', () async {
-      when(() => api.shouldNewSession(timeoutMinutes: 30))
-          .thenAnswer((_) async => false);
-      when(() => api.listSessions())
-          .thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
-      when(() => api.createSession())
-          .thenAnswer((_) async => {'session_id': 'new-fallback'});
+      when(
+        () => api.shouldNewSession(timeoutMinutes: 30),
+      ).thenAnswer((_) async => false);
+      when(
+        () => api.listSessions(),
+      ).thenAnswer((_) async => {'sessions': <Map<String, dynamic>>[]});
+      when(
+        () => api.createSession(),
+      ).thenAnswer((_) async => {'session_id': 'new-fallback'});
 
       final id = await provider.autoSessionOnStartup();
 
