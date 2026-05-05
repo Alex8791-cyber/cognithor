@@ -334,6 +334,7 @@
     "pdf_read_failed": "PDF-Lesen fehlgeschlagen: {error}",
     "ppt_read_failed": "PPT-Lesen fehlgeschlagen: {error}",
     "docx_read_failed": "DOCX-Lesen fehlgeschlagen: {error}",
+    "invalid_audio_format": "Ungültiges Audio-Ausgabeformat: {fmt}. Erlaubt: {allowed}",
     "invalid_sample_rate": "Ungültige Samplerate: {rate}. Erlaubt: {allowed}",
     "ffmpeg_error": "ffmpeg Fehler: {error}",
     "audio_converted": "Konvertiert: {path}",

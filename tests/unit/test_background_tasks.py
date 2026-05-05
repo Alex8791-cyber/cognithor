@@ -6,6 +6,60 @@ from pathlib import Path
 import pytest
 
 
+class TestBackgroundManagerHardening:
+    """Defense-in-depth checks at the MCP boundary (Deep-PR4)."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        from cognithor.mcp.background_tasks import BackgroundProcessManager
+
+        return BackgroundProcessManager(
+            db_path=tmp_path / "jobs.db",
+            log_dir=tmp_path / "logs",
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "echo $(whoami)",
+            "echo `whoami`",
+            "diff <(ls /tmp) <(ls /var)",
+        ],
+    )
+    async def test_start_rejects_substitution_metacharacters(self, manager, command):
+        """Command-substitution metacharacters must be rejected at MCP boundary."""
+        with pytest.raises(ValueError, match="substitution"):
+            await manager.start(command)
+
+    @pytest.mark.asyncio
+    async def test_start_clamps_oversized_timeout(self, manager):
+        """timeout_seconds is capped at MAX_TIMEOUT_SECONDS (24 h)."""
+        from cognithor.mcp.background_tasks import MAX_TIMEOUT_SECONDS
+
+        job_id = await manager.start("echo hi", timeout_seconds=999_999_999)
+        job = manager.get_job(job_id)
+        assert job["timeout_seconds"] == MAX_TIMEOUT_SECONDS
+
+    @pytest.mark.asyncio
+    async def test_read_log_rejects_oversized_grep(self, manager):
+        """grep patterns longer than MAX_GREP_PATTERN_LENGTH are refused."""
+        job_id = await manager.start("echo hi")
+        await asyncio.sleep(0.5)
+        await manager.check_job(job_id)
+        with pytest.raises(ValueError, match="grep pattern too long"):
+            manager.read_log(job_id, grep="a" * 5000)
+
+    @pytest.mark.asyncio
+    async def test_read_log_rejects_invalid_grep(self, manager):
+        """Malformed regex patterns surface a friendly error, not a 500."""
+        job_id = await manager.start("echo hi")
+        await asyncio.sleep(0.5)
+        await manager.check_job(job_id)
+        with pytest.raises(ValueError, match="invalid grep pattern"):
+            manager.read_log(job_id, grep="[unclosed")
+
+
 class TestBackgroundProcessManager:
     """Core lifecycle: start, track, finish, query."""
 

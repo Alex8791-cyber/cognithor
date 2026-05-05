@@ -45,6 +45,42 @@ _MAX_RESPONSE_CHARS = 50_000
 _DEFAULT_TIMEOUT = 30  # seconds per request
 _DEFAULT_RATE_LIMIT = 60  # requests per minute
 _ALLOWED_METHODS = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"})
+# httpx default is 20 redirects. We tighten to 3 since legitimate APIs
+# rarely chain more than one or two redirects.
+_MAX_REDIRECTS = 3
+
+
+def _is_private_host(host: str) -> bool:
+    """Return True if *host* resolves to a loopback/private/link-local IP.
+
+    SSRF-defense helper: a redirect chain that passes through a private
+    address (incl. AWS/Azure/GCP metadata service 169.254.169.254 or
+    Ollama/vLLM at 127.0.0.1) leaks internal data even when the operator-
+    configured base_url is public. We refuse to surface response bodies
+    from such chains.
+    """
+    import ipaddress
+
+    if not host:
+        return False
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        # Hostname, not an IP. We don't resolve it here — full DNS-rebind
+        # protection requires socket-level interception. The httpx caller
+        # passes user-configured base_urls (operator trust), so a
+        # hostname like "metadata.internal" passes; but a literal IP
+        # redirect target is the practical attack vector.
+        return False
+    return bool(
+        addr.is_loopback
+        or addr.is_private
+        or addr.is_link_local
+        or addr.is_multicast
+        or addr.is_unspecified
+        or addr.is_reserved
+    )
+
 
 # Fernet encryption (optional)
 _fernet: Any = None
@@ -775,7 +811,11 @@ class APIHub:
         """HTTP-Request via httpx (async)."""
         import httpx
 
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=timeout,
+            follow_redirects=True,
+            max_redirects=_MAX_REDIRECTS,
+        ) as client:
             kwargs: dict[str, Any] = {
                 "method": method,
                 "url": url,
@@ -787,6 +827,20 @@ class APIHub:
                 kwargs["json"] = body
 
             response = await client.request(**kwargs)
+            # SSRF defense: refuse to return a response body that came
+            # from a redirect chain visiting a private/loopback IP.
+            # The request was already made — but never propagating the
+            # body upward stops the planner / LLM from seeing internal
+            # data such as cloud-metadata creds or local Ollama state.
+            for prior in (*response.history, response):
+                host = prior.url.host
+                if host and _is_private_host(host):
+                    log.warning(
+                        "api_hub_redirect_blocked",
+                        target_host=host,
+                        chain_length=len(response.history),
+                    )
+                    return 502, "Redirect chain reached a private/loopback host; refused."
             return response.status_code, response.text
 
     @staticmethod

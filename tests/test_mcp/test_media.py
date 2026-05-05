@@ -307,6 +307,25 @@ class TestConvertAudio:
             assert result.success is False
             assert "ffmpeg" in result.error
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "fmt",
+        ["../etc/passwd", "pipe:0", "WAV.exe", "exe", "", "wav.."],
+    )
+    async def test_convert_rejects_format_outside_allowlist(
+        self, pipeline: MediaPipeline, workspace: Path, fmt: str
+    ) -> None:
+        """output_format must be in the allowlist before path interpolation."""
+        f = workspace / "audio.mp3"
+        f.write_bytes(b"\xff\xfb" + b"\x00" * 100)
+        result = await pipeline.convert_audio(str(f), output_format=fmt)
+        assert result.success is False
+        # The error must reference invalid format, NOT proceed to ffmpeg
+        assert any(
+            term in result.error.lower()
+            for term in ["audio_format", "audio-ausgabeformat", "output format", "音频"]
+        )
+
 
 # ============================================================================
 # Bildskalierung

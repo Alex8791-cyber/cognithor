@@ -1052,6 +1052,10 @@ class MediaPipeline:
 
     # Erlaubte Audio-Samplerates
     ALLOWED_SAMPLE_RATES = frozenset({8000, 11025, 16000, 22050, 32000, 44100, 48000, 96000})
+    # Audio-Format Allow-List. ``output_format`` is interpolated into the
+    # output path (line below); without this allowlist, a value like
+    # ``"../etc/passwd"`` would escape the workspace via path traversal.
+    ALLOWED_AUDIO_FORMATS = frozenset({"wav", "mp3", "ogg", "flac"})
 
     async def convert_audio(
         self,
@@ -1067,6 +1071,16 @@ class MediaPipeline:
             output_format: Zielformat (wav, mp3, ogg, flac).
             sample_rate: Ziel-Samplerate (8000-96000).
         """
+        output_format = (output_format or "").lower().strip()
+        if output_format not in self.ALLOWED_AUDIO_FORMATS:
+            return MediaResult(
+                success=False,
+                error=t(
+                    "media.invalid_audio_format",
+                    fmt=output_format,
+                    allowed=sorted(self.ALLOWED_AUDIO_FORMATS),
+                ),
+            )
         if sample_rate not in self.ALLOWED_SAMPLE_RATES:
             return MediaResult(
                 success=False,
