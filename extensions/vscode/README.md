@@ -4,21 +4,31 @@ Run [Cognithor Agent OS](https://cognithor.ai) plans from VS Code with
 TRUST-1 receipt sidebar, structured Decision-Explanation hovers,
 and live cost tracking.
 
-> **Sprint-27 in progress.** This is PR-D — only the scaffold +
-> activation skeleton is wired. Real features land in PR-E ... PR-K.
-> See [`../../docs/superpowers/plans/2026-05-04-sprint27-ide-integration.md`](../../docs/superpowers/plans/2026-05-04-sprint27-ide-integration.md).
+## Supported IDEs
+
+| IDE | Install path | Notes |
+|---|---|---|
+| VS Code 1.85+ | Marketplace or VSIX | Primary target |
+| Cursor 0.40+ | VSIX | VS Code fork; same APIs |
+| Windsurf 1.0+ | VSIX | VS Code fork; same APIs |
+| Claude Desktop | `claude_desktop_config.json` | MCP-stdio only — see [`docs/IDE_COMPAT.md`](docs/IDE_COMPAT.md) |
+
+See [`docs/IDE_COMPAT.md`](docs/IDE_COMPAT.md) for per-IDE install
+walkthroughs and known limitations. Run
+`bash scripts/check_ide_compat.sh` to verify the current build
+still meets each target's minimum requirements.
 
 ## Status
 
 | Feature | Sprint-27 PR | Status |
 |---|---|---|
-| Extension scaffold (TS + esbuild + vsce) | PR-D | ✅ this PR |
-| MCP-stdio bridge (`cognithor mcp --stdio` auto-spawn) | PR-E | pending |
-| Palette: `Cognithor: Run Plan` + WS client | PR-F | pending |
-| TRUST-1 Receipt sidebar | PR-G | pending |
-| Decision-Explanation hover | PR-H | pending |
-| Cost-budget gutter | PR-I | pending |
-| Cursor + Windsurf + Claude-Desktop compat smoke | PR-J | pending |
+| Extension scaffold (TS + esbuild + vsce) | PR-D | ✅ |
+| MCP-stdio bridge (`cognithor mcp --stdio` auto-spawn) | PR-E | ✅ |
+| Palette: `Cognithor: Run Plan` + WS client | PR-F | ✅ |
+| TRUST-1 Receipt sidebar | PR-G | ✅ |
+| Decision-Explanation hover | PR-H | ✅ |
+| Cost-budget gutter | PR-I | ✅ |
+| Cursor + Windsurf + Claude-Desktop compat smoke | PR-J | ✅ this PR |
 | End-to-end roundtrip smoke | PR-K | pending |
 
 ## Build
