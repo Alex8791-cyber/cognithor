@@ -112,14 +112,27 @@ def _format_table(columns: list[str], rows: list[tuple[Any, ...]], row_count: in
 
 
 def _check_injection(sql: str, params: list[Any] | None) -> None:
-    """Raise if the raw SQL contains obvious injection patterns when no params."""
-    if params:
-        return  # parameterised queries are safe
+    """Raise if the raw SQL contains obvious injection patterns.
+
+    Audit-PR10 (audit-MED-3): the previous implementation early-returned
+    when ANY ``params`` were supplied, on the assumption that
+    parameterised queries are safe. That left a smuggling vector — an
+    attacker who can influence the caller's ``params`` argument
+    (e.g. by passing a dummy placeholder) bypasses the multi-statement,
+    UNION, and comment-terminator checks entirely while keeping the
+    SQL string un-escaped. The injection patterns scan the SQL text
+    itself for shapes that don't belong even WITH params (multi-stmt
+    via ``; DROP``, ``UNION SELECT 1`` smuggling, ``-- ``-comment
+    terminators), so they should run regardless of whether the call
+    site claims to use placeholders.
+    """
+
     for pattern in _INJECTION_PATTERNS:
         if pattern.search(sql):
             raise DatabaseError(
                 f"Potential SQL injection detected (pattern: {pattern.pattern}). "
-                "Use parameterized queries instead."
+                "Use parameterized queries — and don't smuggle multi-statement "
+                "or comment-terminator content into the SQL string itself."
             )
 
 
