@@ -331,21 +331,30 @@ class APIChannel(Channel):
                 future.set_result(resp.approved)
             return {"status": "processed"}
 
-        # Include the backends router for LLM-backend management endpoints
+        # Include the backends router for LLM-backend management endpoints.
+        # PASS-3 SEC-CRIT: every route in this router needs the same
+        # ``verify_token`` dependency the in-line endpoints carry — without
+        # it, ``POST /api/backends/vllm/start`` is unauthenticated remote
+        # container execution. Apply at include-time so future routes
+        # added to ``backends_api.py`` inherit the gate automatically.
         try:
             from cognithor.channels.backends_api import backends_router as _backends_router
 
-            app.include_router(_backends_router)
+            app.include_router(_backends_router, dependencies=[Depends(verify_token)])
             app.state.config = self._config if hasattr(self, "_config") else None
         except Exception as exc:
             log.warning("backends_router_include_failed", error=str(exc))
 
         # Include the media router for Flutter upload + thumbnail endpoints.
+        # PASS-3 SEC-CRIT: same auth gate as backends_router. Without it,
+        # ``POST /api/media/upload`` is an unauthenticated disk-fill
+        # vector and ``GET /api/media/thumb/{file}`` is unauthenticated
+        # file-read.
         # Note: app.state.media_server is set by Gateway at startup (Task 15).
         try:
             from cognithor.channels.media_api import media_router as _media_router
 
-            app.include_router(_media_router)
+            app.include_router(_media_router, dependencies=[Depends(verify_token)])
         except Exception as exc:
             log.warning("media_router_include_failed", error=str(exc))
 

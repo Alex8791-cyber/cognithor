@@ -6,6 +6,7 @@ Append-only: entries are never modified, only added.
 
 from __future__ import annotations
 
+import threading
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -13,6 +14,15 @@ try:
     from cognithor.security.encrypted_file import efile as _efile
 except ImportError:  # encryption module not available
     _efile = None  # type: ignore[assignment]
+
+# PASS-3: Module-level lock guarding the encrypted-file read-write pair
+# in :meth:`EpisodicMemory.append_entry`. Two concurrent sessions
+# (Telegram + CLI hitting the same date) both read the same ``existing``
+# bytes then both write ``existing + their_entry`` — the second write
+# wins, silently dropping the first session's entry. The plaintext path
+# is OS-atomic via ``open(..., "a")`` so it doesn't need this lock, but
+# the efile path goes through read → encrypt → write.
+_efile_append_lock = threading.Lock()
 
 
 class EpisodicMemory:
@@ -83,15 +93,32 @@ class EpisodicMemory:
         if not file_path.exists():
             header = f"# {timestamp.date().isoformat()}\n"
             full_content = header + entry
-            if _efile is not None:
-                _efile.write(file_path, full_content)
-            else:
-                file_path.write_text(full_content, encoding="utf-8")
+            # Hold the lock for the create-then-check pattern as well,
+            # otherwise two parallel callers can both fall into the
+            # "doesn't exist" branch and both write a header.
+            with _efile_append_lock:
+                if not file_path.exists():
+                    if _efile is not None:
+                        _efile.write(file_path, full_content)
+                    else:
+                        file_path.write_text(full_content, encoding="utf-8")
+                else:
+                    # Lost the race — fall through to append below.
+                    if _efile is not None:
+                        existing = _efile.read(file_path)
+                        _efile.write(file_path, existing + entry)
+                    else:
+                        with open(file_path, "a", encoding="utf-8") as f:
+                            f.write(entry)
         else:
-            # Append: efile doesn't support append, so read + append + write
+            # Append: efile doesn't support append, so read + append + write.
+            # The efile path is a read-then-write that must be atomic across
+            # callers; the plaintext path uses OS append-mode which already
+            # is atomic — no lock needed there.
             if _efile is not None:
-                existing = _efile.read(file_path)
-                _efile.write(file_path, existing + entry)
+                with _efile_append_lock:
+                    existing = _efile.read(file_path)
+                    _efile.write(file_path, existing + entry)
             else:
                 with open(file_path, "a", encoding="utf-8") as f:
                     f.write(entry)

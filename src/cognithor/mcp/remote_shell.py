@@ -111,8 +111,18 @@ class RemoteShellTools:
         if host.key_path:
             ssh_cmd.extend(["-i", host.key_path])
         ssh_cmd.append(f"{host.user}@{host.host}")
-        # Wrap command with cd + timeout
-        wrapped = f"cd {shlex.quote(host.working_dir)} && timeout {host.timeout} {command}"
+        # PASS-3 SEC-CRIT: the command body must NOT be interpolated raw
+        # into the outer SSH shell string. Doing so lets a caller include
+        # ``;``, ``$()``, ``|sh``, ``echo$(IFS)foo`` etc. and bypass the
+        # ``_BLOCKED_PATTERNS`` regex blocklist by using shell tokens the
+        # blocklist never anticipated. Wrap the user command as a single
+        # shlex-quoted argument to ``bash -c`` so the outer shell sees it
+        # as one literal token; bash then parses the user's intent in a
+        # contained sub-shell. ``working_dir`` was already shlex-quoted.
+        wrapped = (
+            f"cd {shlex.quote(host.working_dir)} && "
+            f"timeout {int(host.timeout)} bash -c {shlex.quote(command)}"
+        )
         ssh_cmd.append(wrapped)
         return ssh_cmd
 

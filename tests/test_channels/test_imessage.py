@@ -266,6 +266,9 @@ class TestNativeMessages:
         session_id = "sess-123"
         native_ch._sessions["+491234567"] = session_id
         native_ch._pending_approvals[session_id] = future
+        # PASS-3 SEC-HIGH: bind the requester handle so the approval
+        # check passes the new ownership gate.
+        native_ch._approval_handles[session_id] = "+491234567"
 
         with patch.object(native_ch, "_send_native", new_callable=AsyncMock):
             await native_ch._process_native_message(
@@ -283,6 +286,9 @@ class TestNativeMessages:
         session_id = "sess-456"
         native_ch._sessions["+491234567"] = session_id
         native_ch._pending_approvals[session_id] = future
+        # PASS-3 SEC-HIGH: bind the requester handle so the approval
+        # check passes the new ownership gate.
+        native_ch._approval_handles[session_id] = "+491234567"
 
         with patch.object(native_ch, "_send_native", new_callable=AsyncMock):
             await native_ch._process_native_message(
@@ -384,6 +390,7 @@ class TestBBMessages:
         future: asyncio.Future[bool] = loop.create_future()
         bb_ch._sessions["+491234567"] = "sess-bb"
         bb_ch._pending_approvals["sess-bb"] = future
+        bb_ch._approval_handles["sess-bb"] = "+491234567"
 
         with patch.object(bb_ch, "_send_bb", new_callable=AsyncMock):
             await bb_ch._process_bb_message(
@@ -403,6 +410,7 @@ class TestBBMessages:
         future: asyncio.Future[bool] = loop.create_future()
         bb_ch._sessions["+491234567"] = "sess-bb2"
         bb_ch._pending_approvals["sess-bb2"] = future
+        bb_ch._approval_handles["sess-bb2"] = "+491234567"
 
         with patch.object(bb_ch, "_send_bb", new_callable=AsyncMock):
             await bb_ch._process_bb_message(

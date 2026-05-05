@@ -739,14 +739,17 @@ class AuditLogger:
             Number of removed entries.
         """
         cutoff = datetime.now(UTC) - timedelta(days=self._retention_days)
-        before = len(self._entries)
+        # PASS-3: hold ``_persist_lock`` while replacing ``self._entries``
+        # so a concurrent ``_log()`` cannot append to the about-to-be-
+        # discarded deque (silently dropping the new entry).
+        with self._persist_lock:
+            before = len(self._entries)
+            self._entries = deque(
+                (e for e in self._entries if self._parse_ts(e.timestamp) > cutoff),
+                maxlen=self._entries.maxlen,
+            )
+            removed = before - len(self._entries)
 
-        self._entries = deque(
-            (e for e in self._entries if self._parse_ts(e.timestamp) > cutoff),
-            maxlen=self._entries.maxlen,
-        )
-
-        removed = before - len(self._entries)
         if removed:
             logger.info(
                 "Audit log: %d old entries removed (retention=%dd)",
@@ -761,22 +764,35 @@ class AuditLogger:
         Returns:
             Number of deleted entries.
         """
-        before = len(self._entries)
-        self._entries = deque(
-            (e for e in self._entries if not e.contains_pii),
-            maxlen=self._entries.maxlen,
-        )
-        return before - len(self._entries)
+        # PASS-3: same race fix as cleanup_old_entries above.
+        with self._persist_lock:
+            before = len(self._entries)
+            self._entries = deque(
+                (e for e in self._entries if not e.contains_pii),
+                maxlen=self._entries.maxlen,
+            )
+            return before - len(self._entries)
 
     # ── Internal ───────────────────────────────────────────────────
 
     def _log(self, **kwargs: Any) -> AuditEntry:
         """Creates and stores an audit entry."""
-        self._counter += 1
-        entry = AuditEntry(entry_id=f"audit_{self._counter}", **kwargs)
-        self._entries.append(entry)
+        # PASS-3: counter increment + entry construction + deque append
+        # must be atomic. Without the lock, two concurrent gateway
+        # coroutines (multi-channel topology) could both read counter=N,
+        # both create ``audit_{N+1}``, and produce duplicate entry_ids
+        # that corrupt receipt sorting. The persistence call below is
+        # already lock-internal (acquires the same lock again — re-entrant
+        # via RLock semantics in the Python lock model would be wrong;
+        # we use a plain Lock here so we release before calling persist).
+        with self._persist_lock:
+            self._counter += 1
+            entry = AuditEntry(entry_id=f"audit_{self._counter}", **kwargs)
+            self._entries.append(entry)
 
-        # Persistence (if log_dir is set)
+        # Persistence (if log_dir is set) — re-acquires _persist_lock
+        # internally; that's why the construction-block above releases
+        # before calling here.
         if self._log_dir:
             self._persist_entry(entry)
 

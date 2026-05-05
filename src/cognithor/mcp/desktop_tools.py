@@ -207,10 +207,37 @@ class DesktopTools:
     """Clipboard and screenshot operations."""
 
     def __init__(self, workspace_dir: Path, config: Any = None) -> None:
+        self._workspace_dir = workspace_dir.resolve()
         self._screenshots_dir = workspace_dir / "screenshots"
         self._screenshots_dir.mkdir(parents=True, exist_ok=True)
         self._config = config
         self._vision_analyzer: Any = None
+
+    def _safe_save_path(self, save_path: str | None, default: Path) -> Path:
+        """Resolve ``save_path`` against the workspace boundary or fall back.
+
+        PASS-3 SEC-HIGH: an MCP-callable accepting an arbitrary
+        ``save_path`` string would otherwise let a compromised planner
+        write screenshots to ``../../etc/cron.d/jarvis``. We resolve the
+        candidate path and require it to live under ``workspace_dir``;
+        traversal-escape paths fall back to the default screenshots dir
+        with a logged warning rather than raising — screenshot tools are
+        called speculatively and a hard failure midway through a plan is
+        worse UX than a re-routed file.
+        """
+        if not save_path:
+            return default
+        candidate = Path(save_path).resolve()
+        try:
+            candidate.relative_to(self._workspace_dir)
+        except ValueError:
+            log.warning(
+                "desktop_tools.save_path_outside_workspace",
+                requested=str(save_path),
+                fallback=str(default),
+            )
+            return default
+        return candidate
 
     def _set_vision(self, vision_analyzer: Any) -> None:
         """Inject optional VisionAnalyzer for auto-describing screenshots."""
@@ -273,7 +300,8 @@ class DesktopTools:
         """Take a full desktop screenshot."""
         loop = asyncio.get_running_loop()
         ts = self._timestamp()
-        out_path = Path(save_path) if save_path else self._screenshots_dir / f"desktop_{ts}.png"
+        default = self._screenshots_dir / f"desktop_{ts}.png"
+        out_path = self._safe_save_path(save_path, default)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         # 1) mss
@@ -313,7 +341,8 @@ class DesktopTools:
         loop = asyncio.get_running_loop()
         ts = self._timestamp()
         fname = f"region_{x}_{y}_{width}_{height}_{ts}.png"
-        out_path = Path(save_path) if save_path else self._screenshots_dir / fname
+        default = self._screenshots_dir / fname
+        out_path = self._safe_save_path(save_path, default)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         region_dict = {"x": x, "y": y, "width": width, "height": height}

@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
+import shlex
 import subprocess
 from typing import TYPE_CHECKING, Any
 
@@ -325,8 +326,24 @@ class DockerTools:
 
         args = ["inspect"]
         if format:
-            # Sanitize Go template -- only allow safe characters
+            # PASS-3 SEC-HIGH: Go-template injection.
+            # The previous comment claimed "sanitize" but only `.strip()`
+            # was applied. Go templates support ``{{range .Mounts}}``,
+            # ``{{call X}}``, ``{{with X}}`` and printf-family functions,
+            # which can exfiltrate host mount paths or other sensitive
+            # fields from the inspect output. Restrict to a strict
+            # ``{{.Field}}`` / ``{{.Field.SubField}}`` allowlist with no
+            # function calls, no range, no with, no pipes.
             safe_fmt = format.strip()
+            if safe_fmt and not re.fullmatch(
+                r"(?:\{\{\s*\.[A-Za-z_][A-Za-z0-9_.]*\s*\}\}\s*)+",
+                safe_fmt,
+            ):
+                return (
+                    "Error: --format template must be a sequence of "
+                    "{{.Field}} or {{.Field.SubField}} accessors only "
+                    "(no range/with/call/printf)."
+                )
             if safe_fmt:
                 args.extend(["--format", safe_fmt])
         args.append(name)
@@ -426,8 +443,27 @@ class DockerTools:
             for blocked in _BLOCKED_FLAGS:
                 if blocked in cmd_lower:
                     return f"Error: Blocked flag detected in command: '{blocked}'."
-            # Split command into parts
-            args.extend(command.split())
+            # PASS-3 SEC-HIGH: ``command.split()`` is naive whitespace
+            # splitting and silently drops shell quoting. ``shlex.split``
+            # respects quotes the operator typed, so a value like
+            # ``sh -c "ls -la"`` keeps the quoted argument intact instead
+            # of being broken into ``["sh", "-c", "\"ls", "-la\""]``.
+            # Additionally refuse any command whose first token launches
+            # an inner shell with ``-c`` — that's the canonical container
+            # shell-injection vector.
+            try:
+                cmd_tokens = shlex.split(command)
+            except ValueError as exc:
+                return f"Error: invalid command quoting: {exc}"
+            if cmd_tokens:
+                argv0 = cmd_tokens[0].rsplit("/", 1)[-1].lower()
+                if argv0 in {"sh", "bash", "zsh", "ash", "dash", "ksh"} and "-c" in cmd_tokens:
+                    return (
+                        "Error: refusing to launch an inner shell with "
+                        "-c inside the container; pass the program "
+                        "argv directly."
+                    )
+            args.extend(cmd_tokens)
 
         log.info(
             "docker_run_start",
