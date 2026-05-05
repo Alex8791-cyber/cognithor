@@ -348,8 +348,16 @@ def check_ports() -> None:
     header("8. Network Ports")
     import socket
 
-    api_port = int(os.environ.get("JARVIS_API_PORT", "8741"))
-    api_host = os.environ.get("JARVIS_API_HOST", "127.0.0.1")
+    # Audit-PR7 (Flutter F8): the env-var namespace was rebranded to
+    # COGNITHOR_* (other call sites already read COGNITHOR_API_TOKEN).
+    # Fall back through the legacy JARVIS_* names so existing user
+    # environments keep working until the next major bump.
+    api_port = int(
+        os.environ.get("COGNITHOR_API_PORT") or os.environ.get("JARVIS_API_PORT") or "8741",
+    )
+    api_host = (
+        os.environ.get("COGNITHOR_API_HOST") or os.environ.get("JARVIS_API_HOST") or "127.0.0.1"
+    )
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

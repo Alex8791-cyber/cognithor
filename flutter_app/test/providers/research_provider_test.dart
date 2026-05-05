@@ -138,9 +138,7 @@ void main() {
     });
 
     test('loadHistory swallows errors silently', () async {
-      when(
-        () => api.get('research/history'),
-      ).thenThrow(Exception('offline'));
+      when(() => api.get('research/history')).thenThrow(Exception('offline'));
 
       await provider.loadHistory();
 
@@ -162,9 +160,7 @@ void main() {
     });
 
     test('loadResult sets error on failure', () async {
-      when(
-        () => api.get('research/missing'),
-      ).thenThrow(Exception('404'));
+      when(() => api.get('research/missing')).thenThrow(Exception('404'));
 
       await provider.loadResult('missing');
 
@@ -186,9 +182,7 @@ void main() {
         );
         await provider.loadHistory();
 
-        when(
-          () => api.delete('research/r1'),
-        ).thenAnswer((_) async => {});
+        when(() => api.delete('research/r1')).thenAnswer((_) async => {});
         await provider.deleteResearch('r1');
 
         expect(provider.history.map((r) => r.id), ['r2']);

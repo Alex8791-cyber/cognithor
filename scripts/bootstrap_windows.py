@@ -185,7 +185,12 @@ COGNITHOR_HOME = Path(
     or (Path.home() / ".cognithor")
 )
 MARKER_FILE = COGNITHOR_HOME / ".cognithor_initialized"
-OLLAMA_URL = "http://localhost:11434"
+# Audit-PR7 (Flutter F4): bootstrap previously hardcoded
+# `http://localhost:11434`. The companion `preflight_check.py`
+# correctly honours `OLLAMA_HOST` — the bootstrap now matches so
+# users running Ollama on a custom host/port don't trip over the
+# "is Ollama running?" probe during install.
+OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 BACKEND_PORT = 8741
 
 # ── ANSI-Farben (werden bei fehlender Unterstuetzung deaktiviert) ──────────
