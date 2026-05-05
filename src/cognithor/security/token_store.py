@@ -64,11 +64,13 @@ class SecureTokenStore:
         if self._fernet is not None:
             encrypted = self._fernet.encrypt(data)
         else:
-            logger.error(
-                "INSECURE: Token '%s' stored as Base85 (trivially reversible). "
-                "Install cryptography package: pip install cryptography",
-                name,
-            )
+            # PASS-4 SEC-MED: previously logged the token *name* on every
+            # store() call, building a persistent inventory of which
+            # secrets the process holds (cognithor.jsonl). The startup
+            # warning in __init__ already covers the security degradation;
+            # per-token name-leak is unnecessary noise + a soft inventory
+            # leak. Drop the per-call log; the value is already not
+            # logged.
             encrypted = base64.b85encode(data)
         with self._lock:
             self._tokens[name] = encrypted

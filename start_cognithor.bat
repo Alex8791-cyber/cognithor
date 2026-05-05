@@ -238,7 +238,12 @@ echo   Starting in CLI mode...
 echo   ============================================================
 echo.
 cd /d "%REPO_ROOT%"
-%PYTHON_CMD% -m jarvis --api-host 0.0.0.0
+:: PASS-4 SEC-CRIT: CLI-only fallback has no browser / Flutter Web
+:: client to serve, so binding the gateway API to 0.0.0.0 silently
+:: exposed it on every interface. Default to 127.0.0.1 — operators who
+:: actually want LAN access switch to one of the GUI launch modes that
+:: require it, or pass --api-host 0.0.0.0 explicitly.
+%PYTHON_CMD% -m jarvis --api-host 127.0.0.1
 echo.
 echo   Cognithor stopped.
 exit /b 0
@@ -348,7 +353,20 @@ if errorlevel 1 (
         echo   [OK] SearXNG started.
     ) else (
         echo   [INFO] Creating SearXNG container...
-        docker run -d --name cognithor-searxng -p 8888:8080 --restart unless-stopped -v "%REPO_ROOT%\docker\searxng\settings.yml:/etc/searxng/settings.yml:ro" -v "%REPO_ROOT%\docker\searxng\limiter.toml:/etc/searxng/limiter.toml:ro" -e SEARXNG_SECRET=cognithor-local searxng/searxng >nul 2>&1
+        :: PASS-4 SEC-CRIT: SEARXNG_SECRET signs SearXNG cookies. The
+        :: previous hardcoded ``cognithor-local`` value was committed to
+        :: source — anyone with the repo could forge sessions on a
+        :: running instance. Generate a per-machine random value the
+        :: first time the container is created and persist it under
+        :: %USERPROFILE%\.cognithor\searxng_secret so subsequent
+        :: container recreations reuse the same value.
+        if not exist "%USERPROFILE%\.cognithor" mkdir "%USERPROFILE%\.cognithor" >nul 2>&1
+        if not exist "%USERPROFILE%\.cognithor\searxng_secret" (
+            for /f "delims=" %%S in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')"') do set "_SEARXNG_SECRET=%%S"
+            > "%USERPROFILE%\.cognithor\searxng_secret" echo !_SEARXNG_SECRET!
+        )
+        for /f "usebackq delims=" %%S in ("%USERPROFILE%\.cognithor\searxng_secret") do set "_SEARXNG_SECRET=%%S"
+        docker run -d --name cognithor-searxng -p 8888:8080 --restart unless-stopped -v "%REPO_ROOT%\docker\searxng\settings.yml:/etc/searxng/settings.yml:ro" -v "%REPO_ROOT%\docker\searxng\limiter.toml:/etc/searxng/limiter.toml:ro" -e "SEARXNG_SECRET=!_SEARXNG_SECRET!" searxng/searxng >nul 2>&1
         if not errorlevel 1 (
             echo   [OK] SearXNG created and started on port 8888.
         ) else (

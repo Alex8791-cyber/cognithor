@@ -25,6 +25,7 @@ import tempfile
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from cognithor.packs.errors import PackInstallError, PackValidationError
 from cognithor.packs.interface import PackManifest
@@ -36,6 +37,95 @@ _log = get_logger(__name__)
 # Version used when listing installed packs — high enough to satisfy any
 # min_cognithor_version constraint so the loader never skips a pack.
 _LIST_VERSION = "999.0.0"
+
+# PASS-4 SEC-CRIT: hard cap on pack-zip download size. 256 MB is far
+# above any realistic pack (~MB range) and below any plausible disk-fill
+# attack window.
+_MAX_PACK_DOWNLOAD_BYTES = 256 * 1024 * 1024
+
+# Hosts/prefixes refused for ``install_from_url`` — covers loopback,
+# RFC-1918 private nets, link-local + cloud-metadata 169.254.169.254,
+# IPv4-mapped IPv6, and "0.0.0.0" tricks. Hostname comparison is
+# case-insensitive (handled by ``hostname.lower()``).
+_BLOCKED_INSTALL_HOSTS = (
+    "localhost",
+    "127.",
+    "10.",
+    "192.168.",
+    "172.16.",
+    "172.17.",
+    "172.18.",
+    "172.19.",
+    "172.20.",
+    "172.21.",
+    "172.22.",
+    "172.23.",
+    "172.24.",
+    "172.25.",
+    "172.26.",
+    "172.27.",
+    "172.28.",
+    "172.29.",
+    "172.30.",
+    "172.31.",
+    "169.254.",
+    "::1",
+    "0.0.0.0",
+    "fc00:",
+    "fd00:",
+    "fe80:",
+    "::ffff:127.",
+    "::ffff:10.",
+    "::ffff:169.254.",
+)
+
+
+def _validate_install_url(url: str) -> None:
+    """Refuse plain-HTTP and any URL targeting a private/loopback host.
+
+    PASS-4 SEC-CRIT: ``install_from_url`` would happily fetch
+    ``http://169.254.169.254/...`` (cloud metadata) or
+    ``http://localhost:8741/...`` (own gateway) and parse the response
+    as a pack zip. Always reject those before the HTTP request goes
+    out — and HTTPS-only because plain HTTP redirects can downgrade.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        raise PackInstallError(f"Pack install URL must be HTTPS, got scheme {parsed.scheme!r}")
+    host = (parsed.hostname or "").lower()
+    if not host:
+        raise PackInstallError("Pack install URL has no host component")
+    for blocked in _BLOCKED_INSTALL_HOSTS:
+        if host == blocked.rstrip(".") or host.startswith(blocked):
+            raise PackInstallError(
+                f"Pack install URL host {host!r} is not allowed "
+                "(loopback / private / metadata-service address)"
+            )
+
+
+def _safe_extractall(zf: zipfile.ZipFile, dest: Path) -> None:
+    """Extract a zip rejecting symlinks + absolute / traversal entries.
+
+    PASS-4 SEC-CRIT: ``zipfile.ZipFile.extractall`` strips simple
+    ``../`` prefixes from member names but extracts symlink entries
+    as real symlinks. A crafted zip with ``link -> /packs_root/...``
+    plus a second entry ``link/pack_manifest.json`` could write a
+    manifest into an already-installed pack directory before
+    validation runs against the temp copy. ``tarfile`` got a
+    ``filter='data'`` parameter in 3.12 but ``zipfile`` did NOT —
+    so we pre-screen entries explicitly and only call ``extractall``
+    once nothing dangerous is present.
+    """
+    for member in zf.infolist():
+        is_symlink = (member.external_attr >> 16) & 0o170000 == 0o120000
+        name = member.filename
+        if is_symlink:
+            raise PackInstallError(f"Refusing zip with symlink entry: {name!r}")
+        if name.startswith("/") or name.startswith("\\"):
+            raise PackInstallError(f"Refusing zip with absolute-path entry: {name!r}")
+        if ".." in Path(name).parts:
+            raise PackInstallError(f"Refusing zip with parent-traversal entry: {name!r}")
+    zf.extractall(dest)
 
 
 class PackInstaller:
@@ -116,15 +206,32 @@ class PackInstaller:
         except ImportError as exc:
             raise PackInstallError("httpx is required for URL installs: pip install httpx") from exc
 
+        # PASS-4 SEC-CRIT: SSRF + unbounded download.
+        # Without scheme/host validation a caller can request
+        # ``http://169.254.169.254/...`` (cloud metadata) or
+        # ``http://localhost:8741/...`` (own gateway) and the response
+        # body lands on disk + gets parsed as a pack manifest. Without
+        # a byte cap a multi-GB "zip" stalls the process for the full
+        # 60-second timeout while filling the disk.
+        _validate_install_url(url)
         with tempfile.TemporaryDirectory() as td:
             dest = Path(td) / "pack.zip"
             try:
                 with httpx.Client(follow_redirects=True, timeout=60.0) as client:
                     with client.stream("GET", url) as resp:
                         resp.raise_for_status()
+                        bytes_written = 0
                         with dest.open("wb") as fh:
                             for chunk in resp.iter_bytes(chunk_size=65536):
+                                bytes_written += len(chunk)
+                                if bytes_written > _MAX_PACK_DOWNLOAD_BYTES:
+                                    raise PackInstallError(
+                                        f"Pack download exceeded "
+                                        f"{_MAX_PACK_DOWNLOAD_BYTES // (1024 * 1024)} MB cap"
+                                    )
                                 fh.write(chunk)
+            except PackInstallError:
+                raise
             except Exception as exc:
                 raise PackInstallError(f"Download failed for {url!r}: {exc}") from exc
 
@@ -333,7 +440,7 @@ class PackInstaller:
             extract_root.mkdir()
 
             with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(extract_root)
+                _safe_extractall(zf, extract_root)
 
             # Pack files may be at the zip root or inside a single sub-dir.
             pack_root = self._find_pack_root(extract_root)

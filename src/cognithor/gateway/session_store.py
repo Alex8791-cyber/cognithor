@@ -629,14 +629,19 @@ class SessionStore:
         limit: int = 20,
     ) -> list[dict[str, Any]]:
         """Full-text search across all chat messages."""
-        pattern = f"%{query}%"
+        # PASS-4 SEC-MED: escape LIKE meta-characters (% and _) so a
+        # search for ``%`` doesn't match every row, and a search for
+        # ``a_`` doesn't widen to "a + any char". Backslash is the
+        # explicit ESCAPE char added to the LIKE clause below.
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         rows = self.conn.execute(
             """
             SELECT ch.session_id, ch.role, ch.content, ch.timestamp,
                    s.title, s.folder
             FROM chat_history ch
             JOIN sessions s ON ch.session_id = s.session_id
-            WHERE ch.content LIKE ?
+            WHERE ch.content LIKE ? ESCAPE '\\'
               AND ch.role IN ('user', 'assistant')
               AND s.active = 1
               AND s.channel = ?

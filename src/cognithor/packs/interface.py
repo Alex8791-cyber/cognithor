@@ -136,6 +136,24 @@ class PackManifest(BaseModel):
             raise ValueError("eula_sha256 must be 64 lowercase hex chars")
         return v
 
+    @field_validator("entrypoint")
+    @classmethod
+    def _validate_entrypoint(cls, v: str) -> str:
+        # PASS-4 SEC-HIGH: ``entrypoint`` was free-form ``str`` and the
+        # loader resolved it as ``pack_dir / manifest.entrypoint``. A
+        # manifest claiming ``entrypoint: "../../core/planner.py"`` would
+        # then ``exec_module`` core code instead of the pack's own. Lock
+        # to a plain filename ending in ``.py`` so the resolved path is
+        # always a single child of the pack directory.
+        if "/" in v or "\\" in v or ".." in v:
+            raise ValueError(
+                "entrypoint must be a plain filename inside the pack directory "
+                f"(no path separators or '..'), got {v!r}"
+            )
+        if not v.endswith(".py"):
+            raise ValueError(f"entrypoint must end with .py, got {v!r}")
+        return v
+
     @field_validator("tool_risks")
     @classmethod
     def _validate_tool_risks(cls, v: dict[str, str]) -> dict[str, str]:

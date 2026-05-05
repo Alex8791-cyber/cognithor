@@ -63,6 +63,11 @@ class TwitchChannel(Channel):
         self._stream_buffers: dict[str, list[str]] = {}
         self._approval_futures: dict[str, asyncio.Future[bool]] = {}
         self._approval_users: dict[str, str] = {}  # session_id → nick
+        # PASS-4 SEC-MED: stable session→nick map populated when the
+        # handler RESPONDS, so request_approval no longer relies on
+        # the racy ``_last_sender`` shared field. Bounded LRU via
+        # ``maxsize=2048`` (typical Twitch chat session count).
+        self._session_to_nick: dict[str, str] = {}
         self._approval_lock = asyncio.Lock()
         self._last_sender: str = ""  # Nick des letzten Nachrichten-Senders
 
@@ -225,6 +230,14 @@ class TwitchChannel(Channel):
             try:
                 self._last_sender = nick.lower()
                 response = await self._handler(incoming)
+                # PASS-4 SEC-MED: persist session→nick binding so
+                # request_approval doesn't read the racy _last_sender.
+                resp_session = getattr(response, "session_id", "") or ""
+                if resp_session:
+                    self._session_to_nick[resp_session] = nick.lower()
+                    # Cap dict to avoid unbounded growth.
+                    if len(self._session_to_nick) > 2048:
+                        self._session_to_nick.pop(next(iter(self._session_to_nick)))
                 await self._send_chat(response.text)
             except Exception as exc:
                 logger.error("Twitch: Handler-Fehler: %s", exc)
@@ -299,7 +312,14 @@ class TwitchChannel(Channel):
         future: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
         async with self._approval_lock:
             self._approval_futures[session_id] = future
-            self._approval_users[session_id] = self._last_sender
+            # PASS-4 SEC-MED: prefer the stable session→nick mapping
+            # populated when the handler responded. Fall back to
+            # _last_sender only if we have never seen a response for
+            # this session — at which point _last_sender at least
+            # reflects the user who triggered this very approval.
+            self._approval_users[session_id] = self._session_to_nick.get(
+                session_id, self._last_sender
+            )
 
         try:
             return await asyncio.wait_for(future, timeout=120.0)
