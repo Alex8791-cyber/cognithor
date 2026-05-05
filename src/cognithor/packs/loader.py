@@ -367,19 +367,42 @@ class PackLoader:
         return manifest
 
     def _load_one(self, manifest: PackManifest, context: PackContext) -> None:
-        """Import ``pack.py``, instantiate ``Pack``, and call ``register``."""
+        """Import ``pack.py``, instantiate ``Pack``, and call ``register``.
+
+        Audit-PR8 (CREW F1): the loaded module is inserted into
+        ``sys.modules`` *before* ``exec_module`` runs. Without it,
+        any relative import or import-time side-effect inside
+        ``pack.py`` (e.g., ``logging.getLogger`` mutating root
+        handlers, or class-level metaclass hooks that key off
+        ``__name__`` lookups) re-fires on every reload — leaking
+        global state across ``load_all`` calls. The matching cleanup
+        on import failure prevents partial-load entries lingering.
+
+        Audit-PR8 (CREW F7): when the inner ``register(context)``
+        call raises (typically a ``ValueError`` from
+        ``SourceRegistry.register`` flagging a duplicate
+        ``source_id``), the original cause was lost inside the
+        generic ``pack.load_failed`` log line. We now record the
+        exception type alongside its message so operators can
+        distinguish "pack code is broken" from "pack already
+        registered, hot-reload is missing".
+        """
+        import sys
+
         qid = manifest.qualified_id
         pack_dir = self._root / manifest.namespace / manifest.pack_id
         entrypoint = pack_dir / manifest.entrypoint
 
+        spec = importlib.util.spec_from_file_location(
+            f"_cognithor_pack_{manifest.namespace}_{manifest.pack_id}",
+            entrypoint,
+        )
+        if spec is None or spec.loader is None:
+            raise PackLoadError(f"Could not create module spec for {entrypoint}")
+        module_name = spec.name
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
         try:
-            spec = importlib.util.spec_from_file_location(
-                f"_cognithor_pack_{manifest.namespace}_{manifest.pack_id}",
-                entrypoint,
-            )
-            if spec is None or spec.loader is None:
-                raise PackLoadError(f"Could not create module spec for {entrypoint}")
-            module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             pack_cls = module.Pack
             instance: AgentPack = pack_cls(manifest)
@@ -389,10 +412,14 @@ class PackLoader:
             _log.info("pack.loaded", qualified_id=qid, version=manifest.version)
             self._fingerprint_pack(manifest, entrypoint)
         except Exception as exc:
+            # F1: drop the half-loaded module from sys.modules so a
+            # subsequent reload doesn't import the broken state.
+            sys.modules.pop(module_name, None)
             _log.warning(
                 "pack.load_failed",
                 qualified_id=qid,
                 error=str(exc),
+                error_type=type(exc).__name__,
             )
             raise PackLoadError(f"Failed to load pack {qid!r}: {exc}") from exc
 
