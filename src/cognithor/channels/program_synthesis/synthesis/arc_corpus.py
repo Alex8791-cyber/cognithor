@@ -134,7 +134,7 @@ def load_corpus(
     ``subset="held_out"`` to filter via the manifest; pass ``subset=None``
     to load every ``tasks/*.json``.
     """
-    root = Path(corpus_root)
+    root = Path(corpus_root).resolve()
     if subset is not None:
         manifest_path = root / "manifest.json"
         if not manifest_path.exists():
@@ -145,7 +145,22 @@ def load_corpus(
         subsets = manifest.get("subsets", {})
         if subset not in subsets:
             raise KeyError(f"subset {subset!r} not in manifest; available: {sorted(subsets)}")
-        files = [root / rel for rel in subsets[subset]["task_files"]]
+        # Path-traversal guard: a tampered manifest could ship a relative path
+        # like "../../etc/passwd" or an absolute path; ``Path.__truediv__``
+        # discards ``root`` when the right side is absolute, and a ``..``
+        # escape is silently traversed. Resolve each candidate and require
+        # it to live under ``root`` — otherwise the load is refused before
+        # any ``read_text`` happens.
+        files = []
+        for rel in subsets[subset]["task_files"]:
+            candidate = (root / rel).resolve()
+            try:
+                candidate.relative_to(root)
+            except ValueError as exc:
+                raise ValueError(
+                    f"corpus task path {rel!r} escapes corpus_root {str(root)!r}"
+                ) from exc
+            files.append(candidate)
     else:
         files = sorted((root / "tasks").glob("*.json"))
     if not files:
