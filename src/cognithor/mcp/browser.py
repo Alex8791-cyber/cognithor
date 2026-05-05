@@ -177,7 +177,13 @@ class BrowserTool:
 
     @staticmethod
     def _validate_url(url: str) -> str | None:
-        """Validates a URL against SSRF. Returns error message or None."""
+        """Validates a URL against SSRF. Returns error message or None.
+
+        Hostname-string check only — see ``_validate_resolved_host`` for
+        the DNS-resolution layer that catches DNS-rebinding-style hosts
+        whose name is innocuous but resolves to loopback / RFC-1918 /
+        link-local.
+        """
         from urllib.parse import urlparse
 
         try:
@@ -218,6 +224,69 @@ class BrowserTool:
             return t("browser.private_address_blocked", hostname=hostname)
         return None
 
+    @staticmethod
+    async def _validate_resolved_host(url: str) -> str | None:
+        """DNS-layer SSRF check — resolve hostname and reject if any A/AAAA
+        record is loopback / private / link-local / multicast / reserved.
+
+        PASS-4 SEC-CRIT: ``_validate_url`` catches hosts whose *name* is
+        ``localhost`` / ``127.0.0.1`` / ``169.254.169.254`` etc., but a
+        DNS-rebinding attacker registers ``inner.evil.com`` that resolves
+        to ``127.0.0.1`` (or any RFC-1918 address). The hostname-string
+        check passes; the actual HTTP request goes to the local
+        gateway / metadata service. Returns an error message or ``None``.
+        """
+        import asyncio
+        import ipaddress
+        import socket
+        from urllib.parse import urlparse
+
+        try:
+            parsed = urlparse(url)
+        except ValueError:
+            return t("browser.invalid_url", url=url)
+        hostname = parsed.hostname
+        if not hostname:
+            return t("browser.no_valid_domain", url=url)
+
+        # Skip resolution when ``hostname`` is already a literal IP — the
+        # string check has already vetted it.
+        try:
+            ipaddress.ip_address(hostname)
+            return None
+        except ValueError:
+            pass
+
+        loop = asyncio.get_running_loop()
+        try:
+            infos = await loop.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+        except OSError:
+            # Resolution failure — let the navigate call surface the real
+            # error rather than mask it as SSRF.
+            return None
+
+        for info in infos:
+            sockaddr = info[4]
+            ip_str = sockaddr[0] if sockaddr else ""
+            if not ip_str:
+                continue
+            # IPv6 zone IDs ("fe80::1%eth0") break ipaddress; strip them.
+            ip_clean = ip_str.split("%", 1)[0]
+            try:
+                ip = ipaddress.ip_address(ip_clean)
+            except ValueError:
+                continue
+            if (
+                ip.is_loopback
+                or ip.is_private
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or ip.is_unspecified
+            ):
+                return t("browser.private_address_blocked", hostname=hostname)
+        return None
+
     async def navigate(self, url: str, *, extract_text: bool = True) -> BrowserResult:
         """Navigiert zu einer URL und extrahiert optional den Text.
 
@@ -231,8 +300,11 @@ class BrowserTool:
         if not self._initialized:
             return BrowserResult(success=False, error=t("browser.not_initialized"))
 
-        # SSRF-Schutz: URL validieren
+        # SSRF-Schutz: URL-String validieren ...
         if err := self._validate_url(url):
+            return BrowserResult(success=False, url=url, error=err)
+        # ... dann DNS-Schicht (DNS-Rebinding-Defense).
+        if err := await self._validate_resolved_host(url):
             return BrowserResult(success=False, url=url, error=err)
 
         try:

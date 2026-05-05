@@ -156,25 +156,47 @@ class TestC15_ApiKeyLength:
 
 
 # ============================================================================
-# C-08: Token Store Base64 Fallback Warning (per-call)
+# C-08: Token Store Base64 Fallback Warning (startup-only)
 # ============================================================================
 
 
 class TestC08_TokenStoreFallbackWarning:
-    """SecureTokenStore muss pro store()-Aufruf warnen wenn kein Fernet."""
+    """SecureTokenStore must warn ONCE at __init__ when Fernet is absent.
 
-    def test_store_warns_on_base64_fallback(self) -> None:
+    PASS-4 SEC-MED: a per-store error log was previously emitted on every
+    ``store()`` call, which built a persistent inventory of which secret
+    *names* the process held in cognithor.jsonl (a soft inventory leak).
+    The startup warning in ``__init__`` already covers the security
+    degradation; the per-call log was unnecessary noise. The contract is
+    now: warn once at construction, never per-call.
+    """
+
+    def test_init_warns_on_base64_fallback(self) -> None:
+        from cognithor.security import token_store as ts_mod
+
+        with patch.object(ts_mod, "_HAS_CRYPTO", False):
+            with patch.object(ts_mod, "logger") as mock_log:
+                ts_mod.SecureTokenStore()
+                mock_log.error.assert_called()
+                call_args = str(mock_log.error.call_args)
+                assert (
+                    "base64" in call_args.lower()
+                    or "cryptography" in call_args.lower()
+                    or "degradation" in call_args.lower()
+                )
+
+    def test_store_does_not_log_token_name(self) -> None:
         from cognithor.security.token_store import SecureTokenStore
 
         store = SecureTokenStore()
-        # Force no-Fernet mode
+        # Force no-Fernet mode AFTER construction so __init__ warning
+        # already happened — we want to assert there is no per-call log.
         store._fernet = None
 
         with patch("cognithor.security.token_store.logger") as mock_log:
             store.store("test_token", "my-secret-value")
-            mock_log.error.assert_called()
-            call_args = str(mock_log.error.call_args)
-            assert "base85" in call_args.lower() or "insecure" in call_args.lower()
+            mock_log.error.assert_not_called()
+            mock_log.warning.assert_not_called()
 
 
 # ============================================================================
