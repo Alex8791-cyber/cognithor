@@ -209,8 +209,8 @@ def test_fuzz_unknown_tool_names_never_green(tool_name, security_config):
         "social_scan",
         "social_leads",
     }
-    if tool_name in known_green:
-        return  # Skip known GREEN tools
+    if tool_name.lower() in known_green:
+        return  # Skip known GREEN tools (gatekeeper case-folds tool names)
 
     action = make_action(tool_name)
     session = make_session()
@@ -256,8 +256,8 @@ def test_fuzz_unknown_always_orange_or_higher(tool_name, security_config):
         "delete_file",
         "vault_delete",
     }
-    if tool_name in known_tools:
-        return
+    if tool_name.lower() in known_tools:
+        return  # Skip known tools (gatekeeper case-folds tool names)
 
     gk = Gatekeeper(security_config)
     gk.initialize()
