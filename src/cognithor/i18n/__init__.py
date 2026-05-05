@@ -223,7 +223,15 @@ def _ensure_loaded(locale: str) -> None:
     pack_path = _find_pack_file(locale)
     if pack_path is None:
         if locale != _DEFAULT_LOCALE:
-            logger.debug("i18n_pack_not_found locale=%s", locale)
+            # Promoted from DEBUG → WARNING so operators notice when a
+            # configured locale ships no pack file (e.g. ``ar`` referenced
+            # in docs but not under ``i18n/locales/``). Falls back silently
+            # to English afterwards, which previously left ops blind.
+            logger.warning(
+                "i18n_pack_not_found locale=%s — falling back to %s",
+                locale,
+                _DEFAULT_LOCALE,
+            )
         with _lock:
             _packs[locale] = {}
         return
