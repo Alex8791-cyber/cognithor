@@ -703,6 +703,13 @@ class Sandbox:
         job_handle = None
         proc_handle = None
         merged_env = self._build_env(env)
+        # PASS-3: pre-initialise so the ``finally`` block can reference
+        # them even if the ``try`` raises before they're assigned (e.g.
+        # ``shlex.split`` raises ValueError on an unbalanced quote).
+        # Without these inits we'd get NameError in the cleanup path,
+        # masking the original exception and leaking the work_dir.
+        _created_job_tmp = False
+        work_dir = working_dir or ""
 
         try:
             # 1. Job Object erstellen
