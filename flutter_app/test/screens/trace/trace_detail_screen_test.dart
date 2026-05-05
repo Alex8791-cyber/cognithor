@@ -36,7 +36,7 @@ void main() {
     when(() => svc.fetchTraceStats(any())).thenAnswer(
       (_) async => const CrewTraceStats(
         totalTokens: 0,
-        agentBreakdown: {},
+        agentBreakdown: <String, int>{},
         guardrailPass: 0,
         guardrailFail: 0,
         guardrailRetries: 0,
