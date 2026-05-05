@@ -17,6 +17,7 @@
 
 import * as vscode from "vscode";
 import { McpBridge, readBridgeConfig } from "./mcp_bridge";
+import { ReceiptTreeProvider, ReceiptViewer } from "./receipt_view";
 import { WsClient } from "./ws_client";
 
 let bridge: McpBridge | null = null;
@@ -107,6 +108,68 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   );
   context.subscriptions.push(runPlan);
+
+  // --------------------------------------------------------------------
+  // TRUST-1 receipt viewer (PR-G)
+  // --------------------------------------------------------------------
+  const receiptViewer = new ReceiptViewer(context.workspaceState);
+  const receiptTree = new ReceiptTreeProvider(receiptViewer);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("cognithor.receipts", receiptTree),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "cognithor.viewReceipt",
+      async (traceIdArg?: string) => {
+        let traceId = traceIdArg;
+        if (typeof traceId !== "string" || traceId.length === 0) {
+          const recent = receiptViewer.recentTraceIds();
+          if (recent.length > 0) {
+            const picked = await vscode.window.showQuickPick(
+              [
+                ...recent.map((id) => ({ label: id, value: id })),
+                { label: "Enter a different trace id...", value: "__custom__" },
+              ],
+              { placeHolder: "Pick a recent trace id or enter a new one" },
+            );
+            if (!picked) return;
+            traceId = picked.value === "__custom__" ? undefined : picked.value;
+          }
+          if (typeof traceId !== "string") {
+            const entered = await vscode.window.showInputBox({
+              prompt: "Cognithor trace id",
+              placeHolder: "e.g. trace_abc123...",
+            });
+            if (!entered) return;
+            traceId = entered;
+          }
+        }
+        await receiptViewer.show(traceId);
+        receiptTree.refresh();
+      },
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("cognithor.refreshReceipts", () => {
+      receiptTree.refresh();
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("cognithor.forgetReceipts", async () => {
+      const confirm = await vscode.window.showWarningMessage(
+        "Forget all remembered Cognithor trace ids?",
+        { modal: true },
+        "Forget",
+      );
+      if (confirm === "Forget") {
+        await receiptViewer.forgetAll();
+        receiptTree.refresh();
+      }
+    }),
+  );
 }
 
 async function pickPlanFile(): Promise<vscode.Uri | undefined> {
