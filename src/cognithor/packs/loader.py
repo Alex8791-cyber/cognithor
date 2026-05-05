@@ -402,12 +402,22 @@ class PackLoader:
         module_name = spec.name
         module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = module
+        # Snapshot the tool registry so we can detect tools that *this*
+        # pack adds during ``register(context)`` and audit their risk
+        # declarations afterwards. Built-in tools registered before pack
+        # load are filtered out by name comparison.
+        mcp = getattr(context, "mcp_client", None)
+        registry = getattr(mcp, "_tool_registry", None) if mcp is not None else None
+        pre_existing: frozenset[str] = (
+            frozenset(registry.keys()) if isinstance(registry, dict) else frozenset()
+        )
         try:
             spec.loader.exec_module(module)
             pack_cls = module.Pack
             instance: AgentPack = pack_cls(manifest)
             instance.register(context)
             self._register_tool_risks(manifest, context)
+            self._warn_undeclared_tool_risks(manifest, context, pre_existing)
             self._loaded[qid] = instance
             _log.info("pack.loaded", qualified_id=qid, version=manifest.version)
             self._fingerprint_pack(manifest, entrypoint)
@@ -517,4 +527,49 @@ class PackLoader:
                 description=(existing.description if existing else ""),
                 input_schema=(existing.input_schema if existing else {}),
                 risk_level=risk,
+            )
+
+    @staticmethod
+    def _warn_undeclared_tool_risks(
+        manifest: PackManifest,
+        context: PackContext,
+        pre_existing: frozenset[str],
+    ) -> None:
+        """Surface pack tools that have no explicit risk-level declaration.
+
+        Defense-in-depth for SEC-CRIT-2 / PACK-2: a pack can register
+        builtin tools via ``mcp_client.register_builtin_handler`` without
+        passing ``risk_level``. Such tools fall through to the
+        Gatekeeper's hardcoded fallback, which classifies unknown tools
+        as ORANGE — safe but stricter than intended and silent. Authors
+        should either pass ``risk_level="..."`` to the registrar or
+        declare ``tool_risks`` in ``pack_manifest.json``. Emit one
+        WARNING per undeclared tool so operators notice the omission.
+        """
+        mcp = getattr(context, "mcp_client", None)
+        registry = getattr(mcp, "_tool_registry", None) if mcp is not None else None
+        if not isinstance(registry, dict):
+            return
+        declared = set((manifest.tool_risks or {}).keys())
+        for tool_name in sorted(set(registry) - pre_existing):
+            info = registry.get(tool_name)
+            if info is None:
+                continue
+            risk = (getattr(info, "risk_level", "") or "").strip()
+            if risk:
+                continue
+            if tool_name in declared:
+                # Manifest declared a risk but ``_register_tool_risks``
+                # left risk_level empty — already audited by the
+                # built-in-override guard. Nothing to add here.
+                continue
+            _log.warning(
+                "pack_tool_risk_undeclared",
+                pack=manifest.qualified_id,
+                tool=tool_name,
+                fallback_risk="orange",
+                hint=(
+                    "Pass risk_level=... to register_builtin_handler "
+                    "or add tool_risks in pack_manifest.json."
+                ),
             )

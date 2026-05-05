@@ -200,6 +200,97 @@ class TestPackLoaderRegistersRisks:
         PackLoader._register_tool_risks(manifest, ctx)
 
 
+class TestUndeclaredToolRiskWarning:
+    """Deep-PR6: undeclared pack-tool risks emit operator-visible WARNING."""
+
+    def _mock_context(self, registry: dict[str, MCPToolInfo]) -> PackContext:
+        class MockMCP:
+            pass
+
+        mcp = MockMCP()
+        mcp._tool_registry = registry  # type: ignore[attr-defined]
+        return PackContext(mcp_client=mcp)
+
+    def test_warns_when_pack_tool_has_empty_risk_and_no_declaration(self, capsys):
+        """Pack registered a tool without risk_level AND without manifest entry."""
+        manifest = _make_manifest(tools=["my_tool"])  # no tool_risks
+        # Pack has just registered ``my_tool`` via ``register_builtin_handler``
+        # with risk_level="" — the realistic shape after pack code runs.
+        registry: dict[str, MCPToolInfo] = {
+            "my_tool": MCPToolInfo(name="my_tool", server="builtin", risk_level=""),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(),
+        )
+        out = capsys.readouterr().out
+        assert "pack_tool_risk_undeclared" in out
+        assert "my_tool" in out
+
+    def test_silent_when_pack_tool_has_explicit_risk(self, capsys):
+        """Tool registered with risk_level= "..." → no warning."""
+        manifest = _make_manifest(tools=["safe_tool"])
+        registry: dict[str, MCPToolInfo] = {
+            "safe_tool": MCPToolInfo(name="safe_tool", server="builtin", risk_level="green"),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(),
+        )
+        out = capsys.readouterr().out
+        assert "pack_tool_risk_undeclared" not in out
+
+    def test_silent_when_manifest_declares_risk(self, capsys):
+        """Manifest tool_risks declared → ``_register_tool_risks`` already
+        handled it; no double-warning."""
+        manifest = _make_manifest(
+            tools=["declared_tool"],
+            tool_risks={"declared_tool": "yellow"},
+        )
+        registry: dict[str, MCPToolInfo] = {
+            "declared_tool": MCPToolInfo(name="declared_tool", server="builtin", risk_level=""),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(),
+        )
+        out = capsys.readouterr().out
+        assert "pack_tool_risk_undeclared" not in out
+
+    def test_pre_existing_tools_excluded_from_check(self, capsys):
+        """Tools that existed before the pack loaded must not trigger
+        the warning — only this pack's new additions matter."""
+        manifest = _make_manifest(tools=["new_tool"])
+        registry: dict[str, MCPToolInfo] = {
+            "old_builtin": MCPToolInfo(name="old_builtin", server="builtin", risk_level=""),
+            "new_tool": MCPToolInfo(name="new_tool", server="builtin", risk_level=""),
+        }
+        ctx = self._mock_context(registry)
+
+        PackLoader._warn_undeclared_tool_risks(
+            manifest,
+            ctx,
+            pre_existing=frozenset(["old_builtin"]),
+        )
+        out = capsys.readouterr().out
+        assert "tool=new_tool" in out
+        # The pre-existing builtin must NOT generate the undeclared warning.
+        # Take only lines containing the warning event name and check
+        # ``old_builtin`` doesn't appear in those.
+        warning_lines = [ln for ln in out.splitlines() if "pack_tool_risk_undeclared" in ln]
+        assert warning_lines, out
+        assert not any("old_builtin" in ln for ln in warning_lines)
+
+
 class TestCognithorToolDecorator:
     def test_attaches_metadata(self):
         @cognithor_tool(name="probe", risk_level="green", description="Ping")
