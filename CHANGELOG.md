@@ -7,6 +7,84 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.99.0] — 2026-05-06 — "Resilient Workflow Engine"
+
+A single-feature release shipping the **Cognithor Resilient Workflow Engine
+(CRWE)** — a transactional batch task runner with crash-recovery, signal-
+safety, and audit-chain integration. Builds on v0.98.0 "Compliance-Spring"
+by extending the same hash-chained audit guarantees from autonomous
+Reflector writes to operator-driven batch workflows.
+
+### Added — CRWE (PR #499)
+
+- **`cognithor.core.workflow.WorkflowRunner`** — JSONL-streaming task runner
+  with per-task `flush() + os.fsync()` on `results.jsonl` (the "max 1 task
+  lost on power-fail" guarantee) plus modulo-N atomic `.checkpoint.json`
+  writes (default N=12, configurable via `--checkpoint-every`). Crash-
+  recovery uses `results.jsonl` line count as source-of-truth, not the
+  checkpoint pointer.
+
+- **Concurrency safety** via `.checkpoint.lock` (POSIX `fcntl.flock` /
+  Windows `msvcrt.locking`). Second runner against the same workflow_id
+  raises `WorkflowAlreadyRunning(pid, started_at)` instead of silently
+  fighting over `results.jsonl`.
+
+- **Signal handling** — `SIGINT` (Ctrl+C) and `SIGTERM` register an
+  emergency-checkpoint handler that sets a flag the run-loop checks
+  *between* tasks; in-flight tasks complete cleanly before exit.
+  Async-cancellation-safe via `asyncio.Event`.
+
+- **Resume integrity** — on `--resume`, the runner validates: schema
+  version of `.checkpoint.json`, sha256 of manifest matches first-run
+  fingerprint (gap-injection detection), sha256 of `results.jsonl` matches
+  `checksum_of_results`, line count matches `last_successful_index + 1`.
+  Mismatch raises `CheckpointIntegrityError` / `ResultsOutOfSyncError` /
+  `ManifestTamperError` with both observed and expected hashes.
+
+- **Audit-chain integration** — every checkpoint emits
+  `system_checkpoint_created` via `AuditLogger.log_system` with
+  `{"workflow_id", "index", "results_sha256", "elapsed_ms_since_last_checkpoint"}`.
+  Resume emits `workflow_resumed` with manifest+results sha256s. Closes
+  the gap-injection attack vector — operator can prove from the audit
+  chain that they didn't tamper with results.jsonl while offline. Routes
+  via `AuditCategory.SYSTEM` (operational state, not autonomous learning
+  — distinct from the `REFLECTION` channel from PR #494).
+
+- **`cognithor task <manifest.jsonl>`** CLI subcommand (argparse, follows
+  the existing `agent`/`receipt`/`models` pattern). Flags:
+  - `--results-dir PATH` (default `~/.cognithor/workflows/<workflow_id>/`)
+  - `--resume`
+  - `--checkpoint-every N` (default 12, ≥ 1)
+  - `--workflow-id ID` (override auto-gen — auto = `{manifest_stem}_{sha8}_{YYYYMMDD}`)
+  - `--handler MODULE:FUNCTION` (Python entry-point reference, e.g.
+    `cognithor.handlers.echo:run`; supports both sync and async via
+    `inspect.iscoroutinefunction` + `loop.run_in_executor` fallback)
+
+- **Manifest pre-flight validation** — walks the JSONL once at start;
+  aggregates ALL parse failures + duplicate `task_id`s into a single
+  `ManifestValidationError(failures: list[(line_no, reason)])`. No silent
+  dedupe — explicit refusal so the operator decides whether to fix the
+  manifest or accept duplicates intentionally.
+
+### Tests
+
+- `tests/test_core/test_workflow.py`: 28 collected, **26 passed + 2
+  POSIX-only-skipped on Windows** (`test_sigint_mid_batch`,
+  `test_sigterm_same_behavior` — `os.kill(pid, SIGINT)` semantics
+  unreliable in-process on Windows; the harder property is covered by
+  the next item).
+- **Crash-recovery integration test**: `subprocess.Popen` spawns a child
+  running 50 tasks, sends `SIGKILL` after ≥30 markers, fresh runner
+  resumes with `--resume`, asserts exactly 50 unique entries in
+  `results.jsonl` and zero duplicates. **PASSES on Windows** (the
+  hardest path — TerminateProcess equivalent).
+
+### Coverage continuity
+
+- Test wave 4 (v0.98.0) closed Flutter 27/27 providers + 45/45 screens.
+  v0.99.0 maintains those + adds 28 new test_workflow tests on top.
+  Total backend tests: ~18,217 passing on Ubuntu-py3.13.
+
 ## [0.98.0] — 2026-05-06 — "Compliance-Spring"
 
 A four-PR audit-completeness suite plus a nightly regression-protection

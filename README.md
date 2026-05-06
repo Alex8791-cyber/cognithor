@@ -929,6 +929,38 @@ Copyright 2026 Alexander Soellner
 
 ## What's New
 
+### v0.99.0 — Resilient Workflow Engine (2026-05-06)
+
+A single-feature release: the **Cognithor Resilient Workflow Engine (CRWE)** —
+a transactional batch task runner with crash-recovery, signal-safety, and
+audit-chain integration. **PR #499 — ~1,030 LOC core + 885 LOC tests, 28
+tests (26 pass + 2 POSIX-only-skipped on Windows), crash-recovery
+integration test PASSES on Windows under SIGKILL.**
+
+- **`cognithor task <manifest.jsonl>`** — new CLI subcommand for batch
+  task execution. Streams JSONL line-by-line (no full-file load), per-task
+  `fsync()` on `results.jsonl` (max 1 task lost on power-fail), modulo-N
+  atomic `.checkpoint.json` writes for fast resume.
+- **`--resume`** — picks up where it left off. Validates manifest sha256
+  (gap-injection detection), results sha256, line count, schema version.
+  Mismatch raises explicit error with observed + expected hashes — never
+  silent corruption.
+- **Concurrency-safe** — `.checkpoint.lock` (POSIX `fcntl.flock` / Windows
+  `msvcrt.locking`); second runner raises `WorkflowAlreadyRunning(pid)`
+  instead of fighting over `results.jsonl`.
+- **Signal-safe** — `SIGINT`/`SIGTERM` flag-and-finish: in-flight task
+  completes cleanly, then emergency-checkpoint, then exit. Async-
+  cancellation-safe.
+- **Audit-chain integration** — `system_checkpoint_created` and
+  `workflow_resumed` events route via `AuditLogger.log_system`,
+  hash-chained per SEC-HIGH-5. Closes the gap-injection attack vector:
+  operator can prove cryptographically that no `results.jsonl` tampering
+  happened while the workflow was offline.
+- **Configurable** — `--checkpoint-every N` (default 12), `--workflow-id`
+  override, `--handler MODULE:FUNCTION` for both sync and async handlers,
+  auto-`workflow_id` from `{manifest_stem}_{sha8}_{YYYYMMDD}` so re-runs
+  resume deterministically.
+
 ### v0.98.0 — Compliance-Spring (2026-05-06)
 
 A four-PR audit-completeness suite plus a nightly regression-protection
