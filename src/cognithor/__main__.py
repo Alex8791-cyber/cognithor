@@ -410,6 +410,65 @@ def parse_args() -> argparse.Namespace:
         help="Bind address (default 127.0.0.1; 0.0.0.0 still requires the token)",
     )
 
+    # `cognithor task <manifest.jsonl>` — Cognithor Resilient Workflow
+    # Engine (CRWE): JSONL-streaming task runner with crash-recovery,
+    # signal-safe checkpointing, atomic state, and audit-chain
+    # integration. See cognithor.core.workflow.
+    task_parser = sub.add_parser(
+        "task",
+        help="Run a JSONL workflow manifest with crash-recovery (CRWE)",
+    )
+    task_parser.add_argument(
+        "manifest",
+        help="Path to the JSONL manifest (one task object per line)",
+    )
+    task_parser.add_argument(
+        "--results-dir",
+        dest="task_results_dir",
+        default=None,
+        help=(
+            "Output directory for results.jsonl, .checkpoint.json, "
+            ".checkpoint.lock (default: ~/.cognithor/workflows/<manifest_stem>/)"
+        ),
+    )
+    task_parser.add_argument(
+        "--resume",
+        dest="task_resume",
+        action="store_true",
+        help="Resume from .checkpoint.json instead of starting fresh",
+    )
+    task_parser.add_argument(
+        "--checkpoint-every",
+        dest="task_checkpoint_every",
+        type=int,
+        default=12,
+        help="Write a checkpoint every N successful tasks (default: 12, must be >= 1)",
+    )
+    task_parser.add_argument(
+        "--workflow-id",
+        dest="task_workflow_id",
+        default=None,
+        help=(
+            "Override the auto-generated workflow id (default: <manifest_stem>_<sha8>_<YYYYMMDD>)"
+        ),
+    )
+    task_parser.add_argument(
+        "--handler",
+        dest="task_handler",
+        required=True,
+        help=(
+            "Python entry-point reference for the task handler, e.g. "
+            "'cognithor.handlers.echo:run'. The function receives the "
+            "task dict and must return a TaskResult."
+        ),
+    )
+    task_parser.add_argument(
+        "--audit-log-dir",
+        dest="task_audit_log_dir",
+        default=None,
+        help=("Directory for audit JSONL logs (default: no audit persistence, in-memory only)"),
+    )
+
     return parser.parse_args()
 
 
@@ -685,6 +744,23 @@ def main() -> None:
                 file=sys.stderr,
             )
             sys.exit(2)
+
+    if getattr(args, "command", None) == "task":
+        from cognithor.cli import task_cmd
+
+        task_results_dir = getattr(args, "task_results_dir", None)
+        task_audit_dir = getattr(args, "task_audit_log_dir", None)
+        sys.exit(
+            task_cmd.cmd_run(
+                manifest=Path(args.manifest),
+                results_dir=Path(task_results_dir) if task_results_dir else None,
+                resume=getattr(args, "task_resume", False),
+                checkpoint_every=int(getattr(args, "task_checkpoint_every", 12)),
+                workflow_id=getattr(args, "task_workflow_id", None),
+                handler_entrypoint=args.task_handler,
+                audit_log_dir=Path(task_audit_dir) if task_audit_dir else None,
+            )
+        )
 
     if getattr(args, "command", None) == "receipt":
         from cognithor.cli import receipt_cmd
