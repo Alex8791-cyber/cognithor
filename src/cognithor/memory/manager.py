@@ -101,7 +101,28 @@ class MemoryManager:
             from cognithor.memory.weight_optimizer import SearchWeightOptimizer as _SWO
 
             opt_db = str(self._config.db_path.with_name("memory_weights.db"))
-            self._weight_optimizer = _SWO(opt_db)
+
+            # Operational-Trust PR-B: wire the encrypted-at-rest snapshot
+            # plumbing. ``EncryptedFileIO`` lazy-loads its key from the
+            # OS keyring chain (env var → keyring → CredentialStore);
+            # when no key is available the optimizer simply skips
+            # snapshots with a debug log. The audit-emit callback is
+            # late-bound by the Reflector via ``set_audit_emit_callback``.
+            _snapshot_dir: Path | None = None
+            _snapshot_io: Any = None
+            try:
+                from cognithor.security.encrypted_file import EncryptedFileIO
+
+                _snapshot_dir = self._config.cognithor_home / "weight_snapshots"
+                _snapshot_io = EncryptedFileIO()
+            except Exception as snap_exc:
+                logger.debug("weight_snapshot_io_init_skipped: %s", snap_exc)
+
+            self._weight_optimizer = _SWO(
+                opt_db,
+                encrypted_file_io=_snapshot_io,
+                snapshot_dir=_snapshot_dir,
+            )
         except ImportError:
             logger.debug("SearchWeightOptimizer init skipped: module not available")
         except Exception as exc:

@@ -5,12 +5,25 @@ measured by user satisfaction (reflector score).
 
 EMA-Formel: w_new = alpha * observed + (1-alpha) * w_old
 Constraints: Jedes Gewicht min 0.05, Summe = 1.0
+
+Operational-Trust PR-B (2026-05-05): every successful ``record_outcome``
+call now produces a Fernet-encrypted snapshot of the active weight
+vector under ``<snapshot_dir>/<weight_sha256>.fernet`` plus a plaintext
+``<weight_sha256>.meta.json`` sidecar. Snapshots are content-addressed
+by the SHA-256 of the canonical-NFC-JSON of the plaintext weights, so
+identical weights produce identical hashes and the file is written at
+most once. The snapshot SHA-256 is forwarded to the Reflector's audit
+channel (PR-A) so TRUST-1 receipt verifiers can chain-verify which
+weight vector was active at run time without needing the encryption
+key.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
+import unicodedata
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -28,7 +41,10 @@ except ImportError:
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
+
+    from cognithor.security.encrypted_file import EncryptedFileIO
 
 log = get_logger(__name__)
 
@@ -46,10 +62,36 @@ class SearchWeightOptimizer:
         db_path: str | Path | None = None,
         alpha: float = DEFAULT_ALPHA,
         initial_weights: tuple[float, float, float] | None = None,
+        *,
+        encrypted_file_io: EncryptedFileIO | None = None,
+        snapshot_dir: Path | None = None,
+        audit_emit_callback: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> None:
+        """Operational-Trust PR-B: snapshot-related kwargs.
+
+        ``encrypted_file_io`` is an :class:`EncryptedFileIO` instance
+        wired to the same OS-keyring chain as the rest of the storage
+        stack; it abstracts Fernet encryption + key loading. Snapshots
+        require both ``encrypted_file_io`` AND ``snapshot_dir`` to be
+        non-None — otherwise the snapshot step is skipped (with a
+        ``log.debug("weight_snapshot_skipped_no_io")``) and the
+        optimizer behaves exactly like before.
+
+        ``audit_emit_callback`` is the Reflector's
+        ``_emit_reflection_audit_event`` helper. When set, every
+        persisted snapshot fires a ``weight_snapshot_persisted`` event
+        with ``weight_sha256`` + ``session_id`` + ``snapshot_bytes`` so
+        the TRUST-1 receipt can cross-verify the active weight vector
+        for a run. ``None`` keeps the legacy debug-only behaviour.
+        """
         self._db_path = str(db_path) if db_path else ":memory:"
         self._alpha = alpha
         self._conn: sqlite3.Connection | None = None
+        self._encrypted_file_io: EncryptedFileIO | None = encrypted_file_io
+        self._snapshot_dir: Path | None = snapshot_dir
+        self._audit_emit_callback: Callable[[str, dict[str, Any]], None] | None = (
+            audit_emit_callback
+        )
 
         # Current weights (vector, bm25, graph)
         if initial_weights:
@@ -61,6 +103,34 @@ class SearchWeightOptimizer:
 
         self._ensure_schema()
         self._load_weights()
+
+    def set_audit_emit_callback(
+        self,
+        callback: Callable[[str, dict[str, Any]], None] | None,
+    ) -> None:
+        """Late-bind the audit-emit callback (Operational-Trust PR-B).
+
+        Mirrors :meth:`CausalAnalyzer.set_audit_emit_callback` from PR-A.
+        Used by the gateway boot path: the optimizer is constructed
+        inside :class:`MemoryManager` before the :class:`Reflector`
+        exists, so the helper cannot be passed at ``__init__`` time.
+        """
+        self._audit_emit_callback = callback
+
+    def set_snapshot_io(
+        self,
+        encrypted_file_io: EncryptedFileIO | None,
+        snapshot_dir: Path | None,
+    ) -> None:
+        """Late-bind the snapshot encryption + directory pair.
+
+        Production wiring: the gateway constructs ``EncryptedFileIO``
+        after the :class:`MemoryManager` (which constructs this
+        optimizer). The pair must be set together — either both
+        non-None to enable snapshots, or both None to disable them.
+        """
+        self._encrypted_file_io = encrypted_file_io
+        self._snapshot_dir = snapshot_dir
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
@@ -153,6 +223,8 @@ class SearchWeightOptimizer:
         query: str,
         channel_contributions: dict[str, float],
         feedback_score: float,
+        *,
+        session_id: str = "",
     ) -> None:
         """Zeichnet ein Suchergebnis auf und aktualisiert Gewichte via EMA.
 
@@ -160,6 +232,10 @@ class SearchWeightOptimizer:
             query: Die Suchanfrage.
             channel_contributions: {"vector": 0-1, "bm25": 0-1, "graph": 0-1}
             feedback_score: Nuetzlichkeit des Ergebnisses (0-1, z.B. Reflector-Score).
+            session_id: Operational-Trust PR-B correlation key. Forwarded to
+                the snapshot meta + audit event so a TRUST-1 receipt can
+                cross-link the weight vector active during this run.
+                Empty string when called outside a Plan→Gate→Execute scope.
         """
         query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
         v_contrib = channel_contributions.get("vector", 0.0)
@@ -210,6 +286,131 @@ class SearchWeightOptimizer:
                     self.MIN_WEIGHT,
                 )
                 self._save_weights()
+
+        # Operational-Trust PR-B: persist a content-addressed Fernet
+        # snapshot of the (possibly updated) weight vector + sidecar.
+        # Best-effort: a snapshot failure must not break the EMA update.
+        self._persist_snapshot(session_id=session_id)
+
+    # ------------------------------------------------------------------
+    # Operational-Trust PR-B: snapshot machinery
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _canonical_weight_bytes(weights: dict[str, float]) -> bytes:
+        """Return canonical-NFC-JSON bytes of a weight dict.
+
+        Uses the SAME canonical recipe as PR-A's
+        ``Reflector._emit_reflection_audit_event``: NFC normalisation +
+        ``json.dumps(sort_keys=True, ensure_ascii=False)``. Bit-identical
+        across processes, enabling content-addressed deduplication.
+        """
+        canonical = unicodedata.normalize(
+            "NFC",
+            json.dumps(weights, sort_keys=True, ensure_ascii=False),
+        )
+        return canonical.encode("utf-8")
+
+    def current_weight_vector(self) -> dict[str, float]:
+        """Return the active weight vector as a plain dict.
+
+        Stable key order is enforced by callers via the canonical-form
+        recipe; this getter just exposes the live values.
+        """
+        return {
+            "vector": self._w_vector,
+            "bm25": self._w_bm25,
+            "graph": self._w_graph,
+        }
+
+    def _persist_snapshot(self, *, session_id: str = "") -> str | None:
+        """Persist a Fernet-encrypted snapshot + plaintext sidecar.
+
+        Returns the ``weight_sha256`` hash on success (whether or not
+        the file was newly written — content-addressed dedup means
+        identical weights produce identical hashes). Returns ``None``
+        when snapshots are disabled or the encryption layer is
+        unavailable.
+
+        Layout under ``self._snapshot_dir``:
+
+        * ``<weight_sha256>.fernet`` — Fernet-encrypted JSON of the
+          weight dict (via ``EncryptedFileIO.write``)
+        * ``<weight_sha256>.meta.json`` — plaintext sidecar with
+          ``weight_sha256`` + ``fernet_file`` + ``created_at`` +
+          ``session_id`` + ``snapshot_bytes``. Lets receipt verifiers
+          observe existence + chain link without key access.
+
+        On the success path with an audit callback wired, emits a
+        ``weight_snapshot_persisted`` reflection event carrying the
+        same triple (``weight_sha256``, ``session_id``,
+        ``snapshot_bytes``) so the TRUST-1 receipt can cross-link.
+        """
+        if self._encrypted_file_io is None or self._snapshot_dir is None:
+            log.debug("weight_snapshot_skipped_no_io")
+            return None
+
+        # ``EncryptedFileIO.is_available`` triggers lazy-init + key
+        # lookup. False = no key in env / keyring / credential store —
+        # the file would be written as plaintext, which would silently
+        # break the encrypted-at-rest contract. Skip with a debug log.
+        try:
+            if not self._encrypted_file_io.is_available:
+                log.debug("weight_snapshot_skipped_no_key")
+                return None
+        except Exception as exc:
+            log.debug("weight_snapshot_io_probe_failed", error=str(exc))
+            return None
+
+        weights = self.current_weight_vector()
+        try:
+            canonical = self._canonical_weight_bytes(weights)
+            weight_sha256 = hashlib.sha256(canonical).hexdigest()
+            self._snapshot_dir.mkdir(parents=True, exist_ok=True)
+            fernet_path = self._snapshot_dir / f"{weight_sha256}.fernet"
+            meta_path = self._snapshot_dir / f"{weight_sha256}.meta.json"
+
+            snapshot_bytes = len(canonical)
+            # Content-addressed dedup: same weights → same hash → same
+            # filename. Skip rewrite when the encrypted file already
+            # exists (the meta sidecar may legitimately be re-emitted
+            # because callers want a per-run created_at + session_id).
+            if not fernet_path.exists():
+                # ``EncryptedFileIO.write`` accepts ``str`` content; the
+                # plaintext we pass is the canonical-NFC-JSON string —
+                # the bytes the SHA-256 was computed over. Decryption
+                # by an operator returns exactly the same bytes.
+                self._encrypted_file_io.write(fernet_path, canonical.decode("utf-8"))
+
+            meta_payload = {
+                "weight_sha256": weight_sha256,
+                "fernet_file": fernet_path.name,
+                "created_at": datetime.now(UTC).isoformat(),
+                "session_id": session_id,
+                "snapshot_bytes": snapshot_bytes,
+            }
+            meta_path.write_text(
+                json.dumps(meta_payload, sort_keys=True, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            log.warning("weight_snapshot_persist_failed", error=str(exc))
+            return None
+
+        if self._audit_emit_callback is not None:
+            try:
+                self._audit_emit_callback(
+                    "weight_snapshot_persisted",
+                    {
+                        "weight_sha256": weight_sha256,
+                        "session_id": session_id,
+                        "snapshot_bytes": snapshot_bytes,
+                    },
+                )
+            except Exception as exc:
+                log.warning("weight_snapshot_audit_emit_failed", error=str(exc))
+
+        return weight_sha256
 
     def get_optimized_weights(self) -> tuple[float, float, float]:
         """Gibt aktuelle optimierte Gewichte zurueck: (w_vector, w_bm25, w_graph)."""
