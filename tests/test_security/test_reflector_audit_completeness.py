@@ -1,6 +1,7 @@
 """Hypothesis property tests for audit-completeness invariants (PR-C/3).
 
-Locks the conventions established in PR-A (#494, commit ``f593cddc``):
+Locks the conventions established in PR-A (#494, commit ``f593cddc``)
+and closed by PR-D:
 
   - Reflector autonomous writes MUST flow through the REFLECTION audit
     category. Any future refactor that adds a silent autonomous-learning
@@ -22,12 +23,10 @@ Locks the conventions established in PR-A (#494, commit ``f593cddc``):
   - SEC-HIGH-5 hash chain integrity is preserved when REFLECTION-category
     events are appended through the real ``AuditLogger`` persistence path.
 
-The known-gap properties (test 1) are marked ``xfail`` because PR-A only
-wired the ``CausalAnalyzer.record_sequence`` path end-to-end — the
-``_write_episodic`` / ``_write_semantic`` / ``_write_procedural`` write
-paths in ``Reflector.apply()`` do NOT yet emit REFLECTION events. The
-xfail is a TODO marker for the follow-up PR; the rest of the suite is
-green and locks the conventions PR-A established as system contracts.
+PR-D closer (this commit): the previously-xfail property
+``test_every_apply_emits_one_event_per_memory_write`` is now PASSing —
+``_write_episodic`` / ``_write_semantic`` / ``_write_procedural`` all
+emit REFLECTION audit events.
 """
 
 from __future__ import annotations
@@ -220,20 +219,12 @@ class TestWritesEmitAuditEvents:
     """Every Reflector autonomous-memory write MUST emit a REFLECTION
     audit event.
 
-    PR-A wired ``CausalAnalyzer.record_sequence`` only. The
-    ``_write_episodic`` / ``_write_semantic`` / ``_write_procedural``
-    paths still write silently. That's the residual gap from the PR-A
-    whiteboard — these properties surface it loudly so the follow-up
-    PR can't ship without closing the wiring.
+    PR-A wired ``CausalAnalyzer.record_sequence``. PR-D (this) closes
+    the gap by wiring ``_write_episodic`` / ``_write_semantic`` /
+    ``_write_procedural`` through the same REFLECTION audit category.
+    The property is no longer xfail.
     """
 
-    @pytest.mark.xfail(
-        reason=(
-            "reflector.apply() write paths (_write_episodic / _write_semantic / "
-            "_write_procedural) not yet audit-wired — follow-up to PR-A"
-        ),
-        strict=False,
-    )
     @given(result=_reflection_result())
     @settings(
         max_examples=50,
