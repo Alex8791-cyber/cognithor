@@ -7,6 +7,108 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.98.0] — 2026-05-06 — "Compliance-Spring"
+
+A four-PR audit-completeness suite plus a nightly regression-protection
+workflow, riding on top of 12 test-coverage PRs that closed long-standing
+gaps. Builds on v0.97.0 "Operational Trust" by transforming the reflective
+learning path of the agent from "best-effort prose into a free-form log"
+into "every autonomous memory write produces a structured, hash-chained,
+encrypted-at-rest audit event".
+
+### Added — Compliance-Spring (PRs #494, #496, #495, #497, #498)
+
+- **PR-A — Reflector audit-event helper.** New `AuditCategory.REFLECTION` +
+  `AuditLogger.log_reflection_event(action, payload, *, session_id, agent_name)`
+  domain channel, separating autonomous Reflector activity from `MEMORY_OP`.
+  Helper `Reflector._emit_reflection_audit_event(event_type, payload)`
+  computes NFC-normalised SHA-256 over the canonical-JSON payload and
+  routes via the new domain method (matching the existing
+  `_last_hash_for_file` recipe for cross-tool consistency).
+  `CausalAnalyzer.record_sequence` is now atomic-with-audit-emit via
+  `with conn:` — no DB INSERT lands without its audit event, no audit
+  event lands without its row. (#494)
+
+- **PR-B — WeightOptimizer encrypted snapshots + upstream-fix.**
+  Search-ranking weights are now snapshotted at
+  `~/.cognithor/weight_snapshots/` as Fernet-encrypted `.fernet` files
+  (content-addressed by SHA-256 over plaintext canonical-JSON) plus
+  plaintext `.meta.json` sidecars (so receipt verifiers can confirm
+  existence + chain link without key access). The pre-existing hardcoded
+  `channel_contributions = {"vector": 0.5, "bm25": 0.3, "graph": 0.2}`
+  workaround in `reflector.py` is gone — real per-channel shares are now
+  computed from `MemorySearchResult.{bm25,vector,graph}_score`. (#496)
+
+- **PR-C — Hypothesis property tests for audit-completeness.** Eight
+  properties asserting audit-chain invariants: 1:1 correspondence between
+  Reflector autonomous writes and REFLECTION events, canonical-form parity
+  with the `_last_hash_for_file` convention, NFC idempotency under
+  compatibility-ideograph round-trips, hash determinism across dict
+  insertion order, hash-chain validity preserved after reflection-event
+  appends. (#495)
+
+- **PR-D — Sink Stabilizer.** Three remaining autonomous Reflector sinks
+  (`_write_episodic`, `_write_semantic`, `_write_procedural`) now emit
+  REFLECTION events with structured `parameters` payloads.
+  `procedure_auto_created` includes a `learned_text_sha256` provenance hash
+  — every auto-created procedure is cryptographically tied to the session
+  that birthed it (closes the "Geister-Prozeduren"-loophole for
+  regulators). `MIGRATION_LEDGER` advances the `audit_log` chain head
+  from `v1-hashchain-jsonl` → `v2-reflection-completeness`. xfail in
+  `TestWritesEmitAuditEvents` now passes. (#497)
+
+- **Nine REFLECTION event types live**: `causal_sequence_recorded`,
+  `causal_skipped_empty_sequence`, `weight_snapshot_persisted`,
+  `episodic_appended`, `episodic_skipped_empty_summary`,
+  `semantic_facts_extracted`, `semantic_skipped_empty_facts`,
+  `procedure_auto_created` (with `learned_text_sha256`),
+  `procedure_skipped_no_candidate`. Skip-events are non-negotiable so the
+  audit chain proves *"Reflector ran, decided not to persist"* instead of
+  going silent.
+
+- **Nightly burn-in workflow** — `.github/workflows/nightly-burn-in.yml`
+  runs `scripts/burn_in_compliance_spring.py` daily at 03:00 UTC against an
+  isolated `$RUNNER_TEMP/cognithor-burnin/` home dir (50 synthetic PGE-runs,
+  ~1s wall time). Fails on any RED metric verdict (snapshot storage,
+  audit-emit failures, atomic rollbacks). Uploads JSON report as artifact
+  (30-day retention). Also exposes the script as a reproducible local
+  smoke-test via `--home <path>` flag. (#498)
+
+### Added — Test Waves (Coverage Closure, ~545 new tests)
+
+12 PRs closing long-standing coverage gaps across backend, Flutter, VS-Code,
+and cognithor-packs:
+
+- **Flutter providers**: 27/27 covered (was 23/27). PR #492 added
+  `chat_provider`, `config_provider`, `device_provider`, `voice_provider`
+  (39 tests).
+- **Flutter top-level screens**: 45/45 covered (was 39/45). Smoke + 5
+  daily-driver deep-interaction PRs (#484, #489, #490, #491).
+- **VS-Code extension**: 5 of 6 source files unit-tested (extension.ts
+  entry-point intentional gap — pure wiring, no testable seams). PRs #485
+  (cost_gutter + decision_hover, test infra), #487 (receipt_view +
+  ws_client + mcp_bridge).
+- **Backend deep tests**: agent_vault + post_processing (#486, 99 tests),
+  message_handler + pge_loop (#488, 98 tests), mcp/browser +
+  mcp/database_tools (#493, 142 tests against SSRF/SQL-injection
+  surfaces).
+- **cognithor-packs**: lead-hunter + research packs deepened (PR #8 in the
+  packs repo, +62 tests).
+- **8 stateful Flutter config sub-pages** smoke-tested via populated-cfg
+  fixtures (#484).
+
+### Fixed
+
+- `CausalAnalyzer` opened `db/causal_burn_in.db` before the `db/` parent
+  directory was created on fresh-home installs. Surfaced by the burn-in
+  script's `--home` isolation flag; only worked previously because real
+  `~/.cognithor/db/` already existed. (#498)
+- Pre-existing `tests/security_contracts/test_inv2_gatekeeper_fails_closed.py`
+  fuzz-test asserted unknown-tool case-sensitivity but Gatekeeper case-folds
+  via `.lower()`. Hypothesis would eventually find `'SHELL'` (which folds
+  into the green-list `'shell'`) and falsify; now case-folds the
+  comparison side. (#488)
+
 ## [0.97.0] — 2026-05-04 — "Operational Trust"
 
 A reviewer-feedback-driven release that closes Cognithor's "post-mortem

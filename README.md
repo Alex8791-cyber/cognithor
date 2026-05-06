@@ -929,6 +929,50 @@ Copyright 2026 Alexander Soellner
 
 ## What's New
 
+### v0.98.0 — Compliance-Spring (2026-05-06)
+
+A four-PR audit-completeness suite plus a nightly regression-protection
+workflow, riding on top of 12 test-coverage PRs that closed long-standing
+gaps. Builds on v0.97.0 "Operational Trust" by transforming the reflective
+learning path of the agent from "best-effort prose into a free-form log"
+into "every autonomous memory write produces a structured, hash-chained,
+encrypted-at-rest audit event". **5 PRs (#494, #496, #495, #497, #498) +
+12 test-coverage PRs (~545 new tests), 0 regressions, mypy --strict + ruff
+clean.**
+
+- **PR-A — Reflector audit-event helper.** New `AuditCategory.REFLECTION`
+  + `AuditLogger.log_reflection_event(...)` domain channel. Helper computes
+  NFC-normalised SHA-256 over canonical-JSON payloads.
+  `CausalAnalyzer.record_sequence` is now atomic-with-audit-emit via
+  `with conn:` — no DB INSERT lands without its audit event. (#494)
+- **PR-B — WeightOptimizer encrypted snapshots.** Search-ranking weights
+  snapshotted as Fernet-encrypted `.fernet` files (content-addressed by
+  SHA-256) + plaintext `.meta.json` sidecars at
+  `~/.cognithor/weight_snapshots/`. Closes the inference-side-channel.
+  Hardcoded `channel_contributions` workaround replaced by real per-channel
+  shares from `MemorySearchResult` scores. (#496)
+- **PR-C — Hypothesis property tests.** 8 properties asserting audit-chain
+  invariants: write-event 1:1 correspondence, canonical-form parity, NFC
+  idempotency, hash determinism, chain validity. (#495)
+- **PR-D — Sink Stabilizer.** 3 remaining Reflector sinks
+  (`_write_episodic`, `_write_semantic`, `_write_procedural`) emit
+  REFLECTION events. `procedure_auto_created` includes
+  `learned_text_sha256` provenance hash — every auto-created procedure
+  is cryptographically tied to its source session (closes the
+  "Geister-Prozeduren" gap for regulators). `MIGRATION_LEDGER` advances
+  to `v2-reflection-completeness`. (#497)
+- **Nightly burn-in workflow** — daily 03:00 UTC, 50 synthetic PGE-runs
+  against isolated `$RUNNER_TEMP/cognithor-burnin/`, fails on any RED
+  metric verdict (storage / audit-emit / atomic-rollback). (#498)
+- **9 REFLECTION event types live** across all four autonomous Reflector
+  sinks (causal, weight, episodic, semantic, procedural) with skip-events
+  for non-write paths so the audit chain proves *"Reflector ran, decided
+  not to persist"* instead of going silent.
+- **Coverage closure**: Flutter providers 27/27, top-level screens 45/45,
+  VS-Code 5/6 source files unit-tested, backend deep tests for
+  agent_vault, post_processing, message_handler, pge_loop, mcp/browser,
+  mcp/database_tools.
+
 ### v0.97.0 — Operational Trust (2026-05-04)
 
 A reviewer-feedback-driven release that closes Cognithor's "post-mortem
