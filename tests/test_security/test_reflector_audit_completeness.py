@@ -304,9 +304,17 @@ class TestCanonicalFormParity:
             "utf-8"
         )
 
-        # Round-trip property: canonical form decodes back to the same
-        # logical payload regardless of which recipe produced it.
-        assert json.loads(helper_canonical.decode("utf-8")) == payload
+        # Idempotency property: NFC may alter compatibility ideographs
+        # (e.g. U+F900 豈 → U+8C9D 貝) and decomposed Unicode, so the
+        # round-trip is NOT bit-equal to ``payload`` in general. What
+        # MUST hold is that re-canonicalising the round-trip yields
+        # identical bytes — NFC is idempotent, so the helper's recipe
+        # converges in one pass.
+        helper_roundtrip = json.loads(helper_canonical.decode("utf-8"))
+        assert _canonical_bytes(helper_roundtrip) == helper_canonical
+        # The non-NFC recipe is byte-stable across round-trip by
+        # construction (json.dumps preserves Unicode codepoints when
+        # ensure_ascii=False).
         assert json.loads(last_hash_canonical.decode("utf-8")) == payload
 
         # For ASCII payloads (no decomposable Unicode) the two forms
