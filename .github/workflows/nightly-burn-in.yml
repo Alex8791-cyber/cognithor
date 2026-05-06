@@ -1,0 +1,88 @@
+name: Nightly Burn-In (Compliance-Spring)
+
+# Smoke-tests the Compliance-Spring stack (PRs #494/#495/#496/#497):
+# Reflector audit-helper, SearchWeightOptimizer Fernet snapshots, atomic
+# rollback path. Runs 50 synthetic Reflector cycles in <1 s of pure Python
+# and fails the workflow on any RED metric verdict so audit/snapshot
+# regressions surface before they hit users.
+
+on:
+  schedule:
+    # 03:00 UTC — off-peak, doesn't collide with publish.yml or
+    # pse-scorecard-nightly.yml (03:17 UTC).
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  burn-in:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # script runs in <1 s; margin is for pip install.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Cognithor (editable, dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run burn-in (50 synthetic PGE-runs, isolated home)
+        run: |
+          mkdir -p "$RUNNER_TEMP/cognithor-burnin"
+          python scripts/burn_in_compliance_spring.py \
+            --runs 50 \
+            --home "$RUNNER_TEMP/cognithor-burnin" \
+            --report-format json \
+            > burn_in_report.json
+          echo "::group::burn-in report"
+          cat burn_in_report.json
+          echo "::endgroup::"
+
+      - name: Fail if any metric is RED
+        run: |
+          python <<'PY'
+          import json
+          import sys
+
+          with open("burn_in_report.json", encoding="utf-8") as fh:
+              report = json.load(fh)
+
+          metrics = (
+              "metric_1_storage",
+              "metric_2_audit_failures",
+              "metric_3_atomic_rollbacks",
+              "metric_4_behavioral_drift",
+          )
+          reds = [m for m in metrics if report.get(m, {}).get("verdict") == "RED"]
+          if reds:
+              print(f"::error::RED verdicts: {reds}", file=sys.stderr)
+              sys.exit(1)
+
+          # Storage + drift are tolerant: a YELLOW means we're trending hot
+          # but not yet a regression. Audit-failures and atomic-rollbacks
+          # are binary and only ever GREEN/RED.
+          yellows = [
+              m
+              for m in ("metric_1_storage", "metric_4_behavioral_drift")
+              if report.get(m, {}).get("verdict") == "YELLOW"
+          ]
+          if yellows:
+              print(f"::warning::YELLOW verdicts (non-blocking): {yellows}")
+
+          print("All Compliance-Spring metrics GREEN.")
+          PY
+
+      - name: Upload burn-in report
+        if: always()  # also on RED so the JSON is available for forensics.
+        uses: actions/upload-artifact@v4
+        with:
+          name: burn-in-report-${{ github.run_id }}
+          path: burn_in_report.json
+          retention-days: 30
