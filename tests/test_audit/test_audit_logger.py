@@ -949,6 +949,10 @@ class TestAuditLoggerMigrationBackfill:
     """
 
     def test_construction_records_migration_step(self) -> None:
+        # PR-D Compliance-Spring closing extended the chain: AuditLogger
+        # construction now records BOTH the SEC-HIGH-5 v0→v1 step AND
+        # the PR-D v1→v2 reflection-audit-completeness step. The chain
+        # head advances to v2.
         import cognithor.security.migration_ledger as mig_mod
         from cognithor.security.migration_ledger import (
             MigrationDomain,
@@ -962,19 +966,30 @@ class TestAuditLoggerMigrationBackfill:
         try:
             AuditLogger()
             head = isolated.head_version(MigrationDomain.AUDIT_LOG)
-            assert head == "v1-hashchain-jsonl"
-            step = isolated.get("audit_log:v0-flat-jsonl:v1-hashchain-jsonl")
-            assert step is not None
-            assert step.status == MigrationStatus.APPLIED
-            assert step.applied_by == "system"
-            assert step.domain == MigrationDomain.AUDIT_LOG
-            assert "SEC-HIGH-5" in step.notes
+            assert head == "v2-reflection-completeness"
+            # v0→v1 (SEC-HIGH-5) still recorded
+            step_v1 = isolated.get("audit_log:v0-flat-jsonl:v1-hashchain-jsonl")
+            assert step_v1 is not None
+            assert step_v1.status == MigrationStatus.APPLIED
+            assert step_v1.applied_by == "system"
+            assert step_v1.domain == MigrationDomain.AUDIT_LOG
+            assert "SEC-HIGH-5" in step_v1.notes
+            # v1→v2 (PR-D) added by the new
+            # _record_reflection_audit_completeness_migration() hook —
+            # ledger.get() looks up by migration_id, not by version triple.
+            step_v2 = isolated.get("reflection-audit-completeness-v1")
+            assert step_v2 is not None
+            assert step_v2.status == MigrationStatus.APPLIED
+            assert step_v2.applied_by == "system"
+            assert step_v2.domain == MigrationDomain.AUDIT_LOG
+            assert "Compliance-Spring" in step_v2.notes
         finally:
             mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
 
     def test_multiple_constructions_are_idempotent(self) -> None:
         # Second AuditLogger() in the same process MUST NOT raise
-        # because of duplicate migration_id; the chain stays at v1.
+        # because of duplicate migration_id; the chain stays at v2
+        # (PR-D advanced the head from v1 to v2).
         import cognithor.security.migration_ledger as mig_mod
         from cognithor.security.migration_ledger import (
             MigrationDomain,
@@ -988,9 +1003,13 @@ class TestAuditLoggerMigrationBackfill:
             AuditLogger()
             AuditLogger()
             AuditLogger()
-            # Exactly one entry — duplicate migration_id is rejected.
-            assert len(isolated) == 1
-            assert isolated.head_version(MigrationDomain.AUDIT_LOG) == "v1-hashchain-jsonl"
+            # Exactly two entries (v0→v1 and v1→v2) — duplicate
+            # migration_ids on subsequent constructions are rejected.
+            assert len(isolated) == 2
+            assert (
+                isolated.head_version(MigrationDomain.AUDIT_LOG)
+                == "v2-reflection-completeness"
+            )
         finally:
             mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
 
