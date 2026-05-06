@@ -178,35 +178,32 @@ class Reflector:
         the DB INSERT and audit emit are atomic-or-rolled-back via
         ``with conn:``.
 
-        ``payload_sha256`` is computed over the canonical form
-        (NFC-normalised, sort_keys, separators=(",", ":"),
-        ensure_ascii=False) and added to the payload dict before emit
-        so consumers can verify integrity. The hash is reproducible
-        across Python sessions.
+        Routing: events flow through ``AuditLogger.log_reflection_event``
+        (category ``AuditCategory.REFLECTION``) so the structured payload
+        lands in ``AuditEntry.parameters`` instead of being smuggled into
+        the free-form description.
+
+        Canonical form: ``payload_sha256`` is computed over the canonical
+        bytes (NFC-normalised, ``sort_keys=True``, default separators,
+        ``ensure_ascii=False``) and added to the payload dict before
+        emit so consumers can verify integrity. The hash is reproducible
+        across Python sessions and matches the convention used by
+        ``AuditLogger._last_hash_for_file`` — one canonical-form recipe
+        across the audit module.
         """
         if self._audit_logger is None:
             return
         try:
             canonical = unicodedata.normalize(
                 "NFC",
-                json.dumps(
-                    payload,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    ensure_ascii=False,
-                ),
+                json.dumps(payload, sort_keys=True, ensure_ascii=False),
             ).encode("utf-8")
             payload_sha256 = hashlib.sha256(canonical).hexdigest()
             enriched = dict(payload)
             enriched["payload_sha256"] = payload_sha256
-            self._audit_logger.log_system(
-                event=event_type,
-                description=json.dumps(
-                    enriched,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    ensure_ascii=False,
-                ),
+            self._audit_logger.log_reflection_event(
+                action=event_type,
+                payload=enriched,
             )
         except Exception as exc:
             log.warning(

@@ -60,6 +60,7 @@ class AuditCategory(Enum):
     SECURITY = "security"
     USER_INPUT = "user_input"
     SYSTEM = "system"
+    REFLECTION = "reflection"
 
 
 class AuditSeverity(Enum):
@@ -510,6 +511,33 @@ class AuditLogger:
             action=f"system:{event}",
             description=description or event,
             success=True,
+            session_id=session_id,
+        )
+
+    def log_reflection_event(
+        self,
+        action: str,
+        payload: dict[str, Any],
+        *,
+        session_id: str = "",
+        agent_name: str = "",
+        severity: AuditSeverity = AuditSeverity.INFO,
+    ) -> AuditEntry:
+        """Log an autonomous Reflector event (memory writes, learning outcomes).
+
+        The full payload (including the caller-supplied ``payload_sha256``)
+        lands in ``AuditEntry.parameters`` as a structured dict — not
+        smuggled into the free-form description. ``action`` is the event
+        ID (e.g. ``"causal_sequence_recorded"``,
+        ``"causal_skipped_empty_sequence"``).
+        """
+        return self._log(
+            category=AuditCategory.REFLECTION,
+            severity=severity,
+            action=action,
+            agent_name=agent_name,
+            description=f"Reflection event: {action}",
+            parameters=payload,
             session_id=session_id,
         )
 

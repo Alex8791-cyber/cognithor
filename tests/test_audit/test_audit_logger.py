@@ -993,3 +993,128 @@ class TestAuditLoggerMigrationBackfill:
             assert isolated.head_version(MigrationDomain.AUDIT_LOG) == "v1-hashchain-jsonl"
         finally:
             mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
+
+
+# ============================================================================
+# Operational-Trust PR-A — REFLECTION category + log_reflection_event
+# ============================================================================
+
+
+class TestReflectionEventLogging:
+    """``AuditLogger.log_reflection_event(action, payload)`` is the
+    dedicated channel for autonomous Reflector events (memory writes,
+    learning outcomes). Reviewer asked for a domain method on the audit
+    surface — not a smuggled JSON string in ``log_system.description``.
+    """
+
+    def test_reflection_category_enum_exists(self) -> None:
+        # Enum value lives at AuditCategory.REFLECTION with literal "reflection".
+        assert AuditCategory.REFLECTION.value == "reflection"
+
+    def test_log_reflection_event_uses_reflection_category(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_reflection_event(
+            "causal_sequence_recorded",
+            {"session_id": "s1", "tools": ["read", "write"]},
+        )
+        assert entry.category == AuditCategory.REFLECTION
+
+    def test_payload_lands_in_parameters_as_dict(self) -> None:
+        # Structured payload lives in ``parameters`` — not stringified
+        # into ``description`` like the previous helper.
+        logger = AuditLogger()
+        payload = {
+            "session_id": "s1",
+            "success_score": 0.9,
+            "payload_sha256": "deadbeef" * 8,
+        }
+        entry = logger.log_reflection_event("causal_sequence_recorded", payload)
+        assert isinstance(entry.parameters, dict)
+        assert entry.parameters["session_id"] == "s1"
+        assert entry.parameters["success_score"] == 0.9
+        assert entry.parameters["payload_sha256"] == "deadbeef" * 8
+
+    def test_action_propagates_unchanged(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_reflection_event("causal_skipped_empty_sequence", {})
+        assert entry.action == "causal_skipped_empty_sequence"
+
+    def test_session_id_propagates(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_reflection_event(
+            "causal_sequence_recorded",
+            {"x": 1},
+            session_id="run_42",
+        )
+        assert entry.session_id == "run_42"
+
+    def test_agent_name_propagates(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_reflection_event(
+            "causal_sequence_recorded",
+            {"x": 1},
+            agent_name="reflector",
+        )
+        assert entry.agent_name == "reflector"
+
+    def test_severity_defaults_to_info(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_reflection_event("evt", {})
+        assert entry.severity == AuditSeverity.INFO
+
+    def test_severity_override_propagates(self) -> None:
+        logger = AuditLogger()
+        entry = logger.log_reflection_event(
+            "evt",
+            {},
+            severity=AuditSeverity.WARNING,
+        )
+        assert entry.severity == AuditSeverity.WARNING
+
+    def test_description_carries_human_readable_summary(self) -> None:
+        # The description is human-readable (not stringified JSON) since
+        # the structured payload is in ``parameters``.
+        logger = AuditLogger()
+        entry = logger.log_reflection_event("causal_sequence_recorded", {"x": 1})
+        assert "causal_sequence_recorded" in entry.description
+        # Description is NOT a JSON blob — payload lives in parameters.
+        assert "{" not in entry.description or "}" not in entry.description.split(":")[1]
+
+    def test_query_filters_by_reflection_category(self) -> None:
+        logger = AuditLogger()
+        logger.log_tool_call("read_file")
+        logger.log_reflection_event("causal_sequence_recorded", {"x": 1})
+        logger.log_reflection_event("causal_skipped_empty_sequence", {"y": 2})
+
+        results = logger.query(category=AuditCategory.REFLECTION)
+        assert len(results) == 2
+        actions = {e.action for e in results}
+        assert actions == {"causal_sequence_recorded", "causal_skipped_empty_sequence"}
+
+    def test_hash_chain_validates_after_reflection_event(self, tmp_path: Path) -> None:
+        """Persisting a reflection event must keep the SHA-256 hash
+        chain consistent. The new domain method goes through ``_log``
+        like every other channel — same lock, same prev_hash logic.
+        """
+        audit_dir = tmp_path / "audit"
+        logger = AuditLogger(log_dir=audit_dir)
+        logger.log_tool_call("read_file", session_id="run_1")
+        logger.log_reflection_event(
+            "causal_sequence_recorded",
+            {"session_id": "run_1", "score": 0.9},
+            session_id="run_1",
+        )
+        logger.log_tool_call("write_file", session_id="run_1")
+
+        log_file = next(iter(audit_dir.glob("audit_*.jsonl")))
+        ok, errors = logger.validate_chain(log_file)
+        assert ok, f"chain broken with reflection event: {errors}"
+
+        # Walk the file and confirm the middle entry is a reflection.
+        lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+        assert len(lines) == 3
+        middle = json.loads(lines[1])
+        assert middle["category"] == "reflection"
+        assert middle["action"] == "causal_sequence_recorded"
+        assert middle["parameters"]["session_id"] == "run_1"
+        assert middle["parameters"]["score"] == 0.9

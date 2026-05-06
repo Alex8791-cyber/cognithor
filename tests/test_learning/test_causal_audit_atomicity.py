@@ -7,8 +7,10 @@ Operational-Trust PR-A/3:
     the row -- both, atomic via ``with conn:``.
   - If ``audit_emit_callback`` raises, the DB INSERT is rolled back
     (row count unchanged) -- atomic-or-nothing.
-  - ``tool_sequence`` is serialised canonically (compact separators,
-    ensure_ascii=False); identical inputs produce bit-identical rows.
+  - ``tool_sequence`` is serialised canonically (sort_keys=True,
+    default separators, ensure_ascii=False — same convention as
+    ``AuditLogger._last_hash_for_file``); identical inputs produce
+    bit-identical rows.
 """
 
 from __future__ import annotations
@@ -133,8 +135,9 @@ class TestCanonicalRowContent:
                 .fetchone()
             )
             assert row_a["tool_sequence"] == row_b["tool_sequence"]
-            # Canonical compact form: no spaces between separators.
-            assert row_a["tool_sequence"] == '["read","write"]'
+            # Canonical form matching _last_hash_for_file convention:
+            # default Python separators (with whitespace), sort_keys.
+            assert row_a["tool_sequence"] == '["read", "write"]'
         finally:
             analyzer_a.close()
             analyzer_b.close()

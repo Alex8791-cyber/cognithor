@@ -114,8 +114,10 @@ class CausalAnalyzer:
         wired. The DB INSERT and audit emit on the success path are
         atomic via ``with conn:`` (sqlite3 commits on block exit, rolls
         back on any exception inside). ``tool_sequence`` is serialised
-        canonically (compact separators, ensure_ascii=False) so the
-        on-disk row content is bit-identical for identical inputs.
+        canonically (``sort_keys=True``, default separators,
+        ``ensure_ascii=False``) so the on-disk row content is
+        bit-identical for identical inputs and matches the canonical-
+        form convention used by ``AuditLogger._last_hash_for_file``.
         """
         if not tool_sequence:
             if self._audit_emit_callback is not None:
@@ -138,7 +140,7 @@ class CausalAnalyzer:
         timestamp = datetime.now(UTC).isoformat()
         tool_sequence_canonical = json.dumps(
             tool_sequence,
-            separators=(",", ":"),
+            sort_keys=True,
             ensure_ascii=False,
         )
         with conn:
