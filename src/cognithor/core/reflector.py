@@ -11,8 +11,10 @@ Inspired by Reflexion (Shinn 2023), SAGE (2024), RMM (2025).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import unicodedata
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
@@ -146,6 +148,69 @@ class Reflector:
         self._reward_calculator = reward_calculator
         self._cost_tracker = cost_tracker
         self._confidence_manager = confidence_manager
+
+        # Operational-Trust PR-A: wire the audit-emit callback into the
+        # CausalAnalyzer (when both exist). The CausalAnalyzer owns its
+        # own atomic transaction boundary; the helper bound here closes
+        # the audit gap on empty-sequence skips and on successful records.
+        if self._causal_analyzer is not None and hasattr(
+            self._causal_analyzer, "set_audit_emit_callback"
+        ):
+            try:
+                self._causal_analyzer.set_audit_emit_callback(self._emit_reflection_audit_event)
+            except Exception as exc:
+                log.warning("causal_audit_callback_wire_failed", error=str(exc))
+
+    # ------------------------------------------------------------------
+    # Operational-Trust audit helper (PR-A/3)
+    # ------------------------------------------------------------------
+
+    def _emit_reflection_audit_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Emit a Reflector audit event with canonical-JSON payload hash.
+
+        Best-effort: audit failures are logged via ``log.warning`` but
+        never raised. The runtime path is more critical than the audit;
+        this is the inverse of ``CausalAnalyzer.record_sequence`` where
+        the DB INSERT and audit emit are atomic-or-rolled-back via
+        ``with conn:``.
+
+        Routing: events flow through ``AuditLogger.log_reflection_event``
+        (category ``AuditCategory.REFLECTION``) so the structured payload
+        lands in ``AuditEntry.parameters`` instead of being smuggled into
+        the free-form description.
+
+        Canonical form: ``payload_sha256`` is computed over the canonical
+        bytes (NFC-normalised, ``sort_keys=True``, default separators,
+        ``ensure_ascii=False``) and added to the payload dict before
+        emit so consumers can verify integrity. The hash is reproducible
+        across Python sessions and matches the convention used by
+        ``AuditLogger._last_hash_for_file`` — one canonical-form recipe
+        across the audit module.
+        """
+        if self._audit_logger is None:
+            return
+        try:
+            canonical = unicodedata.normalize(
+                "NFC",
+                json.dumps(payload, sort_keys=True, ensure_ascii=False),
+            ).encode("utf-8")
+            payload_sha256 = hashlib.sha256(canonical).hexdigest()
+            enriched = dict(payload)
+            enriched["payload_sha256"] = payload_sha256
+            self._audit_logger.log_reflection_event(
+                action=event_type,
+                payload=enriched,
+            )
+        except Exception as exc:
+            log.warning(
+                "audit_emit_failed",
+                event_type=event_type,
+                error=str(exc),
+            )
 
     # ------------------------------------------------------------------
     # Public API

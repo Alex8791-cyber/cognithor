@@ -27,6 +27,7 @@ except ImportError:
 from cognithor.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 log = get_logger(__name__)
@@ -35,10 +36,35 @@ log = get_logger(__name__)
 class CausalAnalyzer:
     """Analysiert kausale Zusammenhaenge zwischen Tool-Sequenzen und Erfolg."""
 
-    def __init__(self, db_path: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        db_path: str | Path | None = None,
+        audit_emit_callback: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> None:
+        """Operational-Trust PR-A: ``audit_emit_callback`` is the
+        Reflector's ``_emit_reflection_audit_event`` helper, bound here
+        so ``record_sequence`` can emit a structured audit event in the
+        same atomic-transaction window as the DB INSERT. ``None`` keeps
+        the legacy behaviour (no audit, debug-log only on empty skip).
+        """
         self._db_path = str(db_path) if db_path else ":memory:"
         self._conn: sqlite3.Connection | None = None
+        self._audit_emit_callback: Callable[[str, dict[str, Any]], None] | None = (
+            audit_emit_callback
+        )
         self._ensure_schema()
+
+    def set_audit_emit_callback(
+        self,
+        callback: Callable[[str, dict[str, Any]], None] | None,
+    ) -> None:
+        """Late-bind the audit-emit callback.
+
+        Used by the gateway boot path where the ``CausalAnalyzer`` is
+        constructed before the ``Reflector`` exists, so the helper
+        cannot be passed at ``__init__`` time.
+        """
+        self._audit_emit_callback = callback
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
@@ -80,25 +106,68 @@ class CausalAnalyzer:
         success_score: float,
         model_used: str = "",
     ) -> None:
-        """Zeichnet eine Tool-Sequenz mit ihrem Erfolgs-Score auf."""
+        """Zeichnet eine Tool-Sequenz mit ihrem Erfolgs-Score auf.
+
+        Operational-Trust PR-A: empty sequences are no longer silently
+        dropped — an audit event ``causal_skipped_empty_sequence`` is
+        emitted before the early return when an audit callback is
+        wired. The DB INSERT and audit emit on the success path are
+        atomic via ``with conn:`` (sqlite3 commits on block exit, rolls
+        back on any exception inside). ``tool_sequence`` is serialised
+        canonically (``sort_keys=True``, default separators,
+        ``ensure_ascii=False``) so the on-disk row content is
+        bit-identical for identical inputs and matches the canonical-
+        form convention used by ``AuditLogger._last_hash_for_file``.
+        """
         if not tool_sequence:
+            if self._audit_emit_callback is not None:
+                self._audit_emit_callback(
+                    "causal_skipped_empty_sequence",
+                    {
+                        "session_id": session_id,
+                        "success_score": success_score,
+                        "model_used": model_used,
+                    },
+                )
+            else:
+                log.debug(
+                    "skipped_empty_sequence",
+                    session_id=session_id,
+                )
             return
 
         conn = self._get_conn()
-        conn.execute(
-            """INSERT INTO causal_sequences
-               (session_id, timestamp, tool_sequence,
-                success_score, model_used)
-               VALUES (?, ?, ?, ?, ?)""",
-            (
-                session_id,
-                datetime.now(UTC).isoformat(),
-                json.dumps(tool_sequence),
-                success_score,
-                model_used,
-            ),
+        timestamp = datetime.now(UTC).isoformat()
+        tool_sequence_canonical = json.dumps(
+            tool_sequence,
+            sort_keys=True,
+            ensure_ascii=False,
         )
-        conn.commit()
+        with conn:
+            conn.execute(
+                """INSERT INTO causal_sequences
+                   (session_id, timestamp, tool_sequence,
+                    success_score, model_used)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    session_id,
+                    timestamp,
+                    tool_sequence_canonical,
+                    success_score,
+                    model_used,
+                ),
+            )
+            if self._audit_emit_callback is not None:
+                self._audit_emit_callback(
+                    "causal_sequence_recorded",
+                    {
+                        "session_id": session_id,
+                        "timestamp": timestamp,
+                        "tool_sequence": tool_sequence,
+                        "success_score": success_score,
+                        "model_used": model_used,
+                    },
+                )
 
     def get_sequence_scores(
         self,
