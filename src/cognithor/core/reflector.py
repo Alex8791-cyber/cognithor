@@ -1009,9 +1009,31 @@ Regeln:
         result: ReflectionResult,
         memory_manager: Any,
     ) -> None:
-        """Schreibt Session-Zusammenfassung ins Episodic Memory."""
+        """Schreibt Session-Zusammenfassung ins Episodic Memory.
+
+        Operational-Trust PR-D: emits a REFLECTION audit event on every
+        successful append (``episodic_appended``) and on every short-
+        circuit skip (``episodic_skipped_empty_summary``). The skip event
+        is non-negotiable so the audit chain shows "Reflector ran,
+        decided not to persist" instead of going silent — same discipline
+        as ``CausalAnalyzer.record_sequence``'s
+        ``causal_skipped_empty_sequence``.
+
+        Episodic Memory is file-based (Markdown daily logs), so the
+        write is single-syscall atomic at the OS level — a best-effort
+        ``try/except`` around the audit emit is sufficient. The emit
+        happens after the file-write completes, so a successful audit
+        event can never describe a write that didn't land.
+        """
         summary = result.session_summary
         if not summary:
+            try:
+                self._emit_reflection_audit_event(
+                    "episodic_skipped_empty_summary",
+                    {"session_id": result.session_id},
+                )
+            except Exception as exc:
+                log.warning("episodic_skip_audit_emit_failed", error=str(exc))
             return
 
         lines: list[str] = []
@@ -1035,6 +1057,23 @@ Regeln:
         episodic = memory_manager.episodic
         episodic.append_entry(topic, content)
 
+        # Audit emit AFTER the file-write returns. Best-effort discipline:
+        # the helper itself logs + swallows on failure, but a test or
+        # caller that mocks the helper to raise must not abort the
+        # reflection-apply pipeline either, so the call site catches
+        # too. The episodic write already landed.
+        try:
+            self._emit_reflection_audit_event(
+                "episodic_appended",
+                {
+                    "session_id": result.session_id,
+                    "summary_chars": len(content),
+                    "tags": list(summary.tools_used) if summary.tools_used else [],
+                },
+            )
+        except Exception as exc:
+            log.warning("episodic_audit_emit_failed", error=str(exc))
+
         log.debug("reflection_wrote_episodic", date=date.today().isoformat())
 
     async def _write_semantic(
@@ -1042,7 +1081,35 @@ Regeln:
         facts: list[ExtractedFact],
         memory_manager: Any,
     ) -> int:
-        """Schreibt extrahierte Fakten ins Semantic Memory."""
+        """Schreibt extrahierte Fakten ins Semantic Memory.
+
+        Operational-Trust PR-D: emits one ``semantic_facts_extracted``
+        REFLECTION audit event per call (carrying ``facts_count`` =
+        ``written`` row count) on success, or
+        ``semantic_skipped_empty_facts`` on early return. Each fact
+        write itself goes through ``MemoryIndex.upsert_entity`` /
+        ``upsert_relation``, both of which own their own
+        commit-per-write transaction at the SQLite layer; wrapping
+        N upserts in a single ``with conn:`` block would require
+        threading a transaction handle through ``MemoryIndex``, which
+        is out-of-scope for this PR. Emit is best-effort and happens
+        AFTER the loop completes — see HARD STOP #2 in the PR-D brief.
+        """
+        if not facts:
+            try:
+                self._emit_reflection_audit_event(
+                    "semantic_skipped_empty_facts",
+                    {"session_id": ""},
+                )
+            except Exception as exc:
+                log.warning("semantic_skip_audit_emit_failed", error=str(exc))
+            return 0
+
+        # session_id is per-fact in ExtractedFact.source_session; if all
+        # facts share the same session we report it, otherwise fall
+        # back to the first-fact's session for the audit event.
+        session_id = facts[0].source_session if facts else ""
+
         indexer = memory_manager.index
         written = 0
 
@@ -1130,6 +1197,21 @@ Regeln:
                     log.debug("reflector_confidence_feedback_failed", exc_info=True)
 
         log.debug("reflection_wrote_semantic", count=written)
+
+        # Audit emit AFTER all per-fact upserts complete. Best-effort
+        # discipline at the call site too — the writes already landed,
+        # an audit-emit failure must not leak out to ``apply()``.
+        try:
+            self._emit_reflection_audit_event(
+                "semantic_facts_extracted",
+                {
+                    "session_id": session_id,
+                    "facts_count": written,
+                },
+            )
+        except Exception as exc:
+            log.warning("semantic_audit_emit_failed", error=str(exc))
+
         return written
 
     async def _write_procedural(
@@ -1137,9 +1219,33 @@ Regeln:
         result: ReflectionResult,
         memory_manager: Any,
     ) -> None:
-        """Schreibt Prozedur-Kandidat ins Procedural Memory."""
+        """Schreibt Prozedur-Kandidat ins Procedural Memory.
+
+        Operational-Trust PR-D: closes the "Geister-Prozeduren"-loophole
+        — every auto-created procedure is now cryptographically tied
+        to the session that birthed it via ``session_id`` +
+        ``learned_text_sha256``, computed BEFORE the file-write so a
+        successful ``procedure_auto_created`` audit event can never
+        describe a file that wasn't written. The hash uses the same
+        canonical-form recipe as ``_emit_reflection_audit_event``
+        (NFC + ``json.dumps(..., sort_keys=True, ensure_ascii=False)``
+        + UTF-8) so the receipt-channel digest matches the audit
+        helper's ``payload_sha256`` convention.
+
+        Procedural Memory is file-based (Markdown with YAML
+        frontmatter, optionally encrypted), so the file-write is
+        single-syscall atomic at the OS level — best-effort emit
+        suffices.
+        """
         candidate = result.procedure_candidate
         if not candidate:
+            try:
+                self._emit_reflection_audit_event(
+                    "procedure_skipped_no_candidate",
+                    {"session_id": result.session_id},
+                )
+            except Exception as exc:
+                log.warning("procedural_skip_audit_emit_failed", error=str(exc))
             return
 
         procedural = memory_manager.procedural
@@ -1150,6 +1256,24 @@ Regeln:
         safe_learned = (
             _sanitize_memory_text(candidate.learned_text) if candidate.learned_text else ""
         )
+
+        # Compute provenance hash BEFORE the file-write so a successful
+        # audit-emit can never describe a procedure that wasn't written.
+        # Uses the same canonical-form recipe as
+        # ``_emit_reflection_audit_event``: NFC + sort_keys=True +
+        # ensure_ascii=False + UTF-8. The wrapper dict
+        # ``{"learned_text": ...}`` matches the canonical-form recipe
+        # documented in the brief.
+        learned_text_canonical = unicodedata.normalize(
+            "NFC",
+            json.dumps(
+                {"learned_text": safe_learned},
+                sort_keys=True,
+                ensure_ascii=False,
+            ),
+        ).encode("utf-8")
+        learned_text_sha256 = hashlib.sha256(learned_text_canonical).hexdigest()
+        learned_text_bytes = len(safe_learned.encode("utf-8"))
 
         # Prozedur-Body im SKILL.md-Format aufbauen
         body_parts: list[str] = [f"# {safe_name}\n"]
@@ -1218,6 +1342,24 @@ Regeln:
             success=result.was_successful,
             score=result.success_score,
         )
+
+        # Audit emit AFTER both save_procedure() and record_usage()
+        # return. ``learned_text_sha256`` was computed pre-write so the
+        # digest is bound to the content actually persisted. Best-effort
+        # at the call site — the write already landed.
+        try:
+            self._emit_reflection_audit_event(
+                "procedure_auto_created",
+                {
+                    "session_id": result.session_id,
+                    "procedure_name": candidate.name,
+                    "learned_text_sha256": learned_text_sha256,
+                    "learned_text_bytes": learned_text_bytes,
+                    "is_update": bool(candidate.is_update),
+                },
+            )
+        except Exception as exc:
+            log.warning("procedural_audit_emit_failed", error=str(exc))
 
         log.debug(
             "reflection_wrote_procedural",

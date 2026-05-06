@@ -252,6 +252,14 @@ class AuditLogger:
         # safe to call on every AuditLogger construction.
         self._record_audit_schema_migration()
 
+        # Operational-Trust PR-D closer: record that all four Reflector
+        # autonomous sinks (causal, episodic, semantic, procedural) are
+        # now wired through the REFLECTION audit category. The ledger
+        # rejects duplicate ``migration_id`` with a chain error, which
+        # we silently swallow — re-recording after a process restart
+        # is a no-op.
+        self._record_reflection_audit_completeness_migration()
+
     @staticmethod
     def _record_audit_schema_migration() -> None:
         """Record the SEC-HIGH-5 audit-log schema migration.
@@ -285,6 +293,52 @@ class AuditLogger:
                     item_count=-1,  # schema-only, no row migration
                     migration_id="audit_log:v0-flat-jsonl:v1-hashchain-jsonl",
                     notes="SEC-HIGH-5: prev_hash chain on every audit entry",
+                )
+            )
+
+    @staticmethod
+    def _record_reflection_audit_completeness_migration() -> None:
+        """Record the Operational-Trust PR-D Reflector-sink wiring closure.
+
+        Marks the audit-schema move from ``v1-hashchain-jsonl`` (where
+        only the ``CausalAnalyzer.record_sequence`` path emitted
+        REFLECTION events) to ``v2-reflection-completeness`` (where all
+        four Reflector autonomous sinks emit through the REFLECTION
+        category).
+
+        Suite tracking: PR-A #494 + PR-B #496 + PR-C #495 + PR-D
+        (this PR).
+
+        Idempotent: the ledger rejects duplicate ``migration_id`` with
+        a ``MigrationChainError``, which we silently swallow — calling
+        this on every AuditLogger construction is safe.
+        """
+        from contextlib import suppress
+
+        from cognithor.security.migration_ledger import (
+            MIGRATION_LEDGER,
+            MigrationChainError,
+            MigrationDomain,
+            MigrationStatus,
+            MigrationStep,
+        )
+
+        with suppress(MigrationChainError, ValueError):
+            MIGRATION_LEDGER.record(
+                MigrationStep(
+                    domain=MigrationDomain.AUDIT_LOG,
+                    source_version="v1-hashchain-jsonl",
+                    target_version="v2-reflection-completeness",
+                    status=MigrationStatus.APPLIED,
+                    applied_by="system",
+                    item_count=-1,  # schema-only, no row migration
+                    migration_id="reflection-audit-completeness-v1",
+                    notes=(
+                        "Compliance-Spring closing: all four Reflector "
+                        "autonomous sinks (causal, episodic, semantic, "
+                        "procedural) emit REFLECTION audit events. Suite "
+                        "#494 + #496 + #495 + PR-D."
+                    ),
                 )
             )
 
