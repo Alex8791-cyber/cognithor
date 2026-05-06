@@ -1006,10 +1006,7 @@ class TestAuditLoggerMigrationBackfill:
             # Exactly two entries (v0→v1 and v1→v2) — duplicate
             # migration_ids on subsequent constructions are rejected.
             assert len(isolated) == 2
-            assert (
-                isolated.head_version(MigrationDomain.AUDIT_LOG)
-                == "v2-reflection-completeness"
-            )
+            assert isolated.head_version(MigrationDomain.AUDIT_LOG) == "v2-reflection-completeness"
         finally:
             mig_mod.MIGRATION_LEDGER = original  # type: ignore[misc]
 
