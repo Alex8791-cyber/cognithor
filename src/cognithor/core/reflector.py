@@ -95,6 +95,49 @@ def _safe_float(value: Any, default: float) -> float:
         return default
 
 
+def _compute_channel_contributions(
+    injected_memories: list[Any],
+) -> dict[str, float]:
+    """Compute channel contribution shares from injected search results.
+
+    Operational-Trust PR-B (2026-05-05): replaces the hardcoded
+    ``{"vector": 0.5, "bm25": 0.3, "graph": 0.2}`` constant that fed
+    the WeightOptimizer with constants instead of real signals (see
+    bug at ``reflector.py:558`` pre-fix).
+
+    Concrete formula per the PR-B brief:
+        contribution = (number of hits from channel) / (total hits)
+
+    A channel "hits" on a result when its per-channel score is > 0.
+    Channels that did not contribute to any result yield 0.0.
+
+    Returns an empty dict when no results are present so the caller can
+    skip the EMA update entirely instead of feeding zeros (which would
+    bias future weights toward the minimum-weight floor).
+    """
+    if not injected_memories:
+        return {}
+
+    counts = {"vector": 0, "bm25": 0, "graph": 0}
+    for result in injected_memories:
+        if getattr(result, "vector_score", 0.0) > 0:
+            counts["vector"] += 1
+        if getattr(result, "bm25_score", 0.0) > 0:
+            counts["bm25"] += 1
+        if getattr(result, "graph_score", 0.0) > 0:
+            counts["graph"] += 1
+
+    total_hits = counts["vector"] + counts["bm25"] + counts["graph"]
+    if total_hits == 0:
+        return {}
+
+    return {
+        "vector": counts["vector"] / total_hits,
+        "bm25": counts["bm25"] / total_hits,
+        "graph": counts["graph"] / total_hits,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Reflector
 # ---------------------------------------------------------------------------
@@ -160,6 +203,21 @@ class Reflector:
                 self._causal_analyzer.set_audit_emit_callback(self._emit_reflection_audit_event)
             except Exception as exc:
                 log.warning("causal_audit_callback_wire_failed", error=str(exc))
+
+        # Operational-Trust PR-B: same auto-wire for the
+        # SearchWeightOptimizer. The optimizer is constructed inside
+        # MemoryManager (boot order: memory before reflector), so the
+        # callback can't be passed at __init__ time. The setter is the
+        # bridge — every weight-snapshot persist will emit a
+        # ``weight_snapshot_persisted`` reflection event into the
+        # TRUST-1 receipt channel.
+        if self._weight_optimizer is not None and hasattr(
+            self._weight_optimizer, "set_audit_emit_callback"
+        ):
+            try:
+                self._weight_optimizer.set_audit_emit_callback(self._emit_reflection_audit_event)
+            except Exception as exc:
+                log.warning("weight_optimizer_audit_callback_wire_failed", error=str(exc))
 
     # ------------------------------------------------------------------
     # Operational-Trust audit helper (PR-A/3)
@@ -615,16 +673,32 @@ class Reflector:
             except Exception as exc:
                 log.debug("causal_record_failed", error=str(exc))
 
-        # Weight Optimizer: Such-Feedback (wenn Reflexion Suche enthielt)
+        # Weight Optimizer: Such-Feedback (wenn Reflexion Suche enthielt).
+        # Operational-Trust PR-B: channel_contributions now reflects the
+        # real per-channel hit share computed from working_memory's
+        # injected search results — no longer the hardcoded
+        # ``{"vector": 0.5, "bm25": 0.3, "graph": 0.2}`` phantom that
+        # caused the optimizer to learn from constants. When the
+        # session had no search hits (empty dict), the EMA update is
+        # skipped entirely instead of feeding zeros which would bias
+        # the weights toward the minimum-weight floor.
         if self._weight_optimizer and result.success_score > 0:
-            try:
-                self._weight_optimizer.record_outcome(
-                    query=session.session_id[:16],
-                    channel_contributions={"vector": 0.5, "bm25": 0.3, "graph": 0.2},
-                    feedback_score=result.success_score,
+            channel_contributions = _compute_channel_contributions(working_memory.injected_memories)
+            if not channel_contributions:
+                log.debug(
+                    "weight_optimizer_skipped_no_search",
+                    session_id=session.session_id,
                 )
-            except Exception as exc:
-                log.debug("weight_optimizer_feedback_failed", error=str(exc))
+            else:
+                try:
+                    self._weight_optimizer.record_outcome(
+                        query=session.session_id[:16],
+                        channel_contributions=channel_contributions,
+                        feedback_score=result.success_score,
+                        session_id=session.session_id,
+                    )
+                except Exception as exc:
+                    log.debug("weight_optimizer_feedback_failed", error=str(exc))
 
         return result
 
