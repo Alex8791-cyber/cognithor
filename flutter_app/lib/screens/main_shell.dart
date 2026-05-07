@@ -21,6 +21,7 @@ import 'package:cognithor_ui/screens/skills_screen.dart';
 import 'package:cognithor_ui/widgets/global_search_dialog.dart';
 import 'package:cognithor_ui/widgets/responsive_scaffold.dart';
 import 'package:cognithor_ui/widgets/connection_guard.dart';
+import 'package:cognithor_ui/widgets/hardware_drift_banner.dart';
 import 'package:cognithor_ui/widgets/robot_office/pip_overlay.dart';
 import 'package:cognithor_ui/screens/trace/trace_list_screen.dart';
 
@@ -197,14 +198,16 @@ class _MainShellState extends State<MainShell> {
           autofocus: true,
           child: _wrapWithPip(
             pipProvider,
-            ResponsiveScaffold(
-              screens: screens,
-              navItems: navItems,
-              currentIndex: safeIndex,
-              onIndexChanged: _navigateTab,
-              onSearchTap: _openSearch,
-              onThemeToggle: () => themeProvider.toggle(),
-              isDark: themeProvider.isDark,
+            HardwareDriftBanner(
+              child: ResponsiveScaffold(
+                screens: screens,
+                navItems: navItems,
+                currentIndex: safeIndex,
+                onIndexChanged: _navigateTab,
+                onSearchTap: _openSearch,
+                onThemeToggle: () => themeProvider.toggle(),
+                isDark: themeProvider.isDark,
+              ),
             ),
           ),
         ),

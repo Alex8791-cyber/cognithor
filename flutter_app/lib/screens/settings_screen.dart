@@ -3,6 +3,7 @@ import 'package:cognithor_ui/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'package:cognithor_ui/providers/connection_provider.dart';
+import 'package:cognithor_ui/screens/onboarding/hardware_wizard_screen.dart';
 import 'package:cognithor_ui/theme/cognithor_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -56,6 +57,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
             },
             child: Text(l.save),
+          ),
+          const SizedBox(height: 32),
+
+          // Hardware-Konfiguration — opens the same wizard the splash screen
+          // routes to on first launch. Lets the user reconfigure tier, models
+          // and backend after the initial apply (e.g. after a driver upgrade
+          // or hardware change).
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.memory),
+              title: const Text('Hardware-Konfiguration'),
+              subtitle: const Text(
+                'Tier + Modelle + Backend an aktuelle Hardware anpassen',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const HardwareWizardScreen(),
+                  ),
+                );
+              },
+            ),
           ),
           const SizedBox(height: 32),
 

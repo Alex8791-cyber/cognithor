@@ -17,8 +17,11 @@ import 'package:cognithor_ui/providers/packs_provider.dart';
 import 'package:cognithor_ui/providers/research_provider.dart';
 import 'package:cognithor_ui/theme/cognithor_theme.dart';
 import 'package:cognithor_ui/screens/main_shell.dart';
+import 'package:cognithor_ui/screens/onboarding/hardware_wizard_screen.dart';
 import 'package:cognithor_ui/screens/settings_screen.dart';
 import 'package:cognithor_ui/screens/setup_wizard_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -67,13 +70,56 @@ class _SplashScreenState extends State<SplashScreen> {
     final prefs = await SharedPreferences.getInstance();
     final firstRunComplete = prefs.getBool(SetupWizardScreen.prefKey) ?? false;
 
+    if (!firstRunComplete) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const SetupWizardScreen()),
+      );
+      return;
+    }
+
+    // Hardware-Aware Runtime: probe `/api/system/health` to see if the
+    // initial hardware-config has been applied. If not, route through
+    // the HardwareWizardScreen before MainShell. The .cognithor_initialized
+    // marker is the source of truth — same one that `cognithor doctor`
+    // and `apply_engine` use, so CLI + Flutter agree.
+    final showHardwareWizard = await _shouldRunHardwareWizard(conn);
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            firstRunComplete ? const MainShell() : const SetupWizardScreen(),
+        builder: (_) => showHardwareWizard
+            ? HardwareWizardScreen(
+                onCompleted: () {
+                  // After the wizard completes, push MainShell unconditionally.
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute<void>(builder: (_) => const MainShell()),
+                  );
+                },
+              )
+            : const MainShell(),
       ),
     );
+  }
+
+  /// Best-effort GET /api/system/health → run wizard iff `initialized=false`.
+  /// Any HTTP / JSON / network failure → return false (fail-open to MainShell)
+  /// so a momentary backend hiccup doesn't trap the user in the wizard.
+  Future<bool> _shouldRunHardwareWizard(ConnectionProvider conn) async {
+    try {
+      final token = conn.api.token;
+      final headers = <String, String>{
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+      final r = await http
+          .get(Uri.parse('${conn.serverUrl}/api/system/health'), headers: headers)
+          .timeout(const Duration(seconds: 5));
+      if (r.statusCode != 200) return false;
+      final data = jsonDecode(r.body) as Map<String, dynamic>;
+      return data['initialized'] == false;
+    } on Exception {
+      return false;
+    }
   }
 
   @override
