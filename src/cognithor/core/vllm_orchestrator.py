@@ -496,6 +496,121 @@ class VLLMOrchestrator:
         self.state.current_model = model
         return info
 
+    def start_container_with_profile(
+        self,
+        profile: Any,
+        *,
+        health_timeout: int | None = None,
+    ) -> ContainerInfo:
+        """Start a vLLM container using the exact flags from a :class:`VlmProfile`.
+
+        This is the profile-driven counterpart to :meth:`start_container`:
+        instead of synthesising the docker-run command from
+        ``self._config``, it reads the ``profile.vllm_flags`` tuple
+        verbatim. Use this when the VLM-router decided which model to
+        load — the profile is the single source of truth for both the
+        model id and the runtime flags.
+
+        Args:
+            profile: A ``cognithor.core.vlm_router.VlmProfile``. Typed
+                as ``Any`` to avoid an import cycle (orchestrator is
+                imported from many places; vlm_router pulls in regex,
+                contextvars, etc.).
+            health_timeout: Seconds to wait for the ``/health`` endpoint.
+                Defaults to 180 because profile-driven loads typically
+                target larger models with longer warmup than the
+                config-driven path.
+
+        Raises:
+            VLLMNotReadyError: docker run fails or /health timeouts.
+        """
+        port = self.port
+        for offset in range(self._MAX_PORT_FALLBACKS):
+            candidate = self.port + offset
+            if self._port_available(candidate):
+                port = candidate
+                break
+        else:
+            raise VLLMNotReadyError(
+                f"All ports {self.port}..{self.port + self._MAX_PORT_FALLBACKS - 1} are busy",
+                recovery_hint="Stop other services or change config.vllm.port.",
+            )
+
+        cmd = [
+            "docker",
+            "run",
+            "-d",
+            "--gpus",
+            "all",
+            "--add-host",
+            "host.docker.internal:host-gateway",
+            "-v",
+            "cognithor-hf-cache:/root/.cache/huggingface",
+            "-e",
+            f"HF_TOKEN={self._hf_token}",
+            "-p",
+            f"{port}:8000",
+            "--label",
+            "cognithor.managed=true",
+            "--label",
+            f"cognithor.vlm_profile={profile.name}",
+        ]
+        if self.media_url:
+            cmd.extend(["-e", f"COGNITHOR_MEDIA_URL={self.media_url}"])
+        cmd.extend(
+            [
+                self.docker_image,
+                "--model",
+                profile.model_id,
+                # Profile flags are an authoritative tuple — pass through verbatim.
+                *profile.vllm_flags,
+            ]
+        )
+
+        _cmd_for_log = _redact_hf_token(cmd)
+        log.info(
+            "vllm_profile_load_starting",
+            profile=profile.name,
+            model=profile.model_id,
+            image=self.docker_image,
+            port=port,
+            media_url=self.media_url,
+            cmd=_cmd_for_log,
+        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            log.error(
+                "vllm_profile_load_failed",
+                profile=profile.name,
+                returncode=result.returncode,
+                stderr=result.stderr.strip()[:500],
+            )
+            raise VLLMNotReadyError(
+                f"docker run failed for profile {profile.name!r}: {result.stderr.strip()}",
+                recovery_hint="Check Docker Desktop logs.",
+            )
+
+        container_id = result.stdout.strip().split("\n")[-1][:12]
+        timeout = health_timeout if health_timeout is not None else 180
+        if not self._wait_for_health(port, timeout=timeout):
+            raise VLLMNotReadyError(
+                f"vLLM /health did not respond within {timeout}s for profile "
+                f"{profile.name!r} ({profile.model_id})",
+                recovery_hint="Check `docker logs <id>` for model-loading errors.",
+            )
+
+        info = ContainerInfo(container_id=container_id, port=port, model=profile.model_id)
+        self.state.container_running = True
+        self.state.current_model = profile.model_id
+        log.info(
+            "vllm_profile_loaded",
+            profile=profile.name,
+            model=profile.model_id,
+            container_id=container_id,
+            port=port,
+        )
+        return info
+
     def stop_container(self) -> None:
         """Stop and remove the cognithor-managed vLLM container. Noop if none."""
         find = subprocess.run(

@@ -27,6 +27,16 @@ class StartRequest(BaseModel):
     model: str
 
 
+class SetVlmQualityRequest(BaseModel):
+    """POST body for ``/api/backends/vllm/quality-default``.
+
+    ``quality`` may be ``None`` to clear the override and let the
+    :class:`cognithor.core.vlm_router.VlmRouter` decide per-request.
+    """
+
+    quality: Literal["fast", "balanced", "premium"] | None
+
+
 class SetActiveRequest(BaseModel):
     backend: Literal[
         "ollama",
@@ -211,6 +221,70 @@ async def set_active_backend(request: Request, body: SetActiveRequest) -> dict[s
         )
     gateway.rebuild_llm_client(body.backend)
     return {"active": body.backend}
+
+
+@backends_router.get("/vllm/quality-default")
+async def vllm_quality_default_get(request: Request) -> dict[str, Any]:
+    """Return the configured VLM-router quality override + the available tiers.
+
+    ``current`` is the value of ``config.vllm.quality_default`` (None means
+    "let the router classify each request"). ``profiles`` carries the full
+    ``VlmProfile`` surface — name, description, throughput, quality_pct,
+    memory footprint, model_id — so the Flutter dropdown can render rich
+    rows without a second round-trip.
+    """
+    from cognithor.core.vlm_router import VLM_PROFILES
+
+    config = cast("CognithorConfig", request.app.state.config)
+    current = getattr(config.vllm, "quality_default", None)
+    profiles = [
+        {
+            "name": p.name,
+            "model_id": p.model_id,
+            "description": p.description,
+            "expected_throughput_tok_s": p.expected_throughput_tok_s,
+            "relative_quality_pct": p.relative_quality_pct,
+            "memory_footprint_gib": p.memory_footprint_gib,
+            "quality_tier": p.quality_tier,
+        }
+        for p in VLM_PROFILES.values()
+    ]
+    return {"current": current, "profiles": profiles}
+
+
+@backends_router.post("/vllm/quality-default")
+async def vllm_quality_default_set(
+    request: Request, body: SetVlmQualityRequest
+) -> dict[str, Any]:
+    """Persist a VLM-router quality override (or clear it with ``null``).
+
+    Writes to ``config.vllm.quality_default`` *and* the on-disk YAML so
+    the override survives a restart. The next ``VlmRouter.select_profile``
+    call picks it up via Layer-2 of the precedence chain.
+    """
+    from cognithor.core.vlm_router import VLM_PROFILES
+
+    config = cast("CognithorConfig", request.app.state.config)
+    if body.quality is not None and body.quality not in VLM_PROFILES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": f"Unknown VLM quality {body.quality!r}",
+                "valid_options": sorted(VLM_PROFILES),
+            },
+        )
+    config.vllm.quality_default = body.quality
+    # Persist to YAML so the choice sticks across restarts.
+    save_fn = getattr(request.app.state, "save_config", None)
+    if callable(save_fn):
+        try:
+            save_fn(config)
+        except Exception as exc:
+            return {
+                "current": body.quality,
+                "warning": f"In-memory updated; on-disk save failed: {exc}",
+            }
+    return {"current": body.quality}
 
 
 @backends_router.get("/vllm/logs")

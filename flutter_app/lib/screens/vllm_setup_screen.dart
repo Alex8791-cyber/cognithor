@@ -45,6 +45,8 @@ class _VllmSetupScreenState extends State<VllmSetupScreen> {
           _ImageCard(status: s),
           const SizedBox(height: 12),
           _ModelCard(status: s),
+          const SizedBox(height: 12),
+          const _VlmQualityCard(),
         ],
       ),
     );
@@ -357,6 +359,173 @@ class _ModelCardState extends State<_ModelCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+/// VLM-Router quality preset selector. Reads + writes
+/// ``config.vllm.quality_default`` via /api/backends/vllm/quality-default.
+///
+/// The dropdown has four options: "Auto (heuristic)" plus the three
+/// built-in tiers (fast / balanced / premium). Each tier shows its
+/// expected throughput and quality percentage so the user can pick
+/// without reading the docs.
+class _VlmQualityCard extends StatefulWidget {
+  const _VlmQualityCard();
+
+  @override
+  State<_VlmQualityCard> createState() => _VlmQualityCardState();
+}
+
+class _VlmQualityCardState extends State<_VlmQualityCard> {
+  bool _loaded = false;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        await context.read<LlmBackendProvider>().fetchVlmQualityDefault();
+      } finally {
+        if (mounted) setState(() => _loaded = true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<LlmBackendProvider>();
+    final tiers = p.vlmProfiles;
+    final current = p.vlmQualityDefault; // null = auto
+
+    return Card(
+      key: const ValueKey('vlm-quality-card'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.speed, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Video / Vision Quality',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Picks which VLM the router prefers for image / video chat. '
+              'Auto = heuristic per request (recommended).',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
+            if (!_loaded)
+              const Center(child: CircularProgressIndicator())
+            else if (tiers.isEmpty)
+              const Text('No VLM profiles available \u2014 backend offline?')
+            else
+              DropdownButtonFormField<String?>(
+                key: const ValueKey('vlm-quality-dropdown'),
+                initialValue: current,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Default tier',
+                ),
+                items: <DropdownMenuItem<String?>>[
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Auto  (heuristic per request)'),
+                  ),
+                  for (final tier in tiers)
+                    DropdownMenuItem<String?>(
+                      value: tier['name'] as String,
+                      child: Text(
+                        '${(tier['name'] as String).toUpperCase()}'
+                        '  \u2014  ~${tier['expected_throughput_tok_s']} tok/s'
+                        '  \u00b7  ${tier['relative_quality_pct']}% quality',
+                      ),
+                    ),
+                ],
+                onChanged: _saving
+                    ? null
+                    : (value) async {
+                        setState(() => _saving = true);
+                        // Capture the messenger before the await so we don't
+                        // touch BuildContext across an async gap.
+                        final messenger = ScaffoldMessenger.of(context);
+                        final provider = context.read<LlmBackendProvider>();
+                        try {
+                          await provider.setVlmQualityDefault(value);
+                        } catch (e) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Save failed: $e')),
+                          );
+                        } finally {
+                          if (mounted) setState(() => _saving = false);
+                        }
+                      },
+              ),
+            const SizedBox(height: 12),
+            if (current != null)
+              _TierDescription(
+                tier: tiers.firstWhere(
+                  (t) => t['name'] == current,
+                  orElse: () => <String, dynamic>{},
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class _TierDescription extends StatelessWidget {
+  final Map<String, dynamic> tier;
+  const _TierDescription({required this.tier});
+
+  @override
+  Widget build(BuildContext context) {
+    if (tier.isEmpty) return const SizedBox.shrink();
+    final modelId = tier['model_id'] as String? ?? '';
+    final desc = tier['description'] as String? ?? '';
+    final memory = tier['memory_footprint_gib'];
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            modelId,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(desc, style: Theme.of(context).textTheme.bodySmall),
+          if (memory != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'GPU footprint: ~$memory GiB (excl. KV cache)',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -96,3 +96,6 @@ cognithor_bench/results/
 # insurance-agent-pack runtime artifacts
 examples/insurance-agent-pack/.cache/
 examples/insurance-agent-pack/results/
+
+# Local video / VLM demo artefacts (Sprint VLM-Router 2026-05-07)
+.video_demo/

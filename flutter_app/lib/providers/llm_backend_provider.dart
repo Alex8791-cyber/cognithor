@@ -84,6 +84,11 @@ class LlmBackendProvider extends ChangeNotifier {
   List<Map<String, dynamic>> availableModels = [];
   String? recommendedModelId;
 
+  // VLM-Router quality default (Sprint-VLM-Router 2026-05-07).
+  // ``null`` means: let the router decide per-request via heuristic.
+  String? vlmQualityDefault;
+  List<Map<String, dynamic>> vlmProfiles = [];
+
   bool get isPolling => _pollTimer != null;
 
   LlmBackendProvider({required this.apiBaseUrl, http.Client? httpClient})
@@ -215,5 +220,35 @@ class LlmBackendProvider extends ChangeNotifier {
     recommendedModelId = body['recommended_id'] as String?;
     availableModels = (body['models'] as List).cast<Map<String, dynamic>>();
     notifyListeners();
+  }
+
+  /// Read the VLM-Router quality override + the available tiers from the
+  /// backend. Pulls both in one round-trip so the dropdown can render
+  /// rich rows immediately.
+  Future<void> fetchVlmQualityDefault() async {
+    final r = await _http.get(
+      Uri.parse('$apiBaseUrl/api/backends/vllm/quality-default'),
+    );
+    if (r.statusCode != 200) return;
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    vlmQualityDefault = body['current'] as String?;
+    vlmProfiles = (body['profiles'] as List).cast<Map<String, dynamic>>();
+    notifyListeners();
+  }
+
+  /// Persist a VLM-Router quality override (or clear it with ``null``).
+  /// Throws on non-200 so the UI can surface a SnackBar.
+  Future<void> setVlmQualityDefault(String? quality) async {
+    final r = await _http.post(
+      Uri.parse('$apiBaseUrl/api/backends/vllm/quality-default'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'quality': quality}),
+    );
+    if (r.statusCode == 200) {
+      vlmQualityDefault = quality;
+      notifyListeners();
+    } else {
+      throw Exception('Set VLM quality failed: ${r.statusCode} — ${r.body}');
+    }
   }
 }

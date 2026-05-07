@@ -2603,6 +2603,19 @@ class VLLMConfig(BaseModel):
     cpu_offload_gb: int = Field(default=4, ge=0, le=128)
     enforce_eager: bool = Field(default=True)
 
+    # VLM-Router quality default — read by cognithor.core.vlm_router.VlmRouter
+    # as Layer-2 override (between ContextVar pin and heuristic). Pinning
+    # here forces every video request to a specific tier regardless of
+    # prompt; leaving it unset (None) lets the heuristic decide per-request.
+    # Valid values: ``"fast"``, ``"balanced"``, ``"premium"``, or ``None``.
+    quality_default: Literal["fast", "balanced", "premium"] | None = Field(
+        default=None,
+        description=(
+            "Default VLM quality tier (fast / balanced / premium). When "
+            "None, the VlmRouter classifies each request individually."
+        ),
+    )
+
     # VLM mode (Sprint-27 VLM-2 — qwen3-vl on RTX 5090 spike).
     # See docs/superpowers/spikes/2026-05-04-qwen3-vl-quant-spike.md.
     # When ``vlm_enabled`` is True and the model has vision support
