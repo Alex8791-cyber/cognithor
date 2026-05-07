@@ -294,6 +294,16 @@ ignore = [
 "src/cognithor/crew/compiler.py" = ["TC001"]  # CrewAgent/CrewTask/CrewProcess used at runtime in pure-function signatures
 "src/cognithor/crew/compiler_hierarchical.py" = ["TC001"]  # CrewAgent/CrewTask used at runtime in pure-function signatures
 "src/cognithor/crew/crew.py" = ["TC001"]  # CrewAgent/CrewTask/CrewProcess must be imported at runtime for Pydantic validation
+# Hardware-Aware Runtime: dataclasses + manifest models are accessed at runtime
+# (e.g. `manifest.tiers` iteration, `Solution.blockers` access). Ruff's TC001
+# over-flags these because of `from __future__ import annotations`.
+"src/cognithor/system/apply_engine.py" = ["TC001"]
+"src/cognithor/system/capabilities.py" = ["TC001"]
+"src/cognithor/system/drift_detector.py" = ["TC001"]
+"src/cognithor/system/sanity.py" = ["TC001", "SIM102"]
+"src/cognithor/system/wizard/cli.py" = ["TC001"]
+"src/cognithor/system/doctor.py" = ["TC001"]
+"src/cognithor/system/solver.py" = ["TC001"]
 
 [tool.coverage.report]
 # Current floor: ~61% (measured 2026-04-29 over the full ~14k-test suite).

@@ -358,6 +358,16 @@ class APIChannel(Channel):
         except Exception as exc:
             log.warning("media_router_include_failed", error=str(exc))
 
+        # Hardware-Aware-Runtime — /api/system/* routes for the Flutter
+        # onboarding wizard + drift banner. Owner-gated since `/apply` writes
+        # to ~/.cognithor/config.yaml and `/rollback` restores backups.
+        try:
+            from cognithor.api.system_api import system_router as _system_router
+
+            app.include_router(_system_router, dependencies=[Depends(verify_token)])
+        except Exception as exc:
+            log.warning("system_router_include_failed", error=str(exc))
+
         return app
 
     @property

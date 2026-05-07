@@ -667,7 +667,52 @@ def print_summary(result: BootResult) -> None:
         print("  Behebe die Fehler oben und starte erneut:")
         print(f"  {BOLD}python scripts/first_boot.py --fix{RESET}")
 
+    # Hardware-Aware-Runtime: trigger wizard if no .cognithor_initialized
+    # marker exists yet. Guarded — never blocks regardless of outcome.
+    try:
+        _maybe_trigger_hardware_wizard()
+    except Exception as exc:
+        print(f"  {YELLOW}Hardware-Wizard wurde übersprungen ({exc}).{RESET}")
+
     print()
+
+
+def _maybe_trigger_hardware_wizard() -> None:
+    """Run the hardware-aware wizard on first boot.
+
+    Triggers ONLY when:
+    - `~/.cognithor/.cognithor_initialized` marker does NOT exist
+    - stdout/stdin both attached to a TTY (interactive shell)
+    - `COGNITHOR_NONINTERACTIVE` env var not set
+    """
+    import os
+    import sys
+    from pathlib import Path
+
+    marker = Path.home() / ".cognithor" / ".cognithor_initialized"
+    if marker.exists():
+        return  # Already initialized — drift-banner via cognithor doctor handles updates
+    if os.environ.get("COGNITHOR_NONINTERACTIVE"):
+        return
+    if not (sys.stdout.isatty() and sys.stdin.isatty()):
+        return
+
+    print()
+    print(f"  {BOLD}{BLUE}━━━ Hardware-Aware Setup ━━━{RESET}")
+    print("  Cognithor erkennt deine Hardware und schlägt die optimale Konfiguration vor.")
+    print("  (überspringen mit Strg+C — wird beim nächsten Start erneut angeboten)")
+    print()
+
+    try:
+        from cognithor.system.doctor import _reconfigure  # type: ignore[attr-defined]
+    except ImportError as exc:
+        print(f"  {YELLOW}Wizard-Modul nicht verfügbar: {exc}{RESET}")
+        return
+    rc = _reconfigure(interactive=True)
+    if rc == 0:
+        print(f"  {GREEN}Hardware-Konfiguration übernommen.{RESET}")
+    else:
+        print(f"  {YELLOW}Setup abgebrochen — Cognithor läuft mit Default-Config.{RESET}")
 
 
 # ============================================================================

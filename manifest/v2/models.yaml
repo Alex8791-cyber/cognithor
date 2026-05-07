@@ -1,0 +1,332 @@
+# Cognithor Hardware-Aware Runtime — Model Catalog v2
+# Schema: docs/superpowers/specs/2026-05-07-hardware-aware-runtime-spec-v2.md §7.4
+# Updates: YAML-PR auf main, Re-Sign mit MANIFEST_TARGETS_KEY (Ed25519).
+# Last reviewed: 2026-05-07.
+
+schema_version: 2
+manifest_version: "2026.05.07.01"
+
+models:
+
+  # ── Heavy text models (planner / coder tier) ──────────────────────────
+
+  - id: "qwen3.6-27b-text-nvfp4-mtp"
+    display_name: "Qwen3.6 27B Text NVFP4 (MTP)"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP"
+      huggingface: "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP"
+      ollama: null
+    requires_capabilities:
+      - "can_run_nvfp4"
+    disk_gb: 14
+    ram_gb_min: 16
+    vram_gb_min: 18
+    context_length: 262144
+    role_fitness:
+      planner: 0.95
+      executor: 0.85
+      coder: 0.92
+      formulate: 0.85
+      embedding: 0.0
+      fast_path_validator: 0.50
+    quality_tier: "L"
+    speed_tier: "M"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks:
+      - "needs --enforce-eager on cu130-nightly until upstream fix"
+      - "MTP head requires speculative_tokens >= 1"
+
+  - id: "qwen3.6-27b-fp8"
+    display_name: "Qwen3.6 27B FP8"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: "Qwen/Qwen3.6-27B-FP8"
+      huggingface: "Qwen/Qwen3.6-27B-FP8"
+      ollama: null
+    requires_capabilities:
+      - "can_run_fp8_marlin"
+    disk_gb: 28
+    ram_gb_min: 16
+    vram_gb_min: 30
+    context_length: 262144
+    role_fitness:
+      planner: 0.93
+      executor: 0.83
+      coder: 0.90
+      formulate: 0.83
+      embedding: 0.0
+      fast_path_validator: 0.45
+    quality_tier: "L"
+    speed_tier: "S"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []
+
+  - id: "qwen3-32b-ollama"
+    display_name: "Qwen3 32B (Ollama)"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: null
+      huggingface: "Qwen/Qwen3-32B"
+      ollama: "qwen3:32b"
+    requires_capabilities:
+      - "can_run_gguf_cuda"
+    disk_gb: 20
+    ram_gb_min: 12
+    vram_gb_min: 22
+    context_length: 32768
+    role_fitness:
+      planner: 0.85
+      executor: 0.75
+      coder: 0.78
+      formulate: 0.75
+      embedding: 0.0
+      fast_path_validator: 0.40
+    quality_tier: "L"
+    speed_tier: "S"
+    deprecated_after_utc: null
+    superseded_by: "qwen3.6-27b-text-nvfp4-mtp"
+    quirks: []
+
+  # ── Mid-tier (executor / formulate / fast-path-validator) ─────────────
+
+  - id: "qwen3.5-9b"
+    display_name: "Qwen3.5 9B"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: "Qwen/Qwen3.5-9B"
+      huggingface: "Qwen/Qwen3.5-9B"
+      ollama: "qwen3.5:9b"
+    requires_capabilities:
+      - "can_run_gguf_cuda"
+    disk_gb: 18
+    ram_gb_min: 12
+    vram_gb_min: 12
+    context_length: 262144
+    role_fitness:
+      planner: 0.80
+      executor: 0.95
+      coder: 0.78
+      formulate: 0.93
+      embedding: 0.0
+      fast_path_validator: 0.92
+    quality_tier: "M"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []
+
+  - id: "qwen3-8b-ollama"
+    display_name: "Qwen3 8B (Ollama, legacy default)"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: "Qwen/Qwen3-8B"
+      huggingface: "Qwen/Qwen3-8B"
+      ollama: "qwen3:8b"
+    requires_capabilities:
+      - "can_run_gguf_cuda"
+    disk_gb: 5
+    ram_gb_min: 8
+    vram_gb_min: 8
+    context_length: 131072
+    role_fitness:
+      planner: 0.70
+      executor: 0.85
+      coder: 0.65
+      formulate: 0.85
+      embedding: 0.0
+      fast_path_validator: 0.85
+    quality_tier: "M"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: "qwen3.5-9b"
+    quirks: []
+
+  # ── Small (low-end / fast-path) ───────────────────────────────────────
+
+  - id: "qwen3.5-4b"
+    display_name: "Qwen3.5 4B"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: "Qwen/Qwen3.5-4B"
+      huggingface: "Qwen/Qwen3.5-4B"
+      ollama: "qwen3.5:4b"
+    requires_capabilities:
+      - "can_run_gguf_cpu"
+    disk_gb: 3
+    ram_gb_min: 6
+    vram_gb_min: 6
+    context_length: 131072
+    role_fitness:
+      planner: 0.55
+      executor: 0.85
+      coder: 0.55
+      formulate: 0.80
+      embedding: 0.0
+      fast_path_validator: 0.95
+    quality_tier: "S"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []
+
+  - id: "qwen3-1.5b-ollama"
+    display_name: "Qwen3 1.5B (Ollama)"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: null
+      huggingface: "Qwen/Qwen3-1.5B"
+      ollama: "qwen3:1.5b"
+    requires_capabilities:
+      - "can_run_gguf_cpu"
+    disk_gb: 1.0
+    ram_gb_min: 4
+    vram_gb_min: 0
+    context_length: 32768
+    role_fitness:
+      planner: 0.30
+      executor: 0.65
+      coder: 0.25
+      formulate: 0.65
+      embedding: 0.0
+      fast_path_validator: 0.85
+    quality_tier: "S"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []
+
+  # ── Coder dedicated ───────────────────────────────────────────────────
+
+  - id: "qwen3-coder-30b-ollama"
+    display_name: "Qwen3-Coder 30B (Ollama)"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: "Qwen/Qwen3-Coder-30B"
+      huggingface: "Qwen/Qwen3-Coder-30B"
+      ollama: "qwen3-coder:30b"
+    requires_capabilities:
+      - "can_run_gguf_cuda"
+    disk_gb: 18
+    ram_gb_min: 12
+    vram_gb_min: 20
+    context_length: 32768
+    role_fitness:
+      planner: 0.55
+      executor: 0.55
+      coder: 0.95
+      formulate: 0.55
+      embedding: 0.0
+      fast_path_validator: 0.20
+    quality_tier: "L"
+    speed_tier: "S"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []
+
+  - id: "qwen2.5-coder-7b-ollama"
+    display_name: "Qwen2.5-Coder 7B (Ollama)"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: null
+      huggingface: "Qwen/Qwen2.5-Coder-7B-Instruct"
+      ollama: "qwen2.5-coder:7b"
+    requires_capabilities:
+      - "can_run_gguf_cpu"
+    disk_gb: 4.5
+    ram_gb_min: 8
+    vram_gb_min: 8
+    context_length: 32768
+    role_fitness:
+      planner: 0.45
+      executor: 0.70
+      coder: 0.85
+      formulate: 0.65
+      embedding: 0.0
+      fast_path_validator: 0.50
+    quality_tier: "M"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []
+
+  # ── Embedding ─────────────────────────────────────────────────────────
+
+  - id: "qwen3-embedding-0.6b-ollama"
+    display_name: "Qwen3 Embedding 0.6B (Ollama)"
+    license: "Apache-2.0"
+    backend_ids:
+      vllm: null
+      huggingface: "Qwen/Qwen3-Embedding-0.6B"
+      ollama: "qwen3-embedding:0.6b"
+    requires_capabilities:
+      - "can_run_gguf_cpu"
+    disk_gb: 0.4
+    ram_gb_min: 2
+    vram_gb_min: 0
+    context_length: 8192
+    role_fitness:
+      planner: 0.0
+      executor: 0.0
+      coder: 0.0
+      formulate: 0.0
+      embedding: 0.95
+      fast_path_validator: 0.0
+    quality_tier: "S"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []
+
+  # ── Cloud reference (für cloud-only Tier) ─────────────────────────────
+
+  - id: "claude-opus-4-7-cloud"
+    display_name: "Anthropic Claude Opus 4.7 (cloud)"
+    license: "proprietary"
+    backend_ids:
+      anthropic: "claude-opus-4-7"
+    requires_capabilities:
+      - "has_internet"
+    disk_gb: 0
+    ram_gb_min: 1
+    vram_gb_min: 0
+    context_length: 1000000
+    role_fitness:
+      planner: 1.0
+      executor: 1.0
+      coder: 0.95
+      formulate: 1.0
+      embedding: 0.0
+      fast_path_validator: 0.95
+    quality_tier: "XL"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks:
+      - "billed via API; respect max_cloud_eur_per_month constraint"
+
+  - id: "gpt-5-cloud"
+    display_name: "OpenAI GPT-5 (cloud)"
+    license: "proprietary"
+    backend_ids:
+      openai: "gpt-5"
+    requires_capabilities:
+      - "has_internet"
+    disk_gb: 0
+    ram_gb_min: 1
+    vram_gb_min: 0
+    context_length: 400000
+    role_fitness:
+      planner: 1.0
+      executor: 0.95
+      coder: 0.95
+      formulate: 1.0
+      embedding: 0.0
+      fast_path_validator: 0.90
+    quality_tier: "XL"
+    speed_tier: "L"
+    deprecated_after_utc: null
+    superseded_by: null
+    quirks: []

@@ -1,0 +1,258 @@
+# Cognithor Hardware-Aware Runtime — Tier Catalog v2
+# Schema: docs/superpowers/specs/2026-05-07-hardware-aware-runtime-spec-v2.md §7.3
+# Updates: YAML-PR auf main, Re-Sign mit MANIFEST_TARGETS_KEY (Ed25519).
+# Last reviewed: 2026-05-07.
+
+schema_version: 2
+manifest_version: "2026.05.07.01"
+expires_utc: "2026-08-07T00:00:00Z"
+
+tiers:
+
+  # ── Top-tier — RTX 5090 / 6090 (Blackwell) ────────────────────────────
+
+  - id: "enterprise-vllm-nvfp4-blackwell"
+    display_name: "Enterprise vLLM NVFP4 (Blackwell)"
+    rationale_de: |
+      RTX 5090 / 6090 mit cu13+ und Driver ≥ 596 — NVFP4 + MTP-Speculative
+      liefert ~3-4× Throughput vs Ollama. Ideal für Heavy-Inference auf
+      consumer-grade Premium-Hardware.
+    rationale_en: |
+      RTX 5090/6090 with cu13+ and Driver >= 596 — NVFP4 + MTP-Speculative
+      delivers ~3-4x throughput vs Ollama. Ideal for heavy inference on
+      consumer-grade premium hardware.
+    requires_capabilities:
+      - "can_run_nvfp4"
+      - "can_run_vllm_container"
+      - "vram_class>=xlarge"
+      - "ram_class>=high"
+      - "disk_class>=medium"
+    requires_cognithor: ">=1.0.0"
+    backend: "vllm"
+    backend_config:
+      docker_image: "vllm/vllm-openai:cu130-nightly"
+      gpu_memory_utilization: 0.94
+      enforce_eager: true
+      cpu_offload_gb: 4
+      max_model_len: 16384
+      num_speculative_tokens: 1
+      enable_prefix_caching: true
+    model_set:
+      planner: "qwen3.6-27b-text-nvfp4-mtp"
+      executor: "qwen3.5-9b"
+      coder: "qwen3.6-27b-text-nvfp4-mtp"
+      embedding: "qwen3-embedding-0.6b-ollama"
+      formulate: "qwen3.5-9b"
+      fast_path_validator: "qwen3.5-9b"
+    estimated_setup_minutes: 15
+    estimated_disk_gb: 35
+    performance_estimates:
+      planner_tok_s_p50: 80
+      executor_tok_s_p50: 200
+      formulate_tok_s_p50: 200
+      first_token_ms_p50: 350
+
+  # ── Power — RTX 4090, A6000-Ada (Ada Lovelace) ────────────────────────
+
+  - id: "power-vllm-fp8-ada"
+    display_name: "Power vLLM FP8 (Ada/Hopper)"
+    rationale_de: |
+      RTX 4090, A6000-Ada, H100 — FP8-Marlin auf vLLM. ~2× Throughput vs
+      Ollama. Kein NVFP4, weil sm89 < sm120, aber FP8 ist optimal für die
+      Generation.
+    rationale_en: |
+      RTX 4090, A6000-Ada, H100 — FP8-Marlin on vLLM. ~2x throughput vs
+      Ollama. No NVFP4 (sm89 < sm120) but FP8 is optimal for this gen.
+    requires_capabilities:
+      - "can_run_fp8_marlin"
+      - "can_run_vllm_container"
+      - "vram_class>=large"
+      - "ram_class>=high"
+      - "disk_class>=medium"
+    requires_cognithor: ">=1.0.0"
+    backend: "vllm"
+    backend_config:
+      docker_image: "vllm/vllm-openai:latest"
+      gpu_memory_utilization: 0.92
+      enforce_eager: false
+      max_model_len: 32768
+      enable_prefix_caching: true
+    model_set:
+      planner: "qwen3.6-27b-fp8"
+      executor: "qwen3.5-9b"
+      coder: "qwen3.6-27b-fp8"
+      embedding: "qwen3-embedding-0.6b-ollama"
+      formulate: "qwen3.5-9b"
+      fast_path_validator: "qwen3.5-9b"
+    estimated_setup_minutes: 15
+    estimated_disk_gb: 50
+    performance_estimates:
+      planner_tok_s_p50: 50
+      executor_tok_s_p50: 130
+      formulate_tok_s_p50: 130
+      first_token_ms_p50: 500
+
+  # ── Standard — RTX 3060/3090, mid-range CUDA ─────────────────────────
+
+  - id: "standard-ollama-cuda"
+    display_name: "Standard Ollama CUDA"
+    rationale_de: |
+      NVIDIA-GPU mit ≥ 8 GB VRAM — Ollama läuft direkt, kein Docker oder
+      vLLM nötig. Solides Out-of-Box-Erlebnis ohne Setup-Komplexität.
+    rationale_en: |
+      NVIDIA GPU with >=8 GB VRAM — Ollama runs natively, no Docker or
+      vLLM needed. Solid out-of-box experience without setup complexity.
+    requires_capabilities:
+      - "can_run_ollama_native"
+      - "can_run_gguf_cuda"
+      - "vram_class>=small"
+      - "ram_class>=medium"
+    requires_cognithor: ">=0.99.0"
+    backend: "ollama"
+    backend_config:
+      base_url: "http://localhost:11434"
+    model_set:
+      planner: "qwen3-32b-ollama"
+      executor: "qwen3-8b-ollama"
+      coder: "qwen3-coder-30b-ollama"
+      embedding: "qwen3-embedding-0.6b-ollama"
+      formulate: "qwen3-8b-ollama"
+      fast_path_validator: "qwen3-8b-ollama"
+    estimated_setup_minutes: 8
+    estimated_disk_gb: 45
+    performance_estimates:
+      planner_tok_s_p50: 25
+      executor_tok_s_p50: 65
+      formulate_tok_s_p50: 65
+      first_token_ms_p50: 800
+
+  # ── Mac — Apple Silicon Metal ─────────────────────────────────────────
+
+  - id: "mac-ollama-metal"
+    display_name: "Mac Apple Silicon (Ollama Metal)"
+    rationale_de: |
+      Apple-Silicon (M2/M3/M4) — Ollama mit Metal-Backend. Modelle auf
+      Unified-Memory-Limits skaliert. Kein vLLM (kein CUDA).
+    rationale_en: |
+      Apple Silicon (M2/M3/M4) — Ollama with Metal backend. Models sized
+      for unified-memory limits. No vLLM (no CUDA).
+    requires_capabilities:
+      - "can_run_gguf_metal"
+      - "can_run_ollama_native"
+    requires_cognithor: ">=0.99.0"
+    backend: "ollama"
+    backend_config:
+      base_url: "http://localhost:11434"
+    model_set:
+      planner: "qwen3-8b-ollama"
+      executor: "qwen3.5-4b"
+      coder: "qwen2.5-coder-7b-ollama"
+      embedding: "qwen3-embedding-0.6b-ollama"
+      formulate: "qwen3.5-4b"
+      fast_path_validator: "qwen3.5-4b"
+    estimated_setup_minutes: 8
+    estimated_disk_gb: 15
+    performance_estimates:
+      planner_tok_s_p50: 30
+      executor_tok_s_p50: 60
+      formulate_tok_s_p50: 60
+      first_token_ms_p50: 700
+
+  # ── AMD — ROCm ─────────────────────────────────────────────────────────
+
+  - id: "amd-ollama-rocm"
+    display_name: "AMD GPU (Ollama ROCm)"
+    rationale_de: |
+      AMD-GPU mit ROCm — Ollama-ROCm Backend. vLLM-ROCm ist experimentell
+      und nicht für v1 empfohlen. Modelle moderat dimensioniert.
+    rationale_en: |
+      AMD GPU with ROCm — Ollama-ROCm backend. vLLM-ROCm is experimental
+      and not recommended for v1. Models moderately sized.
+    requires_capabilities:
+      - "can_run_gguf_rocm"
+      - "can_run_ollama_native"
+      - "vram_class>=small"
+    requires_cognithor: ">=0.99.0"
+    backend: "ollama"
+    backend_config:
+      base_url: "http://localhost:11434"
+    model_set:
+      planner: "qwen3-8b-ollama"
+      executor: "qwen3.5-4b"
+      coder: "qwen2.5-coder-7b-ollama"
+      embedding: "qwen3-embedding-0.6b-ollama"
+      formulate: "qwen3.5-4b"
+      fast_path_validator: "qwen3.5-4b"
+    estimated_setup_minutes: 10
+    estimated_disk_gb: 15
+    performance_estimates:
+      planner_tok_s_p50: 25
+      executor_tok_s_p50: 50
+      formulate_tok_s_p50: 50
+      first_token_ms_p50: 900
+
+  # ── Minimal — kein GPU oder schwach ──────────────────────────────────
+
+  - id: "minimal-ollama-cpu"
+    display_name: "Minimal CPU-only (Ollama)"
+    rationale_de: |
+      Kein GPU oder GPU < 4 GB — CPU-Inferenz mit kleinen Modellen.
+      Funktional, aber langsam. Last-Resort vor cloud-only.
+    rationale_en: |
+      No GPU or GPU < 4 GB — CPU inference with small models. Functional
+      but slow. Last resort before cloud-only.
+    requires_capabilities:
+      - "can_run_gguf_cpu"
+      - "can_run_ollama_native"
+      - "ram_class>=medium"
+    requires_cognithor: ">=0.99.0"
+    backend: "ollama"
+    backend_config:
+      base_url: "http://localhost:11434"
+    model_set:
+      planner: "qwen3.5-4b"
+      executor: "qwen3-1.5b-ollama"
+      coder: "qwen2.5-coder-7b-ollama"
+      embedding: "qwen3-embedding-0.6b-ollama"
+      formulate: "qwen3-1.5b-ollama"
+      fast_path_validator: "qwen3-1.5b-ollama"
+    estimated_setup_minutes: 5
+    estimated_disk_gb: 8
+    performance_estimates:
+      planner_tok_s_p50: 5
+      executor_tok_s_p50: 12
+      formulate_tok_s_p50: 12
+      first_token_ms_p50: 2500
+
+  # ── Cloud-only ────────────────────────────────────────────────────────
+
+  - id: "cloud-only-anthropic"
+    display_name: "Cloud-Only (Anthropic)"
+    rationale_de: |
+      Hardware unter den lokalen Mindestschwellen oder explizit gewählt
+      für maximale Qualität. Anthropic Claude API, ~€20/Monat bei
+      durchschnittlicher Nutzung. Kein lokaler Disk-Bedarf.
+    rationale_en: |
+      Hardware below local minimums or explicitly chosen for maximum
+      quality. Anthropic Claude API, ~€20/month average usage. No local
+      disk needed.
+    requires_capabilities:
+      - "has_internet"
+    requires_cognithor: ">=0.99.0"
+    backend: "anthropic"
+    backend_config:
+      requires_api_key: "anthropic_api_key"
+    model_set:
+      planner: "claude-opus-4-7-cloud"
+      executor: "claude-opus-4-7-cloud"
+      coder: "claude-opus-4-7-cloud"
+      embedding: "qwen3-embedding-0.6b-ollama"
+      formulate: "claude-opus-4-7-cloud"
+      fast_path_validator: "claude-opus-4-7-cloud"
+    estimated_setup_minutes: 3
+    estimated_disk_gb: 0
+    performance_estimates:
+      planner_tok_s_p50: 60
+      executor_tok_s_p50: 120
+      formulate_tok_s_p50: 120
+      first_token_ms_p50: 600

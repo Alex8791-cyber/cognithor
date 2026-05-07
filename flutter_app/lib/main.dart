@@ -29,6 +29,7 @@ import 'package:cognithor_ui/providers/sources_provider.dart';
 import 'package:cognithor_ui/providers/packs_provider.dart';
 import 'package:cognithor_ui/providers/research_provider.dart';
 import 'package:cognithor_ui/providers/trace_provider.dart';
+import 'package:cognithor_ui/providers/onboarding_provider.dart';
 import 'package:cognithor_ui/services/trace_service.dart';
 import 'package:cognithor_ui/screens/splash_screen.dart';
 import 'package:cognithor_ui/theme/cognithor_theme.dart';
@@ -70,6 +71,21 @@ class CognithorApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SourcesProvider()),
         ChangeNotifierProvider(create: (_) => PacksProvider()),
         ChangeNotifierProvider(create: (_) => ResearchProvider()),
+        ChangeNotifierProxyProvider<ConnectionProvider, OnboardingProvider>(
+          create: (ctx) => OnboardingProvider(
+            apiBaseUrl: ctx.read<ConnectionProvider>().serverUrl,
+          ),
+          update: (_, conn, prev) {
+            final next = prev ?? OnboardingProvider(apiBaseUrl: conn.serverUrl);
+            // Pull bootstrap token from the ApiClient if connected
+            try {
+              next.setAuthToken(conn.api.token);
+            } catch (_) {
+              // ApiClient not yet ready (pre-connect) — leave token unset
+            }
+            return next;
+          },
+        ),
         ChangeNotifierProxyProvider<ConnectionProvider, TraceProvider?>(
           create: (_) => null,
           update: (_, conn, prev) {

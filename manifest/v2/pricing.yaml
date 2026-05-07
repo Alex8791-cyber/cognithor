@@ -1,0 +1,68 @@
+# Cognithor Hardware-Aware Runtime — Cloud Pricing v2
+# For Cost-Awareness Layer (L10).
+# Updates: YAML-PR auf main, Re-Sign mit MANIFEST_TARGETS_KEY (Ed25519).
+# Last reviewed: 2026-05-07.
+
+schema_version: 2
+manifest_version: "2026.05.07.01"
+expires_utc: "2026-08-07T00:00:00Z"
+
+providers:
+  anthropic:
+    claude-opus-4-7:
+      input_eur_per_mtok: 14.0
+      output_eur_per_mtok: 70.0
+      cache_read_eur_per_mtok: 1.4
+      cache_write_eur_per_mtok: 17.5
+      valid_until_utc: "2026-08-01T00:00:00Z"
+    claude-sonnet-4-6:
+      input_eur_per_mtok: 2.8
+      output_eur_per_mtok: 14.0
+      cache_read_eur_per_mtok: 0.28
+      cache_write_eur_per_mtok: 3.5
+      valid_until_utc: "2026-08-01T00:00:00Z"
+    claude-haiku-4-5:
+      input_eur_per_mtok: 0.7
+      output_eur_per_mtok: 3.5
+      valid_until_utc: "2026-08-01T00:00:00Z"
+
+  openai:
+    gpt-5:
+      input_eur_per_mtok: 10.0
+      output_eur_per_mtok: 50.0
+      valid_until_utc: "2026-08-01T00:00:00Z"
+    gpt-5-mini:
+      input_eur_per_mtok: 0.15
+      output_eur_per_mtok: 0.60
+      valid_until_utc: "2026-08-01T00:00:00Z"
+
+  gemini:
+    gemini-2.5-pro:
+      input_eur_per_mtok: 6.0
+      output_eur_per_mtok: 24.0
+      valid_until_utc: "2026-08-01T00:00:00Z"
+
+local_inference:
+  electricity_eur_per_kwh: 0.32  # User-overridable in config.yaml
+  rtx_5090:
+    watt_idle: 30
+    watt_full: 575
+  rtx_4090:
+    watt_idle: 25
+    watt_full: 450
+  rtx_3090:
+    watt_idle: 22
+    watt_full: 350
+  apple_m3_max:
+    watt_idle: 8
+    watt_full: 92
+  cpu_only_typical:
+    watt_idle: 30
+    watt_full: 95
+
+# Default usage assumption für monatliche Cost-Estimation
+default_usage_profile:
+  requests_per_day: 80
+  avg_input_tokens: 1500
+  avg_output_tokens: 800
+  fast_path_ratio: 0.40   # 40% of requests skip the heavy planner

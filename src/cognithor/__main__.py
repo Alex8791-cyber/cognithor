@@ -195,6 +195,22 @@ def parse_args() -> argparse.Namespace:
         help="Skip startup dependency/model check (faster boot when already configured)",
     )
     sub = parser.add_subparsers(dest="command")
+
+    # `cognithor doctor` — Hardware-aware diagnostic + (re)configuration
+    doctor_parser = sub.add_parser(
+        "doctor",
+        help="Hardware-aware diagnostic + (re)configuration",
+        description=(
+            "Detection + capability mapping + tier recommendation. "
+            "Use --reconfigure for interactive wizard."
+        ),
+    )
+    doctor_parser.add_argument("--reconfigure", action="store_true")
+    doctor_parser.add_argument("--apply-recommendation", action="store_true")
+    doctor_parser.add_argument("--refresh-manifest", action="store_true")
+    doctor_parser.add_argument("--export-profile", metavar="PATH")
+    doctor_parser.add_argument("--rollback", action="store_true")
+
     config_parser = sub.add_parser("config", help="Configure Cognithor interactively")
     config_sub = config_parser.add_subparsers(dest="config_action")
     config_sub.add_parser("list", help="Show current settings")
@@ -744,6 +760,22 @@ def main() -> None:
                 file=sys.stderr,
             )
             sys.exit(2)
+
+    if getattr(args, "command", None) == "doctor":
+        from cognithor.system.doctor import main as doctor_main
+
+        doctor_argv: list[str] = []
+        if getattr(args, "reconfigure", False):
+            doctor_argv.append("--reconfigure")
+        if getattr(args, "apply_recommendation", False):
+            doctor_argv.append("--apply-recommendation")
+        if getattr(args, "refresh_manifest", False):
+            doctor_argv.append("--refresh-manifest")
+        if getattr(args, "rollback", False):
+            doctor_argv.append("--rollback")
+        if getattr(args, "export_profile", None):
+            doctor_argv.extend(["--export-profile", args.export_profile])
+        sys.exit(doctor_main(doctor_argv))
 
     if getattr(args, "command", None) == "task":
         from cognithor.cli import task_cmd

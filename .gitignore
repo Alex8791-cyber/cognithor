@@ -44,10 +44,15 @@ desktop.ini
 
 # ── Runtime Data ─────────────────────────────────────────────────
 *.db
+*.sqlite
 *.sqlite3
 *.cache
 logs/
 *.log
+
+# ── Mutation testing scratch (cosmic-ray) ────────────────────────
+baseline-session.sqlite
+mutation-session.sqlite
 
 # ── Node ──────────────────────────────────────────────────────────
 node_modules/
