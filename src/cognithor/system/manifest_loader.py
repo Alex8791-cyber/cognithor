@@ -181,7 +181,13 @@ class ManifestLoader:
         import urllib.error
         import urllib.request
 
-        files = ("v2/tiers.yaml", "v2/models.yaml", "v2/pricing.yaml", "recalls/active.json")
+        files = (
+            "v2/tiers.yaml",
+            "v2/models.yaml",
+            "v2/pricing.yaml",
+            "v2/manifest.sig",
+            "recalls/active.json",
+        )
         cache = self._cache_root
         cache.mkdir(parents=True, exist_ok=True)
 
