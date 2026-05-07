@@ -295,7 +295,10 @@ to use the canonical singletons.
 
 * Reviewer-feedback gap analysis: `memory/project_operational_trust_gap_analysis.md`
 * TRUST-5..10 ship log: `memory/project_2026_05_04_trust_stack_complete.md`
-* PR span: #395 → #435 (41 PRs across two days)
+* PR span: #395 → #436 (42 PRs across two days), shipped in **v0.97.0** "Operational Trust" (2026-05-04)
+* TRUST-1..4 shipped earlier as PRs #374–#377 (also v0.97.0)
+* Compliance-Spring (v0.98.0, 2026-05-06): adds `AuditCategory.REFLECTION` channel and 9 reflector event types — see [`CHANGELOG.md`](../CHANGELOG.md#0980--2026-05-06--compliance-spring)
+* CRWE (v0.99.0, 2026-05-06): extends the same hash-chained guarantees from autonomous Reflector writes to operator-driven batch workflows — see `cognithor.core.workflow` and [`CHANGELOG.md`](../CHANGELOG.md#0990--2026-05-06--resilient-workflow-engine)
 
 ---
 

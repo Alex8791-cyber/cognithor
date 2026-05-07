@@ -24,7 +24,7 @@
 │  ┌─────────────────────────────────────────────────────────────────────┐     │
 │  │                     6-Phase Initialization                          │     │
 │  │  A: Declare attrs → B: Core (LLM, Planner, Gatekeeper, Executor)   │     │
-│  │  C: Memory → D: MCP Tools (125+) → E: Agents → F: Advanced        │     │
+│  │  C: Memory → D: MCP Tools (141) → E: Agents → F: Advanced         │     │
 │  └─────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐     │
@@ -76,7 +76,7 @@
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                          MCP TOOL LAYER (125+ tools)                         │
+│                  MCP TOOL LAYER (141 tools, see catalog.json)                │
 │                                                                              │
 │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐               │
 │  │ Filesystem │ │   Shell    │ │    Web     │ │   Media    │               │
@@ -261,17 +261,25 @@
 
 ## Statistics
 
-| Metric | Value |
-|--------|-------|
-| Python Source | ~201,000 LOC |
-| Python Tests | ~163,000 LOC |
-| Flutter UI | ~57,000 LOC |
-| MCP Tools | 125+ |
-| REST Endpoints | 48+ |
-| Channels | 18 |
-| LLM Providers | 17 |
-| Tests | 13,117 |
-| Lint Errors | 0 |
-| Flutter Issues | 0 |
+> **Counts grow over time.** The values below are a snapshot taken at the v0.99.0 cut. The authoritative live counts are: `pytest --collect-only -q tests/ \| tail -5` for tests, [`docs/integrations/catalog.json`](integrations/catalog.json) for MCP tools, `find src/cognithor -name "*.py" \| xargs wc -l` for source LOC.
+
+| Metric | Value (v0.99.0 cut) |
+|--------|---------------------|
+| Python Source | ~257,000 LOC |
+| Python Tests | ~224,000 LOC |
+| Flutter UI | ~66,000 LOC |
+| MCP Tools | 141 (auto-generated → `docs/integrations/catalog.json`) |
+| REST Endpoints | 60+ |
+| Channels | 17 (chat, voice, REST, CLI) |
+| LLM Providers | 19 (Ollama, LM Studio, vLLM, llama-cpp + 15 cloud + Claude Code) |
+| Tests | 17,000+ test functions |
+| Coverage Gate | 89% (`--cov-fail-under=89` in CI) |
+| Lint Errors | 0 (`ruff check src/cognithor/ tests/`) |
+| Flutter Issues | 0 (`flutter analyze`) |
 | i18n Languages | 4 (EN/DE/ZH/AR) |
 | i18n Keys | 900+ |
+| Operational-Trust Ledgers | 6 (Provenance, Permission-Scopes, Tool-Fingerprints, Cloud-Escalation, Cost, Migration) |
+| Audit Categories | 3 (`SYSTEM`, `REFLECTION`, `SKILL`) — see [`docs/operational_trust.md`](operational_trust.md) |
+| Video Renderers | 1 default (HyperFrames, Apache-2.0) via pluggable `cognithor.video.RendererABC` |
+
+See also: [`docs/hashline-guard.md`](hashline-guard.md) for audit-chain integrity, [`docs/operational_trust.md`](operational_trust.md) for the TRUST-1..10 reference, [`../ARCHITECTURE.md#video-composition--rendering-hyperframes`](../ARCHITECTURE.md) for the video pipeline.

@@ -58,7 +58,7 @@ unloads automatically).
 
 1. Download and load models in the LM Studio GUI (e.g., `qwen/qwen3-32b`)
 2. Start the server (runs by default on `http://localhost:1234`)
-3. Set in `~/.jarvis/config.yaml`:
+3. Set in `~/.cognithor/config.yaml`:
 
 ```yaml
 llm_backend_type: "lmstudio"
@@ -169,7 +169,7 @@ cognithor> What's on the agenda today?
 
 ## Step 5: Customize Configuration
 
-The configuration is at `~/.jarvis/config.yaml`:
+The configuration is at `~/.cognithor/config.yaml`:
 
 ```yaml
 # Most important settings:
@@ -187,12 +187,12 @@ memory:
 
 ## Step 6: Refine Identity
 
-Cognithor's personality and rules are in `~/.jarvis/CORE.md`.
+Cognithor's personality and rules are in `~/.cognithor/CORE.md`.
 You can edit this file at any time:
 
 ```bash
 # Open with your editor
-nano ~/.jarvis/CORE.md
+nano ~/.cognithor/CORE.md
 ```
 
 Or directly through Cognithor:
@@ -265,7 +265,7 @@ ollama run qwen3:8b "Hello" --keepalive 30m
 
 ### Planner does not create a plan (always answers directly)
 This happens when the model does not recognize the tool list. Check:
-1. Are MCP tools registered? Check log: `~/.jarvis/logs/jarvis.log`
+1. Are MCP tools registered? Check log: `~/.cognithor/logs/cognithor.log`
 2. Is the system prompt too long? Reduce `memory.search_top_k`
 3. Is the temperature too low? In `config.yaml`: `planner.temperature: 0.7`
 
@@ -278,7 +278,7 @@ cognithor> What do you know about Mueller Corp?
 
 ## Next Steps
 
-1. **Import knowledge** -- Place existing notes in `~/.jarvis/memory/knowledge/`
-2. **Set up Telegram** -- For mobile use: token in `~/.jarvis/.env`: `JARVIS_TELEGRAM_TOKEN=...`
-3. **Enable cron** -- Automatic morning briefing: `~/.jarvis/cron/jobs.yaml`
-4. **Custom procedures** -- Create recurring workflows in `~/.jarvis/memory/procedures/`
+1. **Import knowledge** -- Place existing notes in `~/.cognithor/memory/knowledge/`
+2. **Set up Telegram** -- For mobile use: token in `~/.cognithor/.env`: `COGNITHOR_TELEGRAM_TOKEN=...`
+3. **Enable cron** -- Automatic morning briefing: `~/.cognithor/cron/jobs.yaml`
+4. **Custom procedures** -- Create recurring workflows in `~/.cognithor/memory/procedures/`

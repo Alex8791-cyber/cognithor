@@ -156,11 +156,13 @@ No auth. Returns:
 ```json
 {
   "status": "ok",
-  "version": "0.36.0",
+  "version": "0.99.0",
   "uptime_seconds": 3600,
   "active_sessions": 2
 }
 ```
+
+> The `version` field tracks `pyproject.toml` `[project] version`; clients use this for the major.minor compatibility check (frontend `kFrontendVersion` in `flutter_app/lib/providers/connection_provider.dart` enforces it).
 
 ### Send Message (REST)
 

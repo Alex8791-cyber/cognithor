@@ -1,6 +1,7 @@
 # Cognithor MCP Tools Reference
 
-> Complete reference for all 123 MCP tools grouped by module.
+> Complete reference for all 141 MCP tools grouped by module.
+> The authoritative count and names live in [`docs/integrations/catalog.json`](docs/integrations/catalog.json) — auto-generated from `src/cognithor/mcp/` on every release. If this page drifts from the catalog, the catalog wins.
 > For how to add new tools, see [DEVELOPER.md](DEVELOPER.md#adding-an-mcp-tool).
 
 ## Table of Contents

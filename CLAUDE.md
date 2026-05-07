@@ -4,7 +4,7 @@ Context for AI coding assistants (Claude Code, Cursor, Codex, etc.) working in t
 
 ## What this is
 
-**Cognithor · Agent OS** — local-first autonomous agent operating system. Python backend (FastAPI gateway, PGE-Trinity orchestration; default backend is Ollama-served qwen3 models, with vLLM, OpenAI, Anthropic, Gemini and 14 other backends as opt-in alternatives; 127+ MCP tools across 30+ modules) + Flutter Command Center (~200 Dart files, 60+ screens spread across feature areas + a Config sub-tree, 27 providers, 4 locales).
+**Cognithor · Agent OS** — local-first autonomous agent operating system. Python backend (FastAPI gateway, PGE-Trinity orchestration; default backend is Ollama-served qwen3 models, with vLLM, OpenAI, Anthropic, Gemini and ~15 other backends as opt-in alternatives; 141 MCP tools across 30 modules — auto-generated into `docs/integrations/catalog.json` on every release) + Flutter Command Center (~200 Dart files, 60+ screens spread across feature areas + a Config sub-tree, 27 providers, 4 locales).
 
 Owner: Alexander Söllner. License: Apache 2.0. PyPI: `pip install cognithor`. Current release: see `pyproject.toml` (`[project] version`).
 
@@ -13,7 +13,7 @@ Owner: Alexander Söllner. License: Apache 2.0. PyPI: `pip install cognithor`. C
 | Path | What lives here |
 |---|---|
 | `src/cognithor/` | Python source. 43 subpackages. Foundational: `core/`, `mcp/`, `channels/`, `crew/`, `gateway/`, `memory/`, `security/`, `skills/`. |
-| `tests/` | Pytest, ~14 500 tests, `asyncio_mode=auto`. Mirror-structure under `tests/test_<package>/`. |
+| `tests/` | Pytest, 17 000+ test functions across 868+ files, `asyncio_mode=auto`. Mirror-structure under `tests/test_<package>/`. Authoritative count: `pytest --collect-only -q tests/ \| tail -5`. |
 | `flutter_app/` | Flutter Command Center, package name `cognithor_ui`. UI lib at `lib/`, tests at `test/`, integration at `integration_test/`. |
 | `docs/` | Architecture, ADRs, API reference, superpowers specs+plans. |
 | `scripts/` | Bootstrapping + maintenance utilities (`preflight_check.py`, `bootstrap_windows.py`, etc.). |
@@ -22,7 +22,7 @@ Owner: Alexander Söllner. License: Apache 2.0. PyPI: `pip install cognithor`. C
 
 ## Architecture in one paragraph
 
-User input enters via a **channel** (CLI / Telegram / WebUI / 14+ others) → gateway routes to **PGE-Trinity** (`Planner` formulates a plan, `Gatekeeper` classifies risk GREEN/YELLOW/ORANGE/RED, `Executor` runs the steps). All three are qwen3 models served by Ollama by default (vLLM is an opt-in alternative for NVIDIA GPUs). Persistence: 6-tier memory (`memory/`), audit-chain JSONL (`hashline/`), optional Postgres (`db/`). Live observability: `crew.trace_bus.TraceBus` → REST `/api/crew/*` + WebSocket `crew_*_subscribe` frames → Flutter Trace-UI screen. Skills, Agent Packs, and MCP tools are dynamically loaded.
+User input enters via a **channel** (CLI / Telegram / WebUI / 14+ others) → gateway routes to **PGE-Trinity** (`Planner` formulates a plan, `Gatekeeper` classifies risk GREEN/YELLOW/ORANGE/RED, `Executor` runs the steps). All three are qwen3 models served by Ollama by default (vLLM is an opt-in alternative for NVIDIA GPUs). Persistence: 6-tier memory (`memory/`), HMAC-SHA-256 hash-chained audit JSONL (`hashline/`), optional Postgres (`db/`). Live observability: `crew.trace_bus.TraceBus` → REST `/api/crew/*` + WebSocket `crew_*_subscribe` frames → Flutter Trace-UI screen. Skills, Agent Packs, and MCP tools are dynamically loaded. Operator-driven batch work runs through **CRWE** (`cognithor.core.workflow.WorkflowRunner` + `cognithor task <manifest>` CLI, v0.99.0): JSONL streaming, atomic checkpoint, file-locking, SIGINT/SIGTERM emergency-checkpoint, audit-chain integration. Six append-only ledgers (Provenance, Permission-Scopes, Tool-Fingerprints, Cloud-Escalation, Cost in micro-USD, Migration) plus signed run-receipts ship operational-trust guarantees end-to-end (TRUST-1..10).
 
 ## Critical conventions
 
@@ -38,7 +38,7 @@ User input enters via a **channel** (CLI / Telegram / WebUI / 14+ others) → ga
 
 | What | Command |
 |---|---|
-| Full backend regression | `pytest tests/ -x -q` (~13 min, 14 448 tests at v0.95.0) |
+| Full backend regression | `pytest tests/ -x -q` (~13 min, 17 000+ test functions at v0.99.0; live count via `pytest --collect-only -q tests/ \| tail -5`) |
 | One backend module | `pytest tests/test_<pkg>/ -v` |
 | Flutter unit tests | `cd flutter_app && flutter test test/` (~3s, 48 tests) |
 | Flutter analyze | `cd flutter_app && flutter analyze` |
@@ -65,6 +65,9 @@ User input enters via a **channel** (CLI / Telegram / WebUI / 14+ others) → ga
 
 - Architecture overview: `docs/ARCHITECTURE.md`.
 - ADRs: `docs/adr/` (currently: ADR-0001 PGE-Trinity vs GroupChat).
+- Operational Trust + audit chain: `docs/operational_trust.md` and `docs/hashline-guard.md`.
+- Pack registry signing (PACK-4): `docs/superpowers/specs/2026-05-05-pack4-registry-signing.md` + runbook `docs/runbooks/registry_key_rotation.md`.
+- CRWE workflow runner: `src/cognithor/core/workflow.py` + CLI at `src/cognithor/cli/task_cmd.py`.
 - Spec & plan archive: `docs/superpowers/{specs,plans}/<YYYY-MM-DD-<name>>.md`.
 - API reference: `docs/api/crew-traces.md` (more endpoints to come).
 - Channel guide: `docs/CHANNELS_GUIDE.md`.

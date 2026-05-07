@@ -4,8 +4,9 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.85.0+ | Yes (current: 0.90.0) |
-| 0.78.2–0.84.x | Security patches on request |
+| 0.97.0+ | Yes (current: 0.99.0) — full TRUST-1..10 stack, hash-chained audit, TUF-Light registry, AuditCategory.REFLECTION |
+| 0.85.0–0.96.x | Best-effort security patches; functional, but missing operational-trust ledgers and registry signatures |
+| 0.78.2–0.84.x | Security patches on request only |
 | 0.71–0.78.1 | Upgrade recommended (GHSA-cognithor-001) |
 | < 0.71  | No        |
 
@@ -27,14 +28,16 @@ We aim to acknowledge reports within 48 hours and provide a fix within 7 days fo
 
 Cognithor implements defense-in-depth with multiple security layers (supporting Ollama and LM Studio as local backends):
 
-- **Gatekeeper** — Deterministic policy engine (no LLM). Every tool call is validated against security policies with 4 risk levels: GREEN (auto-approve) → YELLOW (inform) → ORANGE (require approval) → RED (block).
-- **Sandbox** — Multi-level execution isolation: Process-level → Linux Namespaces (nsjail) → Docker containers → Windows Job Objects.
-- **Audit Trail** — Append-only JSONL log with SHA-256 hash chain. Tamper-evident. Credentials are masked before logging.
+- **Gatekeeper** — Deterministic policy engine (no LLM). Every tool call is validated against security policies with 4 risk levels: GREEN (auto-approve) → YELLOW (inform) → ORANGE (require approval) → RED (block). Decisions emit a structured `rule_id` + `rule_source` + `matched_pattern` explanation (TRUST-2) for the receipt and the IDE Decision-Hover.
+- **Sandbox** — Multi-level execution isolation: Process-level → Linux Namespaces (nsjail / bubblewrap) → Docker containers → Windows Job Objects.
+- **Audit Trail** — Append-only JSONL log with **HMAC-SHA-256 hash chain** (`prev_hash` over canonical NFC-normalized JSON, SEC-HIGH-5 mitigation v0.97.0). Verify with `cognithor audit verify`. Reflector writes route through a dedicated `AuditCategory.REFLECTION` channel (Compliance-Spring v0.98.0); nine event types cover causal sequences, weight snapshots, episodic appends, semantic facts, and procedure auto-creation. Property-based Hypothesis tests + a nightly burn-in CI workflow (`.github/workflows/nightly-burn-in.yml`) keep the chain intact. Credentials are masked before logging.
+- **Operational Trust (TRUST-1..10)** — Six append-only ledgers (Provenance, Permission-Scopes, Tool-Fingerprints, Cloud-Escalation, Cost in micro-USD, Migration) plus signed run-receipts (`cognithor receipt show / verify / list / export-all / diff`) and a 15-value `FailureMode` taxonomy. REST surface: `GET /api/crew/trace/{trace_id}/receipt`. See [`docs/operational_trust.md`](docs/operational_trust.md).
+- **Resilient Workflow Engine (CRWE, v0.99.0)** — `cognithor task <manifest>` runs declarative batch workflows with JSONL streaming, atomic `.checkpoint.json` writes, file-locking (POSIX `fcntl.flock` / Windows `msvcrt.locking`), SIGINT/SIGTERM emergency-checkpoint between tasks, manifest-tamper detection on `--resume`, and audit-chain integration (`workflow_resumed` + `system_checkpoint_created` events). Crash-recovery uses `results.jsonl` line count as source-of-truth. Closes the gap-injection attack vector for offline batch operators.
 - **Credential Vault** — Fernet-encrypted (AES-256) per-agent secret storage. Keys never appear in logs or API responses.
 - **AST-Based Code Analysis** — Python `ast.NodeVisitor` guard detects dangerous imports, subprocess calls, eval, exec at the syntax tree level. Shell commands analyzed via `bashlex` parser with regex fallback. Replaces regex-based guards (v0.90.0+).
-- **Input Sanitization** — Protection against shell injection, path traversal, and prompt injection attacks.
+- **Input Sanitization** — Protection against shell injection, path traversal, and prompt injection attacks (incl. SEC-HIGH-3 indirect-prompt-injection guard against web content asserting trustworthiness).
 - **Path Sandbox** — File operations restricted to explicitly allowed directories.
-- **Red-Teaming** — Automated offensive security test suite (1,425 LOC).
+- **Red-Teaming + CB-wide bug sweeps** — Automated offensive security test suite (1,425 LOC). Pass-3 (PR #479) and Pass-4 (PRs #460–#469) closed 16 + 10 verified findings (CRITs / HIGHs / MEDs across CB) in two coordinated sweeps in May 2026.
 - **Registry Trust Model** — Community-skill registry payloads (`registry.json`, `recalls/active.json`, `publishers/*.json`) are Ed25519-signed under a TUF-Light scheme: an offline Root key signs `root.json`, which delegates to a rotating online Targets key. See [Registry Trust Model](#registry-trust-model-pack-4) below.
 
 ## Registry Trust Model (PACK-4)
@@ -94,7 +97,7 @@ All upload and processing paths enforce size limits to prevent resource exhausti
 ## Credential Handling
 
 - API keys in configuration are masked (`***`) in all API responses by default.
-- The `.env` file (`~/.cognithor/.env` or legacy `~/.jarvis/.env`) is excluded from version control via `.gitignore`.
+- The `.env` file (`~/.cognithor/.env`) is excluded from version control via `.gitignore`.
 - The Control Center API never writes masked placeholder values (`***`) back to configuration files.
 
 ## Past Advisories

@@ -21,6 +21,11 @@
 - [GDPR Compliance Layer](#gdpr-compliance-layer)
 - [Forensics — Run Recording & Replay](#forensics--run-recording--replay)
 - [Encryption at Rest](#encryption-at-rest)
+- [Operational Trust (TRUST-1..10)](#operational-trust-trust-110)
+- [Resilient Workflow Engine (CRWE)](#resilient-workflow-engine-crwe)
+- [Pack Registry Signing (TUF-Light)](#pack-registry-signing-tuf-light)
+- [Video Composition & Rendering (HyperFrames)](#video-composition--rendering-hyperframes)
+- [VLM Router (fast / balanced / premium)](#vlm-router-fast--balanced--premium)
 - [Bible Reference Index](#bible-reference-index)
 
 ---
@@ -722,6 +727,308 @@ Skills progress through a well-defined lifecycle managed by the Skill Registry
    ├── Remote recall checks (RegistrySync)
    └── Usage tracking and ratings
 ```
+
+---
+
+## Operational Trust (TRUST-1..10)
+
+Cognithor ships a ten-layer operational-trust stack that turns the agent's
+behaviour into something an operator can defensibly review. Every layer is
+append-only, locally verifiable, and cross-linked from a signed run-receipt.
+
+| Layer | Purpose | Storage |
+|---|---|---|
+| TRUST-1 | Run receipts (signed JSON bundle per `run_id`) | `~/.cognithor/audit/receipts/` |
+| TRUST-2 | Gatekeeper structured "why" explanations (`rule_id`/`rule_source`/`matched_pattern`) | inline in receipts + audit chain |
+| TRUST-3 | 15-value `FailureMode` taxonomy + aggregator | `~/.cognithor/audit/failure_modes.jsonl` |
+| TRUST-4 | Pack rollback (`cognithor pack rollback <id> [--to-version]`) | `~/.cognithor/packs/state/` |
+| TRUST-5 | Provenance ledger | `~/.cognithor/audit/provenance.jsonl` |
+| TRUST-6 | Permission-Scopes ledger | `~/.cognithor/audit/permission_scopes.jsonl` |
+| TRUST-7 | Tool-Fingerprint ledger | `~/.cognithor/audit/tool_fingerprints.jsonl` |
+| TRUST-8 | Cloud-Escalation ledger | `~/.cognithor/audit/cloud_escalations.jsonl` |
+| TRUST-9 | Cost ledger (micro-USD) | `~/.cognithor/audit/cost.jsonl` |
+| TRUST-10 | Migration ledger (schema/audit-log version chain) | `~/.cognithor/audit/migration.jsonl` |
+
+The audit log itself is HMAC-SHA-256 hash-chained: every entry carries
+`prev_hash` over the canonical NFC-normalized JSON of the previous entry.
+Verify with `cognithor audit verify`.
+
+Reflector writes (autonomous learning) flow through the dedicated
+`AuditCategory.REFLECTION` channel introduced in **Compliance-Spring
+(v0.98.0)**. Nine event types cover causal sequences, weight snapshots,
+episodic appends, semantic facts, and procedure auto-creation. Property-
+based Hypothesis tests + the nightly burn-in CI workflow keep the chain
+intact.
+
+Operator-facing CLI: `cognithor receipt {show,verify,list,export-all,diff}`.
+REST surface: `GET /api/crew/trace/{trace_id}/receipt`.
+
+Full reference: [`docs/operational_trust.md`](docs/operational_trust.md).
+Audit-chain integrity reference: [`docs/hashline-guard.md`](docs/hashline-guard.md).
+
+---
+
+## Resilient Workflow Engine (CRWE)
+
+Shipped in **v0.99.0** ("Resilient Workflow Engine", 2026-05-06). CRWE is
+the operator-driven counterpart to PGE-Trinity: where PGE handles
+interactive turns, CRWE runs declarative batch workflows from a manifest
+file with crash-recovery, signal-safety, and audit-chain integration.
+
+```text
+manifest.json  ──▶  cognithor task <manifest> [--resume]
+                          │
+                          ▼
+                 ┌─────────────────────────┐
+                 │  WorkflowRunner         │  src/cognithor/core/workflow.py
+                 │                         │
+                 │  per task:              │
+                 │   ├─ TaskHandler.run()  │
+                 │   ├─ JSONL append       │
+                 │   ├─ flush() + fsync()  │  ← max 1 task lost on power-fail
+                 │   └─ checkpoint?        │
+                 │       └─ atomic write   │  ← .checkpoint.json (modulo-N)
+                 └────────────┬────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │  Resume integrity       │
+                 │  ├─ schema version      │
+                 │  ├─ manifest sha256     │  ← detects gap-injection
+                 │  ├─ results.jsonl sha   │
+                 │  └─ line count match    │
+                 └─────────────────────────┘
+```
+
+Key guarantees:
+
+- **Concurrency safety** via `.checkpoint.lock` (POSIX `fcntl.flock` /
+  Windows `msvcrt.locking`). A second runner against the same
+  `workflow_id` raises `WorkflowAlreadyRunning(pid, started_at)`.
+- **Signal handling** — `SIGINT`/`SIGTERM` register an emergency-checkpoint
+  handler that sets a flag the run-loop checks **between** tasks; in-flight
+  tasks complete cleanly before exit. Async-cancellation-safe via
+  `asyncio.Event`.
+- **Resume integrity** — on `--resume`, the runner validates schema
+  version, manifest sha256 (gap-injection detection), `results.jsonl`
+  sha256, and line count. Mismatch raises `CheckpointIntegrityError`,
+  `ResultsOutOfSyncError`, or `ManifestTamperError` with both observed
+  and expected hashes.
+- **Audit-chain integration** — every checkpoint emits
+  `system_checkpoint_created` via `AuditLogger.log_system`; resume emits
+  `workflow_resumed`. Both use `AuditCategory.SYSTEM` (operator state,
+  not autonomous learning), keeping the REFLECTION channel reserved for
+  the Reflector's four sinks.
+
+CLI flags: `--resume`, `--checkpoint-every N` (default 12),
+`--workflow-id <id>`, `--handler <python.import.path>`.
+
+Source: [`src/cognithor/core/workflow.py`](../src/cognithor/core/workflow.py),
+CLI at [`src/cognithor/cli/task_cmd.py`](../src/cognithor/cli/task_cmd.py).
+
+---
+
+## Pack Registry Signing (TUF-Light)
+
+Shipped in PR #478 (on main, runtime-dormant by default). Closes
+PACK-4: the gap where a tampered `registry.json` could push a
+malicious skill update or neutralise a recall.
+
+Cognithor's community-skill marketplace uses a self-managed TUF-Light
+signing scheme — no third-party witness, no Sigstore dependency,
+EU-sovereign by design.
+
+- **Two-key model** — Offline Root key signs `root.json`, which delegates
+  to a rotating online Targets key. Targets-key compromise is recoverable
+  (Root re-signs `root.json` with a fresh Targets pubkey). Root-key
+  compromise requires a release-bound rotation.
+- **Verifier** — `cognithor.skills.community.signing.RegistryVerifier`
+  raises `RegistrySignatureError` on signature/freshness/replay failure.
+  `RegistrySync.sync_once` propagates the exception, marking the sync
+  `success=False` and refusing to apply recalls. **No soft-fail** — the
+  whole point is that recalls reach clients reliably.
+- **Replay protection** — monotonic `version` field in `signed`; client
+  persists `last_seen` per channel and refuses anything older.
+- **Freshness** — `valid_until` field (1 day for recalls, 14 days for
+  registry). Hard-fail when expired.
+- **Confused-deputy** — `payload.body.github_username` must match the
+  requested user; swapping `publishers/alice.json` with
+  `publishers/eve.json` is detected.
+- **No downgrade flag** — `REQUIRE_SIGNED_REGISTRY` is a build-time
+  constant in `_pinned_keys.py`, source-patchable for developers but not
+  togglable from the CLI.
+- **Dormant marketplace (default)** — Until the operator mints Root keys
+  offline and embeds the Root pubkey in `_pinned_keys.py`,
+  `RegistryVerifier.is_configured()` returns `False`. `RegistrySync.sync_once`
+  short-circuits cleanly. No network traffic, no errors.
+
+Spec: [`docs/superpowers/specs/2026-05-05-pack4-registry-signing.md`](docs/superpowers/specs/2026-05-05-pack4-registry-signing.md).
+Operator runbook: [`docs/runbooks/registry_key_rotation.md`](docs/runbooks/registry_key_rotation.md).
+Trust-model summary: [`SECURITY.md`](SECURITY.md#registry-trust-model-pack-4).
+
+---
+
+## Video Composition & Rendering (HyperFrames)
+
+Sprint-27 HF track. Cognithor doesn't only *consume* video (VLM input via
+vLLM `video_url`); it also *produces* it through a deliberately thin
+abstraction.
+
+```text
+agent plan ──▶ video_compose          (GREEN — pure-function HTML build)
+                  │  spec dict ─▶ self-contained HTML composition
+                  ▼
+              [ optional ] video_caption_overlay  (GREEN — parallel track)
+                  │
+                  ▼
+              video_render            (ORANGE — needs user approval)
+                  │  HTML ─▶ MP4 / MOV / WebM under
+                  │       ~/.cognithor/render/<run_id>/
+                  ▼
+              render_receipt linked to TRUST-1 via run_id
+                  │  + provenance tag + cost ledger entry
+                  ▼
+              Output file usable by other MCP tools
+              (e.g. share_plus, vault_save)
+```
+
+| Tool | Risk | Purpose |
+|---|---|---|
+| `video_compose` | GREEN | Build a self-contained HTML composition from a structured spec. No subprocess, no FS write. |
+| `video_compose_explainer` | GREEN | 16:9 title-card + body sections + optional CTA preset over `video_compose`. |
+| `video_compose_social_cut` | GREEN | Vertical 9:16 hook + fast-cut beats + outro preset. |
+| `video_caption_overlay` | GREEN | Glue a parallel caption track onto an existing composition spec. |
+| `video_render` | ORANGE | Render composition HTML → MP4 / MOV / WebM. Requires user approval. **Raw user-supplied HTML is RED at the Gatekeeper** — only structured-spec output of `video_compose*` reaches the renderer. |
+
+### Pluggable renderer
+
+`cognithor.video.RendererABC` is the contract. Default backend:
+**HyperFrames** (`HyperFramesRenderer`, Apache-2.0). Future renderers
+(Remotion, cloud, homegrown) can be swapped in via `renderer_registry`
+without touching the MCP-tool layer. See the design rationale in
+[`docs/superpowers/spikes/2026-05-04-hyperframes-spike.md`](docs/superpowers/spikes/2026-05-04-hyperframes-spike.md).
+
+### TRUST wiring (HF-4)
+
+Every `RenderRequest` carries a `run_id` that ties back to the agent run
+that produced it. The renderer emits a render-receipt (provenance tag,
+duration, output sha256, cost ledger entry in micro-USD) into the same
+TRUST-1 envelope the rest of the system uses. A reviewer can read a
+single receipt and trace from the user prompt through Planner →
+Gatekeeper → `video_compose` → `video_render` → output file, with no
+gaps in the audit chain.
+
+### Composer prompts (HF-5)
+
+Reusable composer prompts and shot-list templates live in
+[`src/cognithor/video/skills.py`](../src/cognithor/video/skills.py).
+The VLM video-input path can feed directly into composition — for
+example, the agent can read a long source video, summarise key beats
+via the VLM, and emit a `video_compose_social_cut` spec for a 9:16
+short. The end-to-end smoke test is at
+[`tests/test_video/`](../tests/test_video/) (VLM-4).
+
+---
+
+## VLM Router (fast / balanced / premium)
+
+The `cognithor.core.vlm_router` module sits between the agent and the
+vLLM backend. It picks *which* VLM to call based on what the user is
+asking — three deliberately distinct tiers with measured trade-offs,
+not vendor-published peaks.
+
+```text
+                user prompt + (optional) video_seconds
+                                |
+                                v
+                +--------------------------------+
+                |   classify_vlm_task()          |
+                |   pure-function heuristic      |
+                |   (DE + EN regex patterns)     |
+                +-----------------+--------------+
+                                  | VlmTaskClass
+                                  v
+                +--------------------------------+
+                |   VlmRouter.select_profile_... |
+                |   Layer 1: ContextVar override |  highest precedence
+                |   Layer 2: config default      |
+                |   Layer 3: heuristic mapping   |
+                +-----------------+--------------+
+                                  v
+                +--------------------------------+
+                |   VlmRoutingDecision           |
+                |   (TRUST-2 ready: rule_id +    |
+                |    rule_source +               |
+                |    matched_pattern)            |
+                +-----------------+--------------+
+                                  v
+                       VlmProfile + vllm_serve_command()
+```
+
+### Profiles
+
+| Tier | Model | Speed | Quality (rel.) | Use case |
+|---|---|---:|---:|---|
+| `fast` | `Qwen/Qwen3-VL-8B-Instruct` | ~95 tok/s | 85 % | Short clips, captions, OCR, scene-classification, social cuts |
+| `balanced` | `Qwen/Qwen3-VL-8B-Thinking` | ~30 tok/s | 93 % | Reasoning, math-over-video, multi-step inference (chain-of-thought) |
+| `premium` | `mmangkad/Qwen3.6-27B-NVFP4` | ~3 tok/s | 100 % | Long clips, fine-grained nuance, forensic — accepts CPU-offload latency |
+
+The flag tuples carried inside each `VlmProfile` are the *single source
+of truth* for both the smoke tests (`scripts/smoke_vllm_backend.py`) and
+the launch wizard. Drift between docs and runtime cannot happen
+silently — operators read `profile.vllm_serve_command()` to get the
+exact argv list.
+
+### Heuristic classifier
+
+`classify_vlm_task(prompt, video_seconds=...)` is a pure deterministic
+function. Six output classes, mapped to profiles via a centralised
+table:
+
+| `VlmTaskClass` | Default profile | Trigger |
+|---|---|---|
+| `quick_describe` | fast | Short prompt, no special keywords |
+| `ocr_dominant` | fast | "read", "OCR", "Lies", "Schrift" |
+| `detailed_analysis` | balanced | Long prompt (>=60 words) or "detailed", "ausfuehrlich" |
+| `multi_step_reasoning` | premium | "compare", "calculate", "vergleiche", "berechne", "warum" |
+| `long_form` | premium | `video_seconds > 60` |
+| `forensic` | premium | "forensic", "deepfake", "authentic", "manipulation" |
+
+### Override layers
+
+```python
+from cognithor.core.vlm_router import VlmRouter
+
+router = VlmRouter(config=cognithor_config)
+
+# Layer 3 (heuristic): "Beschreibe diesen Clip" -> fast
+profile = router.select_profile("Beschreibe diesen Clip")
+
+# Layer 1 (ContextVar pin): force premium for one async block
+with router.quality_scope("premium"):
+    profile = router.select_profile("Beschreibe diesen Clip")
+    # -> premium, rule_id=vlm_override_contextvar
+
+# Layer 2 (config): pin via ~/.cognithor/config.yaml
+#   vllm:
+#     quality_default: balanced
+```
+
+### TRUST-2 audit surface
+
+Every routing decision returns a `VlmRoutingDecision` with non-empty
+`rule_id`, `rule_source`, and (for heuristic decisions) the exact
+`matched_pattern` substring that triggered the rule. The Receipt
+sidebar can render: "the prompt contained the word 'compare',
+therefore the multi-step-reasoning rule fired, therefore premium."
+Audit reviewers can grep the audit chain for `vlm_heuristic_*` /
+`vlm_override_*` rule_ids to replay routing decisions offline.
+
+Source: [`src/cognithor/core/vlm_router.py`](../src/cognithor/core/vlm_router.py),
+tests at [`tests/test_core/test_vlm_router.py`](../tests/test_core/test_vlm_router.py)
+(34 tests covering profile invariants, heuristic determinism,
+override precedence, ContextVar isolation across async tasks, and
+TRUST-2 field consistency).
 
 ---
 

@@ -108,9 +108,9 @@ python -m cognithor
 You will see the CLI REPL:
 ```
 +----------------------------------+
-|  Cognithor - Agent OS v0.47.0    |
-|  Model: qwen3:32b               |
-|  Tools: 53 registered           |
+|  Cognithor - Agent OS v0.99.0    |
+|  Model: qwen3:32b                |
+|  Tools: 141 registered           |
 +----------------------------------+
 
 User > _
@@ -191,9 +191,10 @@ personality:
 ## 8. Monitoring
 
 ```bash
-make smoke        # 26 installation checks
+make smoke        # Installation checks (preflight)
 make health       # Runtime check (Ollama, disk, memory)
-make test         # Run 10,800+ tests
+make test         # Run the full backend regression (17,000+ test functions, ~13 min on a warm tree)
+# Authoritative count: pytest --collect-only -q tests/ | tail -5
 ```
 
 Logs:

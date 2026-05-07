@@ -13,7 +13,7 @@
     <a href="https://cognithor.ai/blog">Blog</a>
   </p>
   <p align="center">
-    <a href="#llm-providers">19 LLM Providers</a> &middot; <a href="#channels">18 Channels</a> &middot; <a href="#6-tier-cognitive-memory">6-Tier Memory</a> &middot; <a href="#4-channel-hybrid-search">4-Channel Search</a> &middot; <a href="#knowledge-vault">Knowledge Vault</a> &middot; <a 
+    <a href="#llm-providers">19 LLM Providers</a> &middot; <a href="#channels">17 Channels</a> &middot; <a href="#6-tier-cognitive-memory">6-Tier Memory</a> &middot; <a href="#4-channel-hybrid-search">4-Channel Search</a> &middot; <a href="#knowledge-vault">Knowledge Vault</a> &middot; <a 
     href="#security">Security</a> &middot; <a href="LICENSE">Apache 2.0</a>
   </p>
   <p align="center">
@@ -29,7 +29,7 @@
 
 > **Pre-v1.0 Beta** — Cognithor is under active development. APIs may change between releases. Not recommended for production customer-facing deployments. Bug reports and feedback welcome via [Issues](../../issues).
 >
-> While the test suite is extensive (14,500+ tests, 89% coverage), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. See [Status & Maturity](#status--maturity) for details. For non-technical users, wait until version 1.0.0 for stable long-term support.
+> While the test suite is extensive (17,000+ test functions, 89% coverage gate), the project has not been battle-tested in production environments. Expect rough edges, breaking changes between versions, and some German-language strings in system prompts and error messages. See [Status & Maturity](#status--maturity) for details. For non-technical users, wait until version 1.0.0 for stable long-term support.
 
   [![clawdboard](https://clawdboard.ai/api/badge/Alex8791-cyber)](https://clawdboard.ai/user/Alex8791-cyber)
 
@@ -37,7 +37,7 @@
   <a href="https://clawdboard.ai/recap/6fd37b26-7e41-4b0f-958a-3f2580427ccf"><strong>Weekly Recap: Rank #1 | $1,644 spent vibe-engineering</strong></a>
 </p>
 
-> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security, TRUST-1..10 operational-trust stack), backed by 14,500+ tests, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
+> **Vibe-Engineered, not vibe-coded.** Cognithor is not a weekend hack held together by AI-generated spaghetti. Every module follows a deliberate architecture (PGE-Trinity, 6-phase gateway init, 3-layer security, TRUST-1..10 operational-trust stack), backed by 17,000+ test functions, structured plans, spec compliance reviews, and code quality gates. The AI writes the code — but a human engineers the system. There's a difference.
 
 ---
 
@@ -45,7 +45,7 @@
 
 Most AI assistants send your data to the cloud. Cognithor runs entirely on your machine — with Ollama or LM Studio, no API keys required. Cloud providers are optional, not mandatory.
 
-It replaces a patchwork of tools with one integrated system: 18 channels, 136 MCP tools across 30 modules, 6-tier memory with 4-channel hybrid search, knowledge vault, voice, browser automation, Computer Use, cross-platform social listening, signed audit receipts (TRUST-1..10), and more — all wired together from day one. 14,500+ tests at 89% coverage keep it honest. See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
+It replaces a patchwork of tools with one integrated system: 17 channels, 141 MCP tools across 30 modules, 6-tier memory with 4-channel hybrid search, knowledge vault, voice, browser automation, Computer Use, cross-platform social listening, signed audit receipts (TRUST-1..10), resumable batch workflows (CRWE), TUF-Light-signed pack registry, and more — all wired together from day one. The test suite is extensive (17,000+ test functions, 89% coverage gate). See [Status & Maturity](#status--maturity) for what that does and does not guarantee.
 
 **In plain terms:** Cognithor is an AI assistant that lives entirely on your computer. You talk to it through your terminal, a web UI, Telegram, Discord, or any of 18 supported channels — and it talks back, remembers what you said last week, and acts on your behalf. It can search the web, write and edit files, run shell commands, control your browser, automate your desktop (clicking, typing, reading windows), manage your calendar, and learn new skills over time. Think of it as a local, private, self-improving Jarvis.
 
@@ -78,7 +78,10 @@ What makes it different from other local AI tools is that Cognithor is not just 
 | **Autonomous Task Framework** | Beta — task decomposition, self-evaluation, recurring scheduling |
 | **Background Process Manager** | Beta — 6 MCP tools, 5-method ProcessMonitor, SQLite persistence |
 | **Multi-Agent System** | Beta — 5 specialized agents with model/temperature/top_p overrides |
-| **Audit & Compliance** | Beta — HMAC + Ed25519 signatures, RFC 3161 TSA, GDPR Art. 15/33, WORM-ready |
+| **Audit & Compliance** | Beta — HMAC + Ed25519 signatures, RFC 3161 TSA, GDPR Art. 15/33, WORM-ready, hash-chained `prev_hash` over canonical NFC-JSON, dedicated `AuditCategory.REFLECTION` channel for autonomous learning (Compliance-Spring v0.98.0) |
+| **Resilient Workflow Engine (CRWE)** | Stable — `cognithor task <manifest>` with JSONL streaming, atomic checkpoint, file-lock, SIGINT/SIGTERM emergency-checkpoint between tasks, manifest-tamper detection on `--resume`, audit-chain integration. Crash-recovery integration test passes on Windows under SIGKILL (v0.99.0). |
+| **Pack Registry Signing** | Beta — TUF-Light Ed25519 (offline Root + online Targets) + SHA-256 verifier; marketplace dormant by default until owner mints Root keypair |
+| **Video Composition & Rendering** | Beta — `cognithor.video` package with pluggable `RendererABC`; default HyperFrames backend (Apache-2.0); 5 MCP tools (`video_compose` GREEN, `video_render` ORANGE, raw HTML RED at Gatekeeper); render-receipt linked to TRUST-1 via `run_id`; composer prompts + skill templates ship in `cognithor.video.skills` |
 | **Enterprise features** (GDPR, A2A, Governance) | Stable — GDPR 100% user rights, consent management, SQLCipher encryption, audit trail |
 | **Encryption at Rest** | Stable — SQLCipher (AES-256) for all databases, Fernet for files, OS Keyring key management |
 | **Cross-Platform Social Listening** | Beta — Reddit + Hacker News + Discord scanning, LLM-scored leads, unified MCP tools |
@@ -89,7 +92,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 | **OSINT / HIM Module** | Beta — person/project/org investigation with trust scoring |
 | **Observer Audit Layer** | Stable — post-response LLM quality check across 4 dimensions (hallucinations, sycophancy, laziness, tool-ignorance); triggers regeneration or full PGE re-loop; fails open |
 
-**What the test suite covers:** Unit tests, integration tests, real-life scenario tests, and live Ollama tests for all modules. The 14,500+ tests verify code correctness in controlled environments.
+**What the test suite covers:** Unit tests, integration tests, property-based tests (Hypothesis), audit-completeness burn-ins (nightly CI), real-life scenario tests, and live Ollama tests for all modules. The 17,000+ test functions verify code correctness in controlled environments.
 
 **What the test suite does NOT cover:** Real-world deployment scenarios, network edge cases, long-running stability, multi-user load, hardware-specific voice/GPU issues, or actual LLM response quality.
 
@@ -127,7 +130,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 ## Highlights
 
 - **19 LLM Providers** — Ollama (local), LM Studio (local), vLLM (local), llama-cpp-python (local), OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, Together AI, OpenRouter, xAI (Grok), Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot/Kimi, Claude Code — plus any custom OpenAI-compatible endpoint
-- **18 Communication Channels** — CLI, Web UI, REST API, Telegram, Discord, Slack, WhatsApp, Signal, iMessage, Microsoft Teams, Matrix, Google Chat, Mattermost, Feishu/Lark, IRC, Twitch, Voice (STT/TTS)
+- **17 Communication Channels** — CLI, Web UI, REST API, Telegram, Discord, Slack, WhatsApp, Signal, iMessage, Microsoft Teams, Matrix, Google Chat, Mattermost, Feishu/Lark, IRC, Twitch, Voice (STT/TTS)
 - **6-Tier Cognitive Memory** — Core identity, episodic logs, semantic knowledge graph, procedural skills, working memory, tactical memory
 - **4-Channel Hybrid Search** — BM25 full-text + vector embeddings + knowledge graph traversal + hierarchical document reasoning with score fusion
 - **PGE Architecture** — Planner (LLM) -> Gatekeeper (deterministic policy engine) -> Executor (sandboxed)
@@ -137,7 +140,9 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **Knowledge Vault** — Obsidian-compatible Markdown vault with YAML frontmatter, tags, `[[backlinks]]`, full-text search
 - **Document Analysis** — LLM-powered structured analysis of PDF/DOCX/HTML (summary, risks, action items, decisions)
 - **Video Input** — Attach local videos (`.mp4` / `.webm` / `.mov` / `.mkv` / `.avi`) or paste direct video URLs; Qwen3.6-27B (or any video-capable VLM) analyzes them end-to-end via vLLM's native `video_url` content type. Adaptive frame sampling (fps=3 for short clips, `num_frames=32` for long) via `ffprobe`. Single video per turn, served from a 127.0.0.1-only HTTP file server, 24h auto-cleanup. Requires vLLM backend — Windows installer bundles LGPL ffmpeg. See [`docs/vllm-user-guide.md`](docs/vllm-user-guide.md).
-- **Model Context Protocol (MCP)** — 136 tools across 30 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, documents, social, kanban, identity, evolution, computer-use, sevDesk, A2A and more) — counts auto-verified against [`docs/integrations/catalog.json`](docs/integrations/catalog.json) on every release
+- **VLM Router** — Three-tier profile system (`fast` / `balanced` / `premium`) for video and image understanding. Heuristic classifier inspects the user's prompt and clip metadata, picks the right VLM (Qwen3-VL-8B-Instruct → Qwen3-VL-8B-Thinking → Qwen3.6-27B-NVFP4), exposes the routing decision via TRUST-2 (`rule_id` + `matched_pattern`) so a receipt reviewer can replay why a particular model was chosen. Override via `with router.quality_scope("premium"):` or `config.vllm.quality_default`. ContextVar-isolated for async safety. See [`src/cognithor/core/vlm_router.py`](src/cognithor/core/vlm_router.py).
+- **Video Composition & Rendering** — Cognithor doesn't only *read* videos, it can *make* them. The `cognithor.video` package ships a thin `RendererABC` abstraction with **HyperFrames (Apache-2.0)** as the default backend; future renderers (Remotion, cloud) can be swapped without touching the MCP-tool layer. Five MCP tools cover the workflow: `video_compose` (GREEN — pure-function, builds a self-contained HTML composition from a structured spec, no subprocess, no FS write), `video_compose_explainer` (16:9 title-card + body + CTA preset), `video_compose_social_cut` (vertical 9:16 hook + fast-cut beats + outro), `video_caption_overlay` (parallel caption track), and `video_render` (ORANGE — renders composition HTML to MP4 / MOV / WebM under `~/.cognithor/render/<run_id>/`). Raw user-supplied HTML is **RED** at the Gatekeeper — only structured specs reach the renderer. Render output is linked to the agent run via the same `run_id` the streaming EventEmitter and TRUST-1 receipt API use, so every frame is provenance-attributable end-to-end. Composer prompts + reusable templates live in `cognithor.video.skills` (HF-5). VLM video-read can drive composition directly — see VLM-4 smoke at [`tests/test_video/`](tests/test_video/).
+- **Model Context Protocol (MCP)** — 141 tools across 30 modules (filesystem, shell, memory, web, browser, media, vault, synthesis, code, skills, documents, social, kanban, identity, evolution, computer-use, sevDesk, A2A and more) — counts auto-generated into [`docs/integrations/catalog.json`](docs/integrations/catalog.json) on every release
 - **Computer Use** — Complete desktop automation: screenshots, clicking, typing, scrolling, dragging, Windows UI Automation via pywinauto for exact element coordinates, 3-layer security, adaptive wait
 - **ARC-AGI-3 Benchmark Agent** — Compete in ARC Prize 2026: 13/25 games solved (24 levels), 4 solver families (ClusterClick, SequenceClick+SimA*, KeyboardDFS, SmartExplorer), persistent game profiles, multimodal vision (qwen3-vl)
 - **Distributed Locking** — Redis-backed (with file-based fallback) locks for multi-instance deployments
@@ -179,9 +184,12 @@ What makes it different from other local AI tools is that Cognithor is not just 
 - **uv Installer Support** — Automatic uv detection for 10x faster installs, transparent pip fallback
 - **Observer Audit Layer** — Every response audited against 4 quality dimensions (hallucination, sycophancy, laziness, tool-ignorance) with differentiated retry strategies. Runs locally with qwen3:32b.
 - **Operational Trust (TRUST-1..10)** — Signed run-receipts (`cognithor receipt show / verify / list / export-all / diff`), structured Gatekeeper decision-explanations (`rule_id` + `rule_source` + `matched_pattern`), 15-value `FailureMode` taxonomy, pack rollback, six append-only ledgers (Provenance, Permission-Scopes, Tool-Fingerprints, Cloud-Escalation, Cost in micro-USD, Migration). REST: `GET /api/crew/trace/{trace_id}/receipt`. See [Operational Trust](#operational-trust-trust-110) and [`docs/operational_trust.md`](docs/operational_trust.md)
+- **Resilient Workflow Engine (CRWE, v0.99.0)** — `cognithor task <manifest.json>` runs declarative batch workflows with JSONL streaming, per-task `flush() + os.fsync()`, atomic modulo-N `.checkpoint.json`, `.checkpoint.lock` (POSIX `fcntl.flock` / Windows `msvcrt.locking`), SIGINT/SIGTERM emergency-checkpoint between tasks, manifest-tamper detection on `--resume`, and audit-chain integration (`workflow_resumed` / `system_checkpoint_created` events). Crash-recovery uses `results.jsonl` line count as source-of-truth.
+- **Hash-Chained Audit Log** — Every audit event is HMAC-SHA-256 chained to the previous via `prev_hash` over canonical NFC-normalized JSON. The Reflector ships through a dedicated `AuditCategory.REFLECTION` channel (Compliance-Spring v0.98.0) with nine event types covering causal sequences, weight snapshots, episodic appends, semantic facts, and procedure auto-creation — verifiable end-to-end with `cognithor audit verify`. Property-based Hypothesis tests + a nightly burn-in CI keep the chain intact.
+- **TUF-Light Pack Registry Signing** — Community pack registry uses Ed25519 + SHA-256 (offline Root key, online Targets key) per the [TUF-Light spec](docs/superpowers/specs/2026-05-05-pack4-registry-signing.md). Operator runbook: [`docs/runbooks/registry_key_rotation.md`](docs/runbooks/registry_key_rotation.md). Marketplace dormant by default until owner mints Root keypair.
 - **Integrations Catalog** — Auto-generated from `src/cognithor/mcp/` — see [`docs/integrations/catalog.json`](docs/integrations/catalog.json). DACH-specific: sevDesk REST connector (accounting).
 - **Competitive Analysis** — [`docs/competitive-analysis/`](docs/competitive-analysis/README.md) — Cognithor vs AutoGen / MAF / LangGraph / CrewAI.
-- **14,500+ tests** · **89% coverage** · **0 lint errors** · **0 CodeQL alerts** · **mypy --strict** clean across the new TRUST surface
+- **17,000+ test functions** · **89% coverage gate** · **0 lint errors** · **0 CodeQL alerts** · **mypy --strict** clean across the new TRUST + CRWE surface
 
 ## Architecture
 ```mermaid id="k8v3zp"
@@ -193,7 +201,7 @@ subgraph ENTRY["Entry Points"]
 (Mobile app available)"]
     API["REST API"]
     CHANNELS["Messaging Channels
-(19 external channels)"]
+(17 channels — chat, voice, REST)"]
 end
 
 %% ===== CORE LOOP =====
@@ -227,7 +235,7 @@ subgraph EXEC["Execution Stack"]
 Parallel + Retry Logic"]
 
     TOOLS["MCP Tools
-(136 tools / 30 modules)"]
+(141 tools / 30 modules)"]
 
     LLM["LLM Backends
 Local + Cloud Models
@@ -321,6 +329,8 @@ Cognithor auto-detects your backend from API keys. Set one key and models are co
 |----------|-------------|------------|----------------------------|
 | **Ollama** (local) | `ollama` | *(none needed)* | qwen3:32b / qwen3:8b |
 | **LM Studio** (local) | `lmstudio` | *(none needed)* | *(your loaded models)* |
+| **vLLM** (local, NVIDIA GPU) | `vllm` | *(none needed)* | qwen3.6:27b NVFP4 (RTX 5090 / 32 GB VRAM target) |
+| **llama-cpp-python** (local) | `llama_cpp` | `llama_cpp_base_url` | *(GGUF model loaded by llama.cpp server)* |
 | **OpenAI** | `openai` | `openai_api_key` | gpt-5.2 / gpt-5-mini |
 | **Anthropic** | `anthropic` | `anthropic_api_key` | claude-opus-4-6 / claude-haiku-4-5 |
 | **Google Gemini** | `gemini` | `gemini_api_key` | gemini-2.5-pro / gemini-2.5-flash |
@@ -409,7 +419,7 @@ ollama pull qwen3:8b                # Pull a model
 cognithor                           # Start
 
 # Upgrade to a specific version:
-pip install cognithor[all]==0.97.0
+pip install cognithor[all]==0.99.0
 
 # Upgrade to latest:
 pip install --upgrade cognithor[all]
@@ -432,19 +442,7 @@ No GPU? Use `qwen3:8b` for both, or set a cloud API key — models are auto-conf
 
 > **Uninstall:** Windows: run `uninstall.bat`. Linux: `./install.sh --uninstall`. PyPI: `pip uninstall cognithor`.
 
-### Step 2: Pull an LLM (~2 min)
-
-```bash
-ollama pull qwen3:32b           # Planner (20 GB VRAM)
-ollama pull qwen3:8b            # Executor (6 GB VRAM)
-ollama pull qwen3-embedding:0.6b    # Embeddings (500 MB VRAM)
-# Optional:
-ollama pull qwen3-coder:30b     # Code tasks (20 GB VRAM)
-```
-
-No GPU? Use smaller models (`qwen3:8b` for both) or a cloud provider — just set one API key.
-
-### Step 3: Start (~10 sec)
+### Start (~10 sec)
 
 **Option A: One-Click (Windows)** — includes a pre-built Web UI, no Node.js needed
 
@@ -766,7 +764,9 @@ python -m pytest tests/test_memory/ -v
 python -m pytest tests/test_channels/ -v
 ```
 
-Current status: **14,500+ tests** · **100% pass rate** · **89% coverage** · **~257,000 LOC Python source** · **~224,000 LOC Python tests** · **~66,000 LOC Flutter (Dart)**
+Current status: **17,000+ test functions** · **100% pass rate on main** · **89% coverage gate** · **~257,000 LOC Python source** · **~224,000 LOC Python tests** · **~66,000 LOC Flutter (Dart)**
+
+Test breakdown counts below are historical snapshots and may lag behind the live tree — `pytest --collect-only -q tests/ | tail -5` is the authoritative figure.
 
 Notable test suites: 183 Computer Use tests, 176 ARC tests, 136 Hierarchical Retrieval tests, 71 CAG tests.
 
@@ -894,7 +894,7 @@ print(t("error.timeout"))  # "The operation timed out..."
 3. Run `python -c "from cognithor.i18n import generate_pack_hash; generate_pack_hash('<locale>')"`
 4. Submit a PR
 
-**Metrics:** ~257,000 LOC Python source · ~224,000 LOC Python tests · ~66,000 LOC Flutter (Dart) · 14,500+ tests · 89% coverage · 0 lint errors · **Status: Beta**
+**Metrics:** ~257,000 LOC Python source · ~224,000 LOC Python tests · ~66,000 LOC Flutter (Dart) · 17,000+ test functions · 89% coverage gate · 0 lint errors · **Status: Beta**
 
 ## Contributors
 

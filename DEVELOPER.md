@@ -72,7 +72,7 @@ cognithor/
 │   ├── security/               # Token store, credential masking
 │   ├── audit/                  # Immutable decision logging
 │   └── learning/               # Prompt evolution, gap detection
-├── tests/                      # 361 test files, 10,800+ tests
+├── tests/                      # 868+ test files, 17,000+ test functions (live: pytest --collect-only -q tests/ | tail -5)
 ├── ui/                         # React 19 + Vite 7.3 WebUI
 ├── apps/pwa/                   # Preact + Capacitor 7 PWA
 ├── skills/                     # Built-in skill definitions (.md)
@@ -390,8 +390,11 @@ email:
 ### Running Tests
 
 ```bash
-# Full suite (~10,800 tests)
+# Full suite (17,000+ test functions, ~13 min on a warm tree)
 pytest tests/
+
+# Authoritative live count
+pytest --collect-only -q tests/ | tail -5
 
 # Fast (skip slow/integration)
 pytest tests/ -m "not slow and not integration"

@@ -17,8 +17,11 @@
 ## Quick Start
 
 ```bash
-# Full suite (~10,800 tests, ~6 minutes)
+# Full suite (17,000+ test functions, ~13 minutes on a warm tree)
 pytest tests/
+
+# Authoritative count
+pytest --collect-only -q tests/ | tail -5
 
 # Quick check (stop on first failure)
 pytest tests/ -x -q --tb=short
@@ -33,15 +36,20 @@ pytest tests/test_planner.py -v
 pytest tests/test_planner.py::TestPlanner::test_plan_creation
 
 # With coverage
-pytest tests/ --cov=src/jarvis --cov-report=html
+pytest tests/ --cov=src/cognithor --cov-report=html
 ```
+
+### Property-based + nightly burn-in
+
+- **Hypothesis property tests** under `tests/test_security/test_reflector_audit_completeness.py` and adjacent files exercise audit-chain invariants (NFC canonicalization idempotency, `prev_hash` linking, completeness guarantees). Run them like any other pytest module.
+- **Nightly burn-in workflow** at `.github/workflows/nightly-burn-in.yml` runs `scripts/burn_in_compliance_spring.py --home <tmp>` daily at 03:00 UTC. The script generates synthetic load and asserts four green metrics (storage / audit-failures / atomic-rollbacks / behavioral-drift). Failures page the operator the next morning.
 
 ---
 
 ## Test Organization
 
 ```
-tests/                          # 345 files, 10,800+ tests
+tests/                          # 868+ files, 17,000+ test functions (counts grow over time — `pytest --collect-only` is authoritative)
 ├── conftest.py                 # Root fixtures (config, tmp_home, locale)
 ├── test_core/                  # (54) Planner, Gatekeeper, Executor, ...
 ├── test_security/              # (53) Security infrastructure, policies
