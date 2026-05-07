@@ -1,0 +1,51 @@
+# Cosmic-Ray mutation-testing config — Sprint 1.1.
+#
+# Targets only the high-stakes "TRUST core" — mutating the whole tree
+# is multi-day work and noisy. The point of this baseline is to ensure
+# the modules where a bug = audit-trail-corruption / privilege-escalation
+# /  unsafe-tool-dispatch are exercised by tests that *catch* mutations,
+# not just touch the line.
+#
+# Run:
+#     cosmic-ray init cosmic-ray.toml session.sqlite
+#     cosmic-ray exec cosmic-ray.toml session.sqlite
+#     cosmic-ray dump session.sqlite | cr-report --show-output > docs/quality/mutation-baseline.md
+#
+# Mutation score = killed / (killed + survived). Target: >= 80% for
+# TRUST modules. Survivors get logged as `tests/quality/survivors.txt`
+# so reviewers can see WHICH mutations slipped through tests.
+
+[cosmic-ray]
+module-path = "src/cognithor"
+timeout = 30.0
+excluded-modules = [
+    # Auto-generated or behaviour-trivial — exclude from mutation
+    "cognithor.__main__",
+    "cognithor.utils.logging",
+]
+
+# Only mutate the TRUST-critical modules. Whitelist beats blacklist
+# here because the rest of the tree adds noise.
+test-command = "pytest -x --no-header -q tests/test_audit/ tests/test_security/ tests/test_video/test_routing.py tests/test_core/test_vlm_router.py tests/test_core/test_workflow.py"
+
+[cosmic-ray.distributor]
+name = "local"
+
+[cosmic-ray.interceptors]
+# Skip mutations that would hit comments-only or docstring-only lines
+enabled = ["spor"]
+
+# Module-level allowlist — only mutate these paths.
+# Cosmic-Ray's `init` honours module-path filters via baseline-tests-pass
+# checks; we additionally restrict via the `paths` list when invoking init:
+#   cosmic-ray init cosmic-ray.toml session.sqlite \
+#     --paths src/cognithor/audit \
+#     --paths src/cognithor/security/permission_scope.py \
+#     --paths src/cognithor/security/cost_ledger.py \
+#     --paths src/cognithor/security/fingerprint.py \
+#     --paths src/cognithor/security/migration_ledger.py \
+#     --paths src/cognithor/security/cloud_escalation.py \
+#     --paths src/cognithor/security/trust_bundle.py \
+#     --paths src/cognithor/video/routing.py \
+#     --paths src/cognithor/core/vlm_router.py \
+#     --paths src/cognithor/core/workflow.py

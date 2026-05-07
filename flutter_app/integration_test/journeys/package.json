@@ -1,0 +1,16 @@
+{
+  "name": "cognithor-journey-tests",
+  "version": "0.1.0",
+  "description": "Playwright user-journey tests against the Flutter Web build — Sprint 3.2.",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@axe-core/playwright": "^4.10.0"
+  }
+}

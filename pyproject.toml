@@ -65,6 +65,19 @@ dev = [
     #   pip install -e ./cognithor_bench
     #   pip install -e ./examples/insurance-agent-pack
 ]
+# Enterprise-quality test tooling (Sprints 1-3 production-readiness).
+# Heavyweight; install with `pip install -e ".[dev,quality]"` only when
+# running mutation, soak, chaos, SLO, or arch-fitness suites locally.
+# CI installs them on dedicated `quality-*` jobs that run nightly /
+# weekly rather than on every PR.
+quality = [
+    "cosmic-ray>=8.3",          # mutation testing
+    "import-linter>=2.0",       # architecture fitness
+    "pytest-benchmark>=4.0",    # SLO p95/p99 gates
+    "locust>=2.20",             # 24h soak harness
+    "cyclonedx-bom>=4.0",       # SBOM generation
+    "pip-audit>=2.7",           # supply-chain CVE scan
+]
 memory = [
     "numpy>=2.0,<3",
     "sqlite-vec>=0.1",

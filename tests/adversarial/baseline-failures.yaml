@@ -1,0 +1,9 @@
+# Baseline failures — Sprint 1.2.
+#
+# Attacks the system does not currently catch but for which a fix is
+# in flight. Each entry has a TTL; after `tolerated_until`, the
+# adversarial test for that attack becomes a hard CI fail.
+#
+# Empty by default — populate as needed.
+
+baseline_failures: []

@@ -1,0 +1,83 @@
+name: Quality — SBOM + supply-chain hardening
+
+# Sprint 1.4 — runs on every release tag plus weekly to catch newly
+# disclosed CVEs in already-pinned deps. Outputs:
+#   * CycloneDX SBOM (JSON + XML), attached to the release as artifacts
+#   * pip-audit report — fails the workflow on any HIGH/CRITICAL CVE
+#     unless explicitly waivered in `.github/security/cve-waivers.yaml`
+#   * sigstore-signed wheel for downstream verifiers (cosign, slsa)
+
+on:
+  push:
+    tags:
+      - "v*"
+  schedule:
+    # Weekly fresh CVE scan against the latest published wheel
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+jobs:
+  sbom-and-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # for sigstore signing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Cognithor + quality extras
+        run: pip install -e ".[dev,quality]"
+
+      # ── CycloneDX SBOM ─────────────────────────────────────────────
+      - name: Generate CycloneDX SBOM (JSON)
+        run: |
+          mkdir -p dist/sbom
+          cyclonedx-py environment \
+              --output-file dist/sbom/cognithor.cdx.json \
+              --output-format JSON
+          cyclonedx-py environment \
+              --output-file dist/sbom/cognithor.cdx.xml \
+              --output-format XML
+
+      # ── pip-audit CVE scan ─────────────────────────────────────────
+      - name: pip-audit (HIGH/CRITICAL gate)
+        run: |
+          pip-audit --format json --output dist/sbom/pip-audit.json || true
+          python tests/quality/pip_audit_gate.py \
+              dist/sbom/pip-audit.json \
+              .github/security/cve-waivers.yaml
+
+      # ── Build + sign wheel (release tags only) ─────────────────────
+      - name: Build wheel
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: pip wheel --no-deps --wheel-dir dist/ .
+
+      - name: Sign wheel via sigstore
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: dist/*.whl
+
+      # ── Upload artefacts ───────────────────────────────────────────
+      - name: Upload SBOM + audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-and-audit-${{ github.ref_name }}
+          path: |
+            dist/sbom/cognithor.cdx.json
+            dist/sbom/cognithor.cdx.xml
+            dist/sbom/pip-audit.json
+            dist/*.whl
+            dist/*.whl.sig
+            dist/*.whl.crt
+
+      - name: Attach to GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/sbom/cognithor.cdx.json
+            dist/sbom/cognithor.cdx.xml
+            dist/sbom/pip-audit.json

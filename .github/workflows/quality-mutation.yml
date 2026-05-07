@@ -1,0 +1,82 @@
+name: Quality — Mutation Testing (TRUST core)
+
+# Sprint 1.1 — runs cosmic-ray against the TRUST-critical modules.
+# Heavyweight (~30-90 min depending on cache), so only nightly + on
+# manual dispatch. PRs that touch src/cognithor/audit/ or
+# src/cognithor/security/ get an opt-in label-trigger.
+
+on:
+  schedule:
+    # 04:00 UTC — well after nightly burn-in completes
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: "Comma-sep paths to mutate (default: TRUST core)"
+        required: false
+        default: "src/cognithor/audit,src/cognithor/security/permission_scope.py,src/cognithor/security/cost_ledger.py,src/cognithor/security/fingerprint.py,src/cognithor/security/migration_ledger.py,src/cognithor/security/cloud_escalation.py,src/cognithor/security/trust_bundle.py,src/cognithor/video/routing.py,src/cognithor/core/vlm_router.py,src/cognithor/core/workflow.py"
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Cognithor + quality extras
+        run: pip install -e ".[dev,quality]"
+      - name: Initialise mutation session
+        run: |
+          IFS=',' read -r -a PATHS <<< "${{ inputs.paths }}"
+          PATH_ARGS=()
+          for p in "${PATHS[@]:-}"; do
+            PATH_ARGS+=(--paths "$p")
+          done
+          # Default paths if none provided
+          if [ ${#PATH_ARGS[@]} -eq 0 ]; then
+            PATH_ARGS=(
+              --paths src/cognithor/audit
+              --paths src/cognithor/security/permission_scope.py
+              --paths src/cognithor/security/cost_ledger.py
+              --paths src/cognithor/security/fingerprint.py
+              --paths src/cognithor/security/migration_ledger.py
+              --paths src/cognithor/security/cloud_escalation.py
+              --paths src/cognithor/security/trust_bundle.py
+              --paths src/cognithor/video/routing.py
+              --paths src/cognithor/core/vlm_router.py
+              --paths src/cognithor/core/workflow.py
+            )
+          fi
+          cosmic-ray init cosmic-ray.toml session.sqlite "${PATH_ARGS[@]}"
+      - name: Run mutation testing
+        run: cosmic-ray exec cosmic-ray.toml session.sqlite
+        timeout-minutes: 100
+      - name: Generate report
+        run: |
+          mkdir -p docs/quality
+          cosmic-ray dump session.sqlite > docs/quality/mutation-session-raw.json
+          cr-report --show-output session.sqlite > docs/quality/mutation-baseline.md || true
+      - name: Compute mutation score
+        id: score
+        run: |
+          python tests/quality/score_mutations.py session.sqlite > mutation-summary.json
+          cat mutation-summary.json
+          SCORE=$(python -c "import json; print(json.load(open('mutation-summary.json'))['mutation_score_pct'])")
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+      - name: Fail if score below threshold
+        run: |
+          THRESHOLD=80
+          SCORE="${{ steps.score.outputs.score }}"
+          python -c "import sys; sys.exit(0 if float('$SCORE') >= $THRESHOLD else 1)"
+      - name: Upload artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-baseline
+          path: |
+            docs/quality/mutation-baseline.md
+            docs/quality/mutation-session-raw.json
+            mutation-summary.json
+            session.sqlite

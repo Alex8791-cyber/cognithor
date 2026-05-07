@@ -1,0 +1,145 @@
+# Architecture fitness functions — Sprint 2.3.
+#
+# Run with `lint-imports`. CI gate is per-PR. Violations either get
+# fixed or explicitly waivered in `.importlinter-waivers.yaml`.
+#
+# Contract authoring guide:
+#   * Layered: top depends on layers below it, never sideways or up.
+#   * Forbidden: list importer/imported pairs.
+#   * Independence: a set of modules that may NOT import each other.
+#
+# Reasoning per contract is in the comment block above each.
+
+[importlinter]
+root_packages =
+    cognithor
+
+# ── Layered architecture ───────────────────────────────────────────────
+# Higher layers may import lower; never sideways. Each layer is one
+# rung. Channels sit at the top because they're entry points; security
+# sits below everything because it's policy that all layers consult.
+
+[importlinter:contract:1]
+name = Cognithor layered dependencies
+type = layers
+layers =
+    cognithor.channels
+    cognithor.gateway
+    cognithor.crew
+    cognithor.skills
+    cognithor.mcp
+    cognithor.video : cognithor.evolution : cognithor.identity : cognithor.kanban : cognithor.leads : cognithor.packs
+    cognithor.memory : cognithor.audit : cognithor.db
+    cognithor.core
+    cognithor.security
+    cognithor.config : cognithor.utils
+exhaustive = false
+ignore_imports =
+    # Logging is allowed cross-layer because it's pure utility.
+    cognithor.utils.logging -> *
+    # Security needs to read config but not the other way.
+    cognithor.security -> cognithor.config
+
+# ── Forbidden: packs may not touch security internals ──────────────────
+# A pack should declare its tool-risks in its manifest; the loader
+# enforces them. Packs reaching into security.* would let a malicious
+# pack bypass the Gatekeeper layer.
+
+[importlinter:contract:2]
+name = Packs cannot import security internals
+type = forbidden
+source_modules =
+    cognithor.packs
+forbidden_modules =
+    cognithor.security.permission_scope
+    cognithor.security.cost_ledger
+    cognithor.security.fingerprint
+    cognithor.security.cloud_escalation
+    cognithor.security.trust_bundle
+
+# ── Forbidden: channels cannot reach into Crew internals ───────────────
+# Channels invoke crew via the public API surface. Going around it
+# means a channel could observe partial Crew state and re-implement
+# sequencing the wrong way.
+
+[importlinter:contract:3]
+name = Channels use only Crew public surface
+type = forbidden
+source_modules =
+    cognithor.channels
+forbidden_modules =
+    cognithor.crew.guardrails
+    cognithor.crew.delegation
+    cognithor.crew.replay_internals
+allow_indirect_imports = true
+
+# ── Forbidden: tests cannot import from src/ via relative paths ────────
+# The repo allows `from cognithor.x import y` (absolute). Relative
+# imports across the src/ boundary cause editable-install drift.
+
+[importlinter:contract:4]
+name = No src-relative imports in tests
+type = forbidden
+source_modules =
+    tests
+forbidden_modules =
+    src
+    src.cognithor
+
+# ── Independence: video pipeline tools must not depend on each other ───
+# The 5 video tools (compose, compose_explainer, compose_social_cut,
+# caption_overlay, render) should each be self-contained so they can
+# be swapped or A/B-tested individually.
+
+[importlinter:contract:5]
+name = Video MCP tools are independent
+type = independence
+modules =
+    cognithor.mcp.video_tools
+    cognithor.video.skills
+    cognithor.video.renderer_base
+    cognithor.video.renderers
+
+# ── Forbidden: no direct vllm-orchestrator from non-routing/non-API ────
+# Only the API layer + the routing module should drive the
+# orchestrator. Anyone else stops or starts the container is a bug
+# waiting to happen.
+
+[importlinter:contract:6]
+name = vllm_orchestrator only used by routing + API
+type = forbidden
+source_modules =
+    cognithor.crew
+    cognithor.skills
+    cognithor.packs
+    cognithor.evolution
+    cognithor.kanban
+forbidden_modules =
+    cognithor.core.vllm_orchestrator
+
+# ── Forbidden: mcp tools must not import channels ──────────────────────
+# Tools are pure functions of inputs; if they need channel context
+# it's via Gatekeeper-mediated parameters.
+
+[importlinter:contract:7]
+name = MCP tools cannot import channels
+type = forbidden
+source_modules =
+    cognithor.mcp
+forbidden_modules =
+    cognithor.channels
+
+# ── Forbidden: gateway should not depend on individual MCP tool modules ─
+# Gateway dispatches via the registry. Hardcoded imports of specific
+# tools mean a missing optional extra crashes the whole gateway boot.
+
+[importlinter:contract:8]
+name = Gateway uses MCP via registry, not direct imports
+type = forbidden
+source_modules =
+    cognithor.gateway
+forbidden_modules =
+    cognithor.mcp.browser
+    cognithor.mcp.media
+    cognithor.mcp.video_tools
+allow_indirect_imports = true
