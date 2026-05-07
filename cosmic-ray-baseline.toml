@@ -1,0 +1,19 @@
+# Focused mutation-baseline run on the smallest TRUST module —
+# Sprint 1.1 first real measurement.
+#
+# Target: src/cognithor/video/routing.py (~270 LOC of pure-function +
+# async logic). Tests live in tests/test_video/test_routing.py (17
+# tests, ~0.5s total) — keeps each mutation run tight enough to
+# complete the whole sweep in 10-15 min on a single core.
+
+[cosmic-ray]
+module-path = "src/cognithor/video/routing.py"
+timeout = 30.0
+excluded-modules = []
+test-command = "pytest -x --no-header -q tests/test_video/test_routing.py"
+
+[cosmic-ray.distributor]
+name = "local"
+
+[cosmic-ray.distributor.local]
+worker-count = 1
