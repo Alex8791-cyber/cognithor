@@ -35,7 +35,6 @@ from typing import Any
 
 from locust import HttpUser, between, events, task
 
-
 # ---------------------------------------------------------------------------
 # Shared payload generators
 # ---------------------------------------------------------------------------
@@ -188,13 +187,13 @@ _observations: list[dict[str, Any]] = []
 
 
 @events.test_start.add_listener
-def _on_test_start(environment: Any, **_: Any) -> None:  # noqa: ARG001
+def _on_test_start(environment: Any, **_: Any) -> None:
     global _started_at
     _started_at = time.time()
 
 
 @events.test_stop.add_listener
-def _on_test_stop(environment: Any, **_: Any) -> None:  # noqa: ARG001
+def _on_test_stop(environment: Any, **_: Any) -> None:
     elapsed = time.time() - _started_at
     summary = {
         "elapsed_seconds": round(elapsed, 1),

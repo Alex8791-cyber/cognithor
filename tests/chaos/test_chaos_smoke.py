@@ -11,9 +11,12 @@ from __future__ import annotations
 import socket
 import sys
 import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from tests.chaos.faults import (
     audit_chain_is_intact,
@@ -105,8 +108,7 @@ class TestAuditFaults:
         # Build a tiny synthetic chain (non-canonical, just for round-trip)
         p = tmp_path / "audit.jsonl"
         p.write_text(
-            '{"event": "a", "prev_hash": "x"}\n'
-            '{"event": "b", "prev_hash": "y"}\n',
+            '{"event": "a", "prev_hash": "x"}\n{"event": "b", "prev_hash": "y"}\n',
             encoding="utf-8",
         )
         before = p.read_bytes()

@@ -253,9 +253,7 @@ async def vllm_quality_default_get(request: Request) -> dict[str, Any]:
 
 
 @backends_router.post("/vllm/quality-default")
-async def vllm_quality_default_set(
-    request: Request, body: SetVlmQualityRequest
-) -> dict[str, Any]:
+async def vllm_quality_default_set(request: Request, body: SetVlmQualityRequest) -> dict[str, Any]:
     """Persist a VLM-router quality override (or clear it with ``null``).
 
     Writes to ``config.vllm.quality_default`` *and* the on-disk YAML so

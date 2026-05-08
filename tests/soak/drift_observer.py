@@ -41,8 +41,8 @@ def sample(pid: int, audit_path: Path | None) -> dict[str, Any]:
         "num_threads": proc.num_threads(),
     }
     try:
-        sample_dict["num_fds"] = proc.num_fds() if hasattr(proc, "num_fds") else len(
-            proc.connections()
+        sample_dict["num_fds"] = (
+            proc.num_fds() if hasattr(proc, "num_fds") else len(proc.connections())
         )
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         sample_dict["num_fds"] = -1

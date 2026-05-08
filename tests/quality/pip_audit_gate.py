@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +42,7 @@ def _waiver_active(entry: dict[str, Any]) -> bool:
         until = date.fromisoformat(until)
     if not isinstance(until, date):
         return False
-    return until >= datetime.now(tz=timezone.utc).date()
+    return until >= datetime.now(tz=UTC).date()
 
 
 def main() -> int:
@@ -103,9 +103,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    print(
-        f"\nPASS: 0 HIGH/CRITICAL unwaived. ({len(waived)} waived, {len(other)} lower-severity)"
-    )
+    print(f"\nPASS: 0 HIGH/CRITICAL unwaived. ({len(waived)} waived, {len(other)} lower-severity)")
     return 0
 
 

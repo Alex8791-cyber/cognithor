@@ -18,7 +18,7 @@ baseline-failure becomes a hard CI fail.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -60,7 +60,7 @@ def _is_within_ttl(entry: dict[str, Any]) -> bool:
         until = date.fromisoformat(until)
     if not isinstance(until, date):
         return False
-    return until >= datetime.now(tz=timezone.utc).date()
+    return until >= datetime.now(tz=UTC).date()
 
 
 # ---------------------------------------------------------------------------
@@ -147,12 +147,7 @@ def _stub_gatekeeper_classify(attack: str) -> tuple[bool, str]:
         if needle in text_lc:
             return True, rule
     # Zero-width space normalisation
-    normalised = (
-        attack.replace("​", "")
-        .replace("‌", "")
-        .replace("‍", "")
-        .replace("﻿", "")
-    )
+    normalised = attack.replace("​", "").replace("‌", "").replace("‍", "").replace("﻿", "")
     if normalised != attack:
         return _stub_gatekeeper_classify(normalised)
     # Unicode confusables — basic homoglyph collapse
