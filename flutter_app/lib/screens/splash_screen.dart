@@ -112,7 +112,10 @@ class _SplashScreenState extends State<SplashScreen> {
         if (token != null) 'Authorization': 'Bearer $token',
       };
       final r = await http
-          .get(Uri.parse('${conn.serverUrl}/api/system/health'), headers: headers)
+          .get(
+            Uri.parse('${conn.serverUrl}/api/system/health'),
+            headers: headers,
+          )
           .timeout(const Duration(seconds: 5));
       if (r.statusCode != 200) return false;
       final data = jsonDecode(r.body) as Map<String, dynamic>;

@@ -9,16 +9,25 @@ import 'package:http/testing.dart';
 
 import 'package:cognithor_ui/providers/onboarding_provider.dart';
 
-http.Response _ok(Object body) => http.Response(jsonEncode(body), 200,
-    headers: {'content-type': 'application/json'});
+http.Response _ok(Object body) => http.Response(
+  jsonEncode(body),
+  200,
+  headers: {'content-type': 'application/json'},
+);
 
-http.Response _bad(int code) =>
-    http.Response('{"detail":"err"}', code, headers: {'content-type': 'application/json'});
+http.Response _bad(int code) => http.Response(
+  '{"detail":"err"}',
+  code,
+  headers: {'content-type': 'application/json'},
+);
 
 void main() {
   group('OnboardingProvider', () {
     test('initial state is idle', () {
-      final p = OnboardingProvider(apiBaseUrl: 'http://x', httpClient: MockClient((req) async => _ok({})));
+      final p = OnboardingProvider(
+        apiBaseUrl: 'http://x',
+        httpClient: MockClient((req) async => _ok({})),
+      );
       expect(p.stage, WizardStage.idle);
       expect(p.solutions, isEmpty);
       expect(p.appliedTierId, isNull);
@@ -88,7 +97,10 @@ void main() {
                 'rationale_en': '...',
                 'score': 0.708,
                 'score_breakdown': {
-                  'quality': 0.83, 'speed': 0.25, 'cost': 1.0, 'privacy': 1.0,
+                  'quality': 0.83,
+                  'speed': 0.25,
+                  'cost': 1.0,
+                  'privacy': 1.0,
                 },
                 'blockers': [],
                 'warnings': [],
@@ -135,7 +147,8 @@ void main() {
             'config_path': '/home/u/.cognithor/config.yaml',
             'backup_path': null,
             'sidecar_path': '/home/u/.cognithor/.hardware_aware.json',
-            'initialized_marker_path': '/home/u/.cognithor/.cognithor_initialized',
+            'initialized_marker_path':
+                '/home/u/.cognithor/.cognithor_initialized',
             'capabilities_hash': 'sha256:abc',
           });
         }
@@ -148,15 +161,17 @@ void main() {
     });
 
     test('reset returns to idle', () async {
-      final mock = MockClient((req) async => _ok({
-            'success': true,
-            'selected_tier_id': 'x',
-            'config_path': '/c',
-            'backup_path': null,
-            'sidecar_path': '/s',
-            'initialized_marker_path': '/m',
-            'capabilities_hash': 'h',
-          }));
+      final mock = MockClient(
+        (req) async => _ok({
+          'success': true,
+          'selected_tier_id': 'x',
+          'config_path': '/c',
+          'backup_path': null,
+          'sidecar_path': '/s',
+          'initialized_marker_path': '/m',
+          'capabilities_hash': 'h',
+        }),
+      );
       final p = OnboardingProvider(apiBaseUrl: 'http://x', httpClient: mock);
       await p.apply('x');
       expect(p.stage, WizardStage.applied);
@@ -172,17 +187,27 @@ void main() {
         capturedAuth = req.headers['Authorization'];
         if (req.url.path == '/api/system/profile') {
           return _ok({
-            'detected_at': 't', 'tier': 'x', 'recommended_mode': 'm',
-            'sanity_warnings': [], 'components': {},
+            'detected_at': 't',
+            'tier': 'x',
+            'recommended_mode': 'm',
+            'sanity_warnings': [],
+            'components': {},
           });
         }
         if (req.url.path == '/api/system/capabilities') {
           return _ok({
-            'can_run_nvfp4': false, 'can_run_fp8_marlin': false,
-            'can_run_gguf_cuda': false, 'can_run_gguf_metal': false,
-            'can_run_vllm_container': false, 'can_run_ollama_native': true,
-            'vram_class': 'none', 'ram_class': 'low', 'disk_class': 'low',
-            'has_internet': true, 'profile_hash': 'h', 'multi_gpu_count': 1,
+            'can_run_nvfp4': false,
+            'can_run_fp8_marlin': false,
+            'can_run_gguf_cuda': false,
+            'can_run_gguf_metal': false,
+            'can_run_vllm_container': false,
+            'can_run_ollama_native': true,
+            'vram_class': 'none',
+            'ram_class': 'low',
+            'disk_class': 'low',
+            'has_internet': true,
+            'profile_hash': 'h',
+            'multi_gpu_count': 1,
           });
         }
         return _bad(404);
@@ -212,9 +237,12 @@ void main() {
         'estimated_cost_eur_per_month': 0,
         'backend': 'ollama',
         'model_set': {
-          'planner': 'qwen', 'executor': 'qwen-fast',
-          'coder': 'qwen', 'embedding': 'qwen-emb',
-          'formulate': 'qwen-fast', 'fast_path_validator': 'qwen-fast',
+          'planner': 'qwen',
+          'executor': 'qwen-fast',
+          'coder': 'qwen',
+          'embedding': 'qwen-emb',
+          'formulate': 'qwen-fast',
+          'fast_path_validator': 'qwen-fast',
         },
       });
       expect(s.tierId, 't');

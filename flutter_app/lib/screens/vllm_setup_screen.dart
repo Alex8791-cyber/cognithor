@@ -364,7 +364,6 @@ class _ModelCardState extends State<_ModelCard> {
   }
 }
 
-
 /// VLM-Router quality preset selector. Reads + writes
 /// ``config.vllm.quality_default`` via /api/backends/vllm/quality-default.
 ///
@@ -487,7 +486,6 @@ class _VlmQualityCardState extends State<_VlmQualityCard> {
   }
 }
 
-
 class _TierDescription extends StatelessWidget {
   final Map<String, dynamic> tier;
   const _TierDescription({required this.tier});
@@ -520,9 +518,9 @@ class _TierDescription extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'GPU footprint: ~$memory GiB (excl. KV cache)',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontStyle: FontStyle.italic,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
             ),
           ],
         ],
