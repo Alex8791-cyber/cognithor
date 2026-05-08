@@ -157,9 +157,9 @@ def _estimate_monthly_cost_eur(tier: Tier, pricing: PricingManifest | None) -> f
     if tier.backend in ("ollama", "vllm", "lmstudio", "llama_cpp"):
         return 0.0  # electricity not in this scope; covered separately
     profile = pricing.default_usage_profile or {}
-    rpd = profile.get("requests_per_day", 80)
-    avg_in = profile.get("avg_input_tokens", 1500)
-    avg_out = profile.get("avg_output_tokens", 800)
+    rpd = int(profile.get("requests_per_day", 80))
+    avg_in = int(profile.get("avg_input_tokens", 1500))
+    avg_out = int(profile.get("avg_output_tokens", 800))
 
     provider_pricing = pricing.providers.get(tier.backend, {})
     if not provider_pricing:

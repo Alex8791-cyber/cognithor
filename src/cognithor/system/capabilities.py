@@ -11,7 +11,7 @@ zero-code).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from cognithor.system.detector import SystemProfile
 
@@ -328,7 +328,7 @@ def _hash_profile(profile: SystemProfile) -> str:
     import hashlib
     import json
 
-    relevant: dict = {}
+    relevant: dict[str, dict[str, Any]] = {}
     for key in ("os", "cpu", "ram", "gpu", "disk", "docker", "wsl2", "rocm", "container"):
         if key in profile.results:
             data = dict(profile.results[key].raw_data)

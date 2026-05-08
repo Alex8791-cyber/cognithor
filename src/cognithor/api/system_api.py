@@ -45,7 +45,7 @@ system_router = APIRouter(prefix="/api/system", tags=["system"])
 # ── Module-level cache (rebuilt per request — fast enough) ─────────────────
 
 
-def _detect() -> tuple[Any, Any, tuple]:
+def _detect() -> tuple[Any, Any, tuple[Any, ...]]:
     detector = SystemDetector()
     profile = detector.run_full_scan()
     caps = map_to_capabilities(profile)
@@ -60,8 +60,8 @@ class ProfileResponse(BaseModel):
     detected_at: str
     tier: str
     recommended_mode: str
-    sanity_warnings: list[dict] = Field(default_factory=list)
-    components: dict[str, dict] = Field(default_factory=dict)
+    sanity_warnings: list[dict[str, Any]] = Field(default_factory=list)
+    components: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
 class CapabilitiesResponse(BaseModel):
@@ -139,7 +139,7 @@ class HealthResponse(BaseModel):
     manifest_version: str | None
     drift_detected: bool
     drift_components: list[str]
-    sanity_warnings: list[dict]
+    sanity_warnings: list[dict[str, Any]]
     last_capabilities_hash: str | None
     current_capabilities_hash: str
 
@@ -305,7 +305,7 @@ async def post_apply(req: ApplyRequest) -> ApplyResponse:
 
 
 @system_router.post("/refresh-manifest")
-async def post_refresh_manifest() -> dict:
+async def post_refresh_manifest() -> dict[str, Any]:
     loader = ManifestLoader()
     try:
         manifest, source = loader.load(prefer_online=True, force_refresh=True)
@@ -386,26 +386,26 @@ async def get_health() -> HealthResponse:
 
 
 @system_router.get("/perf")
-async def get_perf_summary() -> dict:
+async def get_perf_summary() -> dict[str, Any]:
     """Per-model rolling performance summary (last 24 h)."""
     tracker = get_default_tracker()
     return {"window_s": 86400, "models": tracker.model_summary(window_s=86400)}
 
 
 @system_router.post("/dismiss-hardware-drift")
-async def post_dismiss_hardware_drift() -> dict:
+async def post_dismiss_hardware_drift() -> dict[str, Any]:
     DriftDetector().dismiss_hardware_banner()
     return {"ok": True}
 
 
 @system_router.post("/dismiss-performance-drift")
-async def post_dismiss_performance_drift() -> dict:
+async def post_dismiss_performance_drift() -> dict[str, Any]:
     DriftDetector().dismiss_performance_banner()
     return {"ok": True}
 
 
 @system_router.post("/rollback")
-async def post_rollback() -> dict:
+async def post_rollback() -> dict[str, Any]:
     restored = rollback_last()
     if restored is None:
         raise HTTPException(status_code=404, detail="No backups available")
@@ -413,5 +413,5 @@ async def post_rollback() -> dict:
 
 
 @system_router.get("/backups")
-async def get_backups() -> dict:
+async def get_backups() -> dict[str, Any]:
     return {"backups": [str(p) for p in list_backups()]}
