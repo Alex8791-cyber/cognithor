@@ -36,11 +36,17 @@ jobs:
       - name: Run burn-in (50 synthetic PGE-runs, isolated home)
         run: |
           mkdir -p "$RUNNER_TEMP/cognithor-burnin"
+          # Use --report-path instead of stdout-redirect: the script's
+          # cognithor imports configure structlog to write to stdout, so
+          # ``> burn_in_report.json`` collects log frames + the JSON
+          # report into the same file and the next step's json.load
+          # raises "Extra data" mid-file. `--report-path` writes only
+          # the JSON via ``Path.write_text`` regardless of stdout chatter.
           python scripts/burn_in_compliance_spring.py \
             --runs 50 \
             --home "$RUNNER_TEMP/cognithor-burnin" \
             --report-format json \
-            > burn_in_report.json
+            --report-path burn_in_report.json
           echo "::group::burn-in report"
           cat burn_in_report.json
           echo "::endgroup::"

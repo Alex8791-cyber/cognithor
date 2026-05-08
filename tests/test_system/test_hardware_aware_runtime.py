@@ -271,6 +271,67 @@ class TestCapabilities:
         assert caps.satisfies("can_run_nvfp4") is True
         assert caps.satisfies("can_run_gguf_metal") is False
 
+    def test_profile_hash_stable_under_vram_free_jitter(self) -> None:
+        """vram_free_gb fluctuates between probes — must not change hash."""
+        p1 = profile_rtx_5090_blackwell_modern()
+        p2 = profile_rtx_5090_blackwell_modern()
+        # Mutate the live runtime field on one profile only
+        p2.results["gpu"].raw_data["vram_free_gb"] = 1.0
+        assert map_to_capabilities(p1).profile_hash == map_to_capabilities(p2).profile_hash, (
+            "vram_free_gb leaked into hash"
+        )
+
+    def test_profile_hash_stable_under_nested_gpu_volatile(self) -> None:
+        """gpu.all_gpus[*].vram_free_gb is nested — pre-fix hash leaked it."""
+        p1 = profile_rtx_5090_blackwell_modern()
+        p2 = profile_rtx_5090_blackwell_modern()
+        # Both profiles have an `all_gpus` list with the live free-vram value
+        for prof in (p1, p2):
+            prof.results["gpu"].raw_data["all_gpus"] = [
+                {
+                    "vendor": "nvidia",
+                    "model": "RTX 5090",
+                    "vram_total_gb": 32.0,
+                    "vram_free_gb": 28.0,
+                }
+            ]
+        # Now jitter only the nested free-vram on p2
+        p2.results["gpu"].raw_data["all_gpus"][0]["vram_free_gb"] = 5.0
+        assert map_to_capabilities(p1).profile_hash == map_to_capabilities(p2).profile_hash, (
+            "nested gpu.all_gpus[].vram_free_gb leaked into hash"
+        )
+
+    def test_profile_hash_stable_under_ram_available_jitter(self) -> None:
+        """ram.available_gb / percent_used fluctuate constantly — must not leak."""
+        p1 = profile_rtx_5090_blackwell_modern()
+        p2 = profile_rtx_5090_blackwell_modern()
+        p2.results["ram"].raw_data["available_gb"] = 1.0
+        p2.results["ram"].raw_data["percent_used"] = 99.0
+        assert map_to_capabilities(p1).profile_hash == map_to_capabilities(p2).profile_hash
+
+    def test_profile_hash_stable_under_python_minor_version_bump(self) -> None:
+        """Python interpreter patch-version bumps are not hardware deltas."""
+        p1 = profile_rtx_5090_blackwell_modern()
+        p2 = profile_rtx_5090_blackwell_modern()
+        p1.results["os"].raw_data["python"] = "3.12.13"
+        p2.results["os"].raw_data["python"] = "3.13.5"
+        assert map_to_capabilities(p1).profile_hash == map_to_capabilities(p2).profile_hash
+
+    def test_profile_hash_stable_under_disk_total_rounding_jitter(self) -> None:
+        """shutil.disk_usage().total can wobble by tens of MB → 1862.1 vs 1862.2."""
+        p1 = profile_rtx_5090_blackwell_modern()
+        p2 = profile_rtx_5090_blackwell_modern()
+        p1.results["disk"].raw_data["total_gb"] = 1862.1
+        p2.results["disk"].raw_data["total_gb"] = 1862.2
+        assert map_to_capabilities(p1).profile_hash == map_to_capabilities(p2).profile_hash
+
+    def test_profile_hash_changes_on_real_driver_upgrade(self) -> None:
+        """Sanity: the hash MUST still react to real hardware deltas."""
+        p1 = profile_rtx_5090_blackwell_modern()
+        p2 = profile_rtx_5090_blackwell_modern()
+        p2.results["gpu"].raw_data["driver"] = "550.0"  # downgrade
+        assert map_to_capabilities(p1).profile_hash != map_to_capabilities(p2).profile_hash
+
 
 # ──────────────────────────────────────────────────────────────────────────
 # L1.5 Sanity tests

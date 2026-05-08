@@ -33,9 +33,12 @@ jobs:
           cache: pip
 
       - name: Install
+        # `[all,dev]` mirrors the main CI install. `[dev]` alone misses
+        # numpy (it's in the `memory` / `arc` extras pulled by `all`)
+        # which program_synthesis imports unconditionally.
         run: |
           pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[all,dev]"
 
       - name: Sanity (no GPU eval yet — Sprint-26.1 internal only)
         run: |

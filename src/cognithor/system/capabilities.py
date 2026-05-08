@@ -323,20 +323,55 @@ def map_to_capabilities(profile: SystemProfile) -> Capabilities:
     )
 
 
+_HASH_VOLATILE_KEYS: frozenset[str] = frozenset(
+    {
+        # Memory / disk usage that fluctuates between probes
+        "vram_free_gb",
+        "free_gb",
+        "free_mb",
+        "available_mb",
+        "available_gb",
+        "percent_used",
+        # Python interpreter version is runtime metadata, not a hardware
+        # capability — a 3.12.13 → 3.12.14 patch upgrade should not flip
+        # the drift banner. The OS version + architecture stay in.
+        "python",
+    }
+)
+
+
+def _sanitize_for_hash(value: Any) -> Any:
+    """Recursively strip volatile keys and round float GB values.
+
+    The drift detector compares the resulting hash; tiny disk-usage
+    jitter (e.g. ``1862.2`` vs ``1862.1`` GB) or a process-bound
+    fluctuation in ``ram.available_gb`` would otherwise re-fire the
+    "Hardware-Änderung erkannt" banner on every probe — including the
+    nested ``gpu.all_gpus[*].vram_free_gb`` that the previous flat-pop
+    strip missed.
+    """
+    if isinstance(value, dict):
+        return {k: _sanitize_for_hash(v) for k, v in value.items() if k not in _HASH_VOLATILE_KEYS}
+    if isinstance(value, list):
+        return [_sanitize_for_hash(item) for item in value]
+    # Round floats to nearest integer to absorb rounding-noise from
+    # ``shutil.disk_usage().total`` and similar OS probes.
+    if isinstance(value, float):
+        return round(value)
+    return value
+
+
 def _hash_profile(profile: SystemProfile) -> str:
-    """SHA-256 over capability-relevant fields. Excludes timestamps."""
+    """SHA-256 over capability-relevant fields. Stable across probes when
+    nothing real has changed; volatile fields and float-jitter are
+    sanitised away so the drift detector only fires on actual hardware
+    or capability deltas."""
     import hashlib
     import json
 
-    relevant: dict[str, dict[str, Any]] = {}
+    relevant: dict[str, Any] = {}
     for key in ("os", "cpu", "ram", "gpu", "disk", "docker", "wsl2", "rocm", "container"):
         if key in profile.results:
-            data = dict(profile.results[key].raw_data)
-            # Strip volatile sub-fields
-            data.pop("vram_free_gb", None)
-            data.pop("free_gb", None)
-            data.pop("free_mb", None)
-            data.pop("available_mb", None)
-            relevant[key] = data
+            relevant[key] = _sanitize_for_hash(dict(profile.results[key].raw_data))
     payload = json.dumps(relevant, sort_keys=True, default=str).encode("utf-8")
     return f"sha256:{hashlib.sha256(payload).hexdigest()}"
