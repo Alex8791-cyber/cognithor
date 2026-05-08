@@ -19,6 +19,13 @@ from __future__ import annotations
 
 import pytest
 
+# pytest-benchmark lives in the [quality] extras (heavyweight, only
+# installed on the dedicated quality-* CI jobs). Skip cleanly when the
+# main CI pip install (`.[all,dev]`) doesn't include it; the dedicated
+# nightly SLO workflow installs `.[dev,quality]` and runs these tests
+# with the `benchmark` fixture available.
+pytest.importorskip("pytest_benchmark")
+
 from cognithor.core.vlm_router import VlmRouter, classify_vlm_task
 from cognithor.video.routing import check_profile_alignment
 
