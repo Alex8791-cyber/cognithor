@@ -367,7 +367,11 @@ class TestManifestLoader:
         manifest, source = loader.load(prefer_online=False)
         assert isinstance(manifest, Manifest)
         assert manifest.manifest_version == "2026.05.07.01"
-        assert source.origin in {"embedded", "cache"}
+        # `prefer_online=False` does NOT forbid online — it just doesn't
+        # force a refresh. With cold cache + working internet the loader
+        # legitimately falls through to ``_try_online``; ``embedded`` is
+        # only the final fallback when online + cache both fail.
+        assert source.origin in {"embedded", "cache", "online"}
         assert len(manifest.tiers) >= 5
         assert len(manifest.models) >= 5
 
