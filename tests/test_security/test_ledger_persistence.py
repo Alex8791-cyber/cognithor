@@ -47,9 +47,39 @@ from cognithor.security.permission_scope import (
 )
 
 
+def _reemit_import_time_migrations() -> None:
+    """Re-fire the four ``_record_*_migration()`` self-audit emitters
+    that normally run at module import. Used by the autouse fixture's
+    teardown so a cleared MIGRATION_LEDGER doesn't leak into other
+    test files (TRUST-10 self-audit assertions).
+    """
+    from cognithor.security.cloud_escalation import (
+        _record_escalation_ledger_migration,
+    )
+    from cognithor.security.cost_ledger import (
+        _record_cost_ledger_migration,
+    )
+    from cognithor.security.fingerprint import (
+        _record_fingerprint_ledger_migration,
+    )
+    from cognithor.security.permission_scope import (
+        _record_scope_registry_migration,
+    )
+
+    _record_escalation_ledger_migration()
+    _record_cost_ledger_migration()
+    _record_fingerprint_ledger_migration()
+    _record_scope_registry_migration()
+
+
 @pytest.fixture(autouse=True)
 def _reset_state(tmp_path):
-    """Each test gets a fresh audit dir and a clean global bind state."""
+    """Each test gets a fresh audit dir and a clean global bind state.
+
+    Teardown restores the four TRUST-10 import-time migration steps so
+    cross-file tests (``TestScopeRegistrySelfAuditMigration`` etc.)
+    still see them in the canonical ``MIGRATION_LEDGER``.
+    """
     reset_for_tests()
     BACKEND_DISPATCH_LEDGER.clear()
     ESCALATION_LEDGER.clear()
@@ -65,6 +95,7 @@ def _reset_state(tmp_path):
     COST_LEDGER.clear()
     MIGRATION_LEDGER.clear()
     SCOPE_REGISTRY.clear()
+    _reemit_import_time_migrations()
 
 
 def _hash(seed: str) -> str:
