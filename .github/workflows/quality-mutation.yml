@@ -11,10 +11,14 @@ on:
     - cron: '0 4 * * *'
   workflow_dispatch:
     inputs:
-      paths:
-        description: "Comma-sep paths to mutate (default: TRUST core)"
+      module_path:
+        description: "Single module path to mutate (e.g. src/cognithor/audit). Empty = use cosmic-ray-baseline.toml (focused TRUST core)."
         required: false
-        default: "src/cognithor/audit,src/cognithor/security/permission_scope.py,src/cognithor/security/cost_ledger.py,src/cognithor/security/fingerprint.py,src/cognithor/security/migration_ledger.py,src/cognithor/security/cloud_escalation.py,src/cognithor/security/trust_bundle.py,src/cognithor/video/routing.py,src/cognithor/core/vlm_router.py,src/cognithor/core/workflow.py"
+        default: ""
+      test_command:
+        description: "Override test command (only used when module_path is set; default: full TRUST pytest set from cosmic-ray.toml)."
+        required: false
+        default: ""
 
 jobs:
   mutation:
@@ -27,20 +31,54 @@ jobs:
           python-version: "3.13"
       - name: Install Cognithor + quality extras
         run: pip install -e ".[dev,quality]"
-      - name: Initialise mutation session
+      - name: Resolve mutation config
+        id: config
         # cosmic-ray init does NOT accept per-path CLI flags — the
-        # mutation scope lives in the TOML's `module-path` field. The
-        # earlier `--paths …` plumbing was a no-op that errored out with
-        # `No such option: --paths`. We point the scheduled run at
-        # cosmic-ray-baseline.toml (focused on src/cognithor/video/
-        # routing.py — the smallest TRUST module, ~15 min full sweep)
-        # so the nightly job actually completes. Multi-path dispatch
-        # via inputs.paths is a follow-up and is currently treated as
-        # a no-op; see also CHANGELOG.
+        # mutation scope lives in the TOML's ``module-path`` field. The
+        # earlier ``--paths …`` plumbing was a no-op that errored out
+        # with ``No such option: --paths``. We support two modes:
+        #
+        # 1. **Cron / no inputs**: use ``cosmic-ray-baseline.toml`` (the
+        #    focused TRUST baseline, completes in ~15 min on src/cognithor/
+        #    video/routing.py).
+        #
+        # 2. **Dispatch with ``module_path``**: generate a per-run TOML
+        #    that mirrors cosmic-ray.toml's [cosmic-ray] block + sets
+        #    ``module-path`` to the requested path. Multi-path is NOT
+        #    supported because cosmic-ray sessions are per-path sqlite DBs
+        #    that don't aggregate cleanly; for multiple paths run separate
+        #    dispatches and combine the artefacts manually.
         run: |
-          cosmic-ray init cosmic-ray-baseline.toml session.sqlite
+          MODULE_PATH="${{ inputs.module_path }}"
+          TEST_CMD="${{ inputs.test_command }}"
+          if [ -z "$MODULE_PATH" ]; then
+            echo "config=cosmic-ray-baseline.toml" >> $GITHUB_OUTPUT
+            echo "::notice::Using cosmic-ray-baseline.toml (focused TRUST core)"
+          else
+            BASE_TOML=cosmic-ray.toml
+            DEFAULT_TEST_CMD=$(python -c "import tomllib; print(tomllib.load(open('${BASE_TOML}','rb'))['cosmic-ray']['test-command'])")
+            EFFECTIVE_TEST_CMD="${TEST_CMD:-$DEFAULT_TEST_CMD}"
+            mkdir -p .ci-mutation
+            cat > .ci-mutation/run.toml <<EOT
+          [cosmic-ray]
+          module-path = "${MODULE_PATH}"
+          timeout = 60.0
+          excluded-modules = []
+          test-command = "${EFFECTIVE_TEST_CMD}"
+
+          [cosmic-ray.distributor]
+          name = "local"
+
+          [cosmic-ray.distributor.local]
+          worker-count = 1
+          EOT
+            echo "config=.ci-mutation/run.toml" >> $GITHUB_OUTPUT
+            echo "::notice::Generated .ci-mutation/run.toml for module-path=${MODULE_PATH}"
+          fi
+      - name: Initialise mutation session
+        run: cosmic-ray init "${{ steps.config.outputs.config }}" session.sqlite
       - name: Run mutation testing
-        run: cosmic-ray exec cosmic-ray-baseline.toml session.sqlite
+        run: cosmic-ray exec "${{ steps.config.outputs.config }}" session.sqlite
         timeout-minutes: 100
       - name: Generate report
         run: |
