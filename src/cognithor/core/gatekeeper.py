@@ -178,6 +178,104 @@ GREEN_TOOLS: frozenset[str] = frozenset(
     }
 )
 
+# Module-level YELLOW-tier tool set. Same single-source-of-truth pattern
+# as ``GREEN_TOOLS`` so the security-contract tests can stay live across
+# future tool additions.
+YELLOW_TOOLS: frozenset[str] = frozenset(
+    {
+        "save_to_memory",
+        "add_entity",
+        "add_relation",
+        "schedule_job",
+        "document_export",
+        "document_create",
+        "typst_render",
+        "template_render",
+        "media_tts",
+        "media_convert_audio",
+        "create_skill",
+        "install_community_skill",
+        "report_skill",
+        "publish_skill",
+        "reddit_reply",
+        "vault_save",
+        "vault_write",
+        "vault_update",
+        "vault_link",
+        "delegate_to_remote_agent",
+        # Computer Use (active desktop actions — user opted in via config)
+        "computer_click",
+        "computer_type",
+        "computer_hotkey",
+        "computer_scroll",
+        "computer_drag",
+        "computer_click_element",
+        "computer_wait_for_change",
+        "email_read_inbox",
+        "email_search",
+        "email_summarize",
+        "git_commit",
+        "git_branch",
+        "find_and_replace",
+        "db_connect",
+        # Docker (write, but safe)
+        "docker_stop",
+        # API Hub (write, but safe)
+        "api_connect",
+        "api_call",
+        "api_disconnect",
+        # Background tasks (state-changing)
+        "start_background",
+        "stop_background_job",
+        # ARC-AGI-3 (state-changing)
+        "arc_play",
+        # ATL (goal management)
+        "atl_goals",
+        # Audit-PR4 (audit-HIGH-5): Kanban writes were previously
+        # GREEN — they create / mutate persistent encrypted-DB records.
+        "kanban_create_task",
+        "kanban_update_task",
+        # Audit-PR4: video_render spawns a subprocess + writes MP4.
+        "video_render",
+    }
+)
+
+# Module-level ORANGE-tier tool set — operations that require user
+# confirmation before execution.
+ORANGE_TOOLS: frozenset[str] = frozenset(
+    {
+        "email_send",
+        "calendar_create_event",
+        "delete_file",
+        "fetch_url",
+        "http_request",
+        "db_execute",
+        # Docker (container creation)
+        "docker_run",
+        # Remote Shell (execution requires approval)
+        "remote_exec",
+        # Browser (state-changing, can execute JS)
+        "browse_click",
+        "browse_fill",
+        "browse_execute_js",
+        "browser_solve_captcha",
+        # OSINT (privacy-sensitive investigations)
+        "investigate_person",
+        "investigate_project",
+        "investigate_org",
+    }
+)
+
+# Module-level RED-tier tool set — destructive, irreversible deletes.
+RED_TOOLS: frozenset[str] = frozenset(
+    {
+        "vault_delete",
+        "delete_entity",
+        "delete_relation",
+        "erase_user_data",
+    }
+)
+
 
 class Gatekeeper:
     """Deterministic policy enforcer. No LLM. No exceptions. [B§3.2]
@@ -858,107 +956,16 @@ class Gatekeeper:
         if tool in GREEN_TOOLS:
             return RiskLevel.GREEN
 
-        # YELLOW: Write operations but non-dangerous (local, no network)
-        # Note: write_file, edit_file, run_python, exec_command moved to GREEN
-        # for autonomous operation. Path validation still enforced in the tools.
-        yellow_tools = {
-            "save_to_memory",
-            "add_entity",
-            "add_relation",
-            "schedule_job",
-            "document_export",
-            "document_create",
-            "typst_render",
-            "template_render",
-            "media_tts",
-            "media_convert_audio",
-            "create_skill",
-            "install_community_skill",
-            "report_skill",
-            "publish_skill",
-            "reddit_reply",
-            "vault_save",
-            "vault_write",
-            "vault_update",
-            "vault_link",
-            "delegate_to_remote_agent",
-            # Computer Use (active desktop actions — user opted in via config)
-            "computer_click",
-            "computer_type",
-            "computer_hotkey",
-            "computer_scroll",
-            "computer_drag",
-            "computer_click_element",
-            "computer_wait_for_change",
-            "email_read_inbox",
-            "email_search",
-            "email_summarize",
-            "git_commit",
-            "git_branch",
-            "find_and_replace",
-            "db_connect",
-            # Docker (write, but safe)
-            "docker_stop",
-            # API Hub (write, but safe)
-            "api_connect",
-            "api_call",
-            "api_disconnect",
-            # Background tasks (state-changing)
-            "start_background",
-            "stop_background_job",
-            # ARC-AGI-3 (state-changing)
-            "arc_play",
-            # ATL (goal management)
-            "atl_goals",
-            # Audit-PR4 (audit-HIGH-5): Kanban writes were previously
-            # GREEN — they create / mutate persistent encrypted-DB
-            # records, which violates the GREEN convention ("read-only").
-            # Promoted to YELLOW so the Executor emits an INFORM step.
-            # `kanban_list_tasks` stays GREEN (read-only).
-            "kanban_create_task",
-            "kanban_update_task",
-            # Audit-PR4: video_render spawns a subprocess + writes MP4
-            # to disk. Was uncategorised (default ORANGE = approval-prompt
-            # on every call). YELLOW reflects that it is a write op
-            # but no network / shell side effect.
-            "video_render",
-        }
-        if tool in yellow_tools:
+        # YELLOW: write ops but non-dangerous — see module-level YELLOW_TOOLS.
+        if tool in YELLOW_TOOLS:
             return RiskLevel.YELLOW
 
-        # ORANGE: Operations that require user confirmation
-        orange_tools = {
-            "email_send",
-            "calendar_create_event",
-            "delete_file",
-            "fetch_url",
-            "http_request",
-            "db_execute",
-            # Docker (container creation)
-            "docker_run",
-            # Remote Shell (execution requires approval)
-            "remote_exec",
-            # Browser (state-changing, can execute JS)
-            "browse_click",
-            "browse_fill",
-            "browse_execute_js",
-            "browser_solve_captcha",
-            # OSINT (privacy-sensitive investigations)
-            "investigate_person",
-            "investigate_project",
-            "investigate_org",
-        }
-        if tool in orange_tools:
+        # ORANGE: ops requiring user confirmation — see module-level ORANGE_TOOLS.
+        if tool in ORANGE_TOOLS:
             return RiskLevel.ORANGE
 
-        # RED: GDPR erasure tools — destructive, irreversible data deletion
-        red_tools = {
-            "vault_delete",
-            "delete_entity",
-            "delete_relation",
-            "erase_user_data",
-        }
-        if tool in red_tools:
+        # RED: GDPR erasure tools — see module-level RED_TOOLS.
+        if tool in RED_TOOLS:
             return RiskLevel.RED
 
         # Genesis Anchor check (Identity Layer)
