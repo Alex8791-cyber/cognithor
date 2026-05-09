@@ -401,7 +401,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                         'NVIDIA GPU with Docker — NVFP4 / FP8 quantised models',
                     tint: const Color(0xFFFF6E40),
                     selected: _selectedBackend == 'vllm',
-                    status: _backendInfo('vllm')['status'] as String? ??
+                    status:
+                        _backendInfo('vllm')['status'] as String? ??
                         'configure',
                     statusOk:
                         (_backendInfo('vllm')['status'] as String?) == 'ready',
