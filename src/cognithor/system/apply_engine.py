@@ -176,7 +176,7 @@ def _is_default_or_missing(cfg: dict[str, Any], path: tuple[str, ...]) -> bool:
 _SCHEMA_KNOWN_ROLES = {"planner", "executor", "coder", "embedding"}
 
 # Plain VLLMConfig fields (per src/cognithor/config.py:2567 VLLMConfig).
-# `enable_prefix_caching` + `num_speculative_tokens` exist only as
+# `enable_prefix_caching` + `speculative_config` exist only as
 # `vlm_*`-prefixed VLM-specific fields; for the L6 apply they go to the
 # sidecar `vllm_extras` so the runtime orchestrator can pick them up
 # without us mis-mapping into the wrong field name.
@@ -212,13 +212,26 @@ def _merge_solution(
     bc = tier.backend_config
     if tier.backend == "vllm" and bc.docker_image:
         cfg.setdefault("vllm", {})
+        # vLLM 0.20+ deprecation: ``--num-speculative-tokens N`` was replaced
+        # by ``--speculative-config '{"num_speculative_tokens": N, ...}'``.
+        # If the manifest still ships the legacy field, transform it into
+        # the new shape so the sidecar always reflects what vLLM 0.20+
+        # actually accepts.
+        speculative_config = bc.speculative_config
+        if speculative_config is None and bc.num_speculative_tokens is not None:
+            log.warning(
+                "manifest_num_speculative_tokens_deprecated",
+                tier_id=tier.id,
+                migrated_to="speculative_config",
+            )
+            speculative_config = {"num_speculative_tokens": bc.num_speculative_tokens}
         for field, value in {
             "docker_image": bc.docker_image,
             "gpu_memory_utilization": bc.gpu_memory_utilization,
             "enforce_eager": bc.enforce_eager,
             "cpu_offload_gb": bc.cpu_offload_gb,
             "max_model_len": bc.max_model_len,
-            "num_speculative_tokens": bc.num_speculative_tokens,
+            "speculative_config": speculative_config,
             "enable_prefix_caching": bc.enable_prefix_caching,
         }.items():
             if value is None:

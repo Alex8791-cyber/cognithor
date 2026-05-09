@@ -35,7 +35,10 @@ tiers:
       enforce_eager: true
       cpu_offload_gb: 4
       max_model_len: 16384
-      num_speculative_tokens: 1
+      # vLLM 0.20+ replaced --num-speculative-tokens with --speculative-config
+      # (JSON). MTP-speculative on NVFP4 wants 1 speculative token per step.
+      speculative_config:
+        num_speculative_tokens: 1
       enable_prefix_caching: true
     model_set:
       planner: "qwen3.6-27b-text-nvfp4-mtp"
