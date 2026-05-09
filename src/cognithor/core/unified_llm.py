@@ -320,6 +320,52 @@ class UnifiedLLMClient:
         if hasattr(effective_backend_type, "value"):
             effective_backend_type = effective_backend_type.value
         breaker = self._breaker_for(str(effective_backend_type))
+
+        # TRUST-8 backend-dispatch tracking: capture started_at BEFORE
+        # the call so latency stays meaningful even when the backend
+        # raises mid-flight. Imported at call-site so a missing /
+        # broken security module can't kill the chat path.
+        from datetime import UTC as _UTC
+        from datetime import datetime as _datetime
+
+        from cognithor.security.backend_dispatch import (
+            DispatchOutcome,
+            record_backend_dispatch,
+        )
+
+        _dispatch_started_at = _datetime.now(_UTC)
+        _dispatch_backend_type = str(effective_backend_type)
+
+        def _record(
+            outcome: DispatchOutcome,
+            *,
+            response: Any | None = None,
+            error: BaseException | None = None,
+        ) -> None:
+            """Single sink for the TRUST-8 ledger entry. Best-effort:
+            any failure inside this helper is swallowed and debug-logged
+            so audit-side bugs can't kill the chat path."""
+            try:
+                error_kind = type(error).__name__ if error is not None else ""
+                error_msg = str(error) if error is not None else ""
+                prompt_tokens = -1
+                response_tokens = -1
+                if response is not None:
+                    prompt_tokens = int(getattr(response, "prompt_tokens", -1) or -1)
+                    response_tokens = int(getattr(response, "completion_tokens", -1) or -1)
+                record_backend_dispatch(
+                    backend_type=_dispatch_backend_type,
+                    model=model,
+                    outcome=outcome,
+                    started_at=_dispatch_started_at,
+                    prompt_tokens=prompt_tokens,
+                    response_tokens=response_tokens,
+                    error_kind=error_kind,
+                    error_msg=error_msg,
+                )
+            except Exception:
+                log.debug("backend_dispatch_record_failed", exc_info=True)
+
         try:
             backend_call_kwargs: dict[str, Any] = {
                 "model": model,
@@ -334,19 +380,19 @@ class UnifiedLLMClient:
             if video is not None:
                 backend_call_kwargs["video"] = video
             response = await breaker.call(effective_backend.chat(**backend_call_kwargs))
-        except LLMBadRequestError:
+        except LLMBadRequestError as exc:
+            _record(DispatchOutcome.BAD_REQUEST, error=exc)
             self._refresh_status()
             raise
-        except (VLLMNotReadyError, CircuitBreakerOpen) as exc:
+        except CircuitBreakerOpen as exc:
+            _record(DispatchOutcome.CIRCUIT_OPEN, error=exc)
             self._refresh_status()
             if is_vision_request:
                 # Images and video cannot be processed by Ollama fallback — hard error
-                if isinstance(exc, CircuitBreakerOpen):
-                    raise VLLMNotReadyError(
-                        "vLLM offline — vision/video request cannot be processed",
-                        recovery_hint="Start vLLM from LLM Backends settings.",
-                    ) from exc
-                raise
+                raise VLLMNotReadyError(
+                    "vLLM offline — vision/video request cannot be processed",
+                    recovery_hint="Start vLLM from LLM Backends settings.",
+                ) from exc
             # Text-only: transparent fallback to Ollama
             if self._ollama is not None:
                 log.warning("vllm_fallback_to_ollama", error=str(exc))
@@ -367,7 +413,32 @@ class UnifiedLLMClient:
                 f"LLM-Backend-Fehler ({bt}): {exc}",
                 status_code=getattr(exc, "status_code", None),
             ) from exc
+        except VLLMNotReadyError as exc:
+            _record(DispatchOutcome.TRANSPORT_ERROR, error=exc)
+            self._refresh_status()
+            if is_vision_request:
+                raise
+            # Text-only: transparent fallback to Ollama
+            if self._ollama is not None:
+                log.warning("vllm_fallback_to_ollama", error=str(exc))
+                self._refresh_status()
+                return await self._ollama.chat(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    temperature=temperature,
+                    top_p=top_p,
+                    stream=stream,
+                    format_json=format_json,
+                    options=options,
+                )
+            bt = backend_override or self._backend_type
+            raise OllamaError(
+                f"LLM-Backend-Fehler ({bt}): {exc}",
+                status_code=getattr(exc, "status_code", None),
+            ) from exc
         except Exception as exc:
+            _record(DispatchOutcome.BACKEND_ERROR, error=exc)
             self._refresh_status()
             # Alle anderen Backend-Fehler als OllamaError wrappen
             # so Planner/Reflector catch blocks keep working
@@ -377,6 +448,7 @@ class UnifiedLLMClient:
                 status_code=getattr(exc, "status_code", None),
             ) from exc
         else:
+            _record(DispatchOutcome.SUCCESS, response=response)
             self._refresh_status()
 
         # ChatResponse → Ollama-Dict konvertieren
