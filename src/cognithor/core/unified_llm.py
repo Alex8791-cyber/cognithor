@@ -332,9 +332,18 @@ class UnifiedLLMClient:
             DispatchOutcome,
             record_backend_dispatch,
         )
+        from cognithor.security.cloud_escalation import (
+            EscalationEvent,
+            EscalationReason,
+            is_cloud_backend,
+        )
+        from cognithor.security.trust_wiring import (
+            record_escalation_with_cost,
+        )
 
         _dispatch_started_at = _datetime.now(_UTC)
         _dispatch_backend_type = str(effective_backend_type)
+        _from_backend_type = str(self._backend_type or "ollama")
 
         def _record(
             outcome: DispatchOutcome,
@@ -342,9 +351,16 @@ class UnifiedLLMClient:
             response: Any | None = None,
             error: BaseException | None = None,
         ) -> None:
-            """Single sink for the TRUST-8 ledger entry. Best-effort:
+            """Single sink for the TRUST-8 ledger entries. Best-effort:
             any failure inside this helper is swallowed and debug-logged
-            so audit-side bugs can't kill the chat path."""
+            so audit-side bugs can't kill the chat path.
+
+            Records to:
+            * ``BACKEND_DISPATCH_LEDGER`` — every dispatch (local + cloud).
+            * ``ESCALATION_LEDGER`` — only when the dispatched backend
+              crosses the local→cloud boundary, regardless of outcome
+              (a cloud call that errors still left the box).
+            """
             try:
                 error_kind = type(error).__name__ if error is not None else ""
                 error_msg = str(error) if error is not None else ""
@@ -365,6 +381,39 @@ class UnifiedLLMClient:
                 )
             except Exception:
                 log.debug("backend_dispatch_record_failed", exc_info=True)
+
+            # cloud_escalation co-record: a cloud call ALWAYS crossed
+            # the box boundary, whether it ultimately succeeded or
+            # errored. CIRCUIT_OPEN dispatches did NOT actually leave
+            # the box (the breaker rejected before transport) — skip
+            # those so the escalation ledger doesn't false-positive.
+            if outcome == DispatchOutcome.CIRCUIT_OPEN:
+                return
+            if not is_cloud_backend(_dispatch_backend_type):
+                return
+            try:
+                # Token counts may be -1 (unknown). The EscalationEvent
+                # contract requires non-negative counts; clamp to 0
+                # rather than fabricating a number.
+                prompt_for_escalation = max(0, prompt_tokens)
+                response_for_escalation = max(0, response_tokens)
+                event = EscalationEvent(
+                    reason=EscalationReason.UNKNOWN,
+                    from_backend=_from_backend_type,
+                    to_backend=_dispatch_backend_type,
+                    prompt_tokens=prompt_for_escalation,
+                    response_tokens=response_for_escalation,
+                    cost_usd_micro=0,
+                    started_at=_dispatch_started_at,
+                    completed_at=_datetime.now(_UTC),
+                    notes=f"unified_llm dispatch outcome={outcome.value}",
+                )
+                # cost_usd_micro=0 means no cost-mirror — only the
+                # escalation lands. Pricing-aware mirroring is the
+                # follow-up wiring.
+                record_escalation_with_cost(event)
+            except Exception:
+                log.debug("cloud_escalation_record_failed", exc_info=True)
 
         try:
             backend_call_kwargs: dict[str, Any] = {

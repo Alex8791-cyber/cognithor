@@ -8,11 +8,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from cognithor.security.cloud_escalation import (
+    CLOUD_BACKEND_TYPES,
     ESCALATION_LEDGER,
     EscalationEvent,
     EscalationLedger,
     EscalationReason,
     EscalationSummary,
+    is_cloud_backend,
 )
 
 
@@ -406,3 +408,64 @@ class TestEscalationLedgerSelfAuditMigration:
 
         _record_escalation_ledger_migration()
         _record_escalation_ledger_migration()
+
+
+# ---------------------------------------------------------------------------
+# Backend-locality classifier (TRUST-8 cross-wiring foundation)
+# ---------------------------------------------------------------------------
+
+
+class TestCloudBackendClassifier:
+    """``is_cloud_backend`` is the single source of truth for whether a
+    backend's calls cross the local↔cloud boundary. Used by
+    ``UnifiedLLMClient`` to decide whether a successful chat() also
+    warrants an EscalationEvent. Locking the catalog with explicit
+    tests prevents quiet drift if a future contributor adds a new
+    backend type without re-checking the privacy implications."""
+
+    def test_local_backends_classify_as_local(self) -> None:
+        for local in ("ollama", "vllm", "vllm-inprocess", "lmstudio"):
+            assert not is_cloud_backend(local), (
+                f"{local!r} unexpectedly classified as cloud — "
+                "regressions here cause false-positive entries in the "
+                "escalation ledger for purely local calls"
+            )
+
+    def test_cloud_backends_classify_as_cloud(self) -> None:
+        for cloud in (
+            "openai",
+            "anthropic",
+            "gemini",
+            "claude-code",
+            "claude-code-supervised",
+        ):
+            assert is_cloud_backend(cloud), (
+                f"{cloud!r} unexpectedly classified as local — "
+                "regressions here mean cloud calls would NOT be "
+                "recorded in the escalation ledger, breaking the "
+                'TRUST-8 "did this leave the box?" guarantee'
+            )
+
+    def test_unknown_backend_classifies_as_local_conservatively(self) -> None:
+        """An unrecognised backend name is treated as local. The
+        escalation ledger only fires on KNOWN cloud backends — better
+        to under-record than to false-positive a local-only setup
+        that happens to use a custom backend id."""
+        assert not is_cloud_backend("my-custom-backend")
+        assert not is_cloud_backend("")
+
+    def test_cloud_backend_types_is_frozenset(self) -> None:
+        """The catalog must be immutable so test fixtures can't quietly
+        mutate it during a session and pollute other tests."""
+        assert isinstance(CLOUD_BACKEND_TYPES, frozenset)
+
+    def test_no_overlap_with_clearly_local_names(self) -> None:
+        """Sanity guard against catalog mistakes."""
+        for name in ("ollama", "vllm", "vllm-inprocess", "lmstudio"):
+            assert name not in CLOUD_BACKEND_TYPES
+
+    def test_classifier_round_trips_through_set_membership(self) -> None:
+        """``is_cloud_backend(x)`` must agree with ``x in CLOUD_BACKEND_TYPES``
+        for every catalog entry — they're not allowed to drift."""
+        for entry in CLOUD_BACKEND_TYPES:
+            assert is_cloud_backend(entry)

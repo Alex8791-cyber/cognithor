@@ -61,6 +61,39 @@ class EscalationReason(StrEnum):
 
 
 # ---------------------------------------------------------------------------
+# Backend-locality classification
+# ---------------------------------------------------------------------------
+
+# The set of ``LLMBackendType`` values whose calls cross the local↔cloud
+# boundary. Used by the ``UnifiedLLMClient`` dispatch wiring to decide
+# whether a successful chat() also warrants an EscalationEvent.
+#
+# OllamaBackend, VLLMBackend and VLLMInProcessBackend run on the
+# operator's machine — their calls stay local. The rest reach
+# third-party providers over the public internet.
+#
+# LMStudio is locally-hosted by default; treated as local. CLAUDE_CODE
+# / CLAUDE_CODE_SUPERVISED are cloud (they shell out to the
+# Anthropic-served claude-code CLI).
+CLOUD_BACKEND_TYPES: frozenset[str] = frozenset(
+    {
+        "openai",
+        "anthropic",
+        "gemini",
+        "claude-code",
+        "claude-code-supervised",
+    }
+)
+
+
+def is_cloud_backend(backend_type: str) -> bool:
+    """Return True iff calls to ``backend_type`` cross the local→cloud
+    boundary. Operates on the string form of :class:`LLMBackendType`
+    (so call sites don't need to import the enum directly)."""
+    return backend_type in CLOUD_BACKEND_TYPES
+
+
+# ---------------------------------------------------------------------------
 # Event
 # ---------------------------------------------------------------------------
 
