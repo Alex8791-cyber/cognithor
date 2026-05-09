@@ -192,5 +192,9 @@
   "dependencies": {
     "ws": "^8.18.0"
   },
-  "extensionDependencies": []
+  "extensionDependencies": [],
+  "overrides": {
+    "serialize-javascript": ">=7.0.5",
+    "diff": ">=9.0.0"
+  }
 }
