@@ -232,6 +232,28 @@ async def init_tools(
     except Exception:
         log.debug("pse_sprint26_domains_not_available", exc_info=True)
 
+    # TRUST-7 BINARY: pin the SHA-256 + best-effort version of every
+    # native binary Cognithor depends on at runtime (Ollama, vLLM,
+    # ffmpeg, piper) into the canonical FINGERPRINT_LEDGER. Without
+    # this, the audit log can reconstruct *what happened* (TRUST-1
+    # receipts) and *why* (TRUST-2 explanations) but cannot pin
+    # *which build* of the underlying binary produced the result —
+    # so "same input, different output" can't be distinguished from
+    # "different binary version".
+    #
+    # Best-effort: a missing binary is debug-logged + skipped; a
+    # binary that hashes but won't tell us its version still lands in
+    # the ledger with empty ``version`` (the SHA itself is the
+    # canonical identity).
+    try:
+        from cognithor.security.binary_runtime_fingerprint import (
+            register_runtime_binaries,
+        )
+
+        register_runtime_binaries()
+    except Exception:
+        log.debug("trust7_binary_registration_not_available", exc_info=True)
+
     # Browser-Use v17: Autonomous browser automation (optional)
     browser_agent = None
     try:
