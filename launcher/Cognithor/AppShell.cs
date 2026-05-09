@@ -14,6 +14,7 @@ sealed class AppShell : IDisposable
     readonly NotifyIcon _trayIcon;
     readonly ToolStripMenuItem _statusItem;
     readonly ToolStripMenuItem _defaultToggle;
+    bool _didAutoOpen;
 
     static readonly string Version = typeof(AppShell).Assembly
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
@@ -85,6 +86,19 @@ sealed class AppShell : IDisposable
         _health.StatusChanged += (prev, next) =>
         {
             SetStatus(next);
+            // Auto-open the default UI the first time the backend
+            // becomes healthy after launch — otherwise users land in
+            // the system tray invisible-icon trap and assume "nothing
+            // happened" when in fact the backend is humming along on
+            // port 8741.
+            if (next == AppStatus.Healthy && !_didAutoOpen)
+            {
+                _didAutoOpen = true;
+                _trayIcon.ShowBalloonTip(4000, "Cognithor",
+                    "Backend ready. Opening UI…",
+                    ToolTipIcon.Info);
+                OpenDefault();
+            }
             if (next == AppStatus.Stopped && prev != AppStatus.Starting)
             {
                 _trayIcon.ShowBalloonTip(5000, "Cognithor",
