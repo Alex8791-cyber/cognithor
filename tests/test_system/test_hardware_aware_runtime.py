@@ -551,6 +551,51 @@ class TestApplyEngine:
         assert data["manifest_version"] == apply_setup["manifest"].manifest_version
         assert "system_profile_hash" in data
 
+    def test_apply_emits_speculative_config_dict_not_legacy_field(self, apply_setup) -> None:
+        """vLLM 0.20+ wants ``--speculative-config '{"num_speculative_tokens": N}'``,
+        not the legacy ``--num-speculative-tokens N``. Sidecar's vllm_extras
+        must carry the JSON shape so the runtime tier-launcher emits the
+        right CLI flag (TODO-020 / Bug #1 from 2026-05-09 smoke-test)."""
+        # Find the NVFP4 tier (which has speculative_config in the manifest)
+        manifest = apply_setup["manifest"]
+        nvfp4_tier = next(
+            (t for t in manifest.tiers if t.id == "enterprise-vllm-nvfp4-blackwell"),
+            None,
+        )
+        if nvfp4_tier is None:
+            pytest.skip("manifest fixture lacks enterprise-vllm-nvfp4-blackwell tier")
+
+        # Skip if the tier isn't runnable in apply_setup (cap mismatch)
+        if apply_setup["solution"].tier_id != "enterprise-vllm-nvfp4-blackwell":
+            pytest.skip("apply_setup fixture is on a non-NVFP4 tier")
+
+        apply_solution(
+            solution=apply_setup["solution"],
+            manifest=manifest,
+            capabilities=apply_setup["caps"],
+            objective=apply_setup["objective"],
+            config_path=apply_setup["config_path"],
+            user_confirmed=True,
+        )
+        sidecar = apply_setup["config_path"].parent / ".hardware_aware.json"
+        import json
+
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+        extras = data.get("vllm_extras", {})
+        assert "speculative_config" in extras, (
+            f"speculative_config missing from vllm_extras — got keys: {list(extras.keys())}"
+        )
+        spec = extras["speculative_config"]
+        assert isinstance(spec, dict), (
+            f"speculative_config must be dict (vLLM 0.20+ JSON shape), got {type(spec)}"
+        )
+        assert spec.get("num_speculative_tokens") == 1
+        # Legacy flat field must NOT leak into the sidecar
+        assert "num_speculative_tokens" not in extras, (
+            "Legacy num_speculative_tokens leaked into vllm_extras — "
+            "tier-launcher would emit deprecated --num-speculative-tokens flag"
+        )
+
     def test_apply_writes_marker(self, apply_setup) -> None:
         result = apply_solution(
             solution=apply_setup["solution"],

@@ -81,6 +81,15 @@ class BackendConfig(BaseModel):
     enforce_eager: bool | None = None
     cpu_offload_gb: int | None = None
     max_model_len: int | None = None
+    # Speculative decoding config — JSON shape matching vLLM 0.20+ CLI
+    # ``--speculative-config``. Example: ``{"num_speculative_tokens": 1,
+    # "method": "ngram"}``.
+    speculative_config: dict[str, Any] | None = None
+    # DEPRECATED: vLLM 0.20+ replaced ``--num-speculative-tokens N`` with
+    # ``--speculative-config '{"num_speculative_tokens": N, ...}'``.
+    # apply_engine auto-migrates this field into ``speculative_config``
+    # when the new field is unset; new manifests should use
+    # ``speculative_config`` directly.
     num_speculative_tokens: int | None = None
     enable_prefix_caching: bool | None = None
 
