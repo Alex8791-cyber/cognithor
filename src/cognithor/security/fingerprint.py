@@ -336,6 +336,162 @@ def fingerprint_python_tool(
 
 
 # ---------------------------------------------------------------------------
+# Native-binary fingerprinting (TRUST-7 BINARY)
+# ---------------------------------------------------------------------------
+#
+# Where ``fingerprint_python_tool`` covers Python-source artefacts, this
+# section covers the executables Cognithor depends on at runtime: the
+# Ollama daemon, the vLLM server, etc. The audit trail needs to pin
+# *which build* of Ollama produced a planning trace so post-mortem
+# reconstruction can distinguish "same input, different bytes" from
+# "same input, different binary version".
+#
+# Native binaries are NOT line-ending-normalised — they're raw bytes.
+# The hash is over the on-disk content as-is. Version is best-effort
+# captured from ``<bin> --version`` with a hard timeout.
+
+
+# Maximum bytes we'll read from a binary's --version output. Any
+# real CLI produces << 1 KB; cap at 4 KB so a misbehaving binary
+# can't lock up the gateway boot path.
+_VERSION_PROBE_MAX_OUTPUT_BYTES = 4096
+
+# Maximum seconds to wait for a --version probe. Fast tools answer
+# in <100 ms; this generous cap protects against a mis-built binary
+# that hangs on stdout.
+_VERSION_PROBE_TIMEOUT_S = 5.0
+
+
+def hash_native_binary(path: Path | str) -> str:
+    """Lowercase-hex SHA-256 of the on-disk binary at ``path``.
+
+    Unlike :func:`hash_python_source`, this does NOT normalise line
+    endings — native binaries are raw bytes and any normalisation
+    would produce a hash that diverges from what users get when they
+    compute SHA-256 themselves (``sha256sum /usr/bin/ollama``).
+
+    Streams the file in 64 KiB chunks so multi-GB executables (vLLM
+    bundles ship with embedded model weights at times) don't pin the
+    whole content into RAM. Raises :class:`FileNotFoundError` if the
+    file does not exist; raises :class:`IsADirectoryError` if ``path``
+    points at a directory.
+    """
+    p = Path(path)
+    sha = hashlib.sha256()
+    chunk_size = 64 * 1024
+    with p.open("rb") as fh:
+        while True:
+            chunk = fh.read(chunk_size)
+            if not chunk:
+                break
+            sha.update(chunk)
+    return sha.hexdigest()
+
+
+def _capture_binary_version(
+    path: Path,
+    *,
+    version_flag: str = "--version",
+    timeout_s: float = _VERSION_PROBE_TIMEOUT_S,
+) -> str:
+    """Best-effort: run ``<bin> --version`` and parse a single-line
+    version string from stdout.
+
+    Returns ``""`` (the empty string, which the ``ToolFingerprint``
+    contract accepts as "no version metadata") on:
+
+    * the binary not being executable from this process
+    * the probe timing out
+    * the binary writing nothing to stdout
+    * the binary writing more than 4 KB (suspicious; treated as opaque)
+    * any subprocess-level error
+
+    The first stdout line is returned as-is, stripped of trailing
+    whitespace. Callers that want a normalised semver should
+    post-process; this function deliberately stays "best-effort raw"
+    so it never blocks the boot path on quirky CLI output.
+    """
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            [str(path), version_flag],
+            capture_output=True,
+            timeout=timeout_s,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError, FileNotFoundError):
+        return ""
+
+    raw = (proc.stdout or b"") + (proc.stderr or b"")
+    if not raw:
+        return ""
+    if len(raw) > _VERSION_PROBE_MAX_OUTPUT_BYTES:
+        return ""
+
+    try:
+        text = raw.decode("utf-8", errors="replace")
+    except UnicodeDecodeError:
+        return ""
+
+    # First non-empty line, trimmed; bounded length so a 1-line CLI
+    # banner with embedded shell-escapes can't spam the audit log.
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            return line[:200]
+    return ""
+
+
+def fingerprint_native_binary(
+    *,
+    name: str,
+    path: Path | str,
+    version: str | None = None,
+    version_flag: str = "--version",
+    upstream_url: str = "",
+    notes: str = "",
+) -> ToolFingerprint:
+    """Build a BINARY-kind fingerprint for a native executable.
+
+    Convenience wrapper for the gateway-boot path: when a detector
+    finds an external binary Cognithor depends on (Ollama daemon,
+    vLLM server, ffmpeg, ...), this captures the SHA-256 of its
+    on-disk bytes plus a best-effort version string and pins it into
+    a :class:`ToolFingerprint` carrying ``BinaryKind.BINARY``.
+
+    Args:
+        name: Stable logical name (``"ollama"``, ``"vllm-openai"``).
+        path: Filesystem path to the executable.
+        version: Explicit version string. When ``None`` (default), the
+            function probes ``<path> --version`` with a 5 s timeout
+            and uses the first stdout line. Pass ``""`` to skip the
+            probe entirely.
+        version_flag: CLI flag used for the version probe; default
+            ``--version``. Override for binaries that need a
+            different incantation (e.g. ``-v``).
+        upstream_url: Best-effort upstream URL.
+        notes: Free-text breadcrumb.
+
+    Raises ``FileNotFoundError`` / ``IsADirectoryError`` if the path
+    can't be hashed.
+    """
+    p = Path(path)
+    captured_version = version
+    if captured_version is None:
+        captured_version = _capture_binary_version(p, version_flag=version_flag)
+    return ToolFingerprint(
+        name=name,
+        kind=BinaryKind.BINARY,
+        content_hash=hash_native_binary(p),
+        version=captured_version,
+        source_path=str(p),
+        upstream_url=upstream_url,
+        notes=notes,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Process-local default
 # ---------------------------------------------------------------------------
 

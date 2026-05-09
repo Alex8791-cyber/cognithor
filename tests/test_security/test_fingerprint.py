@@ -13,8 +13,10 @@ from cognithor.security.fingerprint import (
     BinaryKind,
     FingerprintLedger,
     ToolFingerprint,
+    fingerprint_native_binary,
     fingerprint_python_tool,
     hash_bytes,
+    hash_native_binary,
     hash_python_source,
 )
 
@@ -348,6 +350,278 @@ class TestHashHelpers:
         assert fp.upstream_url == "https://example.test/my_tool"
         assert fp.source_path == str(src)
         assert fp.content_hash == hash_python_source(src)
+
+
+# ---------------------------------------------------------------------------
+# TRUST-7 BINARY — native-binary fingerprinting
+# ---------------------------------------------------------------------------
+
+
+class TestHashNativeBinary:
+    """``hash_native_binary`` must produce the same SHA-256 a user gets
+    from ``sha256sum`` — raw bytes, no line-ending normalisation."""
+
+    def test_matches_raw_sha256(self, tmp_path: Path) -> None:
+        # Hand-rolled bytes including \r\n so we can prove the hash is
+        # NOT line-ending-normalised (which would diverge from
+        # sha256sum on a binary).
+        import hashlib
+
+        payload = b"\x7fELF\x01\x02\x03\x00\r\n\x00\xff\xfe"
+        binary = tmp_path / "fake.bin"
+        binary.write_bytes(payload)
+
+        expected = hashlib.sha256(payload).hexdigest()
+        actual = hash_native_binary(binary)
+        assert actual == expected
+        # 64 lowercase-hex chars (matches ToolFingerprint contract)
+        assert len(actual) == 64
+        assert all(c in "0123456789abcdef" for c in actual)
+
+    def test_does_not_normalise_line_endings(self, tmp_path: Path) -> None:
+        """Crucial difference vs ``hash_python_source``: native binaries
+        are raw bytes. CRLF and LF must produce DIFFERENT hashes here
+        even though they'd produce the SAME hash for source code."""
+        unix = tmp_path / "unix.bin"
+        win = tmp_path / "win.bin"
+        unix.write_bytes(b"AB\nCD\n")
+        win.write_bytes(b"AB\r\nCD\r\n")
+        assert hash_native_binary(unix) != hash_native_binary(win), (
+            "native-binary hash must not collapse CRLF/LF — that would "
+            "diverge from sha256sum and break audit reconstruction"
+        )
+
+    def test_handles_chunked_read_for_large_files(self, tmp_path: Path) -> None:
+        """The implementation streams in 64 KiB chunks. Test with a
+        file > one chunk to catch off-by-one errors at the boundary."""
+        import hashlib
+
+        # 200 KiB — definitely crosses the 64 KiB chunk boundary
+        payload = b"X" * (200 * 1024)
+        binary = tmp_path / "large.bin"
+        binary.write_bytes(payload)
+        expected = hashlib.sha256(payload).hexdigest()
+        assert hash_native_binary(binary) == expected
+
+    def test_missing_file_raises_filenotfound(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            hash_native_binary(tmp_path / "does_not_exist")
+
+    def test_directory_raises_isadirectory(self, tmp_path: Path) -> None:
+        with pytest.raises((IsADirectoryError, PermissionError)):
+            hash_native_binary(tmp_path)
+
+
+class TestFingerprintNativeBinary:
+    """``fingerprint_native_binary`` is the gateway-boot convenience
+    wrapper that pins a native executable into a ToolFingerprint."""
+
+    def test_builds_binary_kind_with_explicit_version(self, tmp_path: Path) -> None:
+        binary = tmp_path / "ollama"
+        binary.write_bytes(b"\x7fELF...")
+        fp = fingerprint_native_binary(
+            name="ollama",
+            path=binary,
+            version="0.4.7",
+            upstream_url="https://github.com/ollama/ollama",
+            notes="captured at gateway boot",
+        )
+        assert fp.kind == BinaryKind.BINARY
+        assert fp.name == "ollama"
+        assert fp.version == "0.4.7"
+        assert fp.upstream_url == "https://github.com/ollama/ollama"
+        assert fp.notes == "captured at gateway boot"
+        assert fp.source_path == str(binary)
+        assert fp.content_hash == hash_native_binary(binary)
+
+    def test_explicit_empty_version_skips_probe(self, tmp_path: Path) -> None:
+        """``version=""`` (empty, not None) means "I checked, there is
+        no version" — the probe should NOT run. Important for offline
+        operators who want to keep the audit log deterministic."""
+        binary = tmp_path / "no-version.bin"
+        binary.write_bytes(b"opaque-bytes")
+        fp = fingerprint_native_binary(name="opaque", path=binary, version="")
+        assert fp.version == ""
+        # Hash must still land
+        assert fp.content_hash == hash_native_binary(binary)
+
+    def test_version_none_triggers_probe_with_default_flag(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """``version=None`` (default) triggers ``<bin> --version`` probe."""
+        binary = tmp_path / "fake.exe"
+        binary.write_bytes(b"\x00\x01\x02")
+
+        captured: dict[str, list[str]] = {"argv": []}
+
+        class _FakeProc:
+            def __init__(self) -> None:
+                self.stdout = b"fake-tool 1.2.3 (build abc123)\n"
+                self.stderr = b""
+                self.returncode = 0
+
+        def fake_run(argv, **kwargs):  # type: ignore[no-untyped-def]
+            captured["argv"] = list(argv)
+            return _FakeProc()
+
+        import subprocess as sp_module
+
+        monkeypatch.setattr(sp_module, "run", fake_run)
+
+        fp = fingerprint_native_binary(name="fake", path=binary)
+        # Probe was called with the default ``--version`` flag and the
+        # binary path
+        assert captured["argv"] == [str(binary), "--version"]
+        # First non-empty stdout line landed verbatim in the version field
+        assert fp.version == "fake-tool 1.2.3 (build abc123)"
+
+    def test_custom_version_flag(self, tmp_path: Path, monkeypatch) -> None:
+        """Some binaries use ``-v`` instead of ``--version``."""
+        binary = tmp_path / "old-tool"
+        binary.write_bytes(b"x")
+        captured: dict[str, list[str]] = {"argv": []}
+
+        class _FakeProc:
+            stdout = b"old-tool v0.9\n"
+            stderr = b""
+            returncode = 0
+
+        def fake_run(argv, **kwargs):  # type: ignore[no-untyped-def]
+            captured["argv"] = list(argv)
+            return _FakeProc()
+
+        import subprocess as sp_module
+
+        monkeypatch.setattr(sp_module, "run", fake_run)
+
+        fp = fingerprint_native_binary(name="old-tool", path=binary, version_flag="-v")
+        assert captured["argv"] == [str(binary), "-v"]
+        assert fp.version == "old-tool v0.9"
+
+    def test_probe_timeout_returns_empty_version(self, tmp_path: Path, monkeypatch) -> None:
+        """A binary that hangs on stdout must not block boot — the
+        probe times out and we record version=''."""
+        binary = tmp_path / "hangs.bin"
+        binary.write_bytes(b"x")
+
+        import subprocess as sp_module
+
+        def fake_run(argv, **kwargs):  # type: ignore[no-untyped-def]
+            raise sp_module.TimeoutExpired(cmd=argv, timeout=5.0)
+
+        monkeypatch.setattr(sp_module, "run", fake_run)
+
+        fp = fingerprint_native_binary(name="hangs", path=binary)
+        assert fp.version == ""
+        # But the hash must still land
+        assert fp.content_hash == hash_native_binary(binary)
+
+    def test_probe_subprocess_error_returns_empty_version(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """OSError (e.g. PermissionError on exec) → empty version, not crash."""
+        binary = tmp_path / "denied.bin"
+        binary.write_bytes(b"x")
+
+        import subprocess as sp_module
+
+        def fake_run(argv, **kwargs):  # type: ignore[no-untyped-def]
+            raise PermissionError("not executable")
+
+        monkeypatch.setattr(sp_module, "run", fake_run)
+
+        fp = fingerprint_native_binary(name="denied", path=binary)
+        assert fp.version == ""
+
+    def test_probe_empty_output_returns_empty_version(self, tmp_path: Path, monkeypatch) -> None:
+        """A binary that exits 0 without writing anything → no version."""
+        binary = tmp_path / "silent.bin"
+        binary.write_bytes(b"x")
+
+        class _FakeProc:
+            stdout = b""
+            stderr = b""
+            returncode = 0
+
+        import subprocess as sp_module
+
+        monkeypatch.setattr(sp_module, "run", lambda *a, **kw: _FakeProc())
+
+        fp = fingerprint_native_binary(name="silent", path=binary)
+        assert fp.version == ""
+
+    def test_probe_falls_through_to_stderr(self, tmp_path: Path, monkeypatch) -> None:
+        """Some CLIs print the version banner to stderr (Java, gradle).
+        The probe concatenates stdout+stderr so the version still lands."""
+        binary = tmp_path / "stderr-version.bin"
+        binary.write_bytes(b"x")
+
+        class _FakeProc:
+            stdout = b""
+            stderr = b"banner-tool 2.0\n"
+            returncode = 0
+
+        import subprocess as sp_module
+
+        monkeypatch.setattr(sp_module, "run", lambda *a, **kw: _FakeProc())
+
+        fp = fingerprint_native_binary(name="banner-tool", path=binary)
+        assert fp.version == "banner-tool 2.0"
+
+    def test_probe_caps_long_lines(self, tmp_path: Path, monkeypatch) -> None:
+        """A binary that prints a 1 KB single line gets truncated to
+        200 chars to keep audit logs readable."""
+        binary = tmp_path / "verbose.bin"
+        binary.write_bytes(b"x")
+
+        class _FakeProc:
+            stdout = b"V" * 1024 + b"\n"
+            stderr = b""
+            returncode = 0
+
+        import subprocess as sp_module
+
+        monkeypatch.setattr(sp_module, "run", lambda *a, **kw: _FakeProc())
+
+        fp = fingerprint_native_binary(name="verbose", path=binary)
+        assert len(fp.version) <= 200
+        assert fp.version == "V" * 200
+
+    def test_probe_rejects_huge_output(self, tmp_path: Path, monkeypatch) -> None:
+        """If a binary spews >4 KB to stdout, treat it as opaque (don't
+        try to parse) — bounds the gateway-boot audit log."""
+        binary = tmp_path / "spammy.bin"
+        binary.write_bytes(b"x")
+
+        class _FakeProc:
+            stdout = b"S" * 10000  # 10 KB > 4 KB cap
+            stderr = b""
+            returncode = 0
+
+        import subprocess as sp_module
+
+        monkeypatch.setattr(sp_module, "run", lambda *a, **kw: _FakeProc())
+
+        fp = fingerprint_native_binary(name="spammy", path=binary)
+        assert fp.version == ""
+
+    def test_fingerprint_round_trips_through_ledger(self, tmp_path: Path) -> None:
+        """A native-binary fingerprint registers cleanly into the
+        canonical FingerprintLedger and round-trips via content_hash."""
+        binary = tmp_path / "tool"
+        binary.write_bytes(b"\x7fELF...payload")
+        fp = fingerprint_native_binary(name="tool", path=binary, version="1.0")
+
+        ledger = FingerprintLedger()
+        was_new = ledger.register(fp)
+        assert was_new is True
+        # Idempotent re-register
+        assert ledger.register(fp) is False
+        # Lookup by content_hash returns the same fingerprint
+        assert ledger.get(fp.content_hash) is fp
+        # Filter by kind picks up the new BINARY entry
+        names_by_kind = {f.name for f in ledger.filter_by_kind(BinaryKind.BINARY)}
+        assert names_by_kind == {"tool"}
 
 
 # ---------------------------------------------------------------------------
