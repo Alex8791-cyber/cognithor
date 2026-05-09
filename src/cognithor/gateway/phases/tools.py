@@ -203,22 +203,26 @@ async def init_tools(
     # json, datetime, ast, bytes, float, image_v2) into the canonical
     # DOMAIN_REGISTRY. The synthesis pipeline reads from this
     # registry; without this call the registry stays empty and every
-    # cross-domain query falls back to the free-form path. Defensive
-    # wrapper because re-running the gateway in a single Python
-    # process (test fixtures, hot-reload) hits the
-    # DomainAlreadyRegisteredError guard — that's not fatal here.
+    # cross-domain query falls back to the free-form path.
+    #
+    # ``register_missing_sprint26_domains`` is set-based + idempotent:
+    # safe to call on a fresh, partial, or fully-populated registry,
+    # so re-runs (test fixtures, hot-reload) and partial-init recovery
+    # don't raise. Returns the names actually registered by THIS call,
+    # which we surface in the audit log so reviewers can tell first-
+    # boot from re-boot at a glance.
     try:
         from cognithor.channels.program_synthesis.domains import (
             DOMAIN_REGISTRY,
-            SPRINT26_DOMAIN_NAMES,
-            register_all_sprint26_domains,
+            register_missing_sprint26_domains,
         )
 
-        if len(DOMAIN_REGISTRY) == 0:
-            register_all_sprint26_domains(DOMAIN_REGISTRY)
+        newly_registered = register_missing_sprint26_domains(DOMAIN_REGISTRY)
+        if newly_registered:
             log.info(
                 "pse_sprint26_domains_registered",
-                domains=list(SPRINT26_DOMAIN_NAMES),
+                domains=newly_registered,
+                total=len(DOMAIN_REGISTRY),
             )
         else:
             log.debug(

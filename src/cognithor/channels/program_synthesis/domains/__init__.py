@@ -27,6 +27,7 @@ from __future__ import annotations
 from cognithor.channels.program_synthesis.domains._register_all import (
     SPRINT26_DOMAIN_NAMES,
     register_all_sprint26_domains,
+    register_missing_sprint26_domains,
 )
 from cognithor.channels.program_synthesis.domains.base import (
     Domain,
@@ -72,4 +73,5 @@ __all__ = [
     "Scorecard",
     "ScorecardEntry",
     "register_all_sprint26_domains",
+    "register_missing_sprint26_domains",
 ]
