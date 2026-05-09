@@ -75,3 +75,30 @@ repos:
         types: [python]
         files: ^(src/cognithor/channels/program_synthesis/|tests/test_channels/test_program_synthesis/)
         pass_filenames: false
+
+      # Mirror of CI's "Flutter (analyze + test) — Dart format check" step
+      # so commits don't bring format drift into PRs that then surface as
+      # red CI on push (the recurring incident from 2026-05-08:
+      # 5 .dart files in the HW-Aware push were unformatted, masked
+      # behind the failing Lint job, only surfaced once Lint went green).
+      # Skipped automatically when Flutter SDK is absent — operators
+      # without Flutter can still commit non-Flutter changes.
+      - id: dart-format-flutter
+        name: dart format --set-exit-if-changed (flutter_app/)
+        entry: |
+          bash -c '
+            if ! command -v dart >/dev/null 2>&1; then
+              echo "[dart-format] dart not on PATH — skipping. Install Flutter to enable."
+              exit 0
+            fi
+            dart format --output=none --set-exit-if-changed "$@" || {
+              echo ""
+              echo "[dart-format] Drift detected. Run:"
+              echo "  cd flutter_app && dart format lib/ test/ integration_test/"
+              echo "and re-stage."
+              exit 1
+            }
+          ' --
+        language: system
+        files: ^flutter_app/.*\.dart$
+        pass_filenames: true
