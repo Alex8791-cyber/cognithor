@@ -381,7 +381,7 @@ class SystemDetector:
                 **kwargs,
             )
             if r.returncode == 0 and r.stdout.strip():
-                v = r.stdout.strip().splitlines()[0].replace(",", ".").strip()
+                v: str = r.stdout.strip().splitlines()[0].replace(",", ".").strip()
                 if re.fullmatch(r"\d+\.\d+", v):
                     return v
         except (FileNotFoundError, subprocess.TimeoutExpired):

@@ -20,6 +20,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from cognithor.utils.logging import get_logger
 
@@ -50,7 +51,7 @@ class PerfRecord:
             return 0.0
         return (self.completion_tokens * 1000.0) / self.total_ms
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "ts": round(self.timestamp, 3),
             "model_id": self.model_id,
@@ -65,7 +66,7 @@ class PerfRecord:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> PerfRecord:
+    def from_dict(cls, d: dict[str, Any]) -> PerfRecord:
         return cls(
             timestamp=float(d.get("ts", 0)),
             model_id=str(d.get("model_id", "")),
@@ -146,7 +147,7 @@ class PerfTracker:
         samples.sort()
         return float(samples[len(samples) // 2])
 
-    def model_summary(self, *, window_s: float = 86400) -> dict[str, dict]:
+    def model_summary(self, *, window_s: float = 86400) -> dict[str, dict[str, Any]]:
         cutoff = time.time() - window_s
         out: dict[str, list[PerfRecord]] = {}
         with self._lock:

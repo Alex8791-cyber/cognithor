@@ -57,6 +57,128 @@ if TYPE_CHECKING:
 log = get_logger(__name__)
 
 
+# Module-level GREEN-tier tool set. Single source of truth for the
+# fallback risk classifier in ``Gatekeeper._classify_risk``. Exposed at
+# module scope so the security-contract fuzz test in
+# ``tests/security_contracts/test_inv2_gatekeeper_fails_closed.py``
+# can import it instead of duplicating the list (the duplicate drifted
+# in 2026-05-07 when ``summarize`` and the LLM-only batch were added
+# to the gatekeeper without updating the test, turning CI red).
+GREEN_TOOLS: frozenset[str] = frozenset(
+    {
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_directory",
+        "exec_command",
+        "shell_exec",
+        "shell",
+        "run_python",
+        "search_memory",
+        "get_entity",
+        "search",
+        "list_jobs",
+        "web_search",
+        "web_fetch",
+        "web_news_search",
+        "search_and_read",
+        "browse_url",
+        "search_procedures",
+        "media_analyze_image",
+        "media_extract_text",
+        "media_transcribe_audio",
+        "media_resize_image",
+        "get_core_memory",
+        "get_recent_episodes",
+        "memory_stats",
+        "record_procedure_usage",
+        "browse_page_info",
+        "browse_screenshot",
+        "analyze_code",
+        "list_skills",
+        "search_community_skills",
+        "reddit_scan",
+        "reddit_leads",
+        "reddit_refine",
+        "reddit_discover_subreddits",
+        "reddit_templates",
+        "read_pdf",
+        "read_ppt",
+        "read_docx",
+        "template_list",
+        "list_remote_agents",
+        "git_status",
+        "git_diff",
+        "git_log",
+        "search_files",
+        "find_in_files",
+        "db_query",
+        "db_schema",
+        "create_chart",
+        "create_table_image",
+        "chart_from_csv",
+        "set_reminder",
+        "list_reminders",
+        "send_notification",
+        "get_clipboard",
+        "set_clipboard",
+        "screenshot_desktop",
+        "screenshot_region",
+        "computer_screenshot",
+        "calendar_today",
+        "calendar_upcoming",
+        "calendar_check_availability",
+        "identity_recall",
+        "identity_state",
+        "identity_reflect",
+        "identity_dream",
+        "knowledge_synthesize",
+        "knowledge_contradictions",
+        "knowledge_timeline",
+        "knowledge_gaps",
+        "vault_list",
+        "vault_search",
+        "vault_read",
+        "docker_ps",
+        "docker_logs",
+        "docker_inspect",
+        "api_list",
+        "remote_list_hosts",
+        "remote_test_connection",
+        "list_background_jobs",
+        "check_background_job",
+        "read_background_log",
+        "wait_background_job",
+        "arc_status",
+        "arc_replay",
+        "pse_synthesize",
+        "pse_synthesize_refined",
+        "pse_is_synthesizable",
+        "pse_status",
+        "atl_status",
+        "atl_journal",
+        "kanban_list_tasks",
+        "social_scan",
+        "social_leads",
+        "file_write",
+        "canvas_eval",
+        "canvas_push",
+        "canvas_reset",
+        "canvas_snapshot",
+        "video_caption_overlay",
+        "video_compose_explainer",
+        "video_compose_social_cut",
+        "brainstorm",
+        "daily_briefing",
+        "explain_concept",
+        "code_review",
+        "summarize",
+        "translate",
+        "insurance_advisor",
+    }
+)
+
+
 class Gatekeeper:
     """Deterministic policy enforcer. No LLM. No exceptions. [B§3.2]
 
@@ -732,160 +854,8 @@ class Gatekeeper:
                         return mapped
 
         # Fallback: hardcoded tool lists
-        # GREEN: Read-Only Operationen
-        green_tools = {
-            "read_file",
-            "write_file",
-            "edit_file",
-            "list_directory",
-            "exec_command",
-            "shell_exec",
-            "shell",
-            "run_python",
-            "search_memory",
-            "get_entity",
-            "search",
-            "list_jobs",
-            "web_search",
-            "web_fetch",
-            "web_news_search",
-            "search_and_read",
-            "browse_url",
-            "search_procedures",
-            "media_analyze_image",
-            "media_extract_text",
-            "media_transcribe_audio",
-            "media_resize_image",
-            "get_core_memory",
-            "get_recent_episodes",
-            "memory_stats",
-            "record_procedure_usage",
-            "browse_page_info",
-            "browse_screenshot",
-            "analyze_code",
-            "list_skills",
-            "search_community_skills",
-            "reddit_scan",
-            "reddit_leads",
-            "reddit_refine",
-            "reddit_discover_subreddits",
-            "reddit_templates",
-            "read_pdf",
-            "read_ppt",
-            "read_docx",
-            "template_list",
-            "list_remote_agents",
-            "git_status",
-            "git_diff",
-            "git_log",
-            "search_files",
-            "find_in_files",
-            "db_query",
-            "db_schema",
-            "create_chart",
-            "create_table_image",
-            "chart_from_csv",
-            "set_reminder",
-            "list_reminders",
-            "send_notification",
-            "get_clipboard",
-            "set_clipboard",
-            "screenshot_desktop",
-            "screenshot_region",
-            # Computer Use (read-only)
-            "computer_screenshot",
-            "calendar_today",
-            "calendar_upcoming",
-            "calendar_check_availability",
-            # Identity (read-only)
-            "identity_recall",
-            "identity_state",
-            "identity_reflect",
-            "identity_dream",
-            # Knowledge Synthesis (read-only analysis)
-            "knowledge_synthesize",
-            "knowledge_contradictions",
-            "knowledge_timeline",
-            "knowledge_gaps",
-            # Vault (read-only)
-            "vault_list",
-            "vault_search",
-            "vault_read",
-            # Docker (read-only)
-            "docker_ps",
-            "docker_logs",
-            "docker_inspect",
-            # API Hub (read-only)
-            "api_list",
-            # Remote Shell (read-only)
-            "remote_list_hosts",
-            "remote_test_connection",
-            # Background tasks (monitoring, read-only)
-            "list_background_jobs",
-            "check_background_job",
-            "read_background_log",
-            "wait_background_job",
-            # ARC-AGI-3 (read-only)
-            "arc_status",
-            "arc_replay",
-            # Sprint-22 Track A.2: Program Synthesis Engine.
-            # Pure-Python deterministic search over a typed DSL with a
-            # subprocess sandbox + capability tokens — no filesystem,
-            # network, or shell side effects. Cache + verifier are
-            # sealed inside the channel. All three calls are safe to
-            # auto-execute without user-confirm friction.
-            "pse_synthesize",
-            # Sprint-25: synthesize + LLM-refinement wrapper. The
-            # refinement pass uses the gateway's existing LLM client
-            # (no new attack surface vs. the rest of the planner)
-            # and the synthesis itself goes through the same sandbox
-            # as ``pse_synthesize``. Safe to auto-execute.
-            "pse_synthesize_refined",
-            "pse_is_synthesizable",
-            "pse_status",
-            # ATL (read-only)
-            "atl_status",
-            "atl_journal",
-            "kanban_list_tasks",
-            "social_scan",
-            "social_leads",
-            # Audit-PR4: 14 catalog tools previously fell through to
-            # default ORANGE (every call interrupted the autonomous
-            # loop with a user-approval prompt). Classified per their
-            # actual side-effect profile.
-            #
-            # `file_write` — alias of `write_file` (filesystem.py:430);
-            # the parent is GREEN, the alias must match.
-            "file_write",
-            # `canvas_*` — pure in-memory canvas state on the gateway,
-            # no filesystem / network / subprocess. Read-tier safe.
-            "canvas_eval",
-            "canvas_push",
-            "canvas_reset",
-            "canvas_snapshot",
-            # Pure HTML-emission tools (Sprint-27 HF-3 / HF-5). No
-            # subprocess, no filesystem write — the rendering step
-            # is a separate ORANGE tool (`video_render`). The composer
-            # tools are safe to auto-execute.
-            "video_caption_overlay",
-            "video_compose_explainer",
-            "video_compose_social_cut",
-            # LLM-only generative tools — they consult the configured
-            # LLM but produce no side effects on filesystem / network /
-            # state. Same risk profile as the existing `pse_synthesize`
-            # GREEN entries.
-            "brainstorm",
-            "daily_briefing",
-            "explain_concept",
-            "code_review",
-            "summarize",
-            "translate",
-            # Domain-specific LLM-only tool from
-            # `examples/insurance-agent-pack/` — same profile as the
-            # other LLM-only entries above.
-            "insurance_advisor",
-        }
-        if tool in green_tools:
+        # GREEN: Read-Only Operationen — see module-level GREEN_TOOLS.
+        if tool in GREEN_TOOLS:
             return RiskLevel.GREEN
 
         # YELLOW: Write operations but non-dangerous (local, no network)

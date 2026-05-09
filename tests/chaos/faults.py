@@ -16,16 +16,16 @@ import contextlib
 import os
 import random
 import socket
-import sqlite3
 import struct
 import subprocess
 import tempfile
 import threading
 import time
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 # ---------------------------------------------------------------------------
 # Process-level faults
@@ -118,7 +118,7 @@ class _BlockingProxyServer:
         while not self._stop.is_set():
             try:
                 client, _ = self._sock.accept()
-            except (socket.timeout, OSError):
+            except (TimeoutError, OSError):
                 continue
             # Hold the connection open without reading or writing.
             threading.Thread(
@@ -303,8 +303,6 @@ def audit_chain_is_intact(audit_path: Path) -> bool:
             if recorded != prev_hash:
                 return False
             payload = {k: v for k, v in entry.items() if k != "hash"}
-            digest = hashlib.sha256(
-                json.dumps(payload, sort_keys=True).encode("utf-8")
-            ).hexdigest()
+            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
             prev_hash = digest
     return True

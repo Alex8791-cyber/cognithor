@@ -61,15 +61,20 @@ class HardwareSolution {
       rationaleEn: j['rationale_en'] as String? ?? '',
       score: (j['score'] as num).toDouble(),
       scoreBreakdown: breakdown,
-      blockers: (j['blockers'] as List? ?? []).map((e) => e.toString()).toList(),
-      warnings: (j['warnings'] as List? ?? []).map((e) => e.toString()).toList(),
+      blockers: (j['blockers'] as List? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+      warnings: (j['warnings'] as List? ?? [])
+          .map((e) => e.toString())
+          .toList(),
       isImmediatelyRunnable: j['is_immediately_runnable'] as bool? ?? false,
-      estimatedFirstResponseS:
-          (j['estimated_first_response_s'] as num? ?? 0).toDouble(),
+      estimatedFirstResponseS: (j['estimated_first_response_s'] as num? ?? 0)
+          .toDouble(),
       estimatedDiskGb: (j['estimated_disk_gb'] as num? ?? 0).toDouble(),
-      estimatedSetupMinutes: (j['estimated_setup_minutes'] as num? ?? 0).toInt(),
-      estimatedCostEurPerMonth:
-          (j['estimated_cost_eur_per_month'] as num? ?? 0).toDouble(),
+      estimatedSetupMinutes: (j['estimated_setup_minutes'] as num? ?? 0)
+          .toInt(),
+      estimatedCostEurPerMonth: (j['estimated_cost_eur_per_month'] as num? ?? 0)
+          .toDouble(),
       backend: j['backend'] as String? ?? '',
       modelSet: ms,
     );
@@ -178,7 +183,7 @@ enum WizardStage {
 
 class OnboardingProvider extends ChangeNotifier {
   OnboardingProvider({required this.apiBaseUrl, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+    : _http = httpClient ?? http.Client();
 
   final String apiBaseUrl;
   final http.Client _http;
@@ -205,9 +210,9 @@ class OnboardingProvider extends ChangeNotifier {
   }
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        if (_authToken != null) 'Authorization': 'Bearer $_authToken',
-      };
+    'Content-Type': 'application/json',
+    if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+  };
 
   Future<void> detect() async {
     _stage = WizardStage.detecting;
@@ -225,8 +230,10 @@ class OnboardingProvider extends ChangeNotifier {
       );
 
       final cp = await _http
-          .get(Uri.parse('$apiBaseUrl/api/system/capabilities'),
-              headers: _headers)
+          .get(
+            Uri.parse('$apiBaseUrl/api/system/capabilities'),
+            headers: _headers,
+          )
           .timeout(const Duration(seconds: 15));
       if (cp.statusCode != 200) {
         throw Exception('capabilities HTTP ${cp.statusCode}');
@@ -248,12 +255,14 @@ class OnboardingProvider extends ChangeNotifier {
     _stage = WizardStage.loadingRecommendations;
     notifyListeners();
     try {
-      final r = await _http.get(
-        Uri.parse(
-          '$apiBaseUrl/api/system/recommendations?objective=$preset&max_solutions=5',
-        ),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 20));
+      final r = await _http
+          .get(
+            Uri.parse(
+              '$apiBaseUrl/api/system/recommendations?objective=$preset&max_solutions=5',
+            ),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 20));
       if (r.statusCode != 200) {
         throw Exception('recommendations HTTP ${r.statusCode}');
       }
@@ -276,15 +285,17 @@ class OnboardingProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final r = await _http.post(
-        Uri.parse('$apiBaseUrl/api/system/apply'),
-        headers: _headers,
-        body: jsonEncode({
-          'tier_id': tierId,
-          'objective_preset': _objectivePreset,
-          'user_confirmed': true,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final r = await _http
+          .post(
+            Uri.parse('$apiBaseUrl/api/system/apply'),
+            headers: _headers,
+            body: jsonEncode({
+              'tier_id': tierId,
+              'objective_preset': _objectivePreset,
+              'user_confirmed': true,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
       if (r.statusCode != 200) {
         throw Exception('apply HTTP ${r.statusCode}: ${r.body}');
       }

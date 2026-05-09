@@ -23,7 +23,10 @@ import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 import yaml
 
@@ -49,7 +52,7 @@ _LOCK_PATH = Path.home() / ".cognithor" / ".wizard.lock"
 
 
 @contextlib.contextmanager
-def _file_lock(timeout_s: float = 5.0):
+def _file_lock(timeout_s: float = 5.0) -> Iterator[None]:
     """Cross-platform exclusive file-lock around the apply pipeline.
 
     POSIX: fcntl.LOCK_EX | LOCK_NB.
@@ -115,7 +118,7 @@ class ApplyResult:
 _LATEST_SCHEMA_VERSION = 2
 
 
-def _migrate_v1_to_v2(cfg: dict) -> dict:
+def _migrate_v1_to_v2(cfg: dict[str, Any]) -> dict[str, Any]:
     """v1 → v2: bookkeeping fields (`__schema_version`, `__recommended_*`)
     were originally written into config.yaml. v2 moves them to the
     `~/.cognithor/.hardware_aware.json` sidecar so config.yaml stays
@@ -135,7 +138,7 @@ def _migrate_v1_to_v2(cfg: dict) -> dict:
 _SCHEMA_MIGRATIONS = {1: _migrate_v1_to_v2}
 
 
-def _migrate_to_latest(cfg: dict) -> dict:
+def _migrate_to_latest(cfg: dict[str, Any]) -> dict[str, Any]:
     """Apply v1→v2→… migrations idempotently. Schema-version tracking moved
     to sidecar in v2 — migrations now just clean up legacy keys."""
     cur = 1 if "__schema_version" in cfg else _LATEST_SCHEMA_VERSION
@@ -151,7 +154,7 @@ def _migrate_to_latest(cfg: dict) -> dict:
 # ── Merge ──────────────────────────────────────────────────────────────────
 
 
-def _is_default_or_missing(cfg: dict, path: tuple[str, ...]) -> bool:
+def _is_default_or_missing(cfg: dict[str, Any], path: tuple[str, ...]) -> bool:
     """True iff the field at `path` is missing or matches the Cognithor
     code-default. Used to decide whether to overwrite vs respect User-Override."""
     cur: Any = cfg
@@ -189,8 +192,8 @@ _SCHEMA_KNOWN_VLLM_FIELDS = {
 
 
 def _merge_solution(
-    cfg: dict, solution: Solution, tier: Tier, manifest: Manifest
-) -> tuple[dict, dict]:
+    cfg: dict[str, Any], solution: Solution, tier: Tier, manifest: Manifest
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Idempotent merge — never overwrite User-Overrides.
 
     Returns (config_yaml_dict, sidecar_dict) where sidecar_dict carries
@@ -230,7 +233,7 @@ def _merge_solution(
 
     # Models — per role, only set if not already user-defined
     cfg.setdefault("models", {})
-    sidecar_models: dict[str, dict] = {}
+    sidecar_models: dict[str, dict[str, Any]] = {}
     backend_id_field = tier.backend
     for role in ("planner", "executor", "coder", "embedding", "formulate", "fast_path_validator"):
         model_id = getattr(tier.model_set, role)
@@ -299,7 +302,7 @@ def list_backups(config_path: Path | None = None) -> list[Path]:
 # ── Atomic write ───────────────────────────────────────────────────────────
 
 
-def _atomic_write_yaml(path: Path, data: dict) -> None:
+def _atomic_write_yaml(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_str = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     tmp_path = Path(tmp_str)
@@ -317,7 +320,7 @@ def _atomic_write_yaml(path: Path, data: dict) -> None:
 # ── Pydantic validation pre-flight ─────────────────────────────────────────
 
 
-def _validate_against_schema(cfg: dict) -> None:
+def _validate_against_schema(cfg: dict[str, Any]) -> None:
     """Build a CognithorConfig from the merged dict to catch schema bugs.
 
     We don't keep the result — just verify it parses. Validation errors
@@ -383,7 +386,7 @@ def apply_solution(
 
     with _file_lock(timeout_s=5.0):
         # Read existing config (or {})
-        existing: dict = {}
+        existing: dict[str, Any] = {}
         if config_path.exists():
             try:
                 existing = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}

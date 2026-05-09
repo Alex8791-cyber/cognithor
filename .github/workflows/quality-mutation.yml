@@ -28,30 +28,19 @@ jobs:
       - name: Install Cognithor + quality extras
         run: pip install -e ".[dev,quality]"
       - name: Initialise mutation session
+        # cosmic-ray init does NOT accept per-path CLI flags — the
+        # mutation scope lives in the TOML's `module-path` field. The
+        # earlier `--paths …` plumbing was a no-op that errored out with
+        # `No such option: --paths`. We point the scheduled run at
+        # cosmic-ray-baseline.toml (focused on src/cognithor/video/
+        # routing.py — the smallest TRUST module, ~15 min full sweep)
+        # so the nightly job actually completes. Multi-path dispatch
+        # via inputs.paths is a follow-up and is currently treated as
+        # a no-op; see also CHANGELOG.
         run: |
-          IFS=',' read -r -a PATHS <<< "${{ inputs.paths }}"
-          PATH_ARGS=()
-          for p in "${PATHS[@]:-}"; do
-            PATH_ARGS+=(--paths "$p")
-          done
-          # Default paths if none provided
-          if [ ${#PATH_ARGS[@]} -eq 0 ]; then
-            PATH_ARGS=(
-              --paths src/cognithor/audit
-              --paths src/cognithor/security/permission_scope.py
-              --paths src/cognithor/security/cost_ledger.py
-              --paths src/cognithor/security/fingerprint.py
-              --paths src/cognithor/security/migration_ledger.py
-              --paths src/cognithor/security/cloud_escalation.py
-              --paths src/cognithor/security/trust_bundle.py
-              --paths src/cognithor/video/routing.py
-              --paths src/cognithor/core/vlm_router.py
-              --paths src/cognithor/core/workflow.py
-            )
-          fi
-          cosmic-ray init cosmic-ray.toml session.sqlite "${PATH_ARGS[@]}"
+          cosmic-ray init cosmic-ray-baseline.toml session.sqlite
       - name: Run mutation testing
-        run: cosmic-ray exec cosmic-ray.toml session.sqlite
+        run: cosmic-ray exec cosmic-ray-baseline.toml session.sqlite
         timeout-minutes: 100
       - name: Generate report
         run: |

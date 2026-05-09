@@ -25,11 +25,14 @@ pairs that this harness picks up automatically.
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -62,8 +65,7 @@ class MigrationCase:
 def _audit_v1_build(path: Path) -> None:
     conn = sqlite3.connect(str(path))
     conn.execute(
-        "CREATE TABLE audit_v1 (seq INTEGER PRIMARY KEY, ts TEXT, "
-        "category TEXT, payload TEXT)"
+        "CREATE TABLE audit_v1 (seq INTEGER PRIMARY KEY, ts TEXT, category TEXT, payload TEXT)"
     )
     conn.commit()
     conn.close()
@@ -88,9 +90,7 @@ def _audit_v1_to_v2_forward(path: Path) -> None:
     conn = sqlite3.connect(str(path))
     conn.execute("ALTER TABLE audit_v1 RENAME TO audit_v2")
     conn.execute("ALTER TABLE audit_v2 ADD COLUMN prev_hash TEXT")
-    conn.execute(
-        "UPDATE audit_v2 SET prev_hash = '0' WHERE prev_hash IS NULL"
-    )
+    conn.execute("UPDATE audit_v2 SET prev_hash = '0' WHERE prev_hash IS NULL")
     conn.commit()
     conn.close()
 
@@ -104,8 +104,7 @@ def _audit_v2_to_v1_backward(path: Path) -> None:
     """
     conn = sqlite3.connect(str(path))
     conn.execute(
-        "CREATE TABLE audit_v1 (seq INTEGER PRIMARY KEY, ts TEXT, "
-        "category TEXT, payload TEXT)"
+        "CREATE TABLE audit_v1 (seq INTEGER PRIMARY KEY, ts TEXT, category TEXT, payload TEXT)"
     )
     conn.execute(
         "INSERT INTO audit_v1 (seq, ts, category, payload) "
@@ -118,9 +117,7 @@ def _audit_v2_to_v1_backward(path: Path) -> None:
 
 def _audit_v1_snapshot(path: Path) -> list[tuple[int, str, str, str]]:
     conn = sqlite3.connect(str(path))
-    rows = conn.execute(
-        "SELECT seq, ts, category, payload FROM audit_v1 ORDER BY seq"
-    ).fetchall()
+    rows = conn.execute("SELECT seq, ts, category, payload FROM audit_v1 ORDER BY seq").fetchall()
     conn.close()
     return rows
 

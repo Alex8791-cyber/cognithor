@@ -396,12 +396,8 @@ class TestEnsureProfileLoaded:
         orchestrator = _mock_orchestrator(post_swap_model=profile.model_id)
 
         results = await asyncio.gather(
-            ensure_profile_loaded(
-                profile=profile, backend=backend, orchestrator=orchestrator
-            ),
-            ensure_profile_loaded(
-                profile=profile, backend=backend, orchestrator=orchestrator
-            ),
+            ensure_profile_loaded(profile=profile, backend=backend, orchestrator=orchestrator),
+            ensure_profile_loaded(profile=profile, backend=backend, orchestrator=orchestrator),
         )
         assert all(r.aligned for r in results)
         # CRITICAL: orchestrator's swap was called exactly ONCE despite

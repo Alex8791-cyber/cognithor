@@ -33,9 +33,7 @@ def score(session_path: Path) -> dict[str, object]:
 
     conn = sqlite3.connect(str(session_path))
     try:
-        rows = conn.execute(
-            "SELECT module_path, test_outcome FROM work_results"
-        ).fetchall()
+        rows = conn.execute("SELECT module_path, test_outcome FROM work_results").fetchall()
     except sqlite3.OperationalError:
         # Fallback for older cosmic-ray schemas
         rows = conn.execute(
@@ -59,9 +57,7 @@ def score(session_path: Path) -> dict[str, object]:
     survived = counts.get("survived", 0)
     skipped = counts.get("skipped", 0) + counts.get("incompetent", 0)
     denominator = killed + survived
-    mutation_score_pct = (
-        round((killed / denominator) * 100, 2) if denominator else 0.0
-    )
+    mutation_score_pct = round((killed / denominator) * 100, 2) if denominator else 0.0
     return {
         "total": total,
         "killed": killed,

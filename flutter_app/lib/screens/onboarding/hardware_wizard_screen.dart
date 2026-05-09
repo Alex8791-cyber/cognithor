@@ -35,9 +35,7 @@ class _HardwareWizardScreenState extends State<HardwareWizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cognithor · Hardware-Setup'),
-      ),
+      appBar: AppBar(title: const Text('Cognithor · Hardware-Setup')),
       body: Consumer<OnboardingProvider>(
         builder: (context, p, _) {
           // Auto-advance step based on stage
@@ -99,7 +97,6 @@ class _HardwareWizardScreenState extends State<HardwareWizardScreen> {
 // Step 1 — Detection
 // ─────────────────────────────────────────────────────────────────────────
 
-
 class _DetectionStep extends StatelessWidget {
   const _DetectionStep({required this.p});
   final OnboardingProvider p;
@@ -112,7 +109,8 @@ class _DetectionStep extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 18, height: 18,
+              width: 18,
+              height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: 12),
@@ -147,13 +145,13 @@ class _DetectionStep extends StatelessWidget {
                 final icon = status == 'ok'
                     ? Icons.check_circle_outline
                     : status == 'warn'
-                        ? Icons.error_outline
-                        : Icons.cancel_outlined;
+                    ? Icons.error_outline
+                    : Icons.cancel_outlined;
                 final color = status == 'ok'
                     ? Colors.green
                     : status == 'warn'
-                        ? Colors.orange
-                        : Colors.red;
+                    ? Colors.orange
+                    : Colors.red;
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
@@ -162,10 +160,7 @@ class _DetectionStep extends StatelessWidget {
                       const SizedBox(width: 8),
                       SizedBox(
                         width: 110,
-                        child: Text(
-                          e.key,
-                          style: theme.textTheme.bodySmall,
-                        ),
+                        child: Text(e.key, style: theme.textTheme.bodySmall),
                       ),
                       Expanded(child: Text(value)),
                     ],
@@ -190,7 +185,11 @@ class _DetectionStep extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, size: 16, color: Colors.orange),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 16,
+                    color: Colors.orange,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(child: Text(w['message'] ?? '')),
                 ],
@@ -241,17 +240,32 @@ class _CapChip extends StatelessWidget {
 // Step 2 — Objective Preset
 // ─────────────────────────────────────────────────────────────────────────
 
-
 class _ObjectiveStep extends StatelessWidget {
   const _ObjectiveStep({required this.p});
   final OnboardingProvider p;
 
   static const _presets = [
-    ('balanced', 'Ausgewogen', 'Standard — gute Mischung aus Qualität, Speed, Cost und Privacy.'),
+    (
+      'balanced',
+      'Ausgewogen',
+      'Standard — gute Mischung aus Qualität, Speed, Cost und Privacy.',
+    ),
     ('quality', 'Beste Qualität', 'Maximale Antwort-Qualität, ggf. langsamer.'),
-    ('speed', 'Schnellste Antworten', 'Minimale Latenz — bevorzugt kleinere Modelle.'),
-    ('privacy', 'Maximale Privacy', 'Nur lokale Inferenz, keine Cloud-Anfragen.'),
-    ('cost', 'Geringste Kosten', 'Lokale Inferenz oder günstigster Cloud-Anbieter.'),
+    (
+      'speed',
+      'Schnellste Antworten',
+      'Minimale Latenz — bevorzugt kleinere Modelle.',
+    ),
+    (
+      'privacy',
+      'Maximale Privacy',
+      'Nur lokale Inferenz, keine Cloud-Anfragen.',
+    ),
+    (
+      'cost',
+      'Geringste Kosten',
+      'Lokale Inferenz oder günstigster Cloud-Anbieter.',
+    ),
   ];
 
   @override
@@ -266,7 +280,10 @@ class _ObjectiveStep extends StatelessWidget {
                 ? Theme.of(context).colorScheme.primaryContainer
                 : null,
             child: ListTile(
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: Text(desc),
               trailing: p.objectivePreset == key
                   ? const Icon(Icons.check_circle, color: Colors.blue)
@@ -279,7 +296,8 @@ class _ObjectiveStep extends StatelessWidget {
           const Row(
             children: [
               SizedBox(
-                width: 16, height: 16,
+                width: 16,
+                height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
               SizedBox(width: 12),
@@ -295,7 +313,6 @@ class _ObjectiveStep extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────
 // Step 3 — Solution selection
 // ─────────────────────────────────────────────────────────────────────────
-
 
 class _SolutionsStep extends StatelessWidget {
   const _SolutionsStep({required this.p});
@@ -423,7 +440,10 @@ class _ScoreBars extends StatelessWidget {
     return Row(
       children: [
         for (final (label, value, color) in entries) ...[
-          SizedBox(width: 14, child: Text(label, style: const TextStyle(fontSize: 11))),
+          SizedBox(
+            width: 14,
+            child: Text(label, style: const TextStyle(fontSize: 11)),
+          ),
           Expanded(
             child: Container(
               height: 8,
@@ -462,7 +482,6 @@ class _ScoreBars extends StatelessWidget {
 // Step 4 — Done / Apply Progress
 // ─────────────────────────────────────────────────────────────────────────
 
-
 class _DoneStep extends StatelessWidget {
   const _DoneStep({required this.p, required this.onCompleted});
   final OnboardingProvider p;
@@ -476,7 +495,8 @@ class _DoneStep extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 18, height: 18,
+              width: 18,
+              height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: 12),
@@ -533,7 +553,6 @@ class _DoneStep extends StatelessWidget {
 // Shared error block
 // ─────────────────────────────────────────────────────────────────────────
 
-
 class _ErrorBlock extends StatelessWidget {
   const _ErrorBlock({required this.message, required this.onRetry});
   final String message;
@@ -560,7 +579,10 @@ class _ErrorBlock extends StatelessWidget {
           const SizedBox(height: 6),
           Text(message),
           const SizedBox(height: 8),
-          OutlinedButton(onPressed: onRetry, child: const Text('Erneut versuchen')),
+          OutlinedButton(
+            onPressed: onRetry,
+            child: const Text('Erneut versuchen'),
+          ),
         ],
       ),
     );
