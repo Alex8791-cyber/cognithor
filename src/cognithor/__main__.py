@@ -1328,11 +1328,8 @@ def main() -> None:
                     def _is_trusted(ip: str) -> bool:
                         return ip.startswith("127.") or ip in ("::1", "localhost")
 
-                _bootstrap_consumed = False
-
                 @api_app.get("/api/v1/bootstrap")
                 async def _cc_bootstrap(request: _BootstrapRequest) -> dict[str, str]:
-                    nonlocal _bootstrap_consumed
                     client_ip = request.client.host if request.client else ""
                     if not _is_trusted(client_ip):
                         from fastapi.responses import JSONResponse as _JR
@@ -1345,14 +1342,13 @@ def main() -> None:
                             status_code=403,
                             content={"detail": "Bootstrap endpoint is localhost-only"},
                         )
-                    if _bootstrap_consumed:
-                        from fastapi.responses import JSONResponse as _JR
-
-                        return _JR(  # type: ignore[return-value]
-                            status_code=403,
-                            content={"detail": "Bootstrap token already consumed"},
-                        )
-                    _bootstrap_consumed = True
+                    # Loopback-only is the gate. Single-use was the wrong
+                    # threat model — every UI restart, crash, or hot-reload
+                    # used to leave the user staring at "backend nicht
+                    # erreichbar" until the gateway itself was restarted.
+                    # Any process on the local host can already read this
+                    # token from cognithor's RAM; rate-limiting via
+                    # _is_trusted is sufficient.
                     return {"token": _internal_api_token}
 
                 # ── Token verification dependency ─────────────────────

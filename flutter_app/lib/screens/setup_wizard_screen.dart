@@ -9,6 +9,7 @@ import 'package:cognithor_ui/widgets/glass_panel.dart';
 import 'package:cognithor_ui/widgets/gradient_background.dart';
 import 'package:cognithor_ui/widgets/neon_card.dart';
 import 'package:cognithor_ui/screens/main_shell.dart';
+import 'package:cognithor_ui/screens/vllm_setup_screen.dart';
 
 /// First-run setup wizard -- 3-step onboarding shown once on initial launch.
 ///
@@ -134,6 +135,28 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           setState(() {
             _testState = _TestState.error;
             _testMessage = l.notInstalled;
+          });
+        }
+      } else if (_selectedBackend == 'vllm') {
+        // vllm setup happens in the dedicated screen — refresh status
+        await _loadBackendStatus();
+        final status = _backendInfo('vllm')['status'] as String? ?? 'configure';
+        if (status == 'ready') {
+          setState(() {
+            _testState = _TestState.success;
+            _testMessage = 'vLLM container running and ready.';
+          });
+        } else if (status == 'configured') {
+          setState(() {
+            _testState = _TestState.success;
+            _testMessage =
+                'vLLM is configured. Start the container from the Setup screen before chatting.';
+          });
+        } else {
+          setState(() {
+            _testState = _TestState.error;
+            _testMessage =
+                'vLLM not configured yet. Open the vLLM Setup above.';
           });
         }
       } else if (_selectedBackend == 'ollama') {
@@ -370,7 +393,23 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 5. OpenRouter / Custom OpenAI-compatible
+                  // 5. vLLM (Local GPU)
+                  _BackendCard(
+                    icon: Icons.memory,
+                    title: 'vLLM (Local GPU)',
+                    subtitle:
+                        'NVIDIA GPU with Docker — NVFP4 / FP8 quantised models',
+                    tint: const Color(0xFFFF6E40),
+                    selected: _selectedBackend == 'vllm',
+                    status: _backendInfo('vllm')['status'] as String? ??
+                        'configure',
+                    statusOk:
+                        (_backendInfo('vllm')['status'] as String?) == 'ready',
+                    onTap: () => setState(() => _selectedBackend = 'vllm'),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 6. OpenRouter / Custom OpenAI-compatible
                   _BackendCard(
                     icon: Icons.hub,
                     title: 'OpenRouter / Custom',
@@ -417,6 +456,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               ? l.claudeSubscription
               : _selectedBackend == 'ollama'
               ? l.ollamaConfiguration
+              : _selectedBackend == 'vllm'
+              ? 'vLLM (Local GPU)'
               : l.cloudApiConfiguration,
           style: Theme.of(context).textTheme.titleLarge,
         ),
@@ -523,6 +564,59 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               prefixIcon: Icon(Icons.link),
             ),
           ),
+        ],
+
+        // vLLM — defer to dedicated setup screen (Docker / GPU / model)
+        if (_selectedBackend == 'vllm') ...[
+          GlassPanel(
+            tint: const Color(0xFFFF6E40),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'vLLM has its own configuration flow',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'GPU detection, Docker container, NVFP4/FP8 model selection — '
+                  'open the dedicated vLLM setup, then return here.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open vLLM Setup'),
+              onPressed: () async {
+                // Wrap in CognithorTheme so the pushed setup screen
+                // doesn't render against the system's default light
+                // theme (which made everything look white-on-grey
+                // when launched from the dark wizard).
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => Theme(
+                      data: CognithorTheme.dark,
+                      child: const VllmSetupScreen(),
+                    ),
+                  ),
+                );
+                // refresh status when user returns
+                if (mounted) await _loadBackendStatus();
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFFF6E40),
+                side: const BorderSide(color: Color(0xFFFF6E40)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
         ],
 
         // OpenAI / Anthropic / OpenRouter
@@ -668,6 +762,10 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         return 'Claude Code uses your existing Claude subscription. No API key needed.';
       case 'ollama':
         return 'Enter the URL where Ollama is running.';
+      case 'vllm':
+        return 'vLLM runs in Docker on your local NVIDIA GPU. Use the dedicated setup below.';
+      case 'openrouter':
+        return 'Enter your OpenAI-compatible base URL and API key.';
       default:
         return 'Enter your API key to connect.';
     }
@@ -682,6 +780,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
       'ollama' => 'Ollama',
       'openai' => 'OpenAI',
       'anthropic' => 'Anthropic',
+      'vllm' => 'vLLM (Local GPU)',
+      'openrouter' => 'OpenRouter / Custom',
       _ => '',
     };
 
