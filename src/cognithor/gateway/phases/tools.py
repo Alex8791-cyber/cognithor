@@ -232,6 +232,24 @@ async def init_tools(
     except Exception:
         log.debug("pse_sprint26_domains_not_available", exc_info=True)
 
+    # TRUST disk-persistence (PRs #515-#520): open every audit-ledger
+    # SQLite store under ``~/.cognithor/audit/`` and wire write-through
+    # so every in-memory ledger.record() also lands on disk. Must run
+    # BEFORE register_runtime_binaries() below so the binary
+    # fingerprints captured on this boot persist immediately.
+    #
+    # Best-effort: a corrupt SQLite file or missing audit dir logs a
+    # warning and skips just that ledger — the in-memory ledger
+    # continues to work, the gateway still boots.
+    try:
+        from cognithor.security.ledger_persistence import (
+            open_canonical_stores_and_bind,
+        )
+
+        open_canonical_stores_and_bind()
+    except Exception:
+        log.debug("trust_disk_persistence_not_available", exc_info=True)
+
     # TRUST-7 BINARY: pin the SHA-256 + best-effort version of every
     # native binary Cognithor depends on at runtime (Ollama, vLLM,
     # ffmpeg, piper) into the canonical FINGERPRINT_LEDGER. Without
@@ -244,7 +262,8 @@ async def init_tools(
     # Best-effort: a missing binary is debug-logged + skipped; a
     # binary that hashes but won't tell us its version still lands in
     # the ledger with empty ``version`` (the SHA itself is the
-    # canonical identity).
+    # canonical identity). Disk persistence happens automatically via
+    # the write-through wired above.
     try:
         from cognithor.security.binary_runtime_fingerprint import (
             register_runtime_binaries,
