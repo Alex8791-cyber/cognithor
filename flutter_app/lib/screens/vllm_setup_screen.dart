@@ -1,4 +1,5 @@
 import 'package:cognithor_ui/providers/llm_backend_provider.dart';
+import 'package:cognithor_ui/theme/cognithor_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -33,21 +34,32 @@ class _VllmSetupScreenState extends State<VllmSetupScreen> {
     final p = context.watch<LlmBackendProvider>();
     final s = p.vllmStatus;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Configure vLLM')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _HardwareCard(status: s),
-          const SizedBox(height: 12),
-          _DockerCard(status: s),
-          const SizedBox(height: 12),
-          _ImageCard(status: s),
-          const SizedBox(height: 12),
-          _ModelCard(status: s),
-          const SizedBox(height: 12),
-          const _VlmQualityCard(),
-        ],
+    // Force the Cognithor dark theme regardless of which route pushed
+    // this screen (wizard, Settings, or deep link). Without this the
+    // Scaffold inherited whatever ThemeMode the parent route had
+    // resolved to, which on the wizard render path resulted in white-
+    // on-grey cards because the parent Theme() widget did not survive
+    // the MaterialPageRoute boundary on every Flutter version we
+    // ship to.
+    return Theme(
+      data: CognithorTheme.dark,
+      child: Scaffold(
+        backgroundColor: CognithorTheme.dark.scaffoldBackgroundColor,
+        appBar: AppBar(title: const Text('Configure vLLM')),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _HardwareCard(status: s),
+            const SizedBox(height: 12),
+            _DockerCard(status: s),
+            const SizedBox(height: 12),
+            _ImageCard(status: s),
+            const SizedBox(height: 12),
+            _ModelCard(status: s),
+            const SizedBox(height: 12),
+            const _VlmQualityCard(),
+          ],
+        ),
       ),
     );
   }
