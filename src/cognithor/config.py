@@ -1836,7 +1836,7 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
     "bedrock": "https://bedrock-runtime.us-east-1.amazonaws.com/v1",
     "huggingface": "https://api-inference.huggingface.co/v1",
     "moonshot": "https://api.moonshot.cn/v1",
-    "vllm": "http://localhost:8000/v1",
+    "vllm": "http://127.0.0.1:8000/v1",
     "llama_cpp": "http://localhost:8080/v1",
 }
 
@@ -2815,7 +2815,7 @@ class CognithorConfig(BaseModel):
         description="vLLM API key (usually empty for local)",
     )
     vllm_base_url: str = Field(
-        default="http://localhost:8000/v1",
+        default="http://127.0.0.1:8000/v1",
         description="vLLM server URL",
     )
     vllm: VLLMConfig = Field(default_factory=VLLMConfig)

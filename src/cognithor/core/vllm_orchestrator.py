@@ -370,7 +370,10 @@ class VLLMOrchestrator:
         while time.monotonic() < deadline:
             try:
                 with httpx.Client(timeout=30.0) as client:
-                    r = client.get(f"http://localhost:{port}/health")
+                    # 127.0.0.1, not localhost: on Windows localhost resolves
+                    # to IPv6 ::1 first and the WSL2 port-forward stalls there,
+                    # so a perfectly healthy container reads as unreachable.
+                    r = client.get(f"http://127.0.0.1:{port}/health")
                     if r.status_code == 200:
                         return True
             except Exception:

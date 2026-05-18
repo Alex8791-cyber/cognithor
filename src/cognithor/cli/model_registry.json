@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-22",
+  "updated": "2026-05-18",
   "providers": {
     "ollama": {
       "discovery_url": "http://localhost:11434/api/tags",
@@ -112,11 +112,11 @@
           "quantization": "AWQ-INT4",
           "vram_gb_min": 16,
           "min_compute_capability": "8.0",
-          "min_vllm_version": "pending",
+          "min_vllm_version": "0.19.2",
           "capability": "vision",
           "priority": "standard",
-          "tested": false,
-          "notes": "Community 4-bit AWQ. Runs on RTX 3090, 4070 Ti Super, 4080 (16 GB cards). Quality trade ~3-5% vs. bf16."
+          "tested": true,
+          "notes": "Community 4-bit AWQ (compressed-tensors; ships the MTP head). Tested 2026-05-18 on RTX 5090: ~68 tok/s single-stream, ~100 tok/s with MTP speculative decoding. Runs on 16 GB cards (RTX 3090, 4080). Quality trade ~3-5% vs. bf16."
         },
         {
           "id": "Qwen/Qwen3.6-35B-A3B-FP8",

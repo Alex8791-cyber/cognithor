@@ -1686,7 +1686,7 @@ def create_backend(config: CognithorConfig) -> LLMBackend:
             from cognithor.core.vllm_backend import VLLMBackend
 
             return VLLMBackend(
-                base_url=f"http://localhost:{config.vllm.port}/v1",
+                base_url=f"http://127.0.0.1:{config.vllm.port}/v1",
                 timeout=config.vllm.request_timeout_seconds,
             )
         case "llama_cpp":
