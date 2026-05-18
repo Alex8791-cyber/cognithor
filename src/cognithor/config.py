@@ -3715,6 +3715,17 @@ logging:
   level: INFO
   json_logs: false
   console: true
+
+# vLLM opt-in GPU backend (NVIDIA + Docker) -- only used when
+# llm_backend_type is "vllm". MTP speculative decoding is applied by the
+# orchestrator only to checkpoints that ship an MTP head, so this block
+# stays safe even if a model without one is selected.
+vllm:
+  enforce_eager: false
+  language_model_only: true
+  speculative_config:
+    method: mtp
+    num_speculative_tokens: 3
 """
 
 _DEFAULT_CRON_JOBS = """\

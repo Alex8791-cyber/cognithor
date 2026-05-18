@@ -487,6 +487,37 @@ class VLLMOrchestrator:
             return False
         return result.returncode == 0
 
+    def _model_supports_mtp(self, model: str) -> bool:
+        """True if the model's HF config.json declares an MTP head.
+
+        Speculative ``method: mtp`` makes vLLM refuse to start for a
+        checkpoint that has no MTP module, so ``--speculative-config`` is
+        emitted only when the model carries ``mtp_num_hidden_layers``.
+        Returns False (skip MTP) when the model is not cached or the probe
+        fails — it must never block a start.
+        """
+        repo_dir = "models--" + model.replace("/", "--")
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    "cognithor-hf-cache:/c",
+                    "alpine",
+                    "sh",
+                    "-c",
+                    f"grep -q mtp_num_hidden_layers /c/hub/{repo_dir}/snapshots/*/config.json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except Exception:
+            return False
+        return result.returncode == 0
+
     def start_container(
         self,
         model: str,
@@ -569,7 +600,10 @@ class VLLMOrchestrator:
         if cfg.language_model_only:
             cmd.append("--language-model-only")
         if cfg.speculative_config:
-            cmd.extend(["--speculative-config", _json.dumps(cfg.speculative_config)])
+            if self._model_supports_mtp(model):
+                cmd.extend(["--speculative-config", _json.dumps(cfg.speculative_config)])
+            else:
+                log.info("vllm_mtp_skipped_no_head", model=model)
 
         # VLM mode (Sprint-27 VLM-2). Only applied when the operator
         # explicitly opted in — otherwise the Qwen3-VL flags would

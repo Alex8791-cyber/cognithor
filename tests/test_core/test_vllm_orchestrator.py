@@ -515,11 +515,12 @@ class TestStartContainerSpeculativeFlags:
     """MTP speculative decoding + quantization flags — opt-in per model
     (config.vllm.speculative_config / quantization / language_model_only)."""
 
-    def _run_start(self, cfg):
+    def _run_start(self, cfg, *, mtp_supported=True):
         with (
             patch.object(VLLMOrchestrator, "_port_available", return_value=True),
             patch.object(VLLMOrchestrator, "_remove_stale_managed_containers"),
             patch.object(VLLMOrchestrator, "_model_is_cached", return_value=False),
+            patch.object(VLLMOrchestrator, "_model_supports_mtp", return_value=mtp_supported),
             patch.object(VLLMOrchestrator, "_effective_gpu_util", return_value=0.94),
             patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="cid")) as run_mock,
             patch.object(VLLMOrchestrator, "_wait_for_health", return_value=True),
@@ -537,6 +538,13 @@ class TestStartContainerSpeculativeFlags:
         assert "--speculative-config" in args
         emitted = args[args.index("--speculative-config") + 1]
         assert json.loads(emitted) == {"method": "qwen3_5_mtp", "num_speculative_tokens": 3}
+
+    def test_speculative_config_skipped_when_model_lacks_mtp(self):
+        from cognithor.config import VLLMConfig
+
+        cfg = VLLMConfig(speculative_config={"method": "mtp", "num_speculative_tokens": 3})
+        args = self._run_start(cfg, mtp_supported=False)
+        assert "--speculative-config" not in args
 
     def test_quantization_emitted(self):
         from cognithor.config import VLLMConfig
@@ -558,3 +566,23 @@ class TestStartContainerSpeculativeFlags:
         assert "--speculative-config" not in args
         assert "--quantization" not in args
         assert "--language-model-only" not in args
+
+
+class TestModelSupportsMtp:
+    """_model_supports_mtp probes the cached checkpoint's config.json for an
+    MTP head — it gates the --speculative-config flag in start_container."""
+
+    def test_true_when_config_has_mtp_key(self):
+        orch = VLLMOrchestrator()
+        with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+            assert orch._model_supports_mtp("cyankiwi/Qwen3.6-27B-AWQ-INT4") is True
+
+    def test_false_when_grep_finds_nothing(self):
+        orch = VLLMOrchestrator()
+        with patch("subprocess.run", return_value=MagicMock(returncode=1)):
+            assert orch._model_supports_mtp("Qwen/Qwen2.5-VL-7B-Instruct") is False
+
+    def test_false_on_probe_exception(self):
+        orch = VLLMOrchestrator()
+        with patch("subprocess.run", side_effect=OSError("docker missing")):
+            assert orch._model_supports_mtp("any/model") is False
