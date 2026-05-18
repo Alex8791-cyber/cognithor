@@ -1377,6 +1377,25 @@ def main() -> None:
                     verify_token_dep=_Depends(_verify_cc_token),
                 )
 
+                # LLM-Backend management API (/api/backends/*) for the Flutter
+                # vLLM setup screen. Its endpoints read config / gateway /
+                # vllm_orchestrator off app.state, so wire those first.
+                api_app.state.config = config
+                api_app.state.gateway = gateway
+                api_app.state.vllm_orchestrator = getattr(gateway, "_vllm_orchestrator", None)
+                try:
+                    from cognithor.channels.backends_api import (
+                        backends_router as _backends_router,
+                    )
+
+                    api_app.include_router(
+                        _backends_router,
+                        dependencies=[_Depends(_verify_cc_token)],
+                    )
+                    log.info("backends_api_registered")
+                except Exception as _backends_exc:
+                    log.warning("backends_api_failed", error=str(_backends_exc))
+
                 # Skill Marketplace API Router einbinden
                 _skills_auth_deps = [_Depends(_verify_cc_token)]
 

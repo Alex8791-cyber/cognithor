@@ -9,7 +9,7 @@ sealed class LauncherSettings
     static readonly string SettingsPath = Path.Combine(
         AppContext.BaseDirectory, "launcher-settings.json");
 
-    public string PreferredUi { get; set; } = "browser";
+    public string PreferredUi { get; set; } = "desktop";
 
     public bool PreferDesktop => PreferredUi == "desktop";
 

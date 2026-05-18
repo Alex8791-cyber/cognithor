@@ -84,6 +84,13 @@ dev_dependencies:
   # MockPlatformInterfaceMixin (bypasses the platform-interface token check).
   plugin_platform_interface: ^2.1.0
 
+# Pin newer speech_to_text_windows to skip the header-guard collision
+# in 1.0.0+beta.8 (FLUTTER_PLUGIN_LOCAL_AUTH_WINDOWS_PLUGIN_H_ collides
+# with local_auth_windows so generated_plugin_registrant.cc cannot see
+# SpeechToTextWindowsRegisterWithRegistrar). 1.0.1-beta.16 ships the fix.
+dependency_overrides:
+  speech_to_text_windows: 1.0.1-beta.16
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

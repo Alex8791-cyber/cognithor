@@ -94,9 +94,29 @@ class LlmBackendProvider extends ChangeNotifier {
   LlmBackendProvider({required this.apiBaseUrl, http.Client? httpClient})
     : _http = httpClient ?? http.Client();
 
+  String? _authToken;
+
+  /// Set the API auth token (Bearer). Wired from ConnectionProvider in
+  /// main.dart — the /api/backends/* endpoints are token-gated, so without
+  /// this every request returns 401 and the vLLM screen shows empty defaults.
+  void setAuthToken(String? token) {
+    _authToken = token;
+  }
+
+  Map<String, String> _headers({bool json = false}) {
+    final h = <String, String>{};
+    if (json) h['content-type'] = 'application/json';
+    final t = _authToken;
+    if (t != null && t.isNotEmpty) h['Authorization'] = 'Bearer $t';
+    return h;
+  }
+
   Future<void> refreshList() async {
     try {
-      final r = await _http.get(Uri.parse('$apiBaseUrl/api/backends'));
+      final r = await _http.get(
+        Uri.parse('$apiBaseUrl/api/backends'),
+        headers: _headers(),
+      );
       if (r.statusCode != 200) return;
       final body = jsonDecode(r.body) as Map<String, dynamic>;
       active = body['active'] as String;
@@ -114,6 +134,7 @@ class LlmBackendProvider extends ChangeNotifier {
     try {
       final r = await _http.get(
         Uri.parse('$apiBaseUrl/api/backends/vllm/status'),
+        headers: _headers(),
       );
       if (r.statusCode != 200) return;
       vllmStatus = VLLMStatus.fromJson(
@@ -154,6 +175,7 @@ class LlmBackendProvider extends ChangeNotifier {
   Stream<Map<String, dynamic>> pullImage() async* {
     final uri = Uri.parse('$apiBaseUrl/api/backends/vllm/pull-image');
     final request = http.Request('POST', uri);
+    request.headers.addAll(_headers());
     final streamed = await _http.send(request);
     if (streamed.statusCode != 200) {
       throw Exception('Pull failed: HTTP ${streamed.statusCode}');
@@ -187,7 +209,7 @@ class LlmBackendProvider extends ChangeNotifier {
   Future<void> startContainer(String model) async {
     final r = await _http.post(
       Uri.parse('$apiBaseUrl/api/backends/vllm/start'),
-      headers: {'content-type': 'application/json'},
+      headers: _headers(json: true),
       body: jsonEncode({'model': model}),
     );
     if (r.statusCode != 200) {
@@ -200,7 +222,7 @@ class LlmBackendProvider extends ChangeNotifier {
   Future<void> setActive(String backend) async {
     final r = await _http.post(
       Uri.parse('$apiBaseUrl/api/backends/active'),
-      headers: {'content-type': 'application/json'},
+      headers: _headers(json: true),
       body: jsonEncode({'backend': backend}),
     );
     if (r.statusCode == 200) {
@@ -214,6 +236,7 @@ class LlmBackendProvider extends ChangeNotifier {
   Future<void> fetchAvailableModels() async {
     final r = await _http.get(
       Uri.parse('$apiBaseUrl/api/backends/vllm/available-models'),
+      headers: _headers(),
     );
     if (r.statusCode != 200) return;
     final body = jsonDecode(r.body) as Map<String, dynamic>;
@@ -228,6 +251,7 @@ class LlmBackendProvider extends ChangeNotifier {
   Future<void> fetchVlmQualityDefault() async {
     final r = await _http.get(
       Uri.parse('$apiBaseUrl/api/backends/vllm/quality-default'),
+      headers: _headers(),
     );
     if (r.statusCode != 200) return;
     final body = jsonDecode(r.body) as Map<String, dynamic>;
@@ -241,7 +265,7 @@ class LlmBackendProvider extends ChangeNotifier {
   Future<void> setVlmQualityDefault(String? quality) async {
     final r = await _http.post(
       Uri.parse('$apiBaseUrl/api/backends/vllm/quality-default'),
-      headers: {'content-type': 'application/json'},
+      headers: _headers(json: true),
       body: jsonEncode({'quality': quality}),
     );
     if (r.statusCode == 200) {

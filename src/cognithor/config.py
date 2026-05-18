@@ -2600,7 +2600,19 @@ class VLLMConfig(BaseModel):
     max_num_seqs: int = Field(default=2, ge=1, le=256)
     max_num_batched_tokens: int = Field(default=2048, ge=512, le=131072)
     gpu_memory_utilization: float = Field(default=0.94, gt=0.0, le=1.0)
-    cpu_offload_gb: int = Field(default=4, ge=0, le=128)
+    cpu_offload_gb: int = Field(
+        default=0,
+        ge=0,
+        le=128,
+        description=(
+            "GB of model weights to keep in CPU RAM instead of VRAM. 0 = run "
+            "entirely on the GPU, which is correct whenever the model fits "
+            "(the model registry only offers models that fit the detected "
+            "GPU). Raise it only for a model too large for the GPU -- "
+            "offloaded weights cross PCIe on every forward pass and slow "
+            "inference down significantly."
+        ),
+    )
     enforce_eager: bool = Field(default=True)
 
     # VLM-Router quality default — read by cognithor.core.vlm_router.VlmRouter
