@@ -233,7 +233,12 @@ async def vllm_stop(request: Request) -> dict[str, Any]:
 
 @backends_router.post("/active")
 async def set_active_backend(request: Request, body: SetActiveRequest) -> dict[str, Any]:
-    """Switch the active LLM backend and re-init UnifiedLLMClient."""
+    """Switch the active LLM backend, re-init UnifiedLLMClient, persist it.
+
+    The new backend is written to config.yaml so it survives a gateway
+    restart -- without this the active backend reverts to the config
+    default on every restart.
+    """
     gateway = request.app.state.gateway
     if gateway is None:
         raise HTTPException(
@@ -241,6 +246,19 @@ async def set_active_backend(request: Request, body: SetActiveRequest) -> dict[s
             detail={"message": "Gateway not wired — backend switching not available"},
         )
     gateway.rebuild_llm_client(body.backend)
+    # Persist to YAML so the choice sticks across restarts (mirrors
+    # vllm_quality_default_set).
+    config = getattr(request.app.state, "config", None)
+    save_fn = getattr(request.app.state, "save_config", None)
+    if config is not None and callable(save_fn):
+        config.llm_backend_type = body.backend
+        try:
+            save_fn(config)
+        except Exception as exc:
+            return {
+                "active": body.backend,
+                "warning": f"In-memory updated; on-disk save failed: {exc}",
+            }
     return {"active": body.backend}
 
 

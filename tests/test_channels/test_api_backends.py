@@ -176,6 +176,22 @@ class TestSetActiveBackend:
         gateway.rebuild_llm_client.assert_called_once_with("vllm")
         assert r.json()["active"] == "vllm"
 
+    def test_switch_persists_backend_to_config(self):
+        from unittest.mock import MagicMock
+
+        from cognithor.config import CognithorConfig, VLLMConfig
+
+        cfg = CognithorConfig(vllm=VLLMConfig(enabled=True))
+        gateway = MagicMock()
+        app = build_backends_app(config=cfg, gateway=gateway)
+        saved: list[str] = []
+        app.state.save_config = lambda c: saved.append(c.llm_backend_type)
+        client = TestClient(app)
+        r = client.post("/api/backends/active", json={"backend": "vllm"})
+        assert r.status_code == 200
+        assert cfg.llm_backend_type == "vllm"  # in-memory updated
+        assert saved == ["vllm"]  # persisted to YAML via save_config
+
     def test_rejects_unknown_backend(self):
         from unittest.mock import MagicMock
 
