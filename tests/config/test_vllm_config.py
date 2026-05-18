@@ -72,7 +72,9 @@ class TestVLLMConfigLauncherFields:
         assert c.max_num_seqs == 2
         assert c.max_num_batched_tokens == 2048
         assert c.gpu_memory_utilization == 0.94
-        assert c.cpu_offload_gb == 4
+        # cpu_offload_gb default is 0 (GPU-only): the curated models all fit
+        # the detected GPU, and offloaded weights cross PCIe every forward pass.
+        assert c.cpu_offload_gb == 0
         assert c.enforce_eager is True
 
     def test_gpu_util_must_be_in_open_unit_interval(self):
@@ -93,3 +95,21 @@ class TestVLLMConfigLauncherFields:
         assert c.max_model_len == 65536
         assert c.cpu_offload_gb == 0
         assert c.enforce_eager is False
+
+    def test_speculative_fields_default_off(self):
+        """speculative_config / quantization / language_model_only are opt-in:
+        a default config emits none of the model-specific launch flags."""
+        c = VLLMConfig()
+        assert c.speculative_config is None
+        assert c.quantization == ""
+        assert c.language_model_only is False
+
+    def test_speculative_config_accepts_mtp_dict(self):
+        c = VLLMConfig(
+            speculative_config={"method": "qwen3_5_mtp", "num_speculative_tokens": 3},
+            quantization="modelopt",
+            language_model_only=True,
+        )
+        assert c.speculative_config == {"method": "qwen3_5_mtp", "num_speculative_tokens": 3}
+        assert c.quantization == "modelopt"
+        assert c.language_model_only is True

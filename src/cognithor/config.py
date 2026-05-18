@@ -2615,6 +2615,21 @@ class VLLMConfig(BaseModel):
     )
     enforce_eager: bool = Field(default=True)
 
+    # Speculative decoding — model-specific, opt-in. When set, the
+    # orchestrator emits `--speculative-config '<json>'`. For the Qwen3.6
+    # MTP checkpoints this is {"method": "qwen3_5_mtp",
+    # "num_speculative_tokens": 3} (model-card recommended). Leave None for
+    # models without an MTP head — a wrong `method` makes vLLM refuse to start.
+    speculative_config: dict[str, Any] | None = Field(default=None)
+    # Weight-quantization backend passed as `--quantization <value>`
+    # (e.g. "modelopt" for NVFP4 ModelOpt checkpoints). Empty = let vLLM
+    # auto-detect from the checkpoint.
+    quantization: str = Field(default="")
+    # Load only the language tower of a multimodal checkpoint
+    # (`--language-model-only`) — smaller VRAM footprint and faster load
+    # when vision is not needed.
+    language_model_only: bool = Field(default=False)
+
     # VLM-Router quality default — read by cognithor.core.vlm_router.VlmRouter
     # as Layer-2 override (between ContextVar pin and heuristic). Pinning
     # here forces every video request to a specific tier regardless of

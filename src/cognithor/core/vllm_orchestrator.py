@@ -357,11 +357,19 @@ class VLLMOrchestrator:
                 return False
 
     def _wait_for_health(self, port: int, *, timeout: int = 120) -> bool:
-        """Poll vLLM /health until 200 or timeout."""
+        """Poll vLLM /health until 200 or timeout.
+
+        The per-request timeout is deliberately generous: while vLLM warms
+        up, the /health handler itself responds slowly — first-request
+        fp4_gemm autotuning on Blackwell can take 1-3 min (see
+        docs/runbooks/launch_vllm_tier.md). A short client timeout would
+        miss those slow-but-successful responses and spuriously fail the
+        start while the container is loading the model perfectly fine.
+        """
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
-                with httpx.Client(timeout=2.0) as client:
+                with httpx.Client(timeout=30.0) as client:
                     r = client.get(f"http://localhost:{port}/health")
                     if r.status_code == 200:
                         return True
@@ -548,6 +556,17 @@ class VLLMOrchestrator:
             cmd.extend(["--cpu-offload-gb", str(cfg.cpu_offload_gb)])
         if cfg.enforce_eager:
             cmd.append("--enforce-eager")
+
+        # Speculative decoding (MTP) + model-specific quantization. Only
+        # emitted when configured — a `--speculative-config` whose `method`
+        # does not match the checkpoint's draft head makes vLLM refuse to
+        # start, so these stay opt-in per model (config.vllm.*).
+        if cfg.quantization:
+            cmd.extend(["--quantization", cfg.quantization])
+        if cfg.language_model_only:
+            cmd.append("--language-model-only")
+        if cfg.speculative_config:
+            cmd.extend(["--speculative-config", _json.dumps(cfg.speculative_config)])
 
         # VLM mode (Sprint-27 VLM-2). Only applied when the operator
         # explicitly opted in — otherwise the Qwen3-VL flags would
