@@ -67,17 +67,20 @@ class TestRecommendModel:
         best = orch.recommend_model(hw, entries, prefer="vision")
         assert best.id == "mmangkad/Qwen3.6-27B-NVFP4"
 
-    def test_current_registry_ada_24gb_falls_back_to_qwen25(self, orch, registry):
-        # All current Qwen3.6 entries have tested=False. Only Qwen2.5-VL-7B is tested.
+    def test_current_registry_ada_24gb_picks_tested_qwen36(self, orch, registry):
+        # cyankiwi/Qwen3.6-27B-AWQ-INT4 is tested and fits an Ada 24 GB card
+        # (needs 16 GB VRAM, CC 8.0) — it outranks the older Qwen2.5-VL fallback.
         hw = HardwareInfo(gpu_name="RTX 4090", vram_gb=24, compute_capability=(8, 9))
         best = orch.recommend_model(hw, registry, prefer="vision")
         assert best.tested is True
-        assert "Qwen2.5-VL" in best.id
+        assert best.id == "cyankiwi/Qwen3.6-27B-AWQ-INT4"
 
-    def test_current_registry_ampere_24gb_falls_back_to_qwen25(self, orch, registry):
+    def test_current_registry_ampere_24gb_picks_tested_qwen36(self, orch, registry):
+        # RTX 3090 (CC 8.0, 24 GB) also clears cyankiwi's CC 8.0 / 16 GB bar.
         hw = HardwareInfo(gpu_name="RTX 3090", vram_gb=24, compute_capability=(8, 0))
         best = orch.recommend_model(hw, registry, prefer="vision")
         assert best.tested is True
+        assert best.id == "cyankiwi/Qwen3.6-27B-AWQ-INT4"
 
     def test_low_vram_returns_none(self, orch, registry):
         hw = HardwareInfo(gpu_name="RTX 2080 Ti", vram_gb=11, compute_capability=(7, 5))
