@@ -169,7 +169,9 @@ sealed class ProcessManager : IDisposable
 
     public string? FindDesktopUi()
     {
-        var local = Path.Combine(_baseDir, "flutter_app", "cognithor_ui.exe");
+        // Flutter desktop runner ships as jarvis_ui.exe (legacy name — see
+        // installer/cognithor.iss [Files]/[Icons]), NOT cognithor_ui.exe.
+        var local = Path.Combine(_baseDir, "flutter_app", "jarvis_ui.exe");
         if (File.Exists(local)) return local;
         return null;
     }

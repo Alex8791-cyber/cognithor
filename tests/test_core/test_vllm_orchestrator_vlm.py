@@ -23,6 +23,19 @@ def _make_orchestrator(cfg: VLLMConfig) -> VLLMOrchestrator:
     return VLLMOrchestrator(config=cfg, hf_token="hf_test_token_xx")
 
 
+def _docker_run_argv(captured: list[list[str]]) -> list[str]:
+    """Return the vLLM ``docker run`` argv among all captured subprocess calls.
+
+    start_container also shells out for stale-container cleanup, GPU-memory
+    probing and the model-cache check — the vLLM launch is the one call that
+    carries ``--model``."""
+
+    for argv in captured:
+        if "--model" in argv:
+            return argv
+    raise AssertionError(f"no `docker run ... --model` call captured: {captured}")
+
+
 def _intercept_docker_run() -> tuple[list[str], MagicMock]:
     """Patch subprocess.run + port + health to capture the docker argv.
 
@@ -90,7 +103,7 @@ class TestVLMModeOff:
         ):
             orch.start_container("qwen3:32b")
         assert captured_argv, "no docker run captured"
-        argv = captured_argv[0]
+        argv = _docker_run_argv(captured_argv)
         # None of the VLM-mode flags must appear.
         for flag in (
             "--quantization",
@@ -130,7 +143,7 @@ class TestVLMModeOn:
         ):
             orch.start_container("Qwen/Qwen3-VL-32B-Instruct-FP8")
 
-        argv = captured_argv[0]
+        argv = _docker_run_argv(captured_argv)
         # spike-doc defaults
         assert "--quantization" in argv
         assert argv[argv.index("--quantization") + 1] == "fp8"
@@ -163,7 +176,7 @@ class TestVLMModeOn:
         ):
             orch.start_container("Qwen/Qwen3-VL-32B-Instruct-FP8")
 
-        argv = captured_argv[0]
+        argv = _docker_run_argv(captured_argv)
         idx = argv.index("--limit-mm-per-prompt")
         payload = json.loads(argv[idx + 1])
         assert payload == {"image": 8, "video": 2}
@@ -190,7 +203,7 @@ class TestVLMModeOn:
         ):
             orch.start_container("Qwen/Qwen3-VL-32B-Instruct-FP8")
 
-        argv = captured_argv[0]
+        argv = _docker_run_argv(captured_argv)
         assert "--served-model-name" in argv
         assert argv[argv.index("--served-model-name") + 1] == "qwen3-vl-32b-fp8"
 
@@ -216,7 +229,7 @@ class TestVLMModeOn:
         ):
             orch.start_container("Qwen/Qwen3-VL-32B-Instruct-FP8")
 
-        argv = captured_argv[0]
+        argv = _docker_run_argv(captured_argv)
         assert "--served-model-name" not in argv
 
     def test_nvfp4_opt_in(
@@ -240,7 +253,7 @@ class TestVLMModeOn:
             ),
         ):
             orch.start_container("Qwen/Qwen3-VL-32B-Instruct-NVFP4")
-        argv = captured_argv[0]
+        argv = _docker_run_argv(captured_argv)
         assert argv[argv.index("--quantization") + 1] == "nvfp4"
 
     def test_speculative_tokens_zero_omits_flag(
@@ -264,7 +277,7 @@ class TestVLMModeOn:
             ),
         ):
             orch.start_container("Qwen/Qwen3-VL-32B-Instruct-FP8")
-        argv = captured_argv[0]
+        argv = _docker_run_argv(captured_argv)
         assert "--num-speculative-tokens" not in argv
 
 

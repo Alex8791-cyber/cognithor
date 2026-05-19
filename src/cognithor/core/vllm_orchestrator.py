@@ -174,7 +174,11 @@ class VLLMOrchestrator:
         Raises:
             VLLMDockerError: if the pull exits non-zero.
         """
-        cmd = ["docker", "pull", "--progress=auto", tag]
+        # NB: `docker pull` has no --progress flag (that is build/compose
+        # only). Passing it makes docker exit 125 "unknown flag" before any
+        # download starts. Plain `docker pull` emits line-by-line status
+        # when stdout is a pipe, which is what the loop below consumes.
+        cmd = ["docker", "pull", tag]
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -353,18 +357,166 @@ class VLLMOrchestrator:
                 return False
 
     def _wait_for_health(self, port: int, *, timeout: int = 120) -> bool:
-        """Poll vLLM /health until 200 or timeout."""
+        """Poll vLLM /health until 200 or timeout.
+
+        The per-request timeout is deliberately generous: while vLLM warms
+        up, the /health handler itself responds slowly — first-request
+        fp4_gemm autotuning on Blackwell can take 1-3 min (see
+        docs/runbooks/launch_vllm_tier.md). A short client timeout would
+        miss those slow-but-successful responses and spuriously fail the
+        start while the container is loading the model perfectly fine.
+        """
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
-                with httpx.Client(timeout=2.0) as client:
-                    r = client.get(f"http://localhost:{port}/health")
+                with httpx.Client(timeout=30.0) as client:
+                    # 127.0.0.1, not localhost: on Windows localhost resolves
+                    # to IPv6 ::1 first and the WSL2 port-forward stalls there,
+                    # so a perfectly healthy container reads as unreachable.
+                    r = client.get(f"http://127.0.0.1:{port}/health")
                     if r.status_code == 200:
                         return True
             except Exception:
                 pass
             time.sleep(2.0)
         return False
+
+    def _remove_stale_managed_containers(self) -> None:
+        """Remove leftover cognithor-managed vLLM containers.
+
+        A managed container from a previous session keeps the GPU's VRAM
+        allocated, so the next ``docker run`` OOMs. There must only ever be
+        one managed vLLM container; the user's own containers lack the
+        ``cognithor.managed`` label and are left untouched. Best-effort --
+        a failure here must not block a start.
+        """
+        try:
+            listed = subprocess.run(
+                ["docker", "ps", "-aq", "--filter", "label=cognithor.managed=true"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        except Exception:
+            return
+        ids = listed.stdout.split()
+        if not ids:
+            return
+        log.info("vllm_removing_stale_containers", containers=ids)
+        try:
+            subprocess.run(
+                ["docker", "rm", "-f", *ids],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except Exception:
+            log.warning("vllm_stale_container_removal_failed", containers=ids)
+            return
+        # Give the NVIDIA driver a moment to reclaim the freed VRAM before
+        # the caller probes free memory and starts a new container.
+        time.sleep(2.0)
+
+    def _effective_gpu_util(self, configured: float) -> float:
+        """Clamp gpu-memory-utilization to the VRAM actually free right now.
+
+        On a desktop the OS/display already holds several GB, so a value
+        tuned for a dedicated GPU (e.g. 0.94) makes vLLM refuse to start
+        ("Free memory ... is less than desired GPU memory utilization").
+        Returns ``configured`` shrunk to fit current free VRAM with a 5%
+        safety margin -- never above ``configured``, never below 0.30.
+        Falls back to ``configured`` if nvidia-smi is unavailable.
+        """
+        try:
+            result = subprocess.run(
+                [
+                    "nvidia-smi",
+                    "--query-gpu=memory.free,memory.total",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode != 0:
+                return configured
+            free_s, total_s = result.stdout.strip().splitlines()[0].split(",")
+            free_mib = float(free_s)
+            total_mib = float(total_s)
+        except Exception:
+            return configured
+        if total_mib <= 0:
+            return configured
+        safe = (free_mib / total_mib) - 0.05
+        effective = max(0.30, min(configured, safe))
+        if effective < configured:
+            log.info(
+                "vllm_gpu_util_clamped",
+                configured=configured,
+                effective=round(effective, 3),
+                free_mib=int(free_mib),
+                total_mib=int(total_mib),
+            )
+        return effective
+
+    def _model_is_cached(self, model: str) -> bool:
+        """True if the model's HF snapshot is already in the mounted cache.
+
+        Used to decide whether to launch vLLM in offline mode -- see the
+        offline-env block in start_container.
+        """
+        repo_dir = "models--" + model.replace("/", "--")
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    "cognithor-hf-cache:/c",
+                    "alpine",
+                    "test",
+                    "-d",
+                    f"/c/hub/{repo_dir}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except Exception:
+            return False
+        return result.returncode == 0
+
+    def _model_supports_mtp(self, model: str) -> bool:
+        """True if the model's HF config.json declares an MTP head.
+
+        Speculative ``method: mtp`` makes vLLM refuse to start for a
+        checkpoint that has no MTP module, so ``--speculative-config`` is
+        emitted only when the model carries ``mtp_num_hidden_layers``.
+        Returns False (skip MTP) when the model is not cached or the probe
+        fails — it must never block a start.
+        """
+        repo_dir = "models--" + model.replace("/", "--")
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    "cognithor-hf-cache:/c",
+                    "alpine",
+                    "sh",
+                    "-c",
+                    f"grep -q mtp_num_hidden_layers /c/hub/{repo_dir}/snapshots/*/config.json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except Exception:
+            return False
+        return result.returncode == 0
 
     def start_container(
         self,
@@ -373,6 +525,11 @@ class VLLMOrchestrator:
         health_timeout: int | None = None,
     ) -> ContainerInfo:
         """Start a vLLM container. Auto-falls-back self.port → self.port+N on port conflict."""
+        # A vLLM container from an earlier session keeps holding the GPU's
+        # VRAM -- a fresh container then OOMs on startup. Remove any leftover
+        # cognithor-managed container first (the user's own containers lack
+        # the label and are left untouched).
+        self._remove_stale_managed_containers()
         port = self.port
         for offset in range(self._MAX_PORT_FALLBACKS):
             candidate = self.port + offset
@@ -386,6 +543,10 @@ class VLLMOrchestrator:
             )
 
         cfg = self._config
+        # Shrink gpu-memory-utilization to the VRAM actually free right now;
+        # the configured value is tuned for a dedicated GPU and would OOM on
+        # a desktop where the OS/display already holds several GB.
+        gpu_util = self._effective_gpu_util(cfg.gpu_memory_utilization)
         cmd = [
             "docker",
             "run",
@@ -417,7 +578,7 @@ class VLLMOrchestrator:
                 "--max-num-batched-tokens",
                 str(cfg.max_num_batched_tokens),
                 "--gpu-memory-utilization",
-                f"{cfg.gpu_memory_utilization:g}",
+                f"{gpu_util:g}",
                 "--reasoning-parser",
                 "qwen3",
                 "--trust-remote-code",
@@ -429,6 +590,20 @@ class VLLMOrchestrator:
             cmd.extend(["--cpu-offload-gb", str(cfg.cpu_offload_gb)])
         if cfg.enforce_eager:
             cmd.append("--enforce-eager")
+
+        # Speculative decoding (MTP) + model-specific quantization. Only
+        # emitted when configured — a `--speculative-config` whose `method`
+        # does not match the checkpoint's draft head makes vLLM refuse to
+        # start, so these stay opt-in per model (config.vllm.*).
+        if cfg.quantization:
+            cmd.extend(["--quantization", cfg.quantization])
+        if cfg.language_model_only:
+            cmd.append("--language-model-only")
+        if cfg.speculative_config:
+            if self._model_supports_mtp(model):
+                cmd.extend(["--speculative-config", _json.dumps(cfg.speculative_config)])
+            else:
+                log.info("vllm_mtp_skipped_no_head", model=model)
 
         # VLM mode (Sprint-27 VLM-2). Only applied when the operator
         # explicitly opted in — otherwise the Qwen3-VL flags would
@@ -460,6 +635,14 @@ class VLLMOrchestrator:
                 ],
             )
 
+        # If the model snapshot is already in the cache volume, force offline
+        # resolution. Otherwise vLLM/transformers does an HF Hub HEAD request
+        # that fails for community models missing files upstream (e.g.
+        # preprocessor_config.json) even when the local snapshot is intact --
+        # see Trap 1 in docs/runbooks/launch_vllm_tier.md.
+        if self._model_is_cached(model):
+            cmd[3:3] = ["-e", "HF_HUB_OFFLINE=1", "-e", "TRANSFORMERS_OFFLINE=1"]
+
         # Redact HF_TOKEN before logging — it's in the cmd list as "HF_TOKEN=<value>"
         _cmd_for_log = _redact_hf_token(cmd)
         log.info(
@@ -484,7 +667,11 @@ class VLLMOrchestrator:
 
         container_id = result.stdout.strip().split("\n")[-1][:12]
 
-        timeout = health_timeout if health_timeout is not None else 120
+        # A large model loads for several minutes -- a multi-GB checkpoint on
+        # WSL2 plus FlashInfer autotune. 120s was far too short: it reported a
+        # spurious "vLLM /health did not respond" failure while the container
+        # was still loading the model perfectly fine.
+        timeout = health_timeout if health_timeout is not None else 900
         if not self._wait_for_health(port, timeout=timeout):
             raise VLLMNotReadyError(
                 f"vLLM /health did not respond within {timeout}s",

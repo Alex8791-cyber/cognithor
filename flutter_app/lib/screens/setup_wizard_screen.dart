@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -41,6 +42,9 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
     text: 'http://localhost:11434',
   );
   final _apiKeyController = TextEditingController();
+  final _lmStudioUrlController = TextEditingController(
+    text: 'http://localhost:1234/v1',
+  );
 
   // Connection test
   _TestState _testState = _TestState.idle;
@@ -56,6 +60,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   void dispose() {
     _ollamaUrlController.dispose();
     _apiKeyController.dispose();
+    _lmStudioUrlController.dispose();
     super.dispose();
   }
 
@@ -177,6 +182,35 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
             _testMessage = l.connectionFailed('Ollama not reachable at $url');
           });
         }
+      } else if (_selectedBackend == 'lmstudio') {
+        // LM Studio -- probe the local OpenAI-compatible /models endpoint.
+        final raw = _lmStudioUrlController.text.trim();
+        final base = raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+        try {
+          final resp = await http
+              .get(Uri.parse('$base/models'))
+              .timeout(const Duration(seconds: 5));
+          if (resp.statusCode == 200) {
+            setState(() {
+              _testState = _TestState.success;
+              _testMessage = 'LM Studio server reachable at $base';
+            });
+          } else {
+            setState(() {
+              _testState = _TestState.error;
+              _testMessage =
+                  'LM Studio responded with HTTP ${resp.statusCode} — '
+                  'is a model loaded?';
+            });
+          }
+        } catch (_) {
+          setState(() {
+            _testState = _TestState.error;
+            _testMessage = l.connectionFailed(
+              'LM Studio not reachable at $base — start its local server.',
+            );
+          });
+        }
       } else {
         // OpenAI / Anthropic -- validate key format
         final key = _apiKeyController.text.trim();
@@ -240,6 +274,10 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
       await prefs.setString('jarvis_server_url', 'http://localhost:8741');
       await prefs.setString('ollama_url', ollamaUrl);
       await prefs.setString('ollama_mode', isLocal ? 'local' : 'remote');
+    }
+
+    if (_selectedBackend == 'lmstudio') {
+      await prefs.setString('lmstudio_url', _lmStudioUrlController.text.trim());
     }
 
     if (!mounted) return;
@@ -363,7 +401,21 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 3. OpenAI API
+                  // 3. LM Studio (Local)
+                  _BackendCard(
+                    icon: Icons.dns,
+                    title: 'LM Studio (Local)',
+                    subtitle:
+                        'Local OpenAI-compatible server — run any GGUF model',
+                    tint: const Color(0xFF536DFE),
+                    selected: _selectedBackend == 'lmstudio',
+                    status: 'localhost:1234',
+                    statusOk: false,
+                    onTap: () => setState(() => _selectedBackend = 'lmstudio'),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 4. OpenAI API
                   _BackendCard(
                     icon: Icons.auto_awesome,
                     title: l.openaiApi,
@@ -378,7 +430,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 4. Anthropic API
+                  // 5. Anthropic API
                   _BackendCard(
                     icon: Icons.key,
                     title: l.anthropicApi,
@@ -393,7 +445,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 5. vLLM (Local GPU)
+                  // 6. vLLM (Local GPU)
                   _BackendCard(
                     icon: Icons.memory,
                     title: 'vLLM (Local GPU)',
@@ -410,7 +462,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 6. OpenRouter / Custom OpenAI-compatible
+                  // 7. OpenRouter / Custom OpenAI-compatible
                   _BackendCard(
                     icon: Icons.hub,
                     title: 'OpenRouter / Custom',
@@ -459,6 +511,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               ? l.ollamaConfiguration
               : _selectedBackend == 'vllm'
               ? 'vLLM (Local GPU)'
+              : _selectedBackend == 'lmstudio'
+              ? 'LM Studio (Local)'
               : l.cloudApiConfiguration,
           style: Theme.of(context).textTheme.titleLarge,
         ),
@@ -620,6 +674,41 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           const SizedBox(height: 12),
         ],
 
+        // LM Studio — local OpenAI-compatible server
+        if (_selectedBackend == 'lmstudio') ...[
+          Text('Base URL', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _lmStudioUrlController,
+            decoration: const InputDecoration(
+              hintText: 'http://localhost:1234/v1',
+              prefixIcon: Icon(Icons.link),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GlassPanel(
+            tint: CognithorTheme.accent,
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: CognithorTheme.accent,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Start LM Studio and enable its local server in the '
+                    'Developer tab.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         // OpenAI / Anthropic / OpenRouter
         if (_selectedBackend == 'openai' ||
             _selectedBackend == 'anthropic' ||
@@ -765,6 +854,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         return 'Enter the URL where Ollama is running.';
       case 'vllm':
         return 'vLLM runs in Docker on your local NVIDIA GPU. Use the dedicated setup below.';
+      case 'lmstudio':
+        return 'LM Studio runs a local OpenAI-compatible server. Default port 1234.';
       case 'openrouter':
         return 'Enter your OpenAI-compatible base URL and API key.';
       default:
@@ -782,6 +873,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
       'openai' => 'OpenAI',
       'anthropic' => 'Anthropic',
       'vllm' => 'vLLM (Local GPU)',
+      'lmstudio' => 'LM Studio (Local)',
       'openrouter' => 'OpenRouter / Custom',
       _ => '',
     };

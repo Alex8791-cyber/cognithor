@@ -132,8 +132,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\Cognith
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\Cognithor.exe"; \
     ValueType: string; ValueName: "FriendlyAppName"; ValueData: "Cognithor"
 
-; Flutter desktop binary (still named jarvis_ui.exe for legacy reasons — surface a
-; friendly name so search results show "Cognithor Desktop").
+; Flutter desktop binary surface a friendly name so search results show "Cognithor Desktop".
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\jarvis_ui.exe"; \
     ValueType: string; ValueData: "{app}\flutter_app\jarvis_ui.exe"; \
     Components: flutter; Flags: uninsdeletekey

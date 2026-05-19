@@ -8,6 +8,7 @@ import 'package:cognithor_ui/providers/chat_provider.dart';
 import 'package:cognithor_ui/providers/config_provider.dart';
 import 'package:cognithor_ui/providers/locale_provider.dart';
 import 'package:cognithor_ui/providers/connection_provider.dart';
+import 'package:cognithor_ui/providers/llm_backend_provider.dart';
 import 'package:cognithor_ui/providers/memory_provider.dart';
 import 'package:cognithor_ui/providers/navigation_provider.dart';
 import 'package:cognithor_ui/providers/security_provider.dart';
@@ -82,6 +83,20 @@ class CognithorApp extends StatelessWidget {
               next.setAuthToken(conn.api.token);
             } catch (_) {
               // ApiClient not yet ready (pre-connect) — leave token unset
+            }
+            return next;
+          },
+        ),
+        ChangeNotifierProxyProvider<ConnectionProvider, LlmBackendProvider>(
+          create: (ctx) => LlmBackendProvider(
+            apiBaseUrl: ctx.read<ConnectionProvider>().serverUrl,
+          ),
+          update: (_, conn, prev) {
+            final next = prev ?? LlmBackendProvider(apiBaseUrl: conn.serverUrl);
+            try {
+              next.setAuthToken(conn.api.token);
+            } catch (_) {
+              // ApiClient not ready yet (pre-connect) — leave token unset.
             }
             return next;
           },

@@ -1836,7 +1836,7 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
     "bedrock": "https://bedrock-runtime.us-east-1.amazonaws.com/v1",
     "huggingface": "https://api-inference.huggingface.co/v1",
     "moonshot": "https://api.moonshot.cn/v1",
-    "vllm": "http://localhost:8000/v1",
+    "vllm": "http://127.0.0.1:8000/v1",
     "llama_cpp": "http://localhost:8080/v1",
 }
 
@@ -2600,8 +2600,35 @@ class VLLMConfig(BaseModel):
     max_num_seqs: int = Field(default=2, ge=1, le=256)
     max_num_batched_tokens: int = Field(default=2048, ge=512, le=131072)
     gpu_memory_utilization: float = Field(default=0.94, gt=0.0, le=1.0)
-    cpu_offload_gb: int = Field(default=4, ge=0, le=128)
+    cpu_offload_gb: int = Field(
+        default=0,
+        ge=0,
+        le=128,
+        description=(
+            "GB of model weights to keep in CPU RAM instead of VRAM. 0 = run "
+            "entirely on the GPU, which is correct whenever the model fits "
+            "(the model registry only offers models that fit the detected "
+            "GPU). Raise it only for a model too large for the GPU -- "
+            "offloaded weights cross PCIe on every forward pass and slow "
+            "inference down significantly."
+        ),
+    )
     enforce_eager: bool = Field(default=True)
+
+    # Speculative decoding — model-specific, opt-in. When set, the
+    # orchestrator emits `--speculative-config '<json>'`. For the Qwen3.6
+    # MTP checkpoints this is {"method": "qwen3_5_mtp",
+    # "num_speculative_tokens": 3} (model-card recommended). Leave None for
+    # models without an MTP head — a wrong `method` makes vLLM refuse to start.
+    speculative_config: dict[str, Any] | None = Field(default=None)
+    # Weight-quantization backend passed as `--quantization <value>`
+    # (e.g. "modelopt" for NVFP4 ModelOpt checkpoints). Empty = let vLLM
+    # auto-detect from the checkpoint.
+    quantization: str = Field(default="")
+    # Load only the language tower of a multimodal checkpoint
+    # (`--language-model-only`) — smaller VRAM footprint and faster load
+    # when vision is not needed.
+    language_model_only: bool = Field(default=False)
 
     # VLM-Router quality default — read by cognithor.core.vlm_router.VlmRouter
     # as Layer-2 override (between ContextVar pin and heuristic). Pinning
@@ -2788,7 +2815,7 @@ class CognithorConfig(BaseModel):
         description="vLLM API key (usually empty for local)",
     )
     vllm_base_url: str = Field(
-        default="http://localhost:8000/v1",
+        default="http://127.0.0.1:8000/v1",
         description="vLLM server URL",
     )
     vllm: VLLMConfig = Field(default_factory=VLLMConfig)
@@ -3688,6 +3715,17 @@ logging:
   level: INFO
   json_logs: false
   console: true
+
+# vLLM opt-in GPU backend (NVIDIA + Docker) -- only used when
+# llm_backend_type is "vllm". MTP speculative decoding is applied by the
+# orchestrator only to checkpoints that ship an MTP head, so this block
+# stays safe even if a model without one is selected.
+vllm:
+  enforce_eager: false
+  language_model_only: true
+  speculative_config:
+    method: mtp
+    num_speculative_tokens: 3
 """
 
 _DEFAULT_CRON_JOBS = """\

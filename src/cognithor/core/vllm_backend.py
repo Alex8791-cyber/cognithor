@@ -161,7 +161,7 @@ class VLLMBackend(LLMBackend):
     def __init__(
         self,
         *,
-        base_url: str = "http://localhost:8000/v1",
+        base_url: str = "http://127.0.0.1:8000/v1",
         timeout: int = 60,
     ) -> None:
         self._base_url = base_url.rstrip("/")

@@ -21,7 +21,7 @@ class TestCreateVLLMBackend:
             vllm=VLLMConfig(enabled=True, port=8042),
         )
         backend = create_backend(cfg)
-        assert backend._base_url == "http://localhost:8042/v1"
+        assert backend._base_url == "http://127.0.0.1:8042/v1"
 
     def test_vllm_backend_uses_request_timeout(self):
         cfg = CognithorConfig(

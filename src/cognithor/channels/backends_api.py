@@ -8,6 +8,7 @@ main APIChannel app so it can be included or tested independently.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json as _json
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -136,6 +137,20 @@ async def list_backends(request: Request) -> dict[str, Any]:
 async def vllm_status(request: Request) -> dict[str, Any]:
     """Return the current VLLMState as JSON for the Flutter setup page."""
     orch = _resolve_orchestrator(request)
+    # /vllm/status is a status endpoint -- it must reflect reality, not a
+    # cached snapshot. Probe GPU *and* Docker live on every poll: caching would
+    # latch onto a stale value when an (e)GPU is hot-plugged, a driver crashes,
+    # or Docker Desktop is started/stopped. The probes run in worker threads so
+    # the nvidia-smi / docker subprocesses never block the event loop, and a
+    # transient failure self-heals on the next 2s poll.
+    try:
+        await asyncio.to_thread(orch.check_hardware)
+    except Exception:
+        # nvidia-smi unavailable right now -- report no GPU, never a stale one.
+        orch.state.hardware_info = None
+        orch.state.hardware_ok = False
+    with contextlib.suppress(Exception):
+        await asyncio.to_thread(orch.check_docker)
     st = orch.status()
     hw = None
     if st.hardware_info:
@@ -183,7 +198,12 @@ async def check_hardware_endpoint(request: Request) -> dict[str, Any]:
 async def vllm_start(request: Request, body: StartRequest) -> dict[str, Any]:
     orch = _resolve_orchestrator(request)
     try:
-        info = orch.start_container(body.model)
+        # start_container() blocks for up to ~2 min (docker run + polling the
+        # vLLM /health endpoint). Run it in a worker thread so the gateway
+        # event loop stays responsive -- a synchronous call freezes the loop,
+        # then the launcher's health monitor sees the gateway as dead and
+        # kills it ("Backend has stopped").
+        info = await asyncio.to_thread(orch.start_container, body.model)
     except Exception as exc:
         from cognithor.core.llm_backend import VLLMNotReadyError
 
@@ -206,13 +226,19 @@ async def vllm_start(request: Request, body: StartRequest) -> dict[str, Any]:
 @backends_router.post("/vllm/stop")
 async def vllm_stop(request: Request) -> dict[str, Any]:
     orch = _resolve_orchestrator(request)
-    orch.stop_container()
+    # docker stop is blocking -- offload so the event loop is not frozen.
+    await asyncio.to_thread(orch.stop_container)
     return {"status": "stopped"}
 
 
 @backends_router.post("/active")
 async def set_active_backend(request: Request, body: SetActiveRequest) -> dict[str, Any]:
-    """Switch the active LLM backend and re-init UnifiedLLMClient."""
+    """Switch the active LLM backend, re-init UnifiedLLMClient, persist it.
+
+    The new backend is written to config.yaml so it survives a gateway
+    restart -- without this the active backend reverts to the config
+    default on every restart.
+    """
     gateway = request.app.state.gateway
     if gateway is None:
         raise HTTPException(
@@ -220,6 +246,19 @@ async def set_active_backend(request: Request, body: SetActiveRequest) -> dict[s
             detail={"message": "Gateway not wired — backend switching not available"},
         )
     gateway.rebuild_llm_client(body.backend)
+    # Persist to YAML so the choice sticks across restarts (mirrors
+    # vllm_quality_default_set).
+    config = getattr(request.app.state, "config", None)
+    save_fn = getattr(request.app.state, "save_config", None)
+    if config is not None and callable(save_fn):
+        config.llm_backend_type = body.backend
+        try:
+            save_fn(config)
+        except Exception as exc:
+            return {
+                "active": body.backend,
+                "warning": f"In-memory updated; on-disk save failed: {exc}",
+            }
     return {"active": body.backend}
 
 
@@ -369,14 +408,31 @@ async def vllm_pull_image(request: Request) -> StreamingResponse:
 
     async def event_stream() -> Any:
         task = asyncio.create_task(worker())
+        error: str | None = None
+        completed = False
         try:
             while True:
                 event = await queue.get()
                 if event is None:
+                    completed = True
                     break
                 yield f"data: {_json.dumps(event)}\n\n"
         finally:
-            await task
+            # Clean finish: the worker already settled (it enqueues the
+            # sentinel from its own finally). Early exit (client disconnect):
+            # cancel so a multi-GB docker pull is not awaited for minutes.
+            # Never re-raise -- a propagating exception aborts the SSE stream
+            # and the client only sees "connection closed" with no reason.
+            if not completed and not task.done():
+                task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                error = str(exc)
+        if error is not None:
+            yield f"data: {_json.dumps({'error': error})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

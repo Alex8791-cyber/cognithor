@@ -236,7 +236,7 @@ def step_flutter_desktop() -> Path | None:
     flutter_app = PROJECT_ROOT / "flutter_app"
     desktop_build = flutter_app / "build" / "windows" / "x64" / "runner" / "Release"
 
-    if desktop_build.exists() and (desktop_build / "cognithor_ui.exe").exists():
+    if desktop_build.exists() and (desktop_build / "jarvis_ui.exe").exists():
         dest = BUILD_DIR / "flutter_desktop"
         if dest.exists():
             shutil.rmtree(dest)
