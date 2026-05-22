@@ -87,7 +87,7 @@ class TestCreateBackend:
 
     def test_create_anthropic(self, config: CognithorConfig) -> None:
         config.llm_backend_type = "anthropic"
-        config.anthropic_api_key = "sk-ant-test"
+        config.anthropic_api_key = "anthropic-test-key"
         backend = create_backend(config)
         assert isinstance(backend, AnthropicBackend)
         assert backend.backend_type == LLMBackendType.ANTHROPIC
@@ -301,7 +301,7 @@ class TestOpenAIBackend:
 class TestAnthropicBackend:
     def _make_backend(self) -> AnthropicBackend:
         return AnthropicBackend(
-            api_key="sk-ant-test",
+            api_key="anthropic-test-key",
             timeout=30,
             max_tokens=4096,
         )
@@ -881,7 +881,7 @@ class TestGeminiBackendExtended:
 class TestAnthropicBackendExtended:
     def _make_backend(self) -> AnthropicBackend:
         return AnthropicBackend(
-            api_key="sk-ant-test",
+            api_key="anthropic-test-key",
             timeout=30,
             max_tokens=4096,
         )

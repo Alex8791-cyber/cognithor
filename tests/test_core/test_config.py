@@ -290,7 +290,7 @@ class TestModelAutoAdaptation:
         config = CognithorConfig(
             cognithor_home=tmp_path,
             llm_backend_type="anthropic",
-            anthropic_api_key="sk-ant-test-key",
+            anthropic_api_key="anthropic-test-key",
         )
         assert config.models.planner.name == "claude-opus-4-6"
         assert config.models.executor.name == "claude-haiku-4-5-20251001"
@@ -312,7 +312,7 @@ class TestModelAutoAdaptation:
         """Anthropic API-Key → Backend wird automatisch auf 'anthropic' gesetzt."""
         config = CognithorConfig(
             cognithor_home=tmp_path,
-            anthropic_api_key="sk-ant-test-key",
+            anthropic_api_key="anthropic-test-key",
         )
         assert config.llm_backend_type == "anthropic"
         assert config.models.planner.name == "claude-opus-4-6"
@@ -347,7 +347,7 @@ class TestModelAutoAdaptation:
         """Wenn beide API-Keys vorhanden: Anthropic hat Priorität."""
         config = CognithorConfig(
             cognithor_home=tmp_path,
-            anthropic_api_key="sk-ant-test",
+            anthropic_api_key="anthropic-test-key",
             openai_api_key="sk-test-key",
         )
         assert config.llm_backend_type == "anthropic"
@@ -375,7 +375,7 @@ class TestVisionModelAutoAdaptation:
         """Anthropic-Key → vision_model wird claude-sonnet-4-6."""
         config = CognithorConfig(
             cognithor_home=tmp_path,
-            anthropic_api_key="sk-ant-test-key",
+            anthropic_api_key="anthropic-test-key",
         )
         assert config.vision_model == "claude-sonnet-4-6"
 

@@ -41,7 +41,7 @@ class TestConfigManagerRead:
         config = CognithorConfig(
             cognithor_home=tmp_path / ".cognithor",
             openai_api_key="sk-real-key-12345",
-            anthropic_api_key="sk-ant-real-key",
+            anthropic_api_key="anthropic-test-key",
         )
         mgr = ConfigManager(config=config)
 

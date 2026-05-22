@@ -54,7 +54,7 @@ class TestOperationModeAutoDetect:
         """Anthropic-Key vorhanden → ONLINE."""
         config = CognithorConfig(
             cognithor_home=tmp_path,
-            anthropic_api_key="sk-ant-test1234567890abcdefg",
+            anthropic_api_key="anthropic-test-key",
         )
         assert config.resolved_operation_mode == OperationMode.ONLINE
 

@@ -879,7 +879,7 @@ export COGNITHOR_LLM_BACKEND_TYPE=openai
 
 # API Keys
 export COGNITHOR_OPENAI_API_KEY=sk-...
-export COGNITHOR_ANTHROPIC_API_KEY=sk-ant-...
+export COGNITHOR_ANTHROPIC_API_KEY=your-anthropic-api-key
 
 # Nested (use section_key format)
 export COGNITHOR_OLLAMA_TIMEOUT_SECONDS=180
