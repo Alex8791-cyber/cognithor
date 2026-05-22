@@ -565,7 +565,7 @@ language: "de"  # "de" (German, default) or "en" (English)
 
 # LLM Backend — set a key, backend is auto-detected
 # openai_api_key: "sk-..."
-# anthropic_api_key: "sk-ant-..."
+# anthropic_api_key: "your-anthropic-api-key"
 # gemini_api_key: "AIza..."
 # groq_api_key: "gsk_..."
 # xai_api_key: "xai-..."

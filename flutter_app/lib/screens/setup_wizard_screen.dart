@@ -755,7 +755,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                 hintText: _selectedBackend == 'openai'
                     ? 'sk-...'
                     : _selectedBackend == 'anthropic'
-                    ? 'sk-ant-...'
+                    ? 'your-anthropic-api-key'
                     : 'sk-or-...',
                 prefixIcon: const Icon(Icons.key),
               ),

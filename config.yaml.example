@@ -29,7 +29,7 @@ llm_backend_type: "ollama"
 # openai_base_url: "https://api.openai.com/v1"  # Oder z.B. https://api.together.xyz/v1
 
 # Nur nötig bei llm_backend_type: "anthropic"
-# anthropic_api_key: "sk-ant-..."
+# anthropic_api_key: "your-anthropic-api-key"
 # anthropic_max_tokens: 4096
 
 # --- Ollama LLM-Server ---

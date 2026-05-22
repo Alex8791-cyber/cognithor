@@ -64,10 +64,10 @@ Set your API key in `~/.cognithor/config.yaml` or as an environment variable. Co
 
 ```yaml
 # Option A: In config.yaml
-anthropic_api_key: "sk-ant-..."
+anthropic_api_key: "your-anthropic-api-key"
 
 # Option B: Environment variable
-# export COGNITHOR_ANTHROPIC_API_KEY=sk-ant-...
+# export COGNITHOR_ANTHROPIC_API_KEY=your-anthropic-api-key
 ```
 
 Model names are automatically adapted to the new provider.

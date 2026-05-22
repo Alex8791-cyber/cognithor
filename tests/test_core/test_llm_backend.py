@@ -289,12 +289,12 @@ class TestOpenAIBackend:
 
 class TestAnthropicBackend:
     def test_backend_type(self) -> None:
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         assert b.backend_type == LLMBackendType.ANTHROPIC
 
     @pytest.mark.asyncio
     async def test_chat_success(self) -> None:
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -327,7 +327,7 @@ class TestAnthropicBackend:
 
     @pytest.mark.asyncio
     async def test_chat_with_tool_use(self) -> None:
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -351,13 +351,13 @@ class TestAnthropicBackend:
 
     @pytest.mark.asyncio
     async def test_embed_not_supported(self) -> None:
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         with pytest.raises(LLMBackendError, match="keine Embedding-API"):
             await b.embed("claude-sonnet-4-20250514", "Test")
 
     @pytest.mark.asyncio
     async def test_list_models_static(self) -> None:
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         models = await b.list_models()
         assert len(models) >= 3
         assert any("claude" in m for m in models)
@@ -380,7 +380,7 @@ class TestAnthropicBackend:
     @pytest.mark.asyncio
     async def test_chat_preserves_content_array(self) -> None:
         """Content-Arrays (multimodal) werden nicht zu Strings konvertiert."""
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -417,7 +417,7 @@ class TestAnthropicBackend:
     @pytest.mark.asyncio
     async def test_system_message_extracts_text_from_list(self) -> None:
         """System-Messages mit Content-Arrays werden korrekt extrahiert."""
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -451,7 +451,7 @@ class TestAnthropicBackend:
     @pytest.mark.asyncio
     async def test_plain_string_content_unchanged(self) -> None:
         """Bestehende String-Messages funktionieren weiterhin identisch."""
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -481,7 +481,7 @@ class TestAnthropicBackend:
     @pytest.mark.asyncio
     async def test_mixed_messages(self) -> None:
         """Text + multimodal Messages in derselben Liste."""
-        b = AnthropicBackend(api_key="sk-ant-test")
+        b = AnthropicBackend(api_key="anthropic-test-key")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -561,7 +561,7 @@ class TestFactory:
     def test_anthropic(self) -> None:
         config = MagicMock()
         config.llm_backend_type = "anthropic"
-        config.anthropic_api_key = "sk-ant-test"
+        config.anthropic_api_key = "anthropic-test-key"
         config.anthropic_max_tokens = 4096
         config.ollama.timeout_seconds = 120
 

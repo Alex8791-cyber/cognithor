@@ -109,7 +109,7 @@ class TestBackendAutoDetection:
         """User sets llm_backend_type: ollama + has anthropic_api_key → stays ollama."""
         yaml_file = tmp_path / "config.yaml"
         yaml_file.write_text(
-            "llm_backend_type: ollama\nanthropic_api_key: sk-ant-test\n",
+            "llm_backend_type: ollama\nanthropic_api_key: anthropic-test-key\n",
             encoding="utf-8",
         )
         cfg = load_config(yaml_file)
@@ -129,7 +129,7 @@ class TestBackendAutoDetection:
         """No explicit backend + anthropic_api_key → auto-detects to anthropic."""
         yaml_file = tmp_path / "config.yaml"
         yaml_file.write_text(
-            "anthropic_api_key: sk-ant-test\n",
+            "anthropic_api_key: anthropic-test-key\n",
             encoding="utf-8",
         )
         cfg = load_config(yaml_file)
