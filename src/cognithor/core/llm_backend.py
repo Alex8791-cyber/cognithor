@@ -1640,6 +1640,12 @@ def create_backend(config: CognithorConfig) -> LLMBackend:
                 base_url="https://openrouter.ai/api/v1",
                 timeout=config.ollama.timeout_seconds,
             )
+        case "requesty":
+            return OpenAIBackend(
+                api_key=getattr(config, "requesty_api_key", ""),
+                base_url="https://router.requesty.ai/v1",
+                timeout=config.ollama.timeout_seconds,
+            )
         case "xai":
             return OpenAIBackend(
                 api_key=getattr(config, "xai_api_key", ""),

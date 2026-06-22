@@ -133,7 +133,7 @@ class TestC15_ApiKeyLength:
         assert config.openai_api_key == "***"
 
     def test_all_key_fields_validated(self, tmp_path: Path) -> None:
-        """Alle 14 API-Key-Felder werden validiert."""
+        """Alle 15 API-Key-Felder werden validiert."""
         key_fields = [
             "openai_api_key",
             "anthropic_api_key",
@@ -143,6 +143,7 @@ class TestC15_ApiKeyLength:
             "mistral_api_key",
             "together_api_key",
             "openrouter_api_key",
+            "requesty_api_key",
             "xai_api_key",
             "cerebras_api_key",
             "github_api_key",

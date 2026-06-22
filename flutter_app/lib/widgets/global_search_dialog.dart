@@ -21,6 +21,7 @@ const _fieldIndex = <(String, String, List<String>)>[
       'deepseek',
       'mistral',
       'openrouter',
+      'requesty',
       'backend',
     ],
   ),

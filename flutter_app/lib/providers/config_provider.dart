@@ -81,6 +81,7 @@ class ConfigProvider extends ChangeNotifier {
     'mistral_api_key': '',
     'together_api_key': '',
     'openrouter_api_key': '',
+    'requesty_api_key': '',
     'xai_api_key': '',
     'cerebras_api_key': '',
     'github_api_key': '',

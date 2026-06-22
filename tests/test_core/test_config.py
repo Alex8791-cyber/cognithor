@@ -509,6 +509,11 @@ class TestMultiProviderAutoAdaptation:
         assert config.llm_backend_type == "openrouter"
         assert config.models.planner.name == "anthropic/claude-opus-4.6"
 
+    def test_requesty_key_auto_detects_backend(self, tmp_path: Path) -> None:
+        config = CognithorConfig(cognithor_home=tmp_path, requesty_api_key="rqsty-sk-test")
+        assert config.llm_backend_type == "requesty"
+        assert config.models.planner.name == "openai/gpt-4o-mini"
+
     def test_xai_key_auto_detects_backend(self, tmp_path: Path) -> None:
         config = CognithorConfig(cognithor_home=tmp_path, xai_api_key="xai-test")
         assert config.llm_backend_type == "xai"
@@ -546,6 +551,14 @@ class TestMultiProviderAutoAdaptation:
         assert config.models.planner.name == "anthropic/claude-opus-4.6"
         assert config.models.executor.name == "google/gemini-2.5-flash"
         assert config.vision_model == "anthropic/claude-sonnet-4.6"
+
+    def test_requesty_model_defaults(self, tmp_path: Path) -> None:
+        config = CognithorConfig(
+            cognithor_home=tmp_path, llm_backend_type="requesty", requesty_api_key="rqsty-sk-test"
+        )
+        assert config.models.planner.name == "openai/gpt-4o-mini"
+        assert config.models.executor.name == "openai/gpt-4o-mini"
+        assert config.vision_model == "openai/gpt-4o-mini"
 
     def test_xai_model_defaults(self, tmp_path: Path) -> None:
         config = CognithorConfig(

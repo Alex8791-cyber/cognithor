@@ -28,7 +28,7 @@ The configuration file is automatically created on first start.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `llm_backend_type` | string | `"ollama"` | Backend provider. One of: `ollama`, `openai`, `anthropic`, `gemini`, `groq`, `deepseek`, `mistral`, `together`, `openrouter`, `xai`, `cerebras`, `github`, `bedrock`, `huggingface`, `moonshot`, `lmstudio`. Auto-detected from API keys if left as `ollama`. |
+| `llm_backend_type` | string | `"ollama"` | Backend provider. One of: `ollama`, `openai`, `anthropic`, `gemini`, `groq`, `deepseek`, `mistral`, `together`, `openrouter`, `requesty`, `xai`, `cerebras`, `github`, `bedrock`, `huggingface`, `moonshot`, `lmstudio`. Auto-detected from API keys if left as `ollama`. |
 | `openai_api_key` | string | `""` | OpenAI API key. Also used for OpenAI-compatible providers. |
 | `openai_base_url` | string | `"https://api.openai.com/v1"` | Base URL for OpenAI-compatible backend (also for Together, Groq, vLLM). |
 | `anthropic_api_key` | string | `""` | Anthropic Claude API key. |
@@ -39,6 +39,7 @@ The configuration file is automatically created on first start.
 | `mistral_api_key` | string | `""` | Mistral AI API key. |
 | `together_api_key` | string | `""` | Together AI API key. |
 | `openrouter_api_key` | string | `""` | OpenRouter API key. |
+| `requesty_api_key` | string | `""` | Requesty API key. |
 | `xai_api_key` | string | `""` | xAI (Grok) API key. |
 | `cerebras_api_key` | string | `""` | Cerebras API key. |
 | `github_api_key` | string | `""` | GitHub Models API key/token. |
@@ -151,6 +152,7 @@ When switching backends, Ollama model names are automatically replaced with prov
 | Mistral | mistral-large-latest | mistral-small-latest | codestral-latest | mistral-embed |
 | Together | Llama-4-Maverick-17B | Llama-4-Scout-17B | Llama-4-Maverick-17B | *(Ollama fallback)* |
 | OpenRouter | claude-opus-4.6 | gemini-2.5-flash | claude-sonnet-4.6 | *(Ollama fallback)* |
+| Requesty | openai/gpt-4o-mini | openai/gpt-4o-mini | openai/gpt-4o-mini | *(Ollama fallback)* |
 | xAI | grok-4-1-fast-reasoning | grok-4-1-fast-non-reasoning | grok-code-fast-1 | *(Ollama fallback)* |
 | Cerebras | gpt-oss-120b | llama3.1-8b | gpt-oss-120b | *(Ollama fallback)* |
 | GitHub | gpt-4.1 | gpt-4.1-mini | gpt-4.1 | text-embedding-3-large |

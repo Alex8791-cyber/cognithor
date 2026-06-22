@@ -129,7 +129,7 @@ What makes it different from other local AI tools is that Cognithor is not just 
 
 ## Highlights
 
-- **19 LLM Providers** — Ollama (local), LM Studio (local), vLLM (local), llama-cpp-python (local), OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, Together AI, OpenRouter, xAI (Grok), Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot/Kimi, Claude Code — plus any custom OpenAI-compatible endpoint
+- **20 LLM Providers** — Ollama (local), LM Studio (local), vLLM (local), llama-cpp-python (local), OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, Together AI, OpenRouter, Requesty, xAI (Grok), Cerebras, GitHub Models, AWS Bedrock, Hugging Face, Moonshot/Kimi, Claude Code — plus any custom OpenAI-compatible endpoint
 - **17 Communication Channels** — CLI, Web UI, REST API, Telegram, Discord, Slack, WhatsApp, Signal, iMessage, Microsoft Teams, Matrix, Google Chat, Mattermost, Feishu/Lark, IRC, Twitch, Voice (STT/TTS)
 - **6-Tier Cognitive Memory** — Core identity, episodic logs, semantic knowledge graph, procedural skills, working memory, tactical memory
 - **4-Channel Hybrid Search** — BM25 full-text + vector embeddings + knowledge graph traversal + hierarchical document reasoning with score fusion
@@ -339,6 +339,7 @@ Cognithor auto-detects your backend from API keys. Set one key and models are co
 | **Mistral** | `mistral` | `mistral_api_key` | mistral-large-latest / mistral-small-latest |
 | **Together AI** | `together` | `together_api_key` | Llama-4-Maverick / Llama-4-Scout |
 | **OpenRouter** | `openrouter` | `openrouter_api_key` | claude-opus-4.6 / gemini-2.5-flash |
+| **Requesty** | `requesty` | `requesty_api_key` | openai/gpt-4o-mini |
 | **xAI (Grok)** | `xai` | `xai_api_key` | grok-4-1-fast-reasoning / grok-4-1-fast |
 | **Cerebras** | `cerebras` | `cerebras_api_key` | gpt-oss-120b / llama3.1-8b |
 | **GitHub Models** | `github` | `github_api_key` | gpt-4.1 / gpt-4.1-mini |
