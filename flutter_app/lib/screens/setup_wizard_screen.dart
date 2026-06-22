@@ -477,6 +477,23 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                     onTap: () =>
                         setState(() => _selectedBackend = 'openrouter'),
                   ),
+                  const SizedBox(height: 10),
+
+                  // 8. Requesty (OpenAI-compatible gateway)
+                  _BackendCard(
+                    icon: Icons.alt_route,
+                    title: 'Requesty',
+                    subtitle:
+                        'OpenAI-compatible gateway (router.requesty.ai), provider/model naming',
+                    tint: const Color(0xFF00BFA5),
+                    selected: _selectedBackend == 'requesty',
+                    status: _isAuthenticated('requesty')
+                        ? l.keyConfigured
+                        : l.noKey,
+                    statusOk: _isAuthenticated('requesty'),
+                    onTap: () =>
+                        setState(() => _selectedBackend = 'requesty'),
+                  ),
                 ],
               ),
             ),
@@ -709,10 +726,11 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           ),
         ],
 
-        // OpenAI / Anthropic / OpenRouter
+        // OpenAI / Anthropic / OpenRouter / Requesty
         if (_selectedBackend == 'openai' ||
             _selectedBackend == 'anthropic' ||
-            _selectedBackend == 'openrouter') ...[
+            _selectedBackend == 'openrouter' ||
+            _selectedBackend == 'requesty') ...[
           if (_selectedBackend == 'openrouter') ...[
             Text('Base URL', style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
@@ -720,6 +738,18 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               controller: _ollamaUrlController,
               decoration: const InputDecoration(
                 hintText: 'https://openrouter.ai/api/v1',
+                prefixIcon: Icon(Icons.link),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_selectedBackend == 'requesty') ...[
+            Text('Base URL', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _ollamaUrlController,
+              decoration: const InputDecoration(
+                hintText: 'https://router.requesty.ai/v1',
                 prefixIcon: Icon(Icons.link),
               ),
             ),
@@ -858,6 +888,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         return 'LM Studio runs a local OpenAI-compatible server. Default port 1234.';
       case 'openrouter':
         return 'Enter your OpenAI-compatible base URL and API key.';
+      case 'requesty':
+        return 'Enter your Requesty API key (base URL https://router.requesty.ai/v1).';
       default:
         return 'Enter your API key to connect.';
     }
@@ -875,6 +907,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
       'vllm' => 'vLLM (Local GPU)',
       'lmstudio' => 'LM Studio (Local)',
       'openrouter' => 'OpenRouter / Custom',
+      'requesty' => 'Requesty',
       _ => '',
     };
 

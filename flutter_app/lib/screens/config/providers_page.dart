@@ -21,6 +21,7 @@ class ProvidersPage extends StatelessWidget {
     ('mistral', 'Mistral', Icons.air),
     ('together', 'Together AI', Icons.group),
     ('openrouter', 'OpenRouter', Icons.router),
+    ('requesty', 'Requesty', Icons.alt_route),
     ('xai', 'xAI', Icons.smart_toy),
     ('cerebras', 'Cerebras', Icons.memory),
     ('github', 'GitHub Models', Icons.code),

@@ -1412,6 +1412,54 @@ _PROVIDER_MODEL_DEFAULTS: dict[str, dict[str, dict[str, Any] | None]] = {
             "name": "anthropic/claude-sonnet-4.6",
         },
     },
+    "requesty": {
+        "planner": {
+            "name": "openai/gpt-4o-mini",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["reasoning", "planning", "reflection"],
+            "speed": "fast",
+        },
+        "observer": {
+            "name": "openai/gpt-4o-mini",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["reasoning", "reflection", "auditing"],
+            "speed": "fast",
+        },
+        "executor": {
+            "name": "openai/gpt-4o-mini",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["tool-calling", "simple-tasks"],
+            "speed": "fast",
+        },
+        "coder": {
+            "name": "openai/gpt-4o-mini",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "debugging", "testing"],
+            "speed": "fast",
+        },
+        "coder_fast": {
+            "name": "openai/gpt-4o-mini",
+            "context_window": 128000,
+            "vram_gb": 0.0,
+            "strengths": ["code-generation", "real-time-coding"],
+            "speed": "fast",
+        },
+        # Requesty hat keine Embedding-API → Ollama-Fallback bleibt
+        "embedding": {
+            "name": "qwen3-embedding:0.6b",
+            "context_window": 8192,
+            "vram_gb": 0.5,
+            "strengths": ["semantic-search", "multilingual"],
+            "speed": "fast",
+        },
+        "vision": {
+            "name": "openai/gpt-4o-mini",
+        },
+    },
     "xai": {
         "planner": {
             "name": "grok-4-1-fast-reasoning",
@@ -1830,6 +1878,7 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
     "mistral": "https://api.mistral.ai/v1",
     "together": "https://api.together.xyz/v1",
     "openrouter": "https://openrouter.ai/api/v1",
+    "requesty": "https://router.requesty.ai/v1",
     "xai": "https://api.x.ai/v1",
     "cerebras": "https://api.cerebras.ai/v1",
     "github": "https://models.inference.ai.azure.com",
@@ -2761,6 +2810,7 @@ class CognithorConfig(BaseModel):
         "mistral",
         "together",
         "openrouter",
+        "requesty",
         "xai",
         "cerebras",
         "github",
@@ -2776,7 +2826,7 @@ class CognithorConfig(BaseModel):
         description=(
             "LLM-Backend: 'ollama', 'openai', 'anthropic', "
             "'gemini', 'groq', 'deepseek', 'mistral', "
-            "'together', 'openrouter', 'xai', 'cerebras', "
+            "'together', 'openrouter', 'requesty', 'xai', 'cerebras', "
             "'github', 'bedrock', 'huggingface', "
             "'moonshot', 'lmstudio', 'vllm', 'llama_cpp', 'claude-code'"
         ),
@@ -2796,6 +2846,7 @@ class CognithorConfig(BaseModel):
     mistral_api_key: str = Field(default="", description="API-Key für Mistral AI")
     together_api_key: str = Field(default="", description="API-Key für Together AI")
     openrouter_api_key: str = Field(default="", description="API-Key für OpenRouter")
+    requesty_api_key: str = Field(default="", description="API-Key für Requesty")
     xai_api_key: str = Field(default="", description="API-Key für xAI (Grok)")
     cerebras_api_key: str = Field(default="", description="API-Key für Cerebras")
     github_api_key: str = Field(default="", description="API-Key/Token für GitHub Models")
@@ -2931,6 +2982,7 @@ class CognithorConfig(BaseModel):
         "mistral_api_key",
         "together_api_key",
         "openrouter_api_key",
+        "requesty_api_key",
         "xai_api_key",
         "cerebras_api_key",
         "github_api_key",
@@ -3001,6 +3053,9 @@ class CognithorConfig(BaseModel):
             elif self.openrouter_api_key:
                 backend = "openrouter"
                 object.__setattr__(self, "llm_backend_type", "openrouter")
+            elif self.requesty_api_key:
+                backend = "requesty"
+                object.__setattr__(self, "llm_backend_type", "requesty")
             elif self.xai_api_key:
                 backend = "xai"
                 object.__setattr__(self, "llm_backend_type", "xai")
@@ -3040,6 +3095,7 @@ class CognithorConfig(BaseModel):
                 self.mistral_api_key,
                 self.together_api_key,
                 self.openrouter_api_key,
+                self.requesty_api_key,
                 self.xai_api_key,
                 self.cerebras_api_key,
                 self.github_api_key,
@@ -3484,6 +3540,7 @@ def _resolve_secrets(config: CognithorConfig) -> None:
         "mistral_api_key",
         "together_api_key",
         "openrouter_api_key",
+        "requesty_api_key",
         "xai_api_key",
         "cerebras_api_key",
         "github_api_key",

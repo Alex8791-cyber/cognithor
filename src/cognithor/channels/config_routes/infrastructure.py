@@ -247,6 +247,13 @@ def _register_backend_routes(
                 "models": [],
             }
 
+            has_requesty = bool(getattr(cfg, "requesty_api_key", ""))
+            results["requesty"] = {
+                "installed": True,
+                "authenticated": has_requesty,
+                "models": [],
+            }
+
         # Current backend
         current = getattr(cfg, "llm_backend_type", "ollama") if cfg else "ollama"
 

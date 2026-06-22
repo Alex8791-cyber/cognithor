@@ -636,6 +636,15 @@ class TestFactory:
         assert isinstance(backend, OpenAIBackend)
         assert "openrouter.ai" in backend._base_url
 
+    def test_create_requesty_backend(self) -> None:
+        config = MagicMock()
+        config.llm_backend_type = "requesty"
+        config.requesty_api_key = "rqsty-sk-test"
+        config.ollama.timeout_seconds = 120
+        backend = create_backend(config)
+        assert isinstance(backend, OpenAIBackend)
+        assert "router.requesty.ai" in backend._base_url
+
     def test_create_xai_backend(self) -> None:
         config = MagicMock()
         config.llm_backend_type = "xai"

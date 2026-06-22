@@ -1022,6 +1022,14 @@ class TestCreateBackendExtended:
         assert backend._base_url == "https://openrouter.ai/api/v1"
         assert backend._api_key == "sk-or-test"
 
+    def test_create_requesty(self, config: CognithorConfig) -> None:
+        config.llm_backend_type = "requesty"
+        config.requesty_api_key = "rqsty-sk-test"
+        backend = create_backend(config)
+        assert isinstance(backend, OpenAIBackend)
+        assert backend._base_url == "https://router.requesty.ai/v1"
+        assert backend._api_key == "rqsty-sk-test"
+
     def test_create_xai(self, config: CognithorConfig) -> None:
         config.llm_backend_type = "xai"
         config.xai_api_key = "sk-xai-test"
