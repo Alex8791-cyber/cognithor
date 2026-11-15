@@ -13,19 +13,25 @@ from cognithor.models import AgentBudgetStatus, BudgetStatus, CostRecord, CostRe
 from cognithor.security.encrypted_db import encrypted_connect
 from cognithor.utils.logging import get_logger
 
+try:
+    from llm_prices import lookup as _lookup_price
+except ImportError:  # llm-prices missing: fall back to the static table below
+    _lookup_price = None  # type: ignore[assignment]
+
 log = get_logger(__name__)
 
 
 class CostTracker:
     """Tracks LLM API costs per session and globally."""
 
-    # Pricing table (USD per 1M tokens, as of 2025)
+    # Static pricing table (USD per 1M tokens). Only consulted for models that
+    # llm-prices does not know, or when llm-prices is not installed.
     DEFAULT_PRICING: dict[str, dict[str, float]] = {
         "gpt-4o": {"input": 2.50, "output": 10.00},
         "gpt-4o-mini": {"input": 0.15, "output": 0.60},
         "gpt-4-turbo": {"input": 10.00, "output": 30.00},
         "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
-        "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
+        "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
         "claude-opus-4-20250514": {"input": 15.00, "output": 75.00},
         "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
         "claude-3-5-haiku": {"input": 0.80, "output": 4.00},
@@ -86,6 +92,12 @@ class CostTracker:
         # Ollama / local models
         if "/" not in model and ":" in model:
             return {"input": 0.0, "output": 0.0}
+        # Maintained, dated price table (handles dated snapshots, provider
+        # prefixes like "anthropic/" and models newer than the table below)
+        if _lookup_price is not None:
+            price = _lookup_price(model)
+            if price is not None and price.input is not None and price.output is not None:
+                return {"input": price.input, "output": price.output}
         # Exact match
         if model in self.DEFAULT_PRICING:
             return self.DEFAULT_PRICING[model]
