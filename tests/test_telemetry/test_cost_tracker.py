@@ -72,6 +72,38 @@ class TestCostRecording:
         expected = 1000 * 2.50 / 1_000_000
         assert abs(record.cost_usd - expected) < 1e-9
 
+    @pytest.mark.parametrize(
+        ("model", "input_price", "output_price"),
+        [
+            # Not in the static table: previously billed at the $5/$15 fallback
+            ("gpt-5", 1.25, 10.00),
+            ("gpt-4.1", 2.00, 8.00),
+            ("claude-opus-4-6", 5.00, 25.00),
+            ("gemini-2.5-pro", 1.25, 10.00),
+            # Previously mispriced at $0.80/$4
+            ("claude-haiku-4-5-20251001", 1.00, 5.00),
+            # Provider prefix
+            ("anthropic/claude-haiku-4-5", 1.00, 5.00),
+        ],
+    )
+    def test_current_models_priced_by_llm_prices(self, tracker, model, input_price, output_price):
+        """Aktuelle Modelle → echter Listenpreis statt Fallback (llm-prices)."""
+        pytest.importorskip("llm_prices")
+        record = tracker.record_llm_call(
+            model=model,
+            input_tokens=1_000_000,
+            output_tokens=1_000_000,
+        )
+        assert record.cost_usd == pytest.approx(input_price + output_price)
+
+    def test_static_table_without_llm_prices(self, tracker, monkeypatch):
+        """Ohne llm-prices → statische Tabelle + Fallback wie bisher."""
+        import cognithor.telemetry.cost_tracker as ct_mod
+
+        monkeypatch.setattr(ct_mod, "_lookup_price", None)
+        assert tracker._get_pricing("gpt-4o-2024-11-20") == {"input": 2.50, "output": 10.00}
+        assert tracker._get_pricing("some-future-model") == CostTracker.FALLBACK_PRICING
+
 
 class TestBudgetEnforcement:
     def test_daily_budget_enforcement(self, tracker):

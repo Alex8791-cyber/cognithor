@@ -13,6 +13,7 @@ rich>=13.0,<14                 # CLI output
 prompt-toolkit>=3.0,<4         # CLI input
 anyio>=4.0,<5                  # Async primitives
 python-dotenv>=1.0,<2          # .env file loading
+llm-prices>=1.2,<2             # LLM API prices (CostTracker)
 
 # === Security ===
 cryptography>=46.0.5           # Credential encryption (Fernet)
